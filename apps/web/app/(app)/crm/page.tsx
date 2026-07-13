@@ -50,6 +50,16 @@ export default function CrmBoard() {
         <Button onClick={() => setAdding(true)}>+ New {t("lead")}</Button>
       </div>
 
+      {leads.length === 0 ? (
+        <div className="grid place-items-center rounded-xl border border-dashed border-line py-16 text-center">
+          <div className="mb-3 grid h-12 w-12 place-items-center rounded-full bg-elevated text-xl">✦</div>
+          <p className="text-sm font-medium">No {t("leads").toLowerCase()} yet</p>
+          <p className="mb-4 max-w-xs text-xs text-fg-muted">
+            Add your first {t("lead").toLowerCase()} manually, or connect WhatsApp to capture them automatically.
+          </p>
+          <Button onClick={() => setAdding(true)}>+ Add {t("lead")}</Button>
+        </div>
+      ) : (
       <div className="flex gap-3 overflow-x-auto pb-4">
         {pipeline.stages.map((stage) => {
           const cards = leads.filter((l) => l.stage_id === stage.id);
@@ -92,6 +102,7 @@ export default function CrmBoard() {
           );
         })}
       </div>
+      )}
 
       {adding && (
         <AddLeadForm

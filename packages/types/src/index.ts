@@ -134,3 +134,10 @@ export interface DuplicateMatch {
   company: string;
   reason: string;
 }
+
+export interface CrmSummary {
+  total_leads: number;
+  open_leads: number;
+  won_value_minor: number;
+  added_this_week: number;
+}

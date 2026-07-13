@@ -17,13 +17,20 @@ export function AiPrompt() {
   const [res, setRes] = useState<AskResponse | null>(null);
   const [busy, setBusy] = useState(false);
 
-  async function ask(e: React.FormEvent) {
-    e.preventDefault();
-    if (!q.trim()) return;
+  const leads = t("leads").toLowerCase();
+  const suggestions = [
+    `How many ${leads} are in Qualified?`,
+    `What's my total won value this month?`,
+    `Which ${leads} haven't been contacted?`,
+  ];
+
+  async function run(question: string) {
+    if (!question.trim()) return;
+    setQ(question);
     setBusy(true);
     setRes(null);
     try {
-      setRes(await api<AskResponse>("/ai/ask", { method: "POST", body: JSON.stringify({ question: q }) }));
+      setRes(await api<AskResponse>("/ai/ask", { method: "POST", body: JSON.stringify({ question }) }));
     } catch {
       setRes({ answer: "Something went wrong.", sql: null, rows: [] });
     } finally {
@@ -33,17 +40,30 @@ export function AiPrompt() {
 
   return (
     <Card className="mb-6">
-      <form onSubmit={ask} className="flex gap-2">
+      <form onSubmit={(e) => { e.preventDefault(); run(q); }} className="flex items-center gap-2">
+        <span className="text-brand">✦</span>
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder={`Ask anything… e.g. "how many ${t("leads").toLowerCase()} are in Qualified?"`}
+          placeholder="Ask anything about your business…"
           className="w-full bg-transparent text-sm outline-none placeholder:text-fg-subtle"
         />
-        <button disabled={busy} className="shrink-0 rounded-md bg-brand px-3 py-1 text-sm text-white disabled:opacity-50">
-          {busy ? "…" : "Ask"}
+        <button disabled={busy} className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-brand-fg disabled:opacity-50">
+          {busy ? "…" : "Ask AI"}
         </button>
       </form>
+
+      {!res && !busy && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {suggestions.map((s) => (
+            <button key={s} onClick={() => run(s)}
+                    className="rounded-full border border-line px-3 py-1 text-xs text-fg-muted transition-colors hover:border-brand/50 hover:text-fg">
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+
       {res && (
         <div className="mt-3 border-t border-line pt-3">
           <p className="text-sm text-fg">{res.answer}</p>

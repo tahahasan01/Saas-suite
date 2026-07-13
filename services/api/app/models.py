@@ -190,6 +190,13 @@ class LeadDetail(BaseModel):
     interactions: list[InteractionOut]
 
 
+class CrmSummary(BaseModel):
+    total_leads: int
+    open_leads: int
+    won_value_minor: int
+    added_this_week: int
+
+
 # ── AI ──────────────────────────────────────────────────────────────────────
 class AskRequest(BaseModel):
     question: str = Field(min_length=2, max_length=500)

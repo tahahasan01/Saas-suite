@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from .. import db, notifications
 from ..deps import AuthContext
 from ..models import (
+    CrmSummary,
     DuplicateMatch,
     InteractionCreate,
     InteractionOut,
@@ -65,6 +66,19 @@ async def list_pipelines(auth: AuthContext = Depends(require("crm", "read"))):
             StageOut(id=str(s["id"]), name=s["name"], position=s["position"], kind=s["kind"]))
     return [PipelineOut(id=str(p["id"]), name=p["name"], is_default=p["is_default"],
                         stages=by_pipe.get(str(p["id"]), [])) for p in pipelines]
+
+
+@router.get("/summary", response_model=CrmSummary)
+async def summary(auth: AuthContext = Depends(require("crm", "read"))) -> CrmSummary:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        row = await conn.fetchrow(
+            """select count(*) as total,
+                      count(*) filter (where s.kind='active') as open,
+                      coalesce(sum(l.value_minor) filter (where s.kind='won'), 0) as won_value,
+                      count(*) filter (where l.created_at > now() - interval '7 days') as this_week
+               from crm_leads l join crm_stages s on s.id = l.stage_id""")
+    return CrmSummary(total_leads=row["total"], open_leads=row["open"],
+                      won_value_minor=row["won_value"], added_this_week=row["this_week"])
 
 
 @router.get("/leads", response_model=list[LeadOut])

@@ -53,3 +53,7 @@ apps/web/.playwright-mcp/
 
 # vendored claude skills/agents bundle (tooling, not product)
 claude/
+
+# live claude skills/agents (load locally, keep out of repo)
+.claude/skills/
+.claude/agents/
