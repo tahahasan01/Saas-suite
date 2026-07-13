@@ -84,7 +84,10 @@ export default function CrmBoard() {
                     onClick={() => setOpenLead(l.id)}
                     className="cursor-pointer rounded-md border border-line bg-elevated p-3 hover:border-brand/50"
                   >
-                    <p className="text-sm font-medium">{l.name}</p>
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-medium">{l.name}</p>
+                      {l.score != null && <ScorePill score={l.score} />}
+                    </div>
                     {l.company && <p className="text-xs text-fg-subtle">{l.company}</p>}
                     <div className="mt-2 flex items-center justify-between">
                       <span className="text-xs text-fg-muted">{money(l.value_minor, l.currency)}</span>
@@ -125,4 +128,13 @@ function kindColor(kind: string) {
   if (kind === "won") return "text-success";
   if (kind === "lost") return "text-danger";
   return "text-fg";
+}
+
+function ScorePill({ score }: { score: number }) {
+  const cls = score >= 70 ? "bg-success/15 text-success" : score >= 40 ? "bg-warning/15 text-warning" : "bg-elevated text-fg-muted";
+  return (
+    <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${cls}`} title="Lead score">
+      {score}
+    </span>
+  );
 }

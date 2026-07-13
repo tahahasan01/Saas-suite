@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from .. import db, fulfillment
+from .. import db, fulfillment, scoring
 from ..deps import AuthContext
 from ..workflow import engine as wf
 from ..models import (
@@ -167,11 +167,13 @@ async def create_lead(body: LeadCreate, auth: AuthContext = Depends(require("crm
             "select id from crm_stages where pipeline_id=$1 order by position limit 1", pid)
         if not stage_id:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Pipeline has no stages")
+        lead_score = scoring.score_lead(source=body.source, company=body.company, phone=body.phone,
+                                        email=body.email, value_minor=body.value_minor)
         row = await conn.fetchrow(
-            """insert into crm_leads (tenant_id, pipeline_id, stage_id, owner_id, name, company, phone, email, source, value_minor)
-               values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning *""",
+            """insert into crm_leads (tenant_id, pipeline_id, stage_id, owner_id, name, company, phone, email, source, value_minor, score)
+               values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning *""",
             auth.tenant_id, pid, stage_id, auth.user_id, body.name, body.company, body.phone,
-            body.email, body.source, body.value_minor)
+            body.email, body.source, body.value_minor, lead_score)
         await wf.emit(conn, auth.user_id, "lead.created", _event_payload(row))
     return _lead(row)
 
