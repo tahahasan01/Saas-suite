@@ -5,12 +5,14 @@ from __future__ import annotations
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from .. import db
+from .. import db, fulfillment
 from ..deps import AuthContext
 from ..workflow import engine as wf
 from ..models import (
     CrmSummary,
     DuplicateMatch,
+    FulfillmentData,
+    FulfillmentSchema,
     InteractionCreate,
     InteractionOut,
     LeadCreate,
@@ -37,7 +39,7 @@ def _lead(row: asyncpg.Record) -> LeadOut:
         owner_id=str(row["owner_id"]) if row["owner_id"] else None, name=row["name"],
         company=row["company"], phone=row["phone"], email=row["email"], source=row["source"],
         value_minor=row["value_minor"], currency=row["currency"], score=row["score"],
-        created_at=row["created_at"],
+        created_at=row["created_at"], stage_kind=dict(row).get("stage_kind"),
     )
 
 
@@ -98,6 +100,36 @@ async def summary(auth: AuthContext = Depends(require("crm", "read"))) -> CrmSum
                       won_value_minor=row["won_value"], added_this_week=row["this_week"])
 
 
+@router.get("/fulfillment/schema", response_model=FulfillmentSchema)
+async def fulfillment_schema(auth: AuthContext = Depends(require("crm", "read"))) -> FulfillmentSchema:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        label = await conn.fetchval(
+            "select label from terminology where industry_type=$1 and key='fulfillment' and locale='en'",
+            auth.industry_type)
+    return FulfillmentSchema(label=label or "Fulfillment", fields=fulfillment.schema_for(auth.industry_type))
+
+
+@router.get("/leads/{lead_id}/fulfillment", response_model=FulfillmentData)
+async def get_fulfillment(lead_id: str, auth: AuthContext = Depends(require("crm", "read"))) -> FulfillmentData:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        data = await conn.fetchval("select data from crm_fulfillment where lead_id=$1", lead_id)
+    return FulfillmentData(data=data or {})
+
+
+@router.put("/leads/{lead_id}/fulfillment", response_model=FulfillmentData)
+async def save_fulfillment(lead_id: str, body: FulfillmentData,
+                           auth: AuthContext = Depends(require("crm", "write"))) -> FulfillmentData:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        if not await conn.fetchval("select 1 from crm_leads where id=$1", lead_id):
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Lead not found")
+        data = await conn.fetchval(
+            """insert into crm_fulfillment (tenant_id, lead_id, data) values ($1,$2,$3)
+               on conflict (lead_id) do update set data = excluded.data, updated_at = now()
+               returning data""",
+            auth.tenant_id, lead_id, body.data)
+    return FulfillmentData(data=data)
+
+
 @router.get("/leads", response_model=list[LeadOut])
 async def list_leads(pipeline_id: str | None = None, auth: AuthContext = Depends(require("crm", "read"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
@@ -147,7 +179,9 @@ async def create_lead(body: LeadCreate, auth: AuthContext = Depends(require("crm
 @router.get("/leads/{lead_id}", response_model=LeadDetail)
 async def get_lead(lead_id: str, auth: AuthContext = Depends(require("crm", "read"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
-        row = await conn.fetchrow("select * from crm_leads where id=$1", lead_id)
+        row = await conn.fetchrow(
+            """select l.*, s.kind as stage_kind from crm_leads l
+               join crm_stages s on s.id = l.stage_id where l.id=$1""", lead_id)
         if not row:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Lead not found")
         inter = await conn.fetch(

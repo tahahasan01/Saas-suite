@@ -111,6 +111,19 @@ export interface Lead {
   currency: string;
   score: number | null;
   created_at: string;
+  stage_kind?: string | null;
+}
+
+export interface FulfillmentField {
+  key: string;
+  label: string;
+  type: "text" | "number" | "date" | "select";
+  options?: string[];
+}
+
+export interface FulfillmentSchema {
+  label: string;
+  fields: FulfillmentField[];
 }
 
 export interface Interaction {

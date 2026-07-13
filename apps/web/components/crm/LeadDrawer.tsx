@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   INTERACTION_CHANNELS,
   INTERACTION_OUTCOMES,
+  type FulfillmentSchema,
   type LeadDetail,
 } from "@business-os/types";
 import { api } from "@/lib/api";
@@ -16,12 +17,31 @@ export function LeadDrawer({ leadId, onClose, onChanged }: { leadId: string; onC
   const [data, setData] = useState<LeadDetail | null>(null);
   const [log, setLog] = useState(emptyLog);
   const [busy, setBusy] = useState(false);
+  const [schema, setSchema] = useState<FulfillmentSchema | null>(null);
+  const [fdata, setFdata] = useState<Record<string, string>>({});
+  const [fsaving, setFsaving] = useState(false);
 
   const load = useCallback(() => {
     api<LeadDetail>(`/crm/leads/${leadId}`).then(setData).catch(() => setData(null));
   }, [leadId]);
 
   useEffect(load, [load]);
+
+  useEffect(() => {
+    api<FulfillmentSchema>("/crm/fulfillment/schema").then(setSchema).catch(() => {});
+    api<{ data: Record<string, string> }>(`/crm/leads/${leadId}/fulfillment`)
+      .then((r) => setFdata(r.data ?? {}))
+      .catch(() => {});
+  }, [leadId]);
+
+  async function saveFulfillment() {
+    setFsaving(true);
+    try {
+      await api(`/crm/leads/${leadId}/fulfillment`, { method: "PUT", body: JSON.stringify({ data: fdata }) });
+    } finally {
+      setFsaving(false);
+    }
+  }
 
   async function submitLog(e: React.FormEvent) {
     e.preventDefault();
@@ -65,6 +85,31 @@ export function LeadDrawer({ leadId, onClose, onChanged }: { leadId: string; onC
               <Info label="Value" value={money(data.lead.value_minor, data.lead.currency)} />
               <Info label="Source" value={data.lead.source} />
             </dl>
+
+            {data.lead.stage_kind === "won" && schema && (
+              <div className="mb-6 space-y-2 rounded-lg border border-brand/40 bg-brand-subtle/40 p-3">
+                <p className="text-xs font-semibold text-brand">🎉 {schema.label}</p>
+                {schema.fields.map((f) => (
+                  <label key={f.key} className="block text-xs text-fg-subtle">
+                    {f.label}
+                    {f.type === "select" ? (
+                      <select value={fdata[f.key] ?? ""} onChange={(e) => setFdata({ ...fdata, [f.key]: e.target.value })}
+                              className="mt-1 w-full rounded-md border border-line bg-canvas px-2 py-1.5 text-sm text-fg">
+                        <option value="">—</option>
+                        {f.options?.map((o) => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    ) : (
+                      <input type={f.type === "number" ? "number" : f.type === "date" ? "date" : "text"}
+                             value={fdata[f.key] ?? ""} onChange={(e) => setFdata({ ...fdata, [f.key]: e.target.value })}
+                             className="mt-1 w-full rounded-md border border-line bg-canvas px-2 py-1.5 text-sm text-fg" />
+                    )}
+                  </label>
+                ))}
+                <Button size="sm" onClick={saveFulfillment} disabled={fsaving} className="w-full">
+                  {fsaving ? "Saving…" : "Save details"}
+                </Button>
+              </div>
+            )}
 
             <form onSubmit={submitLog} className="mb-6 space-y-2 rounded-lg border border-line p-3">
               <p className="text-xs font-semibold text-fg">Log interaction</p>

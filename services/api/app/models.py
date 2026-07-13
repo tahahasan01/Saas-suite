@@ -137,6 +137,7 @@ class LeadOut(BaseModel):
     currency: str
     score: int | None
     created_at: datetime
+    stage_kind: str | None = None
 
 
 class LeadCreate(BaseModel):
@@ -195,6 +196,15 @@ class CrmSummary(BaseModel):
     open_leads: int
     won_value_minor: int
     added_this_week: int
+
+
+class FulfillmentSchema(BaseModel):
+    label: str            # industry fulfillment term (e.g. "Courier Dispatch")
+    fields: list[dict]
+
+
+class FulfillmentData(BaseModel):
+    data: dict = Field(default_factory=dict)
 
 
 # ── AI ──────────────────────────────────────────────────────────────────────
