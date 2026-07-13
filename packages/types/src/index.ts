@@ -141,3 +141,15 @@ export interface CrmSummary {
   won_value_minor: number;
   added_this_week: number;
 }
+
+export const WORKFLOW_TRIGGERS = ["lead.created", "lead.stage_changed", "interaction.logged"] as const;
+
+export interface Workflow {
+  id: string;
+  name: string;
+  trigger: string;
+  conditions: { field: string; op: string; value: unknown }[];
+  actions: Record<string, unknown>[];
+  enabled: boolean;
+  is_system: boolean;
+}

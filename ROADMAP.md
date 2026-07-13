@@ -95,11 +95,13 @@ Updated as each step lands. See `PROJECT_PLAN.md` and `docs/` for the design rat
 
 - [x] Notifications service (in-app) — `notifications` table (RLS), feed API, mark-all-read
 - [x] Notification bell UI (unread badge, dropdown, polling) in the app header
-- [x] First automation: lead moved to a **Won** stage → notifies the owner (verified)
-- [ ] Workflow / ECA engine (Event→Condition→Action, sandboxed expressions, action catalog)
-- [ ] Automations builder UI (create rules from the Automations page)
+- [x] **Workflow / ECA engine** — declarative conditions/actions (no eval), triggers
+  `lead.created` / `lead.stage_changed` / `interaction.logged`; verified conditional firing
+- [x] Default "deal won → notify owner" seeded as a system workflow
+- [x] Automations builder UI (list/toggle/delete + create rule with optional condition)
 - [ ] WhatsApp Cloud API integration (needs `WHATSAPP_TOKEN` — Pakistan-first channel)
 - [ ] Follow-up reminders (15-min-before, via scheduler)
+- [ ] More action types (assign owner / round-robin, send WhatsApp, create task)
 - [ ] Billing: self-hosted subscriptions + Safepay/manual provider + entitlement sync
 - [ ] Analytics: Redis aggregation + materialized views for dashboards
 - [ ] Background jobs (Celery/RQ or APScheduler) + cron
@@ -166,4 +168,7 @@ Hardening applied from the bundled `security-review` + `database-reviewer` skill
 | `5751b9c` | AI Gateway v1 — safe NL→SQL over CRM data |
 | `91888d4` | Add living ROADMAP.md |
 | `202e009` | Frontend design system — tokens, components, cohesive dark UI |
-| _next_ | Phase 1b start — in-app notifications + bell + first won-deal automation |
+| `5f147da` | Phase 1b start — in-app notifications + bell + first won-deal automation |
+| `b66e4a5` | Production hardening (rate limits, indexes, timeouts, least-privilege) |
+| `2bb8aa8` | Competitive research + research-driven UX (KPIs, activation, AI prompts) |
+| _next_ | Workflow/ECA engine + Automations builder UI |

@@ -222,3 +222,29 @@ class NotificationOut(BaseModel):
 class NotificationList(BaseModel):
     items: list[NotificationOut]
     unread: int
+
+
+# ── Workflows (ECA automations) ─────────────────────────────────────────────
+WORKFLOW_TRIGGERS = ["lead.created", "lead.stage_changed", "interaction.logged"]
+
+
+class WorkflowOut(BaseModel):
+    id: str
+    name: str
+    trigger: str
+    conditions: list[dict]
+    actions: list[dict]
+    enabled: bool
+    is_system: bool
+
+
+class WorkflowCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    trigger: str
+    conditions: list[dict] = Field(default_factory=list)
+    actions: list[dict] = Field(default_factory=list)
+
+
+class WorkflowUpdate(BaseModel):
+    name: str | None = None
+    enabled: bool | None = None

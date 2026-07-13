@@ -5,8 +5,9 @@ from __future__ import annotations
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from .. import db, notifications
+from .. import db
 from ..deps import AuthContext
+from ..workflow import engine as wf
 from ..models import (
     CrmSummary,
     DuplicateMatch,
@@ -40,6 +41,14 @@ def _lead(row: asyncpg.Record) -> LeadOut:
     )
 
 
+def _event_payload(row: asyncpg.Record, stage_kind: str | None = None) -> dict:
+    return {
+        "lead_id": str(row["id"]), "name": row["name"], "company": row["company"],
+        "value_minor": row["value_minor"], "source": row["source"], "stage_kind": stage_kind,
+        "owner_id": str(row["owner_id"]) if row["owner_id"] else None,
+    }
+
+
 async def _ensure_default_pipeline(conn: asyncpg.Connection, tenant_id: str) -> str:
     pid = await conn.fetchval("select id from crm_pipelines order by is_default desc, created_at limit 1")
     if pid:
@@ -51,6 +60,14 @@ async def _ensure_default_pipeline(conn: asyncpg.Connection, tenant_id: str) -> 
         await conn.execute(
             "insert into crm_stages (tenant_id, pipeline_id, name, position, kind) values ($1,$2,$3,$4,$5)",
             tenant_id, pid, name, pos, kind)
+    # Seed a default automation so a won deal notifies its owner out of the box.
+    await conn.execute(
+        """insert into workflows (tenant_id, name, trigger, conditions, actions, is_system)
+           values ($1, 'Notify owner when a deal is won', 'lead.stage_changed', $2, $3, true)""",
+        tenant_id,
+        [{"field": "stage_kind", "op": "eq", "value": "won"}],
+        [{"type": "notify", "recipient": "owner", "kind": "success",
+          "message": "Deal won: {name}", "body": "{company}", "link": "/crm"}])
     return str(pid)
 
 
@@ -123,6 +140,7 @@ async def create_lead(body: LeadCreate, auth: AuthContext = Depends(require("crm
                values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning *""",
             auth.tenant_id, pid, stage_id, auth.user_id, body.name, body.company, body.phone,
             body.email, body.source, body.value_minor)
+        await wf.emit(conn, auth.user_id, "lead.created", _event_payload(row))
     return _lead(row)
 
 
@@ -150,23 +168,18 @@ async def update_lead(lead_id: str, body: LeadUpdate, auth: AuthContext = Depend
         if not await conn.fetchval("select 1 from crm_leads where id=$1", lead_id):
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Lead not found")
         # Moving to a stage in another pipeline keeps pipeline_id consistent.
-        won = False
+        stage_kind: str | None = None
         if "stage_id" in fields:
             stage = await conn.fetchrow("select pipeline_id, kind from crm_stages where id=$1", fields["stage_id"])
             if not stage:
                 raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unknown stage")
             fields["pipeline_id"] = str(stage["pipeline_id"])
-            won = stage["kind"] == "won"
+            stage_kind = stage["kind"]
         cols = ", ".join(f"{k}=${i+2}" for i, k in enumerate(fields))
         row = await conn.fetchrow(
             f"update crm_leads set {cols}, updated_at=now() where id=$1 returning *", lead_id, *fields.values())
-        # First taste of automation: a won deal notifies the lead owner.
-        if won:
-            await notifications.create(
-                conn, user_id=str(row["owner_id"] or auth.user_id),
-                title=f"Deal won: {row['name']}",
-                body=f"{row['company']} — PKR {row['value_minor'] // 100:,}".rstrip(" —"),
-                kind="success", link="/crm")
+        if stage_kind is not None:
+            await wf.emit(conn, auth.user_id, "lead.stage_changed", _event_payload(row, stage_kind))
     return _lead(row)
 
 
