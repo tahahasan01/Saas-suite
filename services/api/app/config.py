@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     # Comma-separated allowed browser origins for CORS
     web_origin: str = "http://localhost:3000"
 
+    sentry_dsn: str = ""                       # error tracking (no-op if empty)
+
     anthropic_api_key: str = ""
     ai_model: str = "claude-sonnet-5"          # reasoning/answers
     ai_model_fast: str = "claude-haiku-4-5-20251001"  # cheap classification

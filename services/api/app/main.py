@@ -1,10 +1,12 @@
 """FastAPI entrypoint for the Business OS backend."""
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from . import db, jobs
 from .config import settings
@@ -12,6 +14,15 @@ from .routers import (
     ai, auth, billing, crm, entitlements, hrms, invoices, notifications, pos, team,
     terminology, workflows,
 )
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+log = logging.getLogger("api")
+
+if settings.sentry_dsn:
+    import sentry_sdk
+
+    sentry_sdk.init(dsn=settings.sentry_dsn, traces_sample_rate=0.1, environment=settings.node_env)
+    log.info("Sentry error tracking enabled")
 
 
 @asynccontextmanager
@@ -46,6 +57,13 @@ app.include_router(invoices.router)
 app.include_router(pos.router)
 app.include_router(hrms.router)
 app.include_router(billing.router)
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    # Log the full trace server-side; never leak internals to the client.
+    log.exception("Unhandled error on %s %s", request.method, request.url.path)
+    return JSONResponse(status_code=500, content={"detail": "Something went wrong. Please try again."})
 
 
 @app.get("/health", tags=["meta"])
