@@ -47,3 +47,4 @@ jobs:
           python -m scripts.migrate
           python -m scripts.seed
           python -c "import app.main; print('API imports OK')"
+          python -m pytest -q
