@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from .. import db
+from .. import db, notifications
 from ..deps import AuthContext
 from ..models import (
     DuplicateMatch,
@@ -136,14 +136,23 @@ async def update_lead(lead_id: str, body: LeadUpdate, auth: AuthContext = Depend
         if not await conn.fetchval("select 1 from crm_leads where id=$1", lead_id):
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Lead not found")
         # Moving to a stage in another pipeline keeps pipeline_id consistent.
+        won = False
         if "stage_id" in fields:
-            new_pid = await conn.fetchval("select pipeline_id from crm_stages where id=$1", fields["stage_id"])
-            if not new_pid:
+            stage = await conn.fetchrow("select pipeline_id, kind from crm_stages where id=$1", fields["stage_id"])
+            if not stage:
                 raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unknown stage")
-            fields["pipeline_id"] = str(new_pid)
+            fields["pipeline_id"] = str(stage["pipeline_id"])
+            won = stage["kind"] == "won"
         cols = ", ".join(f"{k}=${i+2}" for i, k in enumerate(fields))
         row = await conn.fetchrow(
             f"update crm_leads set {cols}, updated_at=now() where id=$1 returning *", lead_id, *fields.values())
+        # First taste of automation: a won deal notifies the lead owner.
+        if won:
+            await notifications.create(
+                conn, user_id=str(row["owner_id"] or auth.user_id),
+                title=f"Deal won: {row['name']}",
+                body=f"{row['company']} — PKR {row['value_minor'] // 100:,}".rstrip(" —"),
+                kind="success", link="/crm")
     return _lead(row)
 
 

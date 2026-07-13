@@ -91,11 +91,14 @@ Updated as each step lands. See `PROJECT_PLAN.md` and `docs/` for the design rat
 
 ---
 
-## Phase 1b — Platform Core (part 2) ⬜  Next
+## Phase 1b — Platform Core (part 2) 🟡  In progress
 
+- [x] Notifications service (in-app) — `notifications` table (RLS), feed API, mark-all-read
+- [x] Notification bell UI (unread badge, dropdown, polling) in the app header
+- [x] First automation: lead moved to a **Won** stage → notifies the owner (verified)
 - [ ] Workflow / ECA engine (Event→Condition→Action, sandboxed expressions, action catalog)
-- [ ] Notifications service (in-app + web push) with provider abstraction
-- [ ] WhatsApp Cloud API integration (Pakistan-first channel)
+- [ ] Automations builder UI (create rules from the Automations page)
+- [ ] WhatsApp Cloud API integration (needs `WHATSAPP_TOKEN` — Pakistan-first channel)
 - [ ] Follow-up reminders (15-min-before, via scheduler)
 - [ ] Billing: self-hosted subscriptions + Safepay/manual provider + entitlement sync
 - [ ] Analytics: Redis aggregation + materialized views for dashboards
@@ -154,4 +157,5 @@ Updated as each step lands. See `PROJECT_PLAN.md` and `docs/` for the design rat
 | `5907a03` | Phase 2 — CRM core (pipelines, leads, dedup, Kanban, interactions) |
 | `5751b9c` | AI Gateway v1 — safe NL→SQL over CRM data |
 | `91888d4` | Add living ROADMAP.md |
-| _next_ | Frontend design system — tokens, components, cohesive dark UI |
+| `202e009` | Frontend design system — tokens, components, cohesive dark UI |
+| _next_ | Phase 1b start — in-app notifications + bell + first won-deal automation |

@@ -199,3 +199,19 @@ class AskResponse(BaseModel):
     answer: str
     sql: str | None = None
     rows: list[dict] = Field(default_factory=list)
+
+
+# ── Notifications ───────────────────────────────────────────────────────────
+class NotificationOut(BaseModel):
+    id: str
+    title: str
+    body: str
+    kind: str
+    link: str | None
+    read: bool
+    created_at: datetime
+
+
+class NotificationList(BaseModel):
+    items: list[NotificationOut]
+    unread: int
