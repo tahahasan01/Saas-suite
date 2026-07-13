@@ -117,9 +117,12 @@ Updated as each step lands. See `PROJECT_PLAN.md` and `docs/` for the design rat
 - [ ] Field Force (mobile): TSP route optimization + geofenced check-in + selfie
 - [ ] Call center: click-to-call + Whisper transcription → AI summary
 
-## Phase 3 — POS & Predictive Inventory ⬜  Planned
+## Phase 3 — POS & Predictive Inventory 🟡  In progress
 
-- [ ] Products/inventory schema + stock movements
+- [x] Products/inventory schema + stock decrement on sale
+- [x] POS billing screen (search/scan → cart → discount → pay → receipt)
+- [x] Products management (catalog, stock, low-stock badges)
+- [x] Pakistan payment methods (cash/jazzcash/easypaisa/card/bank)
 - [ ] Offline-first PWA (IndexedDB) + delta sync + conflict policy
 - [ ] Electron hardware bridge (scanners, ESC/POS printers, cash drawer, scales)
 - [ ] Keyboard-driven billing (F1–F8 hotkeys)
@@ -176,3 +179,4 @@ Hardening applied from the bundled `security-review` + `database-reviewer` skill
 | `8fa1b95` | CRM depth — industry-conditional post-sale fulfillment |
 | `085d8d8` | CRM depth — invoice request → approve → PDF (separation of duties) |
 | `5c074c4` | CRM depth — heuristic lead scoring with score pills |
+| `436e7d4` | Phase 3 — POS billing + inventory core (web-first) |
