@@ -6,6 +6,7 @@ from fastapi import Depends, HTTPException, status
 
 from . import db
 from .deps import AuthContext, current_auth
+from .models import SECTIONS
 
 
 def require(section: str, action: str):
@@ -13,6 +14,14 @@ def require(section: str, action: str):
         if not auth.role_id:
             raise HTTPException(status.HTTP_403_FORBIDDEN, "No role assigned")
         async with db.tenant_conn(auth.tenant_id) as conn:
+            # Business sections must be turned on for the tenant (entitlement).
+            if section in SECTIONS:
+                enabled = await conn.fetchval(
+                    "select enabled from entitlements where tenant_id=$1 and section_key=$2",
+                    auth.tenant_id, section,
+                )
+                if not enabled:
+                    raise HTTPException(status.HTTP_403_FORBIDDEN, f"Section '{section}' is not enabled")
             ok = await conn.fetchval(
                 """select 1 from permissions
                    where role_id = $1 and section = $2 and action in ($3, 'admin') limit 1""",

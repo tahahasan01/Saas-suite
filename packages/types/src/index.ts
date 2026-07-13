@@ -77,3 +77,60 @@ export interface RoleOut {
   name: string;
   is_system: boolean;
 }
+
+// ── CRM ──────────────────────────────────────────────────────────────────
+export const LEAD_SOURCES = ["manual", "whatsapp", "facebook", "google", "referral"] as const;
+export const INTERACTION_CHANNELS = ["call", "whatsapp", "email", "note", "bot"] as const;
+export const INTERACTION_OUTCOMES = ["interested", "not_interested", "callback", "busy"] as const;
+
+export interface Stage {
+  id: string;
+  name: string;
+  position: number;
+  kind: "active" | "won" | "lost";
+}
+
+export interface Pipeline {
+  id: string;
+  name: string;
+  is_default: boolean;
+  stages: Stage[];
+}
+
+export interface Lead {
+  id: string;
+  pipeline_id: string;
+  stage_id: string;
+  owner_id: string | null;
+  name: string;
+  company: string;
+  phone: string;
+  email: string;
+  source: string;
+  value_minor: number;
+  currency: string;
+  score: number | null;
+  created_at: string;
+}
+
+export interface Interaction {
+  id: string;
+  user_id: string | null;
+  channel: string;
+  outcome: string | null;
+  note: string;
+  next_follow_up_at: string | null;
+  created_at: string;
+}
+
+export interface LeadDetail {
+  lead: Lead;
+  interactions: Interaction[];
+}
+
+export interface DuplicateMatch {
+  id: string;
+  name: string;
+  company: string;
+  reason: string;
+}

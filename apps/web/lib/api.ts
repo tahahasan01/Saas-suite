@@ -8,14 +8,15 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
   });
   if (!res.ok) {
-    const detail = await res.json().catch(() => ({}));
-    throw new ApiError(res.status, detail?.detail ?? res.statusText);
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, body?.detail ?? res.statusText);
   }
   return res.status === 204 ? (undefined as T) : res.json();
 }
 
+/** `detail` may be a string or a structured object (e.g. the 409 duplicate payload). */
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
-    super(message);
+  constructor(public status: number, public detail: unknown) {
+    super(typeof detail === "string" ? detail : "Request failed");
   }
 }

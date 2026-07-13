@@ -46,3 +46,7 @@ apps/web/next-env.d.ts
 # playwright mcp artifacts
 .playwright-mcp/
 apps/web/.playwright-mcp/
+
+# test screenshots
+crm-board.png
+*-board.png
