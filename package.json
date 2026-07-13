@@ -1,0 +1,27 @@
+{
+  "name": "business-os",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Unified all-in-one Business OS (HRMS + CRM + POS) — Pakistan-first B2B SaaS",
+  "//": "Backend is Python/FastAPI (services/api) — managed by its own venv, not npm. JS workspaces cover the web app + shared packages only.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "db:up": "docker compose --env-file .env -f infra/docker/docker-compose.yml up -d",
+    "db:down": "docker compose --env-file .env -f infra/docker/docker-compose.yml down"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "npm@10.9.3"
+}

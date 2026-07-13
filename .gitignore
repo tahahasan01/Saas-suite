@@ -1,0 +1,44 @@
+# deps
+node_modules/
+.pnp.*
+.yarn/
+
+# builds
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# env & secrets
+.env
+.env.*
+!.env.example
+
+# logs
+*.log
+npm-debug.log*
+
+# turbo / caches
+.turbo/
+coverage/
+
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# os / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# docker volumes (local)
+infra/docker/.data/
+
+# next generated
+apps/web/next-env.d.ts
