@@ -1,7 +1,7 @@
 """Pydantic request/response schemas (the API contract)."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -338,6 +338,89 @@ class OccasionForecast(BaseModel):
 
 class ForecastOut(BaseModel):
     occasions: list[OccasionForecast]
+
+
+# ── HRMS ────────────────────────────────────────────────────────────────────
+LEAVE_TYPES = ["annual", "sick", "casual", "unpaid"]
+
+
+class EmployeeOut(BaseModel):
+    id: str
+    name: str
+    email: str
+    phone: str
+    cnic: str
+    designation: str
+    department: str
+    join_date: date | None
+    salary_minor: int
+    status: str
+
+
+class EmployeeCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=160)
+    email: str = ""
+    phone: str = ""
+    cnic: str = ""
+    designation: str = ""
+    department: str = ""
+    join_date: date | None = None
+    salary_minor: int = Field(default=0, ge=0)
+
+
+class EmployeeUpdate(BaseModel):
+    name: str | None = None
+    phone: str | None = None
+    designation: str | None = None
+    department: str | None = None
+    salary_minor: int | None = Field(default=None, ge=0)
+    status: str | None = None
+
+
+class CheckInRequest(BaseModel):
+    employee_id: str
+    method: str = "web"
+    lat: float | None = None
+    lng: float | None = None
+    mock_gps: bool = False
+
+
+class AttendanceOut(BaseModel):
+    id: str
+    employee_id: str
+    employee_name: str
+    work_date: date
+    check_in: datetime | None
+    check_out: datetime | None
+    status: str
+    method: str
+    fraud_flag: str
+
+
+class LeaveCreate(BaseModel):
+    employee_id: str
+    leave_type: str = "annual"
+    from_date: date
+    to_date: date
+    reason: str = ""
+
+
+class LeaveOut(BaseModel):
+    id: str
+    employee_id: str
+    employee_name: str
+    leave_type: str
+    from_date: date
+    to_date: date
+    reason: str
+    status: str
+
+
+class HrmsSummary(BaseModel):
+    headcount: int
+    present_today: int
+    on_leave_today: int
+    pending_leaves: int
 
 
 # ── AI ──────────────────────────────────────────────────────────────────────

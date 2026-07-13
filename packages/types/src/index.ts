@@ -210,6 +210,52 @@ export interface OccasionForecast {
   items: ForecastItem[];
 }
 
+// ── HRMS ─────────────────────────────────────────────────────────────────
+export const LEAVE_TYPES = ["annual", "sick", "casual", "unpaid"] as const;
+
+export interface Employee {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  cnic: string;
+  designation: string;
+  department: string;
+  join_date: string | null;
+  salary_minor: number;
+  status: string;
+}
+
+export interface Attendance {
+  id: string;
+  employee_id: string;
+  employee_name: string;
+  work_date: string;
+  check_in: string | null;
+  check_out: string | null;
+  status: string;
+  method: string;
+  fraud_flag: string;
+}
+
+export interface Leave {
+  id: string;
+  employee_id: string;
+  employee_name: string;
+  leave_type: string;
+  from_date: string;
+  to_date: string;
+  reason: string;
+  status: "pending" | "approved" | "rejected";
+}
+
+export interface HrmsSummary {
+  headcount: number;
+  present_today: number;
+  on_leave_today: number;
+  pending_leaves: number;
+}
+
 export interface Interaction {
   id: string;
   user_id: string | null;
