@@ -50,3 +50,6 @@ apps/web/.playwright-mcp/
 # test screenshots
 *.png
 *-board.png
+
+# vendored claude skills/agents bundle (tooling, not product)
+claude/

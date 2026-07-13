@@ -23,6 +23,7 @@ from ..models import (
     TenantOut,
     UserOut,
 )
+from ..ratelimit import rate_limit
 from ..security import (
     SESSION_COOKIE,
     hash_password,
@@ -55,7 +56,8 @@ async def _create_session(conn, user_id: str, tenant_id: str) -> str:
     return token
 
 
-@router.post("/signup", response_model=MeResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/signup", response_model=MeResponse, status_code=status.HTTP_201_CREATED,
+             dependencies=[Depends(rate_limit(5, 60))])
 async def signup(body: SignupRequest, response: Response) -> MeResponse:
     if body.industry_type not in INDUSTRIES:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Unknown industry: {body.industry_type}")
@@ -110,7 +112,7 @@ async def signup(body: SignupRequest, response: Response) -> MeResponse:
     )
 
 
-@router.post("/login", response_model=UserOut)
+@router.post("/login", response_model=UserOut, dependencies=[Depends(rate_limit(10, 60))])
 async def login(body: LoginRequest, response: Response) -> UserOut:
     async with db.owner_conn() as conn:
         user = await conn.fetchrow(

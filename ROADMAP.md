@@ -137,14 +137,22 @@ Updated as each step lands. See `PROJECT_PLAN.md` and `docs/` for the design rat
 - [ ] Resign-risk prediction
 - [ ] LMS, asset tracker, visitor gateway
 
-## Cross-cutting / Ops ⬜  Planned
+## Cross-cutting / Ops 🟡  In progress
 
+Hardening applied from the bundled `security-review` + `database-reviewer` skills:
+- [x] Rate limiting on `/auth/login`, `/auth/signup`, `/ai/ask` (429 verified)
+- [x] FK / RLS-column indexes across all tables (database-reviewer)
+- [x] Global `statement_timeout` + `idle_in_transaction_session_timeout`
+- [x] Least privilege: `REVOKE ALL ON SCHEMA public FROM public`
+- [x] Dependency audit reviewed (Next's bundled postcss advisory = accepted risk; force-fix downgrades Next 15→9)
 - [ ] Observability (OpenTelemetry traces, Sentry, metrics/alerting)
 - [ ] Automated backups + tested restore drills
 - [ ] Staging environment + deploy pipeline to Hostinger VPS
-- [ ] Rate limiting + abuse protection at the API edge
+- [ ] Security headers / CSP on web + API
+- [ ] Redis-backed rate limiter (for multi-instance) + edge WAF
 - [ ] PII column encryption (CNIC, payroll, biometric) + consent gates
 - [ ] AI cost governance (per-tenant token budgets, kill-switch, caching)
+- [ ] Move `claude/.claude/` skills+agents to project-root `.claude/` so they load as live skills/agents
 
 ---
 
