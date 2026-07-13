@@ -62,3 +62,40 @@ class TerminologyResponse(BaseModel):
     industry_type: str
     locale: str
     labels: dict[str, str]
+
+
+# ── Team management ─────────────────────────────────────────────────────────
+class TeamUser(BaseModel):
+    id: str
+    email: str
+    name: str
+    role: str | None
+    status: str
+
+
+class UserCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=200)
+    role_id: str
+
+
+class UserUpdate(BaseModel):
+    role_id: str | None = None
+    status: str | None = Field(default=None, pattern="^(active|disabled)$")
+
+
+class RoleOut(BaseModel):
+    id: str
+    name: str
+    is_system: bool
+
+
+class RoleCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=60)
+    # permissions as {section: [actions]}
+    permissions: dict[str, list[str]] = Field(default_factory=dict)
+
+
+class EntitlementUpdate(BaseModel):
+    enabled: bool

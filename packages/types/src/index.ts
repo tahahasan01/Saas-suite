@@ -63,3 +63,17 @@ export interface TerminologyResponse {
   locale: string;
   labels: Record<string, string>;
 }
+
+export interface TeamUser {
+  id: string;
+  email: string;
+  name: string;
+  role: string | null;
+  status: string;
+}
+
+export interface RoleOut {
+  id: string;
+  name: string;
+  is_system: boolean;
+}

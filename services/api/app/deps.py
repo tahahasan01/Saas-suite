@@ -17,6 +17,7 @@ class AuthContext:
     email: str
     name: str
     role: str | None
+    role_id: str | None
     industry_type: str
 
 
@@ -34,7 +35,7 @@ async def current_auth(
         row = await conn.fetchrow(
             """
             select s.id as session_id, s.expires_at,
-                   u.id as user_id, u.email, u.name,
+                   u.id as user_id, u.email, u.name, u.role_id,
                    t.id as tenant_id, t.industry_type,
                    r.name as role
             from sessions s
@@ -56,5 +57,6 @@ async def current_auth(
         email=row["email"],
         name=row["name"],
         role=row["role"],
+        role_id=str(row["role_id"]) if row["role_id"] else None,
         industry_type=row["industry_type"],
     )
