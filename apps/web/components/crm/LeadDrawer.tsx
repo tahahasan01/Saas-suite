@@ -5,11 +5,15 @@ import {
   INTERACTION_CHANNELS,
   INTERACTION_OUTCOMES,
   type FulfillmentSchema,
+  type Invoice,
   type LeadDetail,
 } from "@business-os/types";
 import { api } from "@/lib/api";
 import { money, relativeDate } from "@/lib/format";
-import { Button } from "@/components/ui";
+import { Badge, Button, Input } from "@/components/ui";
+
+const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+const invTone = { pending: "warning", approved: "success", rejected: "danger" } as const;
 
 const emptyLog = { channel: "call", outcome: "", note: "", follow: "" };
 
@@ -41,6 +45,31 @@ export function LeadDrawer({ leadId, onClose, onChanged }: { leadId: string; onC
     } finally {
       setFsaving(false);
     }
+  }
+
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [inv, setInv] = useState({ amount: "", discount: "0" });
+
+  const loadInvoices = useCallback(() => {
+    api<Invoice[]>("/crm/invoices")
+      .then((all) => setInvoices(all.filter((x) => x.lead_id === leadId)))
+      .catch(() => setInvoices([]));
+  }, [leadId]);
+  useEffect(loadInvoices, [loadInvoices]);
+
+  async function requestInvoice(e: React.FormEvent) {
+    e.preventDefault();
+    await api("/crm/invoices", {
+      method: "POST",
+      body: JSON.stringify({
+        lead_id: leadId,
+        amount_minor: Math.round(Number(inv.amount || 0) * 100),
+        discount_pct: Number(inv.discount || 0),
+      }),
+    }).catch(() => {});
+    setInv({ amount: "", discount: "0" });
+    loadInvoices();
+    onChanged();
   }
 
   async function submitLog(e: React.FormEvent) {
@@ -110,6 +139,32 @@ export function LeadDrawer({ leadId, onClose, onChanged }: { leadId: string; onC
                 </Button>
               </div>
             )}
+
+            <div className="mb-6 space-y-2 rounded-lg border border-line p-3">
+              <p className="text-xs font-semibold text-fg">Invoices</p>
+              <form onSubmit={requestInvoice} className="flex items-end gap-2">
+                <label className="flex-1 text-xs text-fg-subtle">
+                  Amount (PKR)
+                  <Input type="number" min={0} value={inv.amount} onChange={(e) => setInv({ ...inv, amount: e.target.value })} required className="mt-1" />
+                </label>
+                <label className="w-20 text-xs text-fg-subtle">
+                  Disc %
+                  <Input type="number" min={0} max={100} value={inv.discount} onChange={(e) => setInv({ ...inv, discount: e.target.value })} className="mt-1" />
+                </label>
+                <Button type="submit" size="sm">Request</Button>
+              </form>
+              {invoices.map((iv) => (
+                <div key={iv.id} className="flex items-center justify-between text-xs">
+                  <span className="text-fg-muted">{money(iv.total_minor)}</span>
+                  <span className="flex items-center gap-2">
+                    <Badge tone={invTone[iv.status]}>{iv.status}</Badge>
+                    {iv.status === "approved" && (
+                      <a href={`${API}/crm/invoices/${iv.id}/pdf`} target="_blank" rel="noreferrer" className="text-brand hover:underline">PDF</a>
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
 
             <form onSubmit={submitLog} className="mb-6 space-y-2 rounded-lg border border-line p-3">
               <p className="text-xs font-semibold text-fg">Log interaction</p>

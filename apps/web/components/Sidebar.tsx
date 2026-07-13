@@ -16,6 +16,7 @@ export function Sidebar() {
   const items: { href: string; label: string }[] = [
     { href: "/dashboard", label: "Dashboard" },
     ...enabled.map((s) => ({ href: `/${s}`, label: sectionLabel(s, t) })),
+    ...(enabled.includes("crm") ? [{ href: "/invoices", label: "Invoices" }] : []),
     { href: "/automations", label: "Automations" },
     { href: "/settings/team", label: "Settings" },
   ];

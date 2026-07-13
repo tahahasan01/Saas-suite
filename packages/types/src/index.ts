@@ -126,6 +126,19 @@ export interface FulfillmentSchema {
   fields: FulfillmentField[];
 }
 
+export interface Invoice {
+  id: string;
+  lead_id: string;
+  lead_name: string;
+  amount_minor: number;
+  discount_pct: number;
+  total_minor: number;
+  notes: string;
+  status: "pending" | "approved" | "rejected";
+  created_at: string;
+  decided_at: string | null;
+}
+
 export interface Interaction {
   id: string;
   user_id: string | null;

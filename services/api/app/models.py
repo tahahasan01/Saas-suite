@@ -207,6 +207,26 @@ class FulfillmentData(BaseModel):
     data: dict = Field(default_factory=dict)
 
 
+class InvoiceCreate(BaseModel):
+    lead_id: str
+    amount_minor: int = Field(ge=0)
+    discount_pct: float = Field(default=0, ge=0, le=100)
+    notes: str = ""
+
+
+class InvoiceOut(BaseModel):
+    id: str
+    lead_id: str
+    lead_name: str
+    amount_minor: int
+    discount_pct: float
+    total_minor: int
+    notes: str
+    status: str
+    created_at: datetime
+    decided_at: datetime | None
+
+
 # ── AI ──────────────────────────────────────────────────────────────────────
 class AskRequest(BaseModel):
     question: str = Field(min_length=2, max_length=500)
