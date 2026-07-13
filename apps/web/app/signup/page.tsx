@@ -13,7 +13,7 @@ import {
 } from "@business-os/types";
 import { api } from "@/lib/api";
 import { useSession } from "@/lib/session";
-import { Button, Card, Field, Input } from "@/components/ui";
+import { Button, Card, Field, Input, Wordmark } from "@/components/ui";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -54,7 +54,9 @@ export default function SignupPage() {
   }
 
   return (
-    <main className="mx-auto grid max-w-4xl gap-6 p-6 md:grid-cols-2">
+    <main className="mx-auto max-w-4xl p-6">
+      <div className="mb-6"><Wordmark /></div>
+      <div className="grid gap-6 md:grid-cols-2">
       <Card className="space-y-4">
         <h1 className="text-lg font-semibold">Create your workspace</h1>
         <form onSubmit={submit} className="space-y-3">
@@ -63,7 +65,7 @@ export default function SignupPage() {
           </Field>
           <Field label="Industry">
             <select
-              className="w-full rounded-md border border-gray-700 bg-gray-900 px-3 py-2 text-sm"
+              className="w-full rounded-md border border-line bg-canvas px-3 py-2 text-sm"
               value={industry}
               onChange={(e) => setIndustry(e.target.value as Industry)}
             >
@@ -73,7 +75,7 @@ export default function SignupPage() {
             </select>
           </Field>
           <div className="space-y-1">
-            <span className="text-xs font-medium text-gray-400">Enable sections</span>
+            <span className="text-xs font-medium text-fg-muted">Enable sections</span>
             <div className="flex flex-wrap gap-2">
               {SECTIONS.map((s) => (
                 <button
@@ -82,8 +84,8 @@ export default function SignupPage() {
                   onClick={() => toggle(s)}
                   className={`rounded-md border px-3 py-1 text-sm ${
                     sections.includes(s)
-                      ? "border-indigo-500 bg-indigo-600/20 text-indigo-300"
-                      : "border-gray-700 text-gray-400"
+                      ? "border-brand bg-brand-subtle text-brand"
+                      : "border-line text-fg-muted"
                   }`}
                 >
                   {SECTION_LABELS[s]}
@@ -100,7 +102,7 @@ export default function SignupPage() {
           <Field label="Password (min 8 chars)">
             <Input type="password" minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
           </Field>
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          {error && <p className="text-sm text-danger">{error}</p>}
           <Button type="submit" disabled={busy || sections.length === 0} className="w-full">
             {busy ? "Creating…" : "Create workspace"}
           </Button>
@@ -108,17 +110,18 @@ export default function SignupPage() {
       </Card>
 
       <Card className="space-y-3">
-        <h2 className="text-sm font-semibold text-gray-300">Live preview — your interface will say:</h2>
+        <h2 className="text-sm font-semibold text-fg">Live preview — your interface will say:</h2>
         <ul className="space-y-2 text-sm">
           {["lead", "product", "deal", "fulfillment"].map((k) => (
-            <li key={k} className="flex justify-between border-b border-gray-800 pb-1">
-              <span className="text-gray-500">{k}</span>
+            <li key={k} className="flex justify-between border-b border-line pb-1">
+              <span className="text-fg-subtle">{k}</span>
               <span className="font-medium">{preview[k] ?? "…"}</span>
             </li>
           ))}
         </ul>
-        <p className="text-xs text-gray-500">Same system — the words change to fit your industry.</p>
+        <p className="text-xs text-fg-subtle">Same system — the words change to fit your industry.</p>
       </Card>
+      </div>
     </main>
   );
 }

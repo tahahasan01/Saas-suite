@@ -48,5 +48,5 @@ apps/web/next-env.d.ts
 apps/web/.playwright-mcp/
 
 # test screenshots
-crm-board.png
+*.png
 *-board.png

@@ -14,7 +14,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (!loading && !me) router.replace("/login");
   }, [me, loading, router]);
 
-  if (loading || !me) return <main className="grid min-h-screen place-items-center text-gray-500">Loading…</main>;
+  if (loading || !me) return <main className="grid min-h-screen place-items-center text-fg-subtle">Loading…</main>;
 
   return (
     <div className="grid min-h-screen grid-cols-[220px_1fr]">

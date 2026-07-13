@@ -16,7 +16,7 @@ export default function Dashboard() {
       <AiPrompt />
 
       <div className="grid gap-4 sm:grid-cols-3">
-        {enabled.length === 0 && <p className="text-sm text-gray-500">No sections enabled yet.</p>}
+        {enabled.length === 0 && <p className="text-sm text-fg-subtle">No sections enabled yet.</p>}
         {enabled.includes("crm") && <Stat label={t("leads")} value="0" />}
         {enabled.includes("pos") && <Stat label={t("products")} value="0" />}
         {enabled.includes("hrms") && <Stat label="Employees" value="0" />}
@@ -28,7 +28,7 @@ export default function Dashboard() {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <Card>
-      <p className="text-xs text-gray-500">{label}</p>
+      <p className="text-xs text-fg-subtle">{label}</p>
       <p className="mt-1 text-2xl font-semibold">{value}</p>
     </Card>
   );

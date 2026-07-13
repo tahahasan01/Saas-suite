@@ -38,16 +38,16 @@ export function AiPrompt() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={`Ask anything… e.g. "how many ${t("leads").toLowerCase()} are in Qualified?"`}
-          className="w-full bg-transparent text-sm outline-none placeholder:text-gray-600"
+          className="w-full bg-transparent text-sm outline-none placeholder:text-fg-subtle"
         />
-        <button disabled={busy} className="shrink-0 rounded-md bg-indigo-600 px-3 py-1 text-sm text-white disabled:opacity-50">
+        <button disabled={busy} className="shrink-0 rounded-md bg-brand px-3 py-1 text-sm text-white disabled:opacity-50">
           {busy ? "…" : "Ask"}
         </button>
       </form>
       {res && (
-        <div className="mt-3 border-t border-gray-800 pt-3">
-          <p className="text-sm text-gray-200">{res.answer}</p>
-          {res.sql && <p className="mt-2 font-mono text-[11px] text-gray-600">{res.sql}</p>}
+        <div className="mt-3 border-t border-line pt-3">
+          <p className="text-sm text-fg">{res.answer}</p>
+          {res.sql && <p className="mt-2 font-mono text-[11px] text-fg-subtle">{res.sql}</p>}
         </div>
       )}
     </Card>

@@ -13,13 +13,13 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   return (
     <>
       <h1 className="mb-4 text-xl font-semibold">Settings</h1>
-      <div className="mb-6 flex gap-1 border-b border-gray-800">
+      <div className="mb-6 flex gap-1 border-b border-line">
         {tabs.map((tb) => (
           <Link
             key={tb.href}
             href={tb.href}
             className={`px-3 py-2 text-sm ${
-              pathname === tb.href ? "border-b-2 border-indigo-500 text-white" : "text-gray-400 hover:text-gray-200"
+              pathname === tb.href ? "border-b-2 border-brand text-white" : "text-fg-muted hover:text-fg"
             }`}
           >
             {tb.label}

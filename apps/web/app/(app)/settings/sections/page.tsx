@@ -24,17 +24,17 @@ export default function SectionsPage() {
 
   return (
     <div className="max-w-xl space-y-3">
-      <p className="text-sm text-gray-500">Turn business modules on or off for your workspace.</p>
+      <p className="text-sm text-fg-subtle">Turn business modules on or off for your workspace.</p>
       {me.entitlements.map((e: EntitlementOut) => (
         <Card key={e.section_key} className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium">{SECTION_LABELS[e.section_key]}</p>
-            <p className="text-xs text-gray-500">{e.enabled ? "Enabled" : "Disabled"}</p>
+            <p className="text-xs text-fg-subtle">{e.enabled ? "Enabled" : "Disabled"}</p>
           </div>
           <button
             onClick={() => toggle(e.section_key, !e.enabled)}
             disabled={saving === e.section_key}
-            className={`relative h-6 w-11 rounded-full transition ${e.enabled ? "bg-indigo-600" : "bg-gray-700"} disabled:opacity-50`}
+            className={`relative h-6 w-11 rounded-full transition ${e.enabled ? "bg-brand" : "bg-elevated"} disabled:opacity-50`}
           >
             <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${e.enabled ? "left-[22px]" : "left-0.5"}`} />
           </button>

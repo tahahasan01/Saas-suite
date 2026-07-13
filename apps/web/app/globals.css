@@ -1,15 +1,63 @@
 @import "tailwindcss";
 
-:root {
-  --bg: #0b0f17;
-  --panel: #121826;
-  --border: #1f2937;
-  --accent: #4f46e5;
+/* ─── Design tokens ─────────────────────────────────────────────────────────
+   One cohesive dark SaaS system. Tailwind v4 generates utilities from these
+   (bg-surface, text-fg-muted, border-line, bg-brand, …). */
+@theme {
+  --color-canvas: #08090d;
+  --color-surface: #0f1117;
+  --color-elevated: #151823;
+  --color-line: #222634;
+  --color-line-strong: #2e3444;
+
+  --color-fg: #e8eaf0;
+  --color-fg-muted: #9aa1b2;
+  --color-fg-subtle: #6a7080;
+
+  --color-brand: #6366f1;
+  --color-brand-hover: #7679f6;
+  --color-brand-fg: #ffffff;
+  --color-brand-subtle: #6366f122;
+
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-danger: #f87171;
+
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
+/* ─── Base ─────────────────────────────────────────────────────────────────*/
 html,
 body {
-  background: var(--bg);
-  color: #e5e7eb;
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  background: var(--color-canvas);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-brand-subtle);
+}
+
+/* Slim, unobtrusive scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-line-strong);
+  border-radius: 9999px;
+}
+
+/* Focus ring for keyboard users */
+:where(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 1px;
 }

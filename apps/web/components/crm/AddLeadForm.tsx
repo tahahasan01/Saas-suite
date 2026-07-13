@@ -55,27 +55,27 @@ export function AddLeadForm({ onClose, onCreated }: { onClose: () => void; onCre
               <Field label={`Value (${"PKR"})`}><Input type="number" min={0} value={f.value} onChange={(e) => setF({ ...f, value: e.target.value })} /></Field>
             </div>
             <Field label="Source">
-              <select className="w-full rounded-md border border-gray-700 bg-gray-900 px-3 py-2 text-sm"
+              <select className="w-full rounded-md border border-line bg-canvas px-3 py-2 text-sm"
                       value={f.source} onChange={(e) => setF({ ...f, source: e.target.value })}>
                 {LEAD_SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             </Field>
 
             {dups && (
-              <div className="rounded-md border border-amber-700/50 bg-amber-900/20 p-3 text-sm">
-                <p className="mb-1 font-medium text-amber-300">Possible duplicate found:</p>
-                <ul className="mb-2 space-y-0.5 text-amber-200/80">
+              <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm">
+                <p className="mb-1 font-medium text-warning">Possible duplicate found:</p>
+                <ul className="mb-2 space-y-0.5 text-warning/80">
                   {dups.map((d) => <li key={d.id}>• {d.name} {d.company && `(${d.company})`} — matched on {d.reason}</li>)}
                 </ul>
-                <button type="button" onClick={() => submit(true)} className="text-xs text-amber-300 underline">
+                <button type="button" onClick={() => submit(true)} className="text-xs text-warning underline">
                   Create anyway
                 </button>
               </div>
             )}
-            {error && <p className="text-sm text-red-400">{error}</p>}
+            {error && <p className="text-sm text-danger">{error}</p>}
             <div className="flex gap-2">
               <Button type="submit" disabled={busy} className="flex-1">{busy ? "Saving…" : "Create"}</Button>
-              <button type="button" onClick={onClose} className="rounded-md px-3 text-sm text-gray-400">Cancel</button>
+              <button type="button" onClick={onClose} className="rounded-md px-3 text-sm text-fg-muted">Cancel</button>
             </div>
           </form>
         </div>

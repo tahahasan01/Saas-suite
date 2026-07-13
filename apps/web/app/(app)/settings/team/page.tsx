@@ -45,7 +45,7 @@ export default function TeamPage() {
       <Card className="p-0">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-800 text-left text-xs text-gray-500">
+            <tr className="border-b border-line text-left text-xs text-fg-subtle">
               <th className="p-3">Name</th>
               <th className="p-3">Email</th>
               <th className="p-3">Role</th>
@@ -54,12 +54,12 @@ export default function TeamPage() {
           </thead>
           <tbody>
             {users.map((u) => (
-              <tr key={u.id} className="border-b border-gray-800/50">
+              <tr key={u.id} className="border-b border-line/60">
                 <td className="p-3">{u.name}</td>
-                <td className="p-3 text-gray-400">{u.email}</td>
+                <td className="p-3 text-fg-muted">{u.email}</td>
                 <td className="p-3">{u.role ?? "—"}</td>
                 <td className="p-3">
-                  <span className={u.status === "active" ? "text-emerald-400" : "text-gray-500"}>{u.status}</span>
+                  <span className={u.status === "active" ? "text-success" : "text-fg-subtle"}>{u.status}</span>
                 </td>
               </tr>
             ))}
@@ -81,7 +81,7 @@ export default function TeamPage() {
           </Field>
           <Field label="Role">
             <select
-              className="w-full rounded-md border border-gray-700 bg-gray-900 px-3 py-2 text-sm"
+              className="w-full rounded-md border border-line bg-canvas px-3 py-2 text-sm"
               value={form.role_id}
               onChange={(e) => setForm({ ...form, role_id: e.target.value })}
             >
@@ -90,7 +90,7 @@ export default function TeamPage() {
               ))}
             </select>
           </Field>
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          {error && <p className="text-sm text-danger">{error}</p>}
           <Button type="submit" disabled={busy} className="w-full">
             {busy ? "Adding…" : "Add member"}
           </Button>

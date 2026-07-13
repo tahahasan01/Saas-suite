@@ -12,5 +12,5 @@ export default function Home() {
     if (!loading) router.replace(me ? "/dashboard" : "/login");
   }, [me, loading, router]);
 
-  return <main className="grid min-h-screen place-items-center text-gray-500">Loading…</main>;
+  return <main className="grid min-h-screen place-items-center text-fg-subtle">Loading…</main>;
 }

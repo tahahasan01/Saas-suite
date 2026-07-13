@@ -16,6 +16,7 @@ Updated as each step lands. See `PROJECT_PLAN.md` and `docs/` for the design rat
 | Phase 1a | Platform core: RBAC, team, sections, audit, shell | ✅ Done |
 | AI Gateway v1 | Safe NL→SQL assistant | 🟡 Built — awaiting live key test |
 | Phase 2 | CRM core (pipelines, leads, Kanban) | ✅ Done |
+| Design system | Tokens, component library, cohesive dark UI | ✅ Done |
 | Phase 1b | Workflow engine + WhatsApp notifications + billing | ⬜ Next |
 | Phase 2b | CRM depth (fulfillment, invoicing, ingestion, scoring) | ⬜ Planned |
 | Phase 3 | POS & Predictive Inventory | ⬜ Planned |
@@ -77,6 +78,16 @@ Updated as each step lands. See `PROJECT_PLAN.md` and `docs/` for the design rat
 - [x] Fully industry-localized (retail sees "Customers", education sees "Students")
 - [x] Section entitlement enforced (disabled CRM → 403)
 - [x] **Verified in-browser:** login → localized Kanban with live data, dedup 409, stage move
+
+---
+
+## Frontend Design System ✅
+
+- [x] Design tokens (Tailwind v4 `@theme`): canvas/surface/elevated/line, fg scale, brand, semantic
+- [x] Inter font, refined base styles, focus rings, slim scrollbars
+- [x] Component library: Button (variants/sizes), Input/Textarea/Select, Card, Badge, Wordmark
+- [x] Rebranded shell (sidebar + wordmark + tenant card), auth screens, dashboard, CRM, settings
+- [x] **Verified in-browser:** cohesive dark SaaS aesthetic across all pages
 
 ---
 
@@ -142,3 +153,5 @@ Updated as each step lands. See `PROJECT_PLAN.md` and `docs/` for the design rat
 | `4b65b70` | Phase 1a — RBAC, team, section toggles, audit, app shell |
 | `5907a03` | Phase 2 — CRM core (pipelines, leads, dedup, Kanban, interactions) |
 | `5751b9c` | AI Gateway v1 — safe NL→SQL over CRM data |
+| `91888d4` | Add living ROADMAP.md |
+| _next_ | Frontend design system — tokens, components, cohesive dark UI |

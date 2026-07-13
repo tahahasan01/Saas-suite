@@ -38,7 +38,7 @@ export default function CrmBoard() {
     }
   }
 
-  if (!pipeline) return <p className="text-sm text-gray-500">Loading pipeline…</p>;
+  if (!pipeline) return <p className="text-sm text-fg-subtle">Loading pipeline…</p>;
 
   const stageTotal = (s: Stage) =>
     leads.filter((l) => l.stage_id === s.id).reduce((sum, l) => sum + l.value_minor, 0);
@@ -58,11 +58,11 @@ export default function CrmBoard() {
               key={stage.id}
               onDragOver={(e) => e.preventDefault()}
               onDrop={() => dragId && moveLead(dragId, stage.id)}
-              className="flex w-64 shrink-0 flex-col rounded-lg border border-gray-800 bg-[#0e1420]"
+              className="flex w-64 shrink-0 flex-col rounded-lg border border-line bg-surface"
             >
-              <div className="flex items-center justify-between border-b border-gray-800 p-3">
+              <div className="flex items-center justify-between border-b border-line p-3">
                 <span className={`text-sm font-medium ${kindColor(stage.kind)}`}>{stage.name}</span>
-                <span className="text-xs text-gray-500">{cards.length}</span>
+                <span className="text-xs text-fg-subtle">{cards.length}</span>
               </div>
               <div className="flex-1 space-y-2 p-2">
                 {cards.map((l) => (
@@ -72,19 +72,19 @@ export default function CrmBoard() {
                     onDragStart={() => setDragId(l.id)}
                     onDragEnd={() => setDragId(null)}
                     onClick={() => setOpenLead(l.id)}
-                    className="cursor-pointer rounded-md border border-gray-800 bg-[#141b2b] p-3 hover:border-indigo-600/50"
+                    className="cursor-pointer rounded-md border border-line bg-elevated p-3 hover:border-brand/50"
                   >
                     <p className="text-sm font-medium">{l.name}</p>
-                    {l.company && <p className="text-xs text-gray-500">{l.company}</p>}
+                    {l.company && <p className="text-xs text-fg-subtle">{l.company}</p>}
                     <div className="mt-2 flex items-center justify-between">
-                      <span className="text-xs text-gray-400">{money(l.value_minor, l.currency)}</span>
-                      <span className="rounded bg-gray-800 px-1.5 py-0.5 text-[10px] text-gray-400">{l.source}</span>
+                      <span className="text-xs text-fg-muted">{money(l.value_minor, l.currency)}</span>
+                      <span className="rounded bg-elevated px-1.5 py-0.5 text-[10px] text-fg-muted">{l.source}</span>
                     </div>
                   </div>
                 ))}
               </div>
               {stageTotal(stage) > 0 && (
-                <div className="border-t border-gray-800 p-2 text-right text-xs text-gray-500">
+                <div className="border-t border-line p-2 text-right text-xs text-fg-subtle">
                   {money(stageTotal(stage))}
                 </div>
               )}
@@ -111,7 +111,7 @@ export default function CrmBoard() {
 }
 
 function kindColor(kind: string) {
-  if (kind === "won") return "text-emerald-400";
-  if (kind === "lost") return "text-red-400";
-  return "text-gray-300";
+  if (kind === "won") return "text-success";
+  if (kind === "lost") return "text-danger";
+  return "text-fg";
 }
