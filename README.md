@@ -167,8 +167,6 @@ Covers the security- and money-critical paths: **NL→SQL injection defense**, l
 | WhatsApp channel (the wedge) | 🟡 Built — needs `WHATSAPP_TOKEN` |
 | POS offline-first + hardware bridge · mobile attendance (face-match) | ⬜ Planned |
 
-Full living checklist → [`ROADMAP.md`](./ROADMAP.md) · design docs → [`docs/`](./docs)
-
 ---
 
 <div align="center">

@@ -51,9 +51,10 @@ apps/web/.playwright-mcp/
 *.png
 *-board.png
 
-# vendored claude skills/agents bundle (tooling, not product)
+# claude tooling (skills/agents bundle, settings) — local only
 claude/
+.claude/
 
-# live claude skills/agents (load locally, keep out of repo)
-.claude/skills/
-.claude/agents/
+# internal markdown docs (plans, roadmap, strategy) — keep local, off GitHub
+*.md
+!README.md
