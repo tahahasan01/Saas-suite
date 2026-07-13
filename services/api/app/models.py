@@ -309,6 +309,37 @@ class PosSummary(BaseModel):
     sales_today_total_minor: int
 
 
+class RestockItem(BaseModel):
+    product_id: str
+    name: str
+    unit: str
+    stock_qty: float
+    daily_velocity: float
+    days_left: float | None
+    recommend_qty: int
+    reason: str
+
+
+class ForecastItem(BaseModel):
+    product_id: str
+    name: str
+    current_stock: float
+    projected_units: int
+    recommend_qty: int
+
+
+class OccasionForecast(BaseModel):
+    occasion: str
+    event_date: str
+    days_until: int
+    uplift_pct: int
+    items: list[ForecastItem]
+
+
+class ForecastOut(BaseModel):
+    occasions: list[OccasionForecast]
+
+
 # ── AI ──────────────────────────────────────────────────────────────────────
 class AskRequest(BaseModel):
     question: str = Field(min_length=2, max_length=500)

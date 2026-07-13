@@ -88,7 +88,10 @@ export default function PosBilling() {
       <div>
         <div className="mb-4 flex items-center justify-between">
           <h1 className="text-xl font-semibold">Point of Sale</h1>
-          <Link href="/pos/products" className="text-sm text-brand hover:underline">Manage {t("products").toLowerCase()}</Link>
+          <div className="flex gap-4 text-sm">
+            <Link href="/pos/insights" className="text-brand hover:underline">✦ Insights</Link>
+            <Link href="/pos/products" className="text-brand hover:underline">Manage {t("products").toLowerCase()}</Link>
+          </div>
         </div>
         <Input
           ref={searchRef}

@@ -1,21 +1,39 @@
 """POS — products, checkout (sales), inventory. Guarded by the 'pos' section."""
 from __future__ import annotations
 
+import math
+
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from .. import db
 from ..deps import AuthContext
 from ..models import (
+    ForecastItem,
+    ForecastOut,
+    OccasionForecast,
     PosSummary,
     ProductCreate,
     ProductOut,
     ProductUpdate,
+    RestockItem,
     SaleCreate,
     SaleItemOut,
     SaleOut,
 )
 from ..rbac import require
+
+_VELOCITY_SQL = """
+with vel as (
+  select si.product_id, coalesce(sum(si.qty), 0) as sold
+  from pos_sale_items si join pos_sales s on s.id = si.sale_id
+  where s.created_at > now() - interval '30 days'
+  group by si.product_id
+)
+select p.id, p.name, p.unit, p.stock_qty, p.low_stock_at, coalesce(v.sold, 0) as sold_30d
+from pos_products p left join vel v on v.product_id = p.id
+where p.active
+"""
 
 router = APIRouter(prefix="/pos", tags=["pos"])
 
@@ -121,3 +139,58 @@ async def summary(auth: AuthContext = Depends(require("pos", "read"))):
             """)
     return PosSummary(products_count=row["products"], low_stock_count=row["low"],
                       sales_today_count=row["sales_today"], sales_today_total_minor=row["sales_total"])
+
+
+@router.get("/restock", response_model=list[RestockItem])
+async def restock(auth: AuthContext = Depends(require("pos", "read"))):
+    """Velocity-based reorder advice: flag products running out relative to how
+    fast they sell (30-day velocity), plus anything below its low-stock line."""
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        rows = await conn.fetch(_VELOCITY_SQL)
+    out: list[RestockItem] = []
+    for r in rows:
+        stock, low, sold = float(r["stock_qty"]), float(r["low_stock_at"]), float(r["sold_30d"])
+        vel = sold / 30.0
+        if vel > 0:
+            days_left = stock / vel
+            if days_left < 10:  # under ~10 days of cover
+                rec = max(0, math.ceil(vel * 30 - stock))  # restock to ~30 days
+                out.append(RestockItem(product_id=str(r["id"]), name=r["name"], unit=r["unit"],
+                                       stock_qty=stock, daily_velocity=round(vel, 2), days_left=round(days_left, 1),
+                                       recommend_qty=rec, reason=f"Selling ~{vel:.1f}/day · ~{days_left:.0f} days left"))
+        elif low > 0 and stock <= low:
+            out.append(RestockItem(product_id=str(r["id"]), name=r["name"], unit=r["unit"], stock_qty=stock,
+                                   daily_velocity=0, days_left=None, recommend_qty=math.ceil(max(0, low * 2 - stock)),
+                                   reason="Below low-stock threshold"))
+    out.sort(key=lambda x: (x.days_left if x.days_left is not None else 999))
+    return out
+
+
+@router.get("/forecast", response_model=ForecastOut)
+async def forecast(auth: AuthContext = Depends(require("pos", "read"))):
+    """60-day look-ahead: upcoming occasions with projected demand per product
+    from recent velocity × event duration × expected uplift."""
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        vel_rows = await conn.fetch(_VELOCITY_SQL)
+        occasions = await conn.fetch(
+            """select name, event_date, uplift_pct, duration_days,
+                      (event_date - current_date) as days_until
+               from occasion_calendar
+               where region='PK' and event_date between current_date and current_date + interval '60 days'
+               order by event_date""")
+    # products sorted by velocity, top movers only
+    movers = sorted(
+        ({"id": str(r["id"]), "name": r["name"], "stock": float(r["stock_qty"]), "vel": float(r["sold_30d"]) / 30.0}
+         for r in vel_rows if float(r["sold_30d"]) > 0),
+        key=lambda x: x["vel"], reverse=True)[:5]
+
+    result: list[OccasionForecast] = []
+    for occ in occasions:
+        items = []
+        for m in movers:
+            projected = math.ceil(m["vel"] * occ["duration_days"] * (1 + occ["uplift_pct"] / 100))
+            items.append(ForecastItem(product_id=m["id"], name=m["name"], current_stock=m["stock"],
+                                      projected_units=projected, recommend_qty=max(0, projected - int(m["stock"]))))
+        result.append(OccasionForecast(occasion=occ["name"], event_date=occ["event_date"].isoformat(),
+                                       days_until=occ["days_until"], uplift_pct=occ["uplift_pct"], items=items))
+    return ForecastOut(occasions=result)

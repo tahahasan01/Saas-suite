@@ -183,6 +183,33 @@ export interface PosSummary {
   sales_today_total_minor: number;
 }
 
+export interface RestockItem {
+  product_id: string;
+  name: string;
+  unit: string;
+  stock_qty: number;
+  daily_velocity: number;
+  days_left: number | null;
+  recommend_qty: number;
+  reason: string;
+}
+
+export interface ForecastItem {
+  product_id: string;
+  name: string;
+  current_stock: number;
+  projected_units: number;
+  recommend_qty: number;
+}
+
+export interface OccasionForecast {
+  occasion: string;
+  event_date: string;
+  days_until: number;
+  uplift_pct: number;
+  items: ForecastItem[];
+}
+
 export interface Interaction {
   id: string;
   user_id: string | null;
