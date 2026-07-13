@@ -27,6 +27,7 @@ class SignupRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=200)
     sections: list[str] = Field(default_factory=lambda: ["crm"])
+    sample_data: bool = True
 
 
 class LoginRequest(BaseModel):

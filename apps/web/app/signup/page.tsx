@@ -21,6 +21,7 @@ export default function SignupPage() {
   const [form, setForm] = useState({ company_name: "", name: "", email: "", password: "" });
   const [industry, setIndustry] = useState<Industry>("retail");
   const [sections, setSections] = useState<Section[]>(["crm"]);
+  const [sampleData, setSampleData] = useState(true);
   const [preview, setPreview] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -42,7 +43,7 @@ export default function SignupPage() {
     try {
       await api("/auth/signup", {
         method: "POST",
-        body: JSON.stringify({ ...form, industry_type: industry, sections }),
+        body: JSON.stringify({ ...form, industry_type: industry, sections, sample_data: sampleData }),
       });
       await refresh();
       router.replace("/dashboard");
@@ -93,6 +94,10 @@ export default function SignupPage() {
               ))}
             </div>
           </div>
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-fg-muted">
+            <input type="checkbox" checked={sampleData} onChange={(e) => setSampleData(e.target.checked)} className="accent-[var(--color-brand)]" />
+            Start with sample data (so you can explore right away)
+          </label>
           <Field label="Your name">
             <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
           </Field>

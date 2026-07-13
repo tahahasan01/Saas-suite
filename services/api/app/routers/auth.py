@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
-from .. import db
+from .. import db, sampledata
 from ..config import settings
 from ..deps import AuthContext, current_auth
 from ..models import (
@@ -107,6 +107,14 @@ async def signup(body: SignupRequest, response: Response) -> MeResponse:
                 "select section_key, enabled, limits from entitlements where tenant_id=$1 order by section_key",
                 tenant_id,
             )
+
+    # Seed a live demo workspace so the new tenant never lands in an empty app.
+    if body.sample_data:
+        try:
+            async with db.tenant_conn(str(tenant_id)) as sconn:
+                await sampledata.seed(sconn, str(tenant_id), str(user_id), sections)
+        except Exception:
+            pass  # best-effort — never fail signup over sample data
 
     _set_session_cookie(response, token)
     return MeResponse(
