@@ -62,6 +62,51 @@ body {
   outline-offset: 1px;
 }
 
+/* ─── Motion + atmosphere (landing / marketing) ─────────────────────────────*/
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+.animate-fade-up { animation: fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-fade-in { animation: fade-in 1s ease both; }
+.animate-float { animation: float-slow 6s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up, .animate-fade-in, .animate-float { animation: none; }
+}
+
+/* Atmospheric background: warm indigo glow + fine dot grid over the canvas */
+.atmosphere {
+  position: relative;
+  isolation: isolate;
+}
+.atmosphere::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(60rem 40rem at 70% -10%, rgba(99, 102, 241, 0.18), transparent 60%),
+    radial-gradient(50rem 40rem at 10% 10%, rgba(118, 121, 246, 0.10), transparent 55%);
+}
+.atmosphere::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: radial-gradient(70% 60% at 50% 0%, #000 30%, transparent 75%);
+}
+
 /* Print only the tagged receipt (thermal-friendly) */
 @media print {
   body * {
