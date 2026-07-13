@@ -23,6 +23,7 @@ export default function PosBilling() {
   const [method, setMethod] = useState("cash");
   const [receipt, setReceipt] = useState<Sale | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const paidRef = useRef<HTMLInputElement>(null);
 
   const search = useCallback((text: string) => {
     api<Product[]>(`/pos/products${text ? `?q=${encodeURIComponent(text)}` : ""}`)
@@ -81,6 +82,18 @@ export default function PosBilling() {
     search(q);
     searchRef.current?.focus();
   }
+
+  // Keyboard-first checkout (cashier never touches the mouse).
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "F2") { e.preventDefault(); searchRef.current?.focus(); }
+      else if (e.key === "F1") { e.preventDefault(); setCart([]); }
+      else if (e.key === "F6") { e.preventDefault(); paidRef.current?.focus(); }
+      else if (e.key === "F7") { e.preventDefault(); void charge(); }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [charge]);
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
@@ -156,7 +169,7 @@ export default function PosBilling() {
           <Select value={method} onChange={(e) => setMethod(e.target.value)}>
             {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
           </Select>
-          <Input type="number" min={0} value={paid} onChange={(e) => setPaid(e.target.value)} placeholder="Amount paid" />
+          <Input ref={paidRef} type="number" min={0} value={paid} onChange={(e) => setPaid(e.target.value)} placeholder="Amount paid" />
         </div>
         {paidMinor > 0 && paidMinor >= total && (
           <p className="mt-2 text-right text-sm text-success">Change: {money(paidMinor - total)}</p>
@@ -164,6 +177,9 @@ export default function PosBilling() {
         <Button onClick={charge} disabled={cart.length === 0} className="mt-3 w-full">
           Charge {money(total)}
         </Button>
+        <p className="mt-2 text-center text-[11px] text-fg-subtle">
+          <kbd>F2</kbd> search · <kbd>F6</kbd> pay · <kbd>F7</kbd> charge · <kbd>F1</kbd> clear
+        </p>
       </Card>
 
       {receipt && <Receipt sale={receipt} onClose={() => setReceipt(null)} />}
@@ -184,7 +200,7 @@ function Receipt({ sale, onClose }: { sale: Sale; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-30 grid place-items-center bg-black/50 p-4" onClick={onClose}>
       <Card className="w-full max-w-xs space-y-2 text-sm" >
-        <div onClick={(e) => e.stopPropagation()} className="space-y-2">
+        <div onClick={(e) => e.stopPropagation()} className="receipt-print space-y-2">
           <p className="text-center text-base font-semibold text-success">✓ Sale complete</p>
           <p className="text-center text-xs text-fg-subtle">Receipt #{sale.id.slice(0, 8).toUpperCase()}</p>
           <div className="border-t border-line pt-2">
@@ -200,7 +216,10 @@ function Receipt({ sale, onClose }: { sale: Sale; onClose: () => void }) {
             <Row label="Paid" value={money(sale.paid_minor)} />
             <Row label="Change" value={money(sale.change_minor)} />
           </div>
-          <Button onClick={onClose} className="w-full">New sale</Button>
+          <div className="no-print flex gap-2">
+            <Button variant="subtle" onClick={() => window.print()} className="flex-1">Print</Button>
+            <Button onClick={onClose} className="flex-1">New sale</Button>
+          </div>
         </div>
       </Card>
     </div>
