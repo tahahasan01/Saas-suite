@@ -132,10 +132,13 @@ Updated as each step lands. See `PROJECT_PLAN.md` and `docs/` for the design rat
 - [ ] Industry UX (retail scan-grid, restaurant KOT, pharmacy FIFO/expiry, wholesale tiers)
 - [ ] Upgrade forecast to Prophet/ARIMA + one-click draft purchase order
 
-## Phase 4 — HRMS ⬜  Planned
+## Phase 4 — HRMS 🟡  In progress
 
-- [ ] Employee ledger + OCR onboarding (CNIC/passport/CV)
-- [ ] Attendance: rolling-QR + AI selfie face-match + geofencing (anti-proxy)
+- [x] Employees directory (name, CNIC, role, dept, salary, join date)
+- [x] Attendance: web check-in/out, late detection, **mock-GPS anti-fraud flag**
+- [x] Leave requests + approve/reject; HR summary tiles
+- [ ] OCR onboarding (CNIC/passport/CV) — needs vision API
+- [ ] Selfie face-match + rolling-QR + geofencing enforcement — needs mobile app
 - [ ] Shift/roster engine (rest-rules)
 - [ ] Payroll engine (deductions/bonuses/OT + FBR tax) + expense claims
 - [ ] HR RAG chatbot + manager NL→SQL
@@ -181,3 +184,5 @@ Hardening applied from the bundled `security-review` + `database-reviewer` skill
 | `085d8d8` | CRM depth — invoice request → approve → PDF (separation of duties) |
 | `5c074c4` | CRM depth — heuristic lead scoring with score pills |
 | `436e7d4` | Phase 3 — POS billing + inventory core (web-first) |
+| `c41ec4b` | POS predictive inventory (restock + 60-day seasonal forecast) |
+| `5981ed4` | Phase 4 — HRMS + Attendance app (web-first) |
