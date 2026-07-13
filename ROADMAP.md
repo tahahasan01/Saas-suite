@@ -123,13 +123,14 @@ Updated as each step lands. See `PROJECT_PLAN.md` and `docs/` for the design rat
 - [x] POS billing screen (search/scan → cart → discount → pay → receipt)
 - [x] Products management (catalog, stock, low-stock badges)
 - [x] Pakistan payment methods (cash/jazzcash/easypaisa/card/bank)
+- [x] AI restocking consultant (velocity → reorder advice)
+- [x] 60-day seasonal forecast (occasion calendar + demand uplift) → /pos/insights
 - [ ] Offline-first PWA (IndexedDB) + delta sync + conflict policy
 - [ ] Electron hardware bridge (scanners, ESC/POS printers, cash drawer, scales)
 - [ ] Keyboard-driven billing (F1–F8 hotkeys)
 - [ ] ESC/POS receipt assembler + ZPL/TSPL label engine
 - [ ] Industry UX (retail scan-grid, restaurant KOT, pharmacy FIFO/expiry, wholesale tiers)
-- [ ] AI restocking consultant (velocity → alerts)
-- [ ] 60-day seasonal forecast (Prophet/ARIMA) → one-click draft purchase order
+- [ ] Upgrade forecast to Prophet/ARIMA + one-click draft purchase order
 
 ## Phase 4 — HRMS ⬜  Planned
 
