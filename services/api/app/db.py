@@ -67,3 +67,15 @@ async def tenant_conn(tenant_id: str) -> AsyncIterator[asyncpg.Connection]:
             # is_local = true -> reset at end of transaction
             await conn.execute("SELECT set_config('app.tenant_id', $1, true)", str(tenant_id))
             yield conn
+
+
+@asynccontextmanager
+async def readonly_tenant_conn(tenant_id: str, timeout_ms: int = 5000) -> AsyncIterator[asyncpg.Connection]:
+    """Like tenant_conn but the transaction is READ ONLY with a statement timeout.
+    Used to execute AI-generated SQL — a hard guarantee it cannot mutate data."""
+    async with _app().acquire() as conn:
+        async with conn.transaction():
+            await conn.execute("SET TRANSACTION READ ONLY")  # must be first statement
+            await conn.execute(f"SET LOCAL statement_timeout = {int(timeout_ms)}")
+            await conn.execute("SELECT set_config('app.tenant_id', $1, true)", str(tenant_id))
+            yield conn

@@ -188,3 +188,14 @@ class InteractionCreate(BaseModel):
 class LeadDetail(BaseModel):
     lead: LeadOut
     interactions: list[InteractionOut]
+
+
+# ── AI ──────────────────────────────────────────────────────────────────────
+class AskRequest(BaseModel):
+    question: str = Field(min_length=2, max_length=500)
+
+
+class AskResponse(BaseModel):
+    answer: str
+    sql: str | None = None
+    rows: list[dict] = Field(default_factory=list)

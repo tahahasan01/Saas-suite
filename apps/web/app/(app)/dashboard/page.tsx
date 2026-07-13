@@ -2,6 +2,7 @@
 
 import { useSession } from "@/lib/session";
 import { Card } from "@/components/ui";
+import { AiPrompt } from "@/components/AiPrompt";
 
 export default function Dashboard() {
   const { me, t } = useSession();
@@ -12,14 +13,7 @@ export default function Dashboard() {
     <>
       <h1 className="mb-6 text-xl font-semibold">Welcome, {me.user.name}</h1>
 
-      {/* AI prompt box — wired to the AI Gateway in the next Phase-1 step */}
-      <Card className="mb-6">
-        <input
-          disabled
-          placeholder={`Ask anything… e.g. "how many ${t("leads").toLowerCase()} do I have?"`}
-          className="w-full bg-transparent text-sm outline-none placeholder:text-gray-600"
-        />
-      </Card>
+      <AiPrompt />
 
       <div className="grid gap-4 sm:grid-cols-3">
         {enabled.length === 0 && <p className="text-sm text-gray-500">No sections enabled yet.</p>}

@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     web_origin: str = "http://localhost:3000"
 
     anthropic_api_key: str = ""
+    ai_model: str = "claude-sonnet-5"          # reasoning/answers
+    ai_model_fast: str = "claude-haiku-4-5-20251001"  # cheap classification
 
     @property
     def cors_origins(self) -> list[str]:
