@@ -2,11 +2,11 @@
 from __future__ import annotations
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 
-from .. import audit, billing, db
+from .. import audit, billing, db, email, tokens
 from ..deps import AuthContext
-from ..models import RoleCreate, RoleOut, TeamUser, UserCreate, UserUpdate
+from ..models import InviteRequest, RoleCreate, RoleOut, TeamUser, UserCreate, UserUpdate
 from ..rbac import require
 from ..security import hash_password
 
@@ -58,6 +58,24 @@ async def update_user(user_id: str, body: UserUpdate, auth: AuthContext = Depend
         await audit.record(conn, actor_id=auth.user_id, action="user.update", entity="user",
                            entity_id=user_id, after={"role_id": str(role_id), "status": new_status})
     return TeamUser(id=str(row["id"]), email=row["email"], name=row["name"], role=row["role"], status=row["status"])
+
+
+@router.post("/invite", status_code=status.HTTP_204_NO_CONTENT)
+async def invite_member(body: InviteRequest, response: Response,
+                        auth: AuthContext = Depends(require("settings", "admin"))) -> Response:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        await billing.check_seat_limit(conn)
+        role = await conn.fetchval("select name from roles where id=$1", body.role_id)
+        if role is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Role not found")
+        tenant_name = await conn.fetchval("select name from tenants where id=$1", auth.tenant_id)
+        await audit.record(conn, actor_id=auth.user_id, action="user.invite", entity="user",
+                           after={"email": body.email, "role": role})
+    token = await tokens.create("invite", email=body.email, tenant_id=auth.tenant_id,
+                                role_id=body.role_id, ttl_hours=72)
+    await email.send_invite(body.email, tenant_name, token)
+    response.status_code = status.HTTP_204_NO_CONTENT
+    return response
 
 
 @router.get("/roles", response_model=list[RoleOut])

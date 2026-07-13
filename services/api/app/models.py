@@ -35,6 +35,30 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class ForgotRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetRequest(BaseModel):
+    token: str
+    password: str = Field(min_length=8, max_length=200)
+
+
+class VerifyRequest(BaseModel):
+    token: str
+
+
+class InviteRequest(BaseModel):
+    email: EmailStr
+    role_id: str
+
+
+class AcceptInviteRequest(BaseModel):
+    token: str
+    name: str = Field(min_length=1, max_length=120)
+    password: str = Field(min_length=8, max_length=200)
+
+
 class TenantOut(BaseModel):
     id: str
     name: str

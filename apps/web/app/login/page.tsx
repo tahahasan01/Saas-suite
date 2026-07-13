@@ -46,6 +46,9 @@ export default function LoginPage() {
           <Field label="Password">
             <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
           </Field>
+          <div className="text-right">
+            <Link href="/forgot" className="text-xs text-fg-muted hover:text-brand">Forgot password?</Link>
+          </div>
           {error && <p className="text-sm text-danger">{error}</p>}
           <Button type="submit" disabled={busy} className="w-full">
             {busy ? "Signing in…" : "Sign in"}

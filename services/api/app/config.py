@@ -32,6 +32,14 @@ class Settings(BaseSettings):
     ai_model: str = "claude-sonnet-5"          # reasoning/answers
     ai_model_fast: str = "claude-haiku-4-5-20251001"  # cheap classification
 
+    # Email — 'console' logs links in dev; 'smtp' sends for real.
+    email_provider: str = "console"
+    email_from: str = "Business OS <no-reply@businessos.pk>"
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+
     @property
     def cors_origins(self) -> list[str]:
         return [o.strip() for o in self.web_origin.split(",") if o.strip()]

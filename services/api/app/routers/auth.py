@@ -10,18 +10,22 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
-from .. import db, sampledata
+from .. import db, email, sampledata, tokens
 from ..config import settings
 from ..deps import AuthContext, current_auth
 from ..models import (
     INDUSTRIES,
     SECTIONS,
+    AcceptInviteRequest,
     EntitlementOut,
+    ForgotRequest,
     LoginRequest,
     MeResponse,
+    ResetRequest,
     SignupRequest,
     TenantOut,
     UserOut,
+    VerifyRequest,
 )
 from ..ratelimit import rate_limit
 from ..security import (
@@ -116,6 +120,12 @@ async def signup(body: SignupRequest, response: Response) -> MeResponse:
         except Exception:
             pass  # best-effort — never fail signup over sample data
 
+    try:  # email verification link (best-effort)
+        vtoken = await tokens.create("verify", email=body.email, user_id=str(user_id), ttl_hours=48)
+        await email.send_verification(body.email, vtoken)
+    except Exception:
+        pass
+
     _set_session_cookie(response, token)
     return MeResponse(
         user=UserOut(id=str(user_id), email=body.email, name=body.name, role="Owner"),
@@ -141,6 +151,60 @@ async def login(body: LoginRequest, response: Response) -> UserOut:
 
     _set_session_cookie(response, token)
     return UserOut(id=str(user["id"]), email=user["email"], name=user["name"], role=user["role"])
+
+
+@router.post("/forgot", status_code=status.HTTP_204_NO_CONTENT,
+             dependencies=[Depends(rate_limit(5, 60))])
+async def forgot(body: ForgotRequest, response: Response) -> Response:
+    async with db.owner_conn() as conn:
+        user = await conn.fetchrow("select id, email from users where email=$1", body.email)
+    if user:  # always 204 — never leak whether an email exists
+        token = await tokens.create("reset", email=user["email"], user_id=str(user["id"]), ttl_hours=1)
+        await email.send_password_reset(user["email"], token)
+    response.status_code = status.HTTP_204_NO_CONTENT
+    return response
+
+
+@router.post("/reset", status_code=status.HTTP_204_NO_CONTENT)
+async def reset(body: ResetRequest, response: Response) -> Response:
+    row = await tokens.consume(body.token, "reset")
+    if row is None or not row["user_id"]:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid or expired reset link")
+    async with db.owner_conn() as conn:
+        await conn.execute("update users set password_hash=$1, updated_at=now() where id=$2",
+                           hash_password(body.password), row["user_id"])
+    response.status_code = status.HTTP_204_NO_CONTENT
+    return response
+
+
+@router.post("/verify", status_code=status.HTTP_204_NO_CONTENT)
+async def verify(body: VerifyRequest, response: Response) -> Response:
+    row = await tokens.consume(body.token, "verify")
+    if row is None or not row["user_id"]:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid or expired verification link")
+    async with db.owner_conn() as conn:
+        await conn.execute("update users set email_verified=true where id=$1", row["user_id"])
+    response.status_code = status.HTTP_204_NO_CONTENT
+    return response
+
+
+@router.post("/accept-invite", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+async def accept_invite(body: AcceptInviteRequest, response: Response) -> UserOut:
+    row = await tokens.consume(body.token, "invite")
+    if row is None or not row["tenant_id"]:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid or expired invite")
+    async with db.owner_conn() as conn:
+        exists = await conn.fetchval("select 1 from users where email=$1", row["email"])
+        if exists:
+            raise HTTPException(status.HTTP_409_CONFLICT, "That email already has an account")
+        user_id = await conn.fetchval(
+            """insert into users (tenant_id, email, password_hash, name, role_id, email_verified)
+               values ($1,$2,$3,$4,$5,true) returning id""",
+            row["tenant_id"], row["email"], hash_password(body.password), body.name, row["role_id"])
+        token = await _create_session(conn, str(user_id), str(row["tenant_id"]))
+        role = await conn.fetchval("select name from roles where id=$1", row["role_id"])
+    _set_session_cookie(response, token)
+    return UserOut(id=str(user_id), email=row["email"], name=body.name, role=role)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
