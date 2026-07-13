@@ -154,6 +154,8 @@ Hardening applied from the bundled `security-review` + `database-reviewer` skill
 - [x] Global `statement_timeout` + `idle_in_transaction_session_timeout`
 - [x] Least privilege: `REVOKE ALL ON SCHEMA public FROM public`
 - [x] Dependency audit reviewed (Next's bundled postcss advisory = accepted risk; force-fix downgrades Next 15→9)
+- [x] Automated test suite (pytest: sql_guard, scoring, payroll, RLS) wired into CI
+- [x] Public pricing page (flat PKR tiers)
 - [ ] Observability (OpenTelemetry traces, Sentry, metrics/alerting)
 - [ ] Automated backups + tested restore drills
 - [ ] Staging environment + deploy pipeline to Hostinger VPS
@@ -186,3 +188,7 @@ Hardening applied from the bundled `security-review` + `database-reviewer` skill
 | `436e7d4` | Phase 3 — POS billing + inventory core (web-first) |
 | `c41ec4b` | POS predictive inventory (restock + 60-day seasonal forecast) |
 | `5981ed4` | Phase 4 — HRMS + Attendance app (web-first) |
+| `a448903` | HRMS payroll with FBR tax slabs |
+| `9e789db` | POS keyboard checkout (F-keys) + printable receipt |
+| `71cbbf6` | Public pricing page |
+| `45a4c14` | pytest suite (sql_guard/scoring/payroll/RLS) in CI |
