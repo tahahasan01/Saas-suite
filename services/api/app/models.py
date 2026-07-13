@@ -423,6 +423,23 @@ class HrmsSummary(BaseModel):
     pending_leaves: int
 
 
+class Payslip(BaseModel):
+    employee_id: str
+    name: str
+    gross_minor: int
+    present_days: int
+    absent_days: int
+    absence_deduction_minor: int
+    tax_minor: int
+    net_minor: int
+
+
+class PayrollOut(BaseModel):
+    month: str
+    working_days: int
+    payslips: list[Payslip]
+
+
 # ── AI ──────────────────────────────────────────────────────────────────────
 class AskRequest(BaseModel):
     question: str = Field(min_length=2, max_length=500)

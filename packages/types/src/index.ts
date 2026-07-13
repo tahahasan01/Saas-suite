@@ -256,6 +256,23 @@ export interface HrmsSummary {
   pending_leaves: number;
 }
 
+export interface Payslip {
+  employee_id: string;
+  name: string;
+  gross_minor: number;
+  present_days: number;
+  absent_days: number;
+  absence_deduction_minor: number;
+  tax_minor: number;
+  net_minor: number;
+}
+
+export interface Payroll {
+  month: string;
+  working_days: number;
+  payslips: Payslip[];
+}
+
 export interface Interaction {
   id: string;
   user_id: string | null;

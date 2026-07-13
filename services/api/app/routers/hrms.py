@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from .. import db
+from datetime import date
+
+from .. import db, payroll
 from ..deps import AuthContext
 from ..models import (
     AttendanceOut,
@@ -15,8 +17,12 @@ from ..models import (
     HrmsSummary,
     LeaveCreate,
     LeaveOut,
+    PayrollOut,
+    Payslip,
 )
 from ..rbac import require
+
+WORKING_DAYS = 26
 
 router = APIRouter(prefix="/hrms", tags=["hrms"])
 
@@ -172,3 +178,36 @@ async def summary(auth: AuthContext = Depends(require("hrms", "read"))):
                  (select count(*) from hrms_leave_requests where status='pending') as pending""")
     return HrmsSummary(headcount=row["headcount"], present_today=row["present"],
                        on_leave_today=row["on_leave"], pending_leaves=row["pending"])
+
+
+@router.get("/payroll", response_model=PayrollOut)
+async def run_payroll(month: str | None = None, auth: AuthContext = Depends(require("hrms", "read"))):
+    """Monthly payslips: gross − absence deduction − FBR tax. `month` = YYYY-MM."""
+    m = month or date.today().strftime("%Y-%m")
+    try:
+        first = date.fromisoformat(f"{m}-01")
+    except ValueError:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "month must be YYYY-MM")
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        rows = await conn.fetch(
+            """select e.id, e.name, e.salary_minor,
+                      count(a.id) filter (where a.check_in is not null) as present,
+                      count(a.id) filter (where a.status = 'absent') as absent
+               from hrms_employees e
+               left join hrms_attendance a on a.employee_id = e.id
+                    and a.work_date >= $1::date and a.work_date < ($1::date + interval '1 month')
+               where e.status = 'active'
+               group by e.id, e.name, e.salary_minor order by e.name""",
+            first)
+    slips = []
+    for r in rows:
+        gross = r["salary_minor"]
+        per_day = gross / WORKING_DAYS if WORKING_DAYS else 0
+        deduction = round(r["absent"] * per_day)
+        tax = payroll.monthly_tax_minor(gross)
+        slips.append(Payslip(
+            employee_id=str(r["id"]), name=r["name"], gross_minor=gross,
+            present_days=r["present"], absent_days=r["absent"],
+            absence_deduction_minor=deduction, tax_minor=tax,
+            net_minor=max(0, gross - deduction - tax)))
+    return PayrollOut(month=m, working_days=WORKING_DAYS, payslips=slips)
