@@ -227,6 +227,88 @@ class InvoiceOut(BaseModel):
     decided_at: datetime | None
 
 
+# ── POS ─────────────────────────────────────────────────────────────────────
+PAYMENT_METHODS = ["cash", "card", "jazzcash", "easypaisa", "bank"]
+
+
+class ProductOut(BaseModel):
+    id: str
+    name: str
+    sku: str
+    barcode: str
+    category: str
+    unit: str
+    price_minor: int
+    cost_minor: int
+    stock_qty: float
+    low_stock_at: float
+    active: bool
+
+
+class ProductCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=160)
+    sku: str = ""
+    barcode: str = ""
+    category: str = ""
+    unit: str = "pcs"
+    price_minor: int = Field(default=0, ge=0)
+    cost_minor: int = Field(default=0, ge=0)
+    stock_qty: float = 0
+    low_stock_at: float = 0
+
+
+class ProductUpdate(BaseModel):
+    name: str | None = None
+    sku: str | None = None
+    barcode: str | None = None
+    category: str | None = None
+    unit: str | None = None
+    price_minor: int | None = Field(default=None, ge=0)
+    cost_minor: int | None = Field(default=None, ge=0)
+    stock_qty: float | None = None
+    low_stock_at: float | None = None
+    active: bool | None = None
+
+
+class SaleLine(BaseModel):
+    product_id: str
+    qty: float = Field(gt=0)
+
+
+class SaleCreate(BaseModel):
+    items: list[SaleLine] = Field(min_length=1)
+    discount_minor: int = Field(default=0, ge=0)
+    paid_minor: int = Field(default=0, ge=0)
+    payment_method: str = "cash"
+
+
+class SaleItemOut(BaseModel):
+    name: str
+    qty: float
+    price_minor: int
+    line_total_minor: int
+
+
+class SaleOut(BaseModel):
+    id: str
+    subtotal_minor: int
+    discount_minor: int
+    total_minor: int
+    paid_minor: int
+    change_minor: int
+    payment_method: str
+    item_count: int
+    created_at: datetime
+    items: list[SaleItemOut] = Field(default_factory=list)
+
+
+class PosSummary(BaseModel):
+    products_count: int
+    low_stock_count: int
+    sales_today_count: int
+    sales_today_total_minor: int
+
+
 # ── AI ──────────────────────────────────────────────────────────────────────
 class AskRequest(BaseModel):
     question: str = Field(min_length=2, max_length=500)

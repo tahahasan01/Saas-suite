@@ -1,5 +1,6 @@
 "use client";
 
+import { forwardRef } from "react";
 import type { ButtonHTMLAttributes, InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
 
 function cx(...c: (string | false | undefined)[]) {
@@ -39,9 +40,11 @@ export function Button({
 const field =
   "w-full rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-fg placeholder:text-fg-subtle transition-colors focus:border-brand";
 
-export function Input({ className = "", ...p }: InputHTMLAttributes<HTMLInputElement>) {
-  return <input className={cx(field, className)} {...p} />;
-}
+export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
+  function Input({ className = "", ...p }, ref) {
+    return <input ref={ref} className={cx(field, className)} {...p} />;
+  },
+);
 
 export function Textarea({ className = "", ...p }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return <textarea className={cx(field, "resize-none", className)} {...p} />;

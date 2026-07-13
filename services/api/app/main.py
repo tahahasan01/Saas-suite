@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from . import db
 from .config import settings
 from .routers import (
-    ai, auth, crm, entitlements, invoices, notifications, team, terminology, workflows,
+    ai, auth, crm, entitlements, invoices, notifications, pos, team, terminology, workflows,
 )
 
 
@@ -39,6 +39,7 @@ app.include_router(ai.router)
 app.include_router(notifications.router)
 app.include_router(workflows.router)
 app.include_router(invoices.router)
+app.include_router(pos.router)
 
 
 @app.get("/health", tags=["meta"])

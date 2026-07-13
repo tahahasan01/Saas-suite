@@ -139,6 +139,50 @@ export interface Invoice {
   decided_at: string | null;
 }
 
+// ── POS ──────────────────────────────────────────────────────────────────
+export const PAYMENT_METHODS = ["cash", "card", "jazzcash", "easypaisa", "bank"] as const;
+
+export interface Product {
+  id: string;
+  name: string;
+  sku: string;
+  barcode: string;
+  category: string;
+  unit: string;
+  price_minor: number;
+  cost_minor: number;
+  stock_qty: number;
+  low_stock_at: number;
+  active: boolean;
+}
+
+export interface SaleItem {
+  name: string;
+  qty: number;
+  price_minor: number;
+  line_total_minor: number;
+}
+
+export interface Sale {
+  id: string;
+  subtotal_minor: number;
+  discount_minor: number;
+  total_minor: number;
+  paid_minor: number;
+  change_minor: number;
+  payment_method: string;
+  item_count: number;
+  created_at: string;
+  items: SaleItem[];
+}
+
+export interface PosSummary {
+  products_count: number;
+  low_stock_count: number;
+  sales_today_count: number;
+  sales_today_total_minor: number;
+}
+
 export interface Interaction {
   id: string;
   user_id: string | null;
