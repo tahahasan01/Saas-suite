@@ -171,4 +171,5 @@ Hardening applied from the bundled `security-review` + `database-reviewer` skill
 | `5f147da` | Phase 1b start — in-app notifications + bell + first won-deal automation |
 | `b66e4a5` | Production hardening (rate limits, indexes, timeouts, least-privilege) |
 | `2bb8aa8` | Competitive research + research-driven UX (KPIs, activation, AI prompts) |
-| _next_ | Workflow/ECA engine + Automations builder UI |
+| `f9b37a3` | Workflow/ECA engine + Automations builder UI |
+| `9d822b4` | Mobile-responsive app shell (hamburger slide-over) |

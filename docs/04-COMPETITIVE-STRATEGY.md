@@ -65,7 +65,7 @@ Business OS stands out. Sources at the bottom.
 - [ ] WhatsApp inbound → auto-lead + AI reply (the wedge)
 - [ ] One-tap call/WhatsApp logging (kill "admin work")
 - [ ] Flat-price billing page (vs per-seat competitors)
-- [ ] Mobile-responsive layouts
+- [x] Mobile-responsive layouts (hamburger slide-over shell — verified)
 
 ## Sources
 
