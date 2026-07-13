@@ -22,7 +22,7 @@ export function Sidebar() {
   const initials = me.tenant.name.slice(0, 2).toUpperCase();
 
   return (
-    <aside className="flex flex-col border-r border-line bg-surface">
+    <aside className="flex h-full min-h-screen flex-col border-r border-line bg-surface">
       <div className="border-b border-line px-4 py-4">
         <Wordmark />
       </div>
