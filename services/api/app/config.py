@@ -24,6 +24,8 @@ class Settings(BaseSettings):
 
     api_port: int = 4000
     node_env: str = "development"
+    # Run the proactive scheduler in this process (disable on extra replicas).
+    enable_scheduler: bool = True
 
     # Comma-separated allowed browser origins for CORS
     web_origin: str = "http://localhost:3000"

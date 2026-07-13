@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from . import db
+from . import db, jobs
 from .config import settings
 from .routers import (
     ai, auth, billing, crm, entitlements, hrms, invoices, notifications, pos, team,
@@ -17,7 +17,10 @@ from .routers import (
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await db.connect()
+    if settings.enable_scheduler:
+        jobs.start()
     yield
+    jobs.stop()
     await db.disconnect()
 
 
