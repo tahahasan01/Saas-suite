@@ -440,6 +440,40 @@ class PayrollOut(BaseModel):
     payslips: list[Payslip]
 
 
+# ── Billing ─────────────────────────────────────────────────────────────────
+class BillingOut(BaseModel):
+    plan: str
+    status: str
+    days_left: int | None
+    current_period_end: datetime | None
+    max_sections: int
+    max_seats: int
+    ai_monthly: int
+    seats_used: int
+    sections_used: int
+
+
+class PlanOut(BaseModel):
+    key: str
+    name: str
+    price_minor: int
+    max_sections: int
+    max_seats: int
+    ai_monthly: int
+
+
+class UpgradeRequest(BaseModel):
+    plan: str
+
+
+class PaymentInstructions(BaseModel):
+    payment_request_id: str
+    plan: str
+    amount_minor: int
+    reference: str
+    bank: dict
+
+
 # ── AI ──────────────────────────────────────────────────────────────────────
 class AskRequest(BaseModel):
     question: str = Field(min_length=2, max_length=500)

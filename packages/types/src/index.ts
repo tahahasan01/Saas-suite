@@ -273,6 +273,36 @@ export interface Payroll {
   payslips: Payslip[];
 }
 
+// ── Billing ──────────────────────────────────────────────────────────────
+export interface Billing {
+  plan: string;
+  status: "trialing" | "active" | "past_due" | "canceled";
+  days_left: number | null;
+  current_period_end: string | null;
+  max_sections: number;
+  max_seats: number;
+  ai_monthly: number;
+  seats_used: number;
+  sections_used: number;
+}
+
+export interface Plan {
+  key: string;
+  name: string;
+  price_minor: number;
+  max_sections: number;
+  max_seats: number;
+  ai_monthly: number;
+}
+
+export interface PaymentInstructions {
+  payment_request_id: string;
+  plan: string;
+  amount_minor: number;
+  reference: string;
+  bank: { bank: string; title: string; account: string; note: string };
+}
+
 export interface Interaction {
   id: string;
   user_id: string | null;

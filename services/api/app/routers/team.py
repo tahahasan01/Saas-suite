@@ -4,7 +4,7 @@ from __future__ import annotations
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from .. import audit, db
+from .. import audit, billing, db
 from ..deps import AuthContext
 from ..models import RoleCreate, RoleOut, TeamUser, UserCreate, UserUpdate
 from ..rbac import require
@@ -27,6 +27,7 @@ async def list_users(auth: AuthContext = Depends(require("settings", "read"))):
 @router.post("/users", response_model=TeamUser, status_code=status.HTTP_201_CREATED)
 async def create_user(body: UserCreate, auth: AuthContext = Depends(require("settings", "admin"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
+        await billing.check_seat_limit(conn)
         try:
             user_id = await conn.fetchval(
                 """insert into users (tenant_id, email, password_hash, name, role_id)

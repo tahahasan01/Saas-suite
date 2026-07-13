@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from .. import audit, db
+from .. import audit, billing, db
 from ..deps import AuthContext, current_auth
 from ..models import SECTIONS, EntitlementOut, EntitlementUpdate
 from ..rbac import require
@@ -27,6 +27,11 @@ async def toggle_section(section: str, body: EntitlementUpdate,
     if section not in SECTIONS:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"Unknown section: {section}")
     async with db.tenant_conn(auth.tenant_id) as conn:
+        if body.enabled:
+            already = await conn.fetchval(
+                "select enabled from entitlements where tenant_id=$1 and section_key=$2", auth.tenant_id, section)
+            if not already:
+                await billing.check_section_limit(conn)
         row = await conn.fetchrow(
             """insert into entitlements (tenant_id, section_key, enabled) values ($1,$2,$3)
                on conflict (tenant_id, section_key) do update set enabled = excluded.enabled

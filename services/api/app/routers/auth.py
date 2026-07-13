@@ -94,6 +94,12 @@ async def signup(body: SignupRequest, response: Response) -> MeResponse:
                     "insert into entitlements (tenant_id, section_key, enabled) values ($1,$2,$3)",
                     tenant_id, section, section in sections,
                 )
+            # Start a 14-day trial with Growth-level features.
+            await conn.execute(
+                """insert into subscriptions (tenant_id, plan, status, trial_ends_at)
+                   values ($1, 'growth', 'trialing', now() + interval '14 days')""",
+                tenant_id,
+            )
             token = await _create_session(conn, user_id, tenant_id)
 
             tenant_row = await conn.fetchrow("select id,name,industry_type,status from tenants where id=$1", tenant_id)

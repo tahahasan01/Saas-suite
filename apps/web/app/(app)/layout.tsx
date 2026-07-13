@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "@/lib/session";
 import { Sidebar } from "@/components/Sidebar";
 import { NotificationBell } from "@/components/NotificationBell";
+import { TrialBanner } from "@/components/TrialBanner";
 
 /** Shared shell for all authenticated pages. Sidebar is static on desktop and
  * a hamburger slide-over on mobile. Guards auth once here. */
@@ -40,6 +41,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       )}
 
       <div className="flex min-h-screen flex-col">
+        <TrialBanner />
         <header className="flex items-center justify-between border-b border-line px-4 py-2.5 md:justify-end md:px-6">
           <button
             onClick={() => setMenuOpen(true)}
