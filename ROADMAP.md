@@ -106,11 +106,11 @@ Updated as each step lands. See `PROJECT_PLAN.md` and `docs/` for the design rat
 - [ ] Analytics: Redis aggregation + materialized views for dashboards
 - [ ] Background jobs (Celery/RQ or APScheduler) + cron
 
-## Phase 2b — CRM Depth ⬜  Planned
+## Phase 2b — CRM Depth 🟡  In progress
 
-- [ ] AI lead scoring (1–100) on create
-- [ ] Post-sale fulfillment forms (industry-conditional: SKU/courier vs batch/instructor)
-- [ ] Cross-department: invoice request → accounts approve → auto-PDF
+- [x] Lead scoring (1–100) on create — heuristic; AI-refine path documented
+- [x] Post-sale fulfillment forms (industry-conditional: SKU/courier vs batch/instructor)
+- [x] Cross-department: invoice request → accounts approve → auto-PDF (separation of duties)
 - [ ] Lead ingestion webhooks (WhatsApp, Meta/Google/LinkedIn lead ads)
 - [ ] Omnichannel timeline (email IMAP/SMTP + WhatsApp + SMS merged per contact)
 - [ ] E-commerce ingestion (Shopify/WooCommerce)
@@ -173,3 +173,6 @@ Hardening applied from the bundled `security-review` + `database-reviewer` skill
 | `2bb8aa8` | Competitive research + research-driven UX (KPIs, activation, AI prompts) |
 | `f9b37a3` | Workflow/ECA engine + Automations builder UI |
 | `9d822b4` | Mobile-responsive app shell (hamburger slide-over) |
+| `8fa1b95` | CRM depth — industry-conditional post-sale fulfillment |
+| `085d8d8` | CRM depth — invoice request → approve → PDF (separation of duties) |
+| `5c074c4` | CRM depth — heuristic lead scoring with score pills |
