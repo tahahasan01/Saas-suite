@@ -380,6 +380,7 @@ class EmployeeOut(BaseModel):
     join_date: date | None
     salary_minor: int
     status: str
+    present_today: bool = False
 
 
 class EmployeeCreate(BaseModel):
@@ -550,3 +551,40 @@ class WorkflowCreate(BaseModel):
 class WorkflowUpdate(BaseModel):
     name: str | None = None
     enabled: bool | None = None
+
+
+# ─── Dashboard overview (cross-module) ──────────────────────────────────────
+class TrendPoint(BaseModel):
+    day: date
+    value: int
+
+
+class Kpi(BaseModel):
+    key: str
+    label: str
+    value: int
+    kind: str                     # 'count' | 'money'
+    delta_pct: float | None = None  # vs the preceding equal-length window
+    href: str
+
+
+class Alert(BaseModel):
+    text: str
+    href: str
+    tone: str                     # 'warning' | 'danger'
+
+
+class ActivityItem(BaseModel):
+    action: str
+    entity: str
+    actor: str | None
+    created_at: datetime
+
+
+class DashboardOverview(BaseModel):
+    sections: list[str]
+    kpis: list[Kpi]
+    revenue_trend: list[TrendPoint]
+    leads_trend: list[TrendPoint]
+    alerts: list[Alert]
+    activity: list[ActivityItem]

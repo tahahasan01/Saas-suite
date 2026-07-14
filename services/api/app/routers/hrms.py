@@ -31,7 +31,9 @@ def _emp(r) -> EmployeeOut:
     return EmployeeOut(
         id=str(r["id"]), name=r["name"], email=r["email"], phone=r["phone"], cnic=r["cnic"],
         designation=r["designation"], department=r["department"], join_date=r["join_date"],
-        salary_minor=r["salary_minor"], status=r["status"])
+        salary_minor=r["salary_minor"], status=r["status"],
+        # Absent from the list query (create/update return the bare row) → default False.
+        present_today=bool(r["present_today"]) if "present_today" in r.keys() else False)
 
 
 def _att(r) -> AttendanceOut:
@@ -45,7 +47,12 @@ def _att(r) -> AttendanceOut:
 @router.get("/employees", response_model=list[EmployeeOut])
 async def list_employees(auth: AuthContext = Depends(require("hrms", "read"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
-        rows = await conn.fetch("select * from hrms_employees where status='active' order by name")
+        rows = await conn.fetch(
+            """select e.*, (a.check_in is not null) as present_today
+                 from hrms_employees e
+                 left join hrms_attendance a
+                   on a.employee_id = e.id and a.work_date = current_date
+                where e.status = 'active' order by e.name""")
     return [_emp(r) for r in rows]
 
 

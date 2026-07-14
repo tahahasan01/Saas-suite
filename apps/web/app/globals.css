@@ -1,32 +1,70 @@
 @import "tailwindcss";
 
 /* ─── Design tokens ─────────────────────────────────────────────────────────
-   One cohesive dark SaaS system. Tailwind v4 generates utilities from these
-   (bg-surface, text-fg-muted, border-line, bg-brand, …). */
+   One semantic system, two themes. Tailwind v4 generates utilities from these
+   (bg-surface, text-fg-muted, border-line, bg-brand, …); every utility resolves
+   through var(), so re-declaring a token below re-themes the whole app.
+
+   Light is the default: this is a tool people use all day in bright offices.
+   Dark is a *selected* counterpart — its own steps, not an inverted flip. */
 @theme {
-  --color-canvas: #08090d;
-  --color-surface: #0f1117;
-  --color-elevated: #151823;
-  --color-line: #222634;
-  --color-line-strong: #2e3444;
+  --color-canvas: #f6f7f9;
+  --color-surface: #ffffff;
+  --color-elevated: #f1f3f7;
+  --color-line: #e3e6ec;
+  --color-line-strong: #cfd4de;
 
-  --color-fg: #e8eaf0;
-  --color-fg-muted: #9aa1b2;
-  --color-fg-subtle: #6a7080;
+  --color-fg: #111726;
+  --color-fg-muted: #5b6478;
+  --color-fg-subtle: #8b94a7;
 
-  --color-brand: #6366f1;
-  --color-brand-hover: #7679f6;
+  --color-brand: #4f46e5;
+  --color-brand-hover: #4338ca;
   --color-brand-fg: #ffffff;
-  --color-brand-subtle: #6366f122;
+  --color-brand-subtle: #4f46e514;
 
-  --color-success: #34d399;
-  --color-warning: #fbbf24;
-  --color-danger: #f87171;
+  --color-success: #068a63;
+  --color-warning: #b45309;
+  --color-danger: #c62828;
 
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Chart ink — sequential single hue (brand), read against the chart surface. */
+  --color-chart-1: #4f46e5;
+  --color-chart-2: #0ea5e9;
+  --color-chart-grid: #eceef3;
+}
+
+/* Dark theme. `[data-theme]` re-themes the document (toggle); `.theme-dark`
+   re-themes a subtree (the marketing pages, which are composed dark by design)
+   — CSS variables inherit, so one token block serves both. */
+:root[data-theme="dark"],
+.theme-dark {
+  --color-canvas: #0d0f15;
+  --color-surface: #14171f;
+  --color-elevated: #1b1f2b;
+  --color-line: #262b39;
+  --color-line-strong: #38404f;
+
+  --color-fg: #e9ebf1;
+  --color-fg-muted: #9aa2b4;
+  --color-fg-subtle: #6d7484;
+
+  --color-brand: #7c7ff5;
+  --color-brand-hover: #9296f8;
+  --color-brand-fg: #ffffff;
+  --color-brand-subtle: #7c7ff522;
+
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-danger: #f87171;
+
+  --color-chart-1: #7c7ff5;
+  --color-chart-2: #38bdf8;
+  --color-chart-grid: #242938;
 }
 
 /* ─── Base ─────────────────────────────────────────────────────────────────*/
@@ -37,6 +75,12 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
+
+/* Tell the UA which theme is active so native controls (date pickers, form
+   fields, scrollbars) render in the matching scheme instead of fighting it. */
+:root { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+.theme-dark { color-scheme: dark; }
 
 ::selection {
   background: var(--color-brand-subtle);

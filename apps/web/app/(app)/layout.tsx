@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "@/lib/session";
 import { Sidebar } from "@/components/Sidebar";
 import { NotificationBell } from "@/components/NotificationBell";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { TrialBanner } from "@/components/TrialBanner";
 
 /** Shared shell for all authenticated pages. Sidebar is static on desktop and
@@ -52,7 +53,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <path d="M3 6h18M3 12h18M3 18h18" />
             </svg>
           </button>
-          <NotificationBell />
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
+            <NotificationBell />
+          </div>
         </header>
         <main className="flex-1 p-4 md:p-6">{children}</main>
       </div>

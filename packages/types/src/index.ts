@@ -224,6 +224,7 @@ export interface Employee {
   join_date: string | null;
   salary_minor: number;
   status: string;
+  present_today: boolean;
 }
 
 export interface Attendance {
@@ -342,4 +343,41 @@ export interface Workflow {
   actions: Record<string, unknown>[];
   enabled: boolean;
   is_system: boolean;
+}
+
+// ─── Dashboard overview (cross-module) ──────────────────────────────────────
+export interface TrendPoint {
+  day: string;
+  value: number;
+}
+
+export interface Kpi {
+  key: string;
+  label: string;
+  value: number;
+  kind: "count" | "money";
+  delta_pct: number | null;
+  href: string;
+}
+
+export interface Alert {
+  text: string;
+  href: string;
+  tone: "warning" | "danger";
+}
+
+export interface ActivityItem {
+  action: string;
+  entity: string;
+  actor: string | null;
+  created_at: string;
+}
+
+export interface DashboardOverview {
+  sections: string[];
+  kpis: Kpi[];
+  revenue_trend: TrendPoint[];
+  leads_trend: TrendPoint[];
+  alerts: Alert[];
+  activity: ActivityItem[];
 }

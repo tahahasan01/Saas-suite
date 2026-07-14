@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from . import db, jobs
 from .config import settings
 from .routers import (
-    ai, auth, billing, crm, entitlements, hrms, invoices, notifications, pos, team,
+    ai, auth, billing, crm, dashboard, entitlements, hrms, invoices, notifications, pos, team,
     terminology, workflows,
 )
 
@@ -46,6 +46,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(dashboard.router)
 app.include_router(terminology.router)
 app.include_router(entitlements.router)
 app.include_router(team.router)
