@@ -20,6 +20,10 @@ from ..models import (
     ImportRowError,
     MethodTotal,
     OccasionForecast,
+    PoCreate,
+    PoLineOut,
+    PoOut,
+    PoReceive,
     PosSummary,
     ProductCreate,
     ProductOut,
@@ -33,6 +37,8 @@ from ..models import (
     SaleDetail,
     SaleItemOut,
     SaleOut,
+    SupplierCreate,
+    SupplierOut,
 )
 from ..rbac import require
 
@@ -166,6 +172,135 @@ async def checkout(body: SaleCreate, auth: AuthContext = Depends(require("pos", 
         total_minor=sale["total_minor"], paid_minor=sale["paid_minor"], change_minor=sale["change_minor"],
         payment_method=sale["payment_method"], item_count=sale["item_count"], created_at=sale["created_at"],
         items=items, tax_minor=sale["tax_minor"], fbr_invoice_number=fbr_number, fbr_status=fbr_status)
+
+
+# ── Suppliers & purchase orders ──────────────────────────────────────────────
+@router.get("/suppliers", response_model=list[SupplierOut])
+async def list_suppliers(auth: AuthContext = Depends(require("pos", "read"))):
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        rows = await conn.fetch("select * from pos_suppliers order by name")
+    return [SupplierOut(id=str(r["id"]), name=r["name"], phone=r["phone"],
+                        email=r["email"], notes=r["notes"]) for r in rows]
+
+
+@router.post("/suppliers", response_model=SupplierOut, status_code=status.HTTP_201_CREATED)
+async def create_supplier(body: SupplierCreate, auth: AuthContext = Depends(require("pos", "write"))):
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        r = await conn.fetchrow(
+            """insert into pos_suppliers (tenant_id, name, phone, email, notes)
+               values ($1,$2,$3,$4,$5) returning *""",
+            auth.tenant_id, body.name, body.phone, body.email, body.notes)
+    return SupplierOut(id=str(r["id"]), name=r["name"], phone=r["phone"],
+                       email=r["email"], notes=r["notes"])
+
+
+async def _po_out(conn, po) -> PoOut:
+    items = await conn.fetch("select * from pos_po_items where po_id=$1 order by name", po["id"])
+    supplier = await conn.fetchval(
+        "select name from pos_suppliers where id=$1", po["supplier_id"]) if po["supplier_id"] else None
+    return PoOut(
+        id=str(po["id"]), supplier_id=str(po["supplier_id"]) if po["supplier_id"] else None,
+        supplier_name=supplier, status=po["status"], notes=po["notes"],
+        created_at=po["created_at"], received_at=po["received_at"],
+        total_cost_minor=sum(round(i["cost_minor"] * float(i["qty"])) for i in items),
+        items=[PoLineOut(id=str(i["id"]), product_id=str(i["product_id"]) if i["product_id"] else None,
+                         name=i["name"], qty=float(i["qty"]), cost_minor=i["cost_minor"],
+                         received_qty=float(i["received_qty"])) for i in items])
+
+
+@router.post("/purchase-orders", response_model=PoOut, status_code=status.HTTP_201_CREATED)
+async def create_po(body: PoCreate, auth: AuthContext = Depends(require("pos", "write"))):
+    """Created straight into 'ordered' — the SME phones the order in; this
+    record exists so the delivery can be received against it."""
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        po = await conn.fetchrow(
+            """insert into pos_purchase_orders (tenant_id, supplier_id, created_by, notes)
+               values ($1,$2,$3,$4) returning *""",
+            auth.tenant_id, body.supplier_id, auth.user_id, body.notes)
+        for line in body.items:
+            p = await conn.fetchrow(
+                "select name, cost_minor from pos_products where id=$1", line.product_id)
+            if p is None:
+                raise HTTPException(status.HTTP_404_NOT_FOUND, f"Product {line.product_id} not found")
+            await conn.execute(
+                """insert into pos_po_items (tenant_id, po_id, product_id, name, qty, cost_minor)
+                   values ($1,$2,$3,$4,$5,$6)""",
+                auth.tenant_id, po["id"], line.product_id, p["name"], line.qty,
+                # Fall back to the product's known cost so the PO total is real.
+                line.cost_minor or p["cost_minor"])
+        return await _po_out(conn, po)
+
+
+@router.get("/purchase-orders", response_model=list[PoOut])
+async def list_pos(auth: AuthContext = Depends(require("pos", "read"))):
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        rows = await conn.fetch(
+            "select * from pos_purchase_orders order by created_at desc limit 50")
+        return [await _po_out(conn, r) for r in rows]
+
+
+@router.post("/purchase-orders/{po_id}/receive", response_model=PoOut)
+async def receive_po(po_id: str, body: PoReceive, auth: AuthContext = Depends(require("pos", "write"))):
+    """Goods arrive. Stock rises here and nowhere else on the inbound side.
+
+    Partial deliveries are the norm, so lines carry received_qty and the PO only
+    flips to 'received' once every line is complete. Over-receiving is refused —
+    a delivery larger than the order is a paperwork problem to resolve, not a
+    number to absorb silently.
+    """
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        po = await conn.fetchrow("select * from pos_purchase_orders where id=$1", po_id)
+        if po is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Purchase order not found")
+        if po["status"] != "ordered":
+            raise HTTPException(status.HTTP_409_CONFLICT, f"This order is {po['status']}.")
+
+        for want in body.items:
+            line = await conn.fetchrow(
+                "select * from pos_po_items where id=$1 and po_id=$2", want.po_item_id, po_id)
+            if line is None:
+                raise HTTPException(status.HTTP_404_NOT_FOUND, "That line isn't on this order")
+            outstanding = float(line["qty"]) - float(line["received_qty"])
+            if want.qty > outstanding:
+                raise HTTPException(
+                    status.HTTP_409_CONFLICT,
+                    f"Only {outstanding:g} of {line['name']} is outstanding on this order.")
+            await conn.execute(
+                "update pos_po_items set received_qty = received_qty + $1 where id=$2",
+                want.qty, line["id"])
+            if line["product_id"]:
+                # Last-cost costing: the price you actually just paid.
+                await conn.execute(
+                    """update pos_products
+                          set stock_qty = stock_qty + $1,
+                              cost_minor = case when $2 > 0 then $2 else cost_minor end,
+                              updated_at = now()
+                        where id=$3""",
+                    want.qty, line["cost_minor"], line["product_id"])
+
+        done = await conn.fetchval(
+            "select bool_and(received_qty >= qty) from pos_po_items where po_id=$1", po_id)
+        if done:
+            po = await conn.fetchrow(
+                "update pos_purchase_orders set status='received', received_at=now() where id=$1 returning *",
+                po_id)
+        return await _po_out(conn, po)
+
+
+@router.post("/purchase-orders/{po_id}/cancel", response_model=PoOut)
+async def cancel_po(po_id: str, auth: AuthContext = Depends(require("pos", "write"))):
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        received = await conn.fetchval(
+            "select coalesce(sum(received_qty), 0) from pos_po_items where po_id=$1", po_id)
+        if received and float(received) > 0:
+            raise HTTPException(status.HTTP_409_CONFLICT,
+                                "Goods were already received against this order — it can't be cancelled.")
+        po = await conn.fetchrow(
+            "update pos_purchase_orders set status='cancelled' where id=$1 and status='ordered' returning *",
+            po_id)
+        if po is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "No open order with that id")
+        return await _po_out(conn, po)
 
 
 # ── Cash drawer ──────────────────────────────────────────────────────────────

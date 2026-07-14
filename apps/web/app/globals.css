@@ -18,10 +18,15 @@
   --color-fg-muted: #5b6478;
   --color-fg-subtle: #8b94a7;
 
-  --color-brand: #4f46e5;
-  --color-brand-hover: #4338ca;
+  /* Magenta, per theme — not one value in two places. The reference's hot pink
+     is built to glow against near-black; on white it reads loud and its
+     contrast against small text goes marginal. So light takes a deeper magenta
+     that stays legible on a bright office screen, dark takes the bright one
+     that actually glows. Same hue family, two jobs. */
+  --color-brand: #c2185b;
+  --color-brand-hover: #a3144d;
   --color-brand-fg: #ffffff;
-  --color-brand-subtle: #4f46e514;
+  --color-brand-subtle: #c2185b14;
 
   --color-success: #068a63;
   --color-warning: #b45309;
@@ -33,7 +38,7 @@
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 
   /* Chart ink — sequential single hue (brand), read against the chart surface. */
-  --color-chart-1: #4f46e5;
+  --color-chart-1: #c2185b;
   --color-chart-2: #0ea5e9;
   --color-chart-grid: #eceef3;
 }
@@ -53,16 +58,20 @@
   --color-fg-muted: #9aa2b4;
   --color-fg-subtle: #6d7484;
 
-  --color-brand: #7c7ff5;
-  --color-brand-hover: #9296f8;
-  --color-brand-fg: #ffffff;
-  --color-brand-subtle: #7c7ff522;
+  --color-brand: #ff4d9d;
+  --color-brand-hover: #ff6cad;
+  /* Near-black, NOT white. A brand button is bg-brand + text-brand-fg, and
+     white on #ff4d9d is ~2.3:1 — unreadable, and worse than the indigo it
+     replaced. Ink on hot pink lands ~8:1 and matches the reference, where the
+     loud colour carries the glow and the buttons stay high-contrast. */
+  --color-brand-fg: #14060d;
+  --color-brand-subtle: #ff4d9d22;
 
   --color-success: #34d399;
   --color-warning: #fbbf24;
   --color-danger: #f87171;
 
-  --color-chart-1: #7c7ff5;
+  --color-chart-1: #ff4d9d;
   --color-chart-2: #38bdf8;
   --color-chart-grid: #242938;
 }
@@ -168,15 +177,18 @@ body {
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(38rem 26rem at 102% -2%, rgba(56, 189, 248, 0.13), transparent 60%),
-    radial-gradient(34rem 30rem at -2% 102%, rgba(99, 102, 241, 0.16), transparent 60%),
-    radial-gradient(46rem 30rem at 50% 55%, rgba(99, 102, 241, 0.05), transparent 70%);
+    radial-gradient(60rem 34rem at 50% 96%, rgba(194, 24, 91, 0.14), transparent 66%),
+    radial-gradient(36rem 26rem at 50% 108%, rgba(233, 30, 99, 0.10), transparent 60%);
 }
+/* Dark: the reference's signature — a magenta bloom rising from behind the
+   product shot, brightest at the horizon under it and falling off fast. The
+   old corner-lit indigo is gone; this lights from below-centre instead, which
+   is what makes the dashboard look like it's sitting *in* the glow. */
 :root[data-theme="dark"] .bleed::after {
   background:
-    radial-gradient(38rem 26rem at 102% -2%, rgba(56, 189, 248, 0.30), transparent 60%),
-    radial-gradient(34rem 30rem at -2% 102%, rgba(124, 127, 245, 0.38), transparent 60%),
-    radial-gradient(46rem 30rem at 50% 55%, rgba(99, 102, 241, 0.10), transparent 70%);
+    radial-gradient(60rem 34rem at 50% 96%, rgba(255, 77, 157, 0.42), transparent 66%),
+    radial-gradient(36rem 26rem at 50% 108%, rgba(255, 138, 190, 0.34), transparent 60%),
+    radial-gradient(46rem 30rem at 50% 40%, rgba(194, 24, 91, 0.10), transparent 70%);
 }
 
 /* Faint ruled grid, faded out at the edges so it never reads as a table. */

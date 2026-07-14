@@ -772,3 +772,61 @@ class DrawerOut(BaseModel):
     counted_minor: int | None = None
     variance_minor: int | None = None   # counted − expected: + over, − short
     notes: str = ""
+
+
+# ─── Suppliers & purchase orders ─────────────────────────────────────────────
+class SupplierCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=160)
+    phone: str = ""
+    email: str = ""
+    notes: str = ""
+
+
+class SupplierOut(BaseModel):
+    id: str
+    name: str
+    phone: str
+    email: str
+    notes: str
+
+
+class PoLineCreate(BaseModel):
+    product_id: str
+    qty: float = Field(gt=0)
+    cost_minor: int = Field(default=0, ge=0)   # per unit
+
+
+class PoCreate(BaseModel):
+    supplier_id: str | None = None
+    items: list[PoLineCreate] = Field(min_length=1)
+    notes: str = ""
+
+
+class PoLineOut(BaseModel):
+    id: str
+    product_id: str | None
+    name: str
+    qty: float
+    cost_minor: int
+    received_qty: float
+
+
+class PoOut(BaseModel):
+    id: str
+    supplier_id: str | None
+    supplier_name: str | None
+    status: str
+    notes: str
+    created_at: datetime
+    received_at: datetime | None
+    total_cost_minor: int
+    items: list[PoLineOut] = Field(default_factory=list)
+
+
+class PoReceiveLine(BaseModel):
+    po_item_id: str
+    qty: float = Field(gt=0)
+
+
+class PoReceive(BaseModel):
+    items: list[PoReceiveLine] = Field(min_length=1)

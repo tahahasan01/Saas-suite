@@ -2,18 +2,39 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { OccasionForecast, RestockItem } from "@business-os/types";
 import { api } from "@/lib/api";
-import { Badge, Card } from "@/components/ui";
+import { Badge, Button, Card } from "@/components/ui";
 
 export default function PosInsights() {
+  const router = useRouter();
   const [restock, setRestock] = useState<RestockItem[]>([]);
   const [occasions, setOccasions] = useState<OccasionForecast[]>([]);
+  const [ordering, setOrdering] = useState(false);
 
   useEffect(() => {
     api<RestockItem[]>("/pos/restock").then(setRestock).catch(() => {});
     api<{ occasions: OccasionForecast[] }>("/pos/forecast").then((r) => setOccasions(r.occasions)).catch(() => {});
   }, []);
+
+  // The advice becomes an order in one click — this is the loop that used to
+  // dead-end at "here's a number you have no way to receive".
+  async function orderAll() {
+    setOrdering(true);
+    try {
+      await api("/pos/purchase-orders", {
+        method: "POST",
+        body: JSON.stringify({
+          items: restock.map((r) => ({ product_id: r.product_id, qty: r.recommend_qty })),
+          notes: "From restock advice",
+        }),
+      });
+      router.push("/pos/purchase-orders");
+    } finally {
+      setOrdering(false);
+    }
+  }
 
   return (
     <>
@@ -24,7 +45,14 @@ export default function PosInsights() {
       <p className="mb-6 text-sm text-fg-muted">AI restocking advice and seasonal demand forecasts.</p>
 
       {/* Restock now */}
-      <h2 className="mb-2 text-sm font-semibold">✦ Restock now</h2>
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="text-sm font-semibold">✦ Restock now</h2>
+        {restock.length > 0 && (
+          <Button size="sm" onClick={orderAll} disabled={ordering}>
+            {ordering ? "Creating…" : "Create purchase order"}
+          </Button>
+        )}
+      </div>
       <div className="mb-8 space-y-2">
         {restock.length === 0 && <Card><p className="text-sm text-fg-subtle">Everything&apos;s well stocked. 👍</p></Card>}
         {restock.map((r) => (

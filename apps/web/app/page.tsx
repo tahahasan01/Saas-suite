@@ -9,7 +9,7 @@ import { ProductShot } from "@/components/marketing/ProductShot";
 import { Reveal } from "@/components/marketing/Reveal";
 import { Marquee } from "@/components/marketing/Marquee";
 import { CardDeck } from "@/components/marketing/CardDeck";
-import { ScrubWords } from "@/components/marketing/ScrubWords";
+import { Slab } from "@/components/marketing/Slab";
 import { Pricing } from "@/components/marketing/Pricing";
 import { Testimonials } from "@/components/marketing/Testimonials";
 
@@ -175,7 +175,7 @@ export default function Landing() {
           It is NOT "the won deal already moved your stock": nothing in crm.py
           writes stock_qty, and the workflow engine's only action is `notify`.
           Keep this sentence pinned to what the code does. */}
-      <ScrubWords
+      <Slab
         kicker="Nº002 — The thesis"
         text="Three apps means three bills, three logins, and a spreadsheet in the middle where the truth goes missing. One system means one question can cross all three."
       />
