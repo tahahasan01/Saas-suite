@@ -94,11 +94,14 @@ async def test_work_from_home_is_worked_time_not_leave(client, tenant):
 
 
 async def test_requests_can_be_filtered_by_type(client, tenant):
+    # Distinct days: one person cannot be on leave and WFH the same day, and the
+    # overlap guard now enforces exactly that.
     today = date.today().isoformat()
+    tomorrow = (date.today() + timedelta(days=1)).isoformat()
     await client.post("/hrms/leave", json={"employee_id": tenant.employee_id, "request_type": "wfh",
                                            "from_date": today, "to_date": today})
     await client.post("/hrms/leave", json={"employee_id": tenant.employee_id, "request_type": "leave",
-                                           "leave_type": "sick", "from_date": today, "to_date": today})
+                                           "leave_type": "sick", "from_date": tomorrow, "to_date": tomorrow})
     wfh = (await client.get("/hrms/leave?request_type=wfh")).json()
     leave = (await client.get("/hrms/leave?request_type=leave")).json()
     assert [x["request_type"] for x in wfh] == ["wfh"]

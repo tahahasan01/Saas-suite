@@ -11,7 +11,7 @@ import { Reveal } from "@/components/marketing/Reveal";
 import { Marquee } from "@/components/marketing/Marquee";
 import { CardDeck } from "@/components/marketing/CardDeck";
 import { ScrubWords } from "@/components/marketing/ScrubWords";
-import { ScrollRows } from "@/components/marketing/ScrollRows";
+import { Pricing } from "@/components/marketing/Pricing";
 import { Testimonials } from "@/components/marketing/Testimonials";
 
 // Every entry here must be something the product actually does today. If it
@@ -256,11 +256,11 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ─── Comparison ───────────────────────────────────────────────────── */}
-      {/* The two-column ✕/✓ table that used to make this argument is now the
-          pinned rows below — the same five points, but arriving one at a time
-          so each one is actually read. */}
-      <ScrollRows />
+      {/* ─── Pricing ──────────────────────────────────────────────────────── */}
+      {/* Was the ✕/✓ comparison table, then briefly a set of pinned rows —
+          both of which restated cards the deck had already dealt. A price is
+          the thing this page never showed and every visitor came for. */}
+      <Pricing />
 
       {/* ─── Customers ────────────────────────────────────────────────────── */}
       {/* Placeholder content — see the note in Testimonials.tsx. Real quotes

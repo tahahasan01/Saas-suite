@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { LEAVE_TYPES, type Employee, type Leave } from "@business-os/types";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { Badge, Button, Card, Field, Input, Select } from "@/components/ui";
 
 const tone = { pending: "warning", approved: "success", rejected: "danger" } as const;
@@ -10,12 +10,20 @@ const blank = { employee_id: "", request_type: "leave", leave_type: "annual", fr
 
 type Filter = "all" | "leave" | "wfh";
 
+interface Balance {
+  leave_type: string;
+  quota: number;
+  used: number;
+  remaining: number;
+}
+
 export default function LeavePage() {
   const [items, setItems] = useState<Leave[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [form, setForm] = useState(blank);
   const [filter, setFilter] = useState<Filter>("all");
   const [err, setErr] = useState<string | null>(null);
+  const [balances, setBalances] = useState<Balance[]>([]);
 
   const load = useCallback(async () => {
     const [lv, emp] = await Promise.all([api<Leave[]>("/hrms/leave"), api<Employee[]>("/hrms/employees")]);
@@ -25,6 +33,15 @@ export default function LeavePage() {
   }, []);
   useEffect(() => { load().catch(() => {}); }, [load]);
 
+  // Balances for whoever the request is being made for — the number the
+  // approver needs at the moment of deciding.
+  useEffect(() => {
+    if (!form.employee_id) return;
+    api<Balance[]>(`/hrms/leave/balances?employee_id=${form.employee_id}`)
+      .then(setBalances)
+      .catch(() => setBalances([]));
+  }, [form.employee_id, items]);
+
   const shown = useMemo(
     () => (filter === "all" ? items : items.filter((l) => l.request_type === filter)),
     [items, filter],
@@ -32,7 +49,13 @@ export default function LeavePage() {
   const pendingCount = items.filter((l) => l.status === "pending").length;
 
   async function decide(id: string, d: "approve" | "reject") {
-    await api(`/hrms/leave/${id}/${d}`, { method: "POST" }).catch(() => {});
+    setErr(null);
+    try {
+      await api(`/hrms/leave/${id}/${d}`, { method: "POST" });
+    } catch (e) {
+      // e.g. "That's 25 working days of annual leave, but only 14 remain…"
+      setErr(e instanceof ApiError && typeof e.detail === "string" ? e.detail : "Couldn't update that request.");
+    }
     load();
   }
 
@@ -69,6 +92,10 @@ export default function LeavePage() {
             <span className="ml-auto text-xs text-fg-subtle">{pendingCount} awaiting approval</span>
           )}
         </div>
+
+        {err && (
+          <p className="rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-xs text-danger">{err}</p>
+        )}
 
         <Card className="p-0">
           <table className="w-full text-sm">
@@ -123,6 +150,21 @@ export default function LeavePage() {
               {employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
             </Select>
           </Field>
+          {balances.length > 0 && (
+            <div className="flex gap-1.5" aria-label="Leave balances this year">
+              {balances.map((b) => (
+                <span
+                  key={b.leave_type}
+                  className={`flex-1 rounded-lg border px-2 py-1.5 text-center ${
+                    b.remaining === 0 ? "border-danger/40 bg-danger/5" : "border-line bg-elevated/40"
+                  }`}
+                >
+                  <span className="block text-sm font-semibold tabular-nums">{b.remaining}<span className="text-fg-subtle">/{b.quota}</span></span>
+                  <span className="block text-[10px] capitalize text-fg-subtle">{b.leave_type} left</span>
+                </span>
+              ))}
+            </div>
+          )}
           <Field label="Request">
             <Select value={form.request_type} onChange={(e) => setForm({ ...form, request_type: e.target.value })}>
               <option value="leave">Leave</option>

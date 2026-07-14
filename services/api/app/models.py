@@ -719,3 +719,23 @@ class ImportResult(BaseModel):
     created: int
     skipped_duplicates: int
     errors: list[ImportRowError] = Field(default_factory=list)
+
+
+# ─── Leave policy & balances ─────────────────────────────────────────────────
+class LeavePolicyOut(BaseModel):
+    annual_days: int
+    sick_days: int
+    casual_days: int
+
+
+class LeavePolicyUpdate(BaseModel):
+    annual_days: int | None = Field(default=None, ge=0, le=365)
+    sick_days: int | None = Field(default=None, ge=0, le=365)
+    casual_days: int | None = Field(default=None, ge=0, le=365)
+
+
+class LeaveBalance(BaseModel):
+    leave_type: str
+    quota: int
+    used: int        # approved working days this calendar year
+    remaining: int

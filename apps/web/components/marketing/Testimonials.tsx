@@ -18,26 +18,28 @@
 
 type Review = { quote: string; name: string; role: string };
 
-const REVIEWS: Review[] = [
-  { quote: "[ Replace: what changed for them, in one concrete sentence ]", name: "[ Name ]", role: "[ Role, Company — Dubai ]" },
-  { quote: "[ Replace: the objection they had before buying, and what answered it ]", name: "[ Name ]", role: "[ Role, Company — London ]" },
-  { quote: "[ Replace: a number they can stand behind — hours, currency, headcount ]", name: "[ Name ]", role: "[ Role, Company — Toronto ]" },
-  { quote: "[ Replace: the thing they expected to be hard that wasn't ]", name: "[ Name ]", role: "[ Role, Company — Riyadh ]" },
-  { quote: "[ Replace: what they'd tell a peer in their own trade ]", name: "[ Name ]", role: "[ Role, Company — Singapore ]" },
-  { quote: "[ Replace: why they stopped using the tool they used before ]", name: "[ Name ]", role: "[ Role, Company — New York ]" },
-];
+/* Empty on purpose. The section is fully built and wired into page.tsx — add
+   one real entry below and it appears, styled, with the counter-scrolling rows.
+   Nothing else needs touching.
 
-/** Customer wordmarks. Text, not images, until you have real logo files and
- *  written permission to display them — a logo shown without it is a
- *  trademark problem on top of a truthfulness one. */
-const CUSTOMERS: string[] = [
-  "[ Customer — UAE ]",
-  "[ Customer — UK ]",
-  "[ Customer — KSA ]",
-  "[ Customer — Canada ]",
-  "[ Customer — Singapore ]",
-  "[ Customer — USA ]",
-];
+   It ships empty rather than with placeholders because a live page reading
+   "[ Name ] · [ Role, Company ]" is worse than no section at all, and because
+   the alternative — inventing six customers — is a fabricated endorsement.
+   That is an unfair-trade-practice problem wherever you sell (the FTC's
+   fake-review rule carries per-violation penalties; the UK CMA can act
+   directly under the DMCC Act), and the exposure lands on the business, not
+   on whoever typed it.
+
+   To fill it:
+     quote — one concrete sentence: what changed, ideally with a number.
+     name / role — a real person who has agreed in writing to be quoted.
+   For CUSTOMERS, use wordmark text until you hold the actual logo files and
+   permission to display them; a logo without it is a trademark problem on top
+   of a truthfulness one. */
+
+const REVIEWS: Review[] = [];
+
+const CUSTOMERS: string[] = [];
 
 export function Testimonials() {
   // Nothing to say → say nothing. Better an absent section than an empty one
