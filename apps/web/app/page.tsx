@@ -55,21 +55,29 @@ export default function Landing() {
           from behind the glyphs. */}
       <section className="bleed grid-lines relative isolate overflow-hidden">
         <div className="mx-auto flex min-h-[86vh] max-w-6xl flex-col items-center justify-center px-6 py-20 text-center">
-          <span className="animate-fade-up inline-flex items-center gap-2 rounded-full border border-line bg-surface/60 px-3 py-1 text-xs text-fg-muted backdrop-blur">
-            <span className="h-1.5 w-1.5 rounded-full bg-success" /> One platform · CRM · POS · HRMS
-          </span>
+          {/* Chip flanked by rules — the reference's label treatment. The rules
+              are what stop a lone pill from floating; they pin it to the
+              centreline and read as a masthead. */}
+          <div className="animate-fade-up flex w-full max-w-md items-center gap-4">
+            <span className="h-px flex-1 bg-gradient-to-r from-transparent to-line-strong" />
+            <span className="inline-flex shrink-0 items-center gap-2 rounded-full border border-line bg-surface/60 px-3.5 py-1.5 text-xs text-fg-muted backdrop-blur">
+              <span className="h-1.5 w-1.5 rounded-full bg-brand" /> One platform · CRM · POS · HRMS
+            </span>
+            <span className="h-px flex-1 bg-gradient-to-l from-transparent to-line-strong" />
+          </div>
 
-          {/* The connector line stays small and sentence-case: it keeps the two
-              shout-lines from wrapping, and reads as a breath between them. */}
+          {/* Sentence case at medium weight, not black uppercase: the reference
+              lets the glow carry the drama and keeps the words calm. Shouting
+              *and* glowing is two things competing for the same job. */}
           <h1 className="animate-fade-up mt-7" style={{ animationDelay: "80ms" }}>
-            <span className="block text-[clamp(2.3rem,6.6vw,5.25rem)] font-black uppercase leading-[0.92] tracking-[-0.035em]">
+            <span className="block text-[clamp(2.1rem,5.4vw,4.25rem)] font-semibold leading-[1.05] tracking-[-0.03em]">
               Run your whole business
             </span>
-            <span className="mt-3 block text-base font-medium text-fg-muted sm:text-lg">
-              in one app that calls them
-            </span>
-            <span className="text-glow mt-2 block text-[clamp(2.3rem,6.6vw,5.25rem)] font-black uppercase leading-[0.92] tracking-[-0.035em]">
-              <RotatingWord />
+            <span className="mt-1.5 block text-[clamp(2.1rem,5.4vw,4.25rem)] font-semibold leading-[1.05] tracking-[-0.03em]">
+              in one app that calls them{" "}
+              <span className="text-glow">
+                <RotatingWord />
+              </span>
             </span>
           </h1>
 
@@ -81,11 +89,15 @@ export default function Landing() {
             answers questions about your own data. Built for Pakistan: PKR, CNIC, FBR tax.
           </p>
 
+          {/* White pill, per the reference — against a magenta bloom the loudest
+              thing on screen should be the one you click, and white out-shouts
+              a brand button sitting in its own glow. `pill-invert` flips with
+              the theme so it stays a *contrast* pill, not a white one. */}
           <div className="animate-fade-up mt-9 flex flex-wrap items-center justify-center gap-3" style={{ animationDelay: "240ms" }}>
-            <Link href="/signup" className="rounded-xl bg-brand px-7 py-3.5 text-sm font-semibold text-brand-fg shadow-lg shadow-brand/25 transition hover:bg-brand-hover">
+            <Link href="/signup" className="pill-invert rounded-full px-7 py-3.5 text-sm font-semibold transition hover:opacity-90">
               Start free — 14 days
             </Link>
-            <Link href="/pricing" className="rounded-xl border border-line px-7 py-3.5 text-sm font-medium text-fg transition hover:border-line-strong">
+            <Link href="/pricing" className="rounded-full border border-line px-7 py-3.5 text-sm font-medium text-fg transition hover:border-line-strong">
               See pricing
             </Link>
           </div>

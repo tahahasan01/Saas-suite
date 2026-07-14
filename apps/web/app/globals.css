@@ -210,6 +210,14 @@ body {
     linear-gradient(to bottom, rgba(255, 255, 255, 0.028) 1px, transparent 1px);
 }
 
+/* The reference's white pill CTA. Inverted rather than literally white: on a
+   light page a white button on white is invisible, so this is always
+   "whatever the canvas isn't". One class, both themes. */
+.pill-invert {
+  background: var(--color-fg);
+  color: var(--color-canvas);
+}
+
 /* Dark: glow bleeding out from behind the glyphs themselves. Light: there is
    nothing for a glow to bleed *into*, so the word takes the brand colour and
    lets weight carry the emphasis. */
