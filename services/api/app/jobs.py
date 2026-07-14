@@ -13,7 +13,7 @@ import logging
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from . import db, notifications
+from . import db, fbr_submit, notifications
 from .routers.pos import _VELOCITY_SQL
 
 log = logging.getLogger("jobs")
@@ -82,6 +82,9 @@ def start() -> None:
     _scheduler = AsyncIOScheduler()
     _scheduler.add_job(run_followup_reminders, "interval", minutes=5, id="followups")
     _scheduler.add_job(run_restock_alerts, "interval", hours=24, id="restock")
+    # FBR filings that did not land at the till. Frequent, because an unfiled
+    # invoice is a compliance liability until it is filed.
+    _scheduler.add_job(fbr_submit.retry_pending, "interval", minutes=2, id="fbr_retry")
     _scheduler.start()
     log.info("proactive scheduler started")
 

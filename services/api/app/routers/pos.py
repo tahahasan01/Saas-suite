@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 import math
+from decimal import Decimal
 
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from .. import db
+from .. import db, fbr, fbr_submit
 from ..deps import AuthContext
 from ..models import (
     ForecastItem,
@@ -42,7 +43,8 @@ def _product(r: asyncpg.Record) -> ProductOut:
     return ProductOut(
         id=str(r["id"]), name=r["name"], sku=r["sku"], barcode=r["barcode"], category=r["category"],
         unit=r["unit"], price_minor=r["price_minor"], cost_minor=r["cost_minor"],
-        stock_qty=float(r["stock_qty"]), low_stock_at=float(r["low_stock_at"]), active=r["active"])
+        stock_qty=float(r["stock_qty"]), low_stock_at=float(r["low_stock_at"]), active=r["active"],
+        hs_code=r["hs_code"], tax_rate=float(r["tax_rate"]), fbr_uom=r["fbr_uom"])
 
 
 @router.get("/products", response_model=list[ProductOut])
@@ -76,10 +78,12 @@ async def lookup(barcode: str, auth: AuthContext = Depends(require("pos", "read"
 async def create_product(body: ProductCreate, auth: AuthContext = Depends(require("pos", "write"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
         row = await conn.fetchrow(
-            """insert into pos_products (tenant_id, name, sku, barcode, category, unit, price_minor, cost_minor, stock_qty, low_stock_at)
-               values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning *""",
+            """insert into pos_products (tenant_id, name, sku, barcode, category, unit, price_minor,
+                                         cost_minor, stock_qty, low_stock_at, hs_code, tax_rate, fbr_uom)
+               values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) returning *""",
             auth.tenant_id, body.name, body.sku, body.barcode, body.category, body.unit,
-            body.price_minor, body.cost_minor, body.stock_qty, body.low_stock_at)
+            body.price_minor, body.cost_minor, body.stock_qty, body.low_stock_at,
+            body.hs_code, body.tax_rate, body.fbr_uom)
     return _product(row)
 
 
@@ -100,10 +104,12 @@ async def update_product(product_id: str, body: ProductUpdate, auth: AuthContext
 @router.post("/sales", response_model=SaleOut, status_code=status.HTTP_201_CREATED)
 async def checkout(body: SaleCreate, auth: AuthContext = Depends(require("pos", "write"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
-        subtotal = 0
+        subtotal = tax_total = 0
         lines = []
         for it in body.items:
-            p = await conn.fetchrow("select id, name, price_minor from pos_products where id=$1 and active", it.product_id)
+            p = await conn.fetchrow(
+                """select id, name, price_minor, hs_code, tax_rate, fbr_uom
+                     from pos_products where id=$1 and active""", it.product_id)
             if p is None:
                 raise HTTPException(status.HTTP_404_NOT_FOUND, f"Product {it.product_id} not found")
             line_total = round(p["price_minor"] * it.qty)
@@ -111,12 +117,20 @@ async def checkout(body: SaleCreate, auth: AuthContext = Depends(require("pos", 
             lines.append((p, it.qty, line_total))
         total = max(0, subtotal - body.discount_minor)
         change = max(0, body.paid_minor - total)
+
+        fbr_cfg = await conn.fetchrow("select * from fbr_settings where tenant_id=$1", auth.tenant_id)
+        if fbr_cfg and fbr_cfg["enabled"]:
+            for p, _qty, line_total in lines:
+                _, line_tax = fbr.split_tax(line_total, Decimal(str(p["tax_rate"] or 0)),
+                                            fbr_cfg["prices_include_tax"])
+                tax_total += line_tax
+
         sale_id = await conn.fetchval(
             """insert into pos_sales (tenant_id, cashier_id, subtotal_minor, discount_minor, total_minor,
-                                      paid_minor, change_minor, payment_method, item_count)
-               values ($1,$2,$3,$4,$5,$6,$7,$8,$9) returning id""",
+                                      paid_minor, change_minor, payment_method, item_count, tax_minor)
+               values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning id""",
             auth.tenant_id, auth.user_id, subtotal, body.discount_minor, total,
-            body.paid_minor, change, body.payment_method, len(lines))
+            body.paid_minor, change, body.payment_method, len(lines), tax_total)
         items = []
         for p, qty, line_total in lines:
             await conn.execute(
@@ -126,10 +140,20 @@ async def checkout(body: SaleCreate, auth: AuthContext = Depends(require("pos", 
             await conn.execute("update pos_products set stock_qty = stock_qty - $1 where id=$2", qty, p["id"])
             items.append(SaleItemOut(name=p["name"], qty=qty, price_minor=p["price_minor"], line_total_minor=line_total))
         sale = await conn.fetchrow("select * from pos_sales where id=$1", sale_id)
+
+    fbr_number = fbr_status = None
+    if fbr_cfg and fbr_cfg["enabled"]:
+        # The sale is already committed. FBR transmission happens after, and its
+        # failure is recorded rather than raised: a government outage must never
+        # stop a shop from selling. Anything not submitted is retried by jobs.py.
+        result = await fbr_submit.submit_sale(auth.tenant_id, str(sale_id), fbr_cfg, lines)
+        fbr_number, fbr_status = result.invoice_number, ("submitted" if result.ok else "pending")
+
     return SaleOut(
         id=str(sale["id"]), subtotal_minor=sale["subtotal_minor"], discount_minor=sale["discount_minor"],
         total_minor=sale["total_minor"], paid_minor=sale["paid_minor"], change_minor=sale["change_minor"],
-        payment_method=sale["payment_method"], item_count=sale["item_count"], created_at=sale["created_at"], items=items)
+        payment_method=sale["payment_method"], item_count=sale["item_count"], created_at=sale["created_at"],
+        items=items, tax_minor=sale["tax_minor"], fbr_invoice_number=fbr_number, fbr_status=fbr_status)
 
 
 @router.get("/summary", response_model=PosSummary)

@@ -3,7 +3,10 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+# FBR's reference UoM list; this is the value for discrete countable goods.
+FBR_DEFAULT_UOM = "Numbers, pieces, units"
 
 # Industries the platform re-skins itself for.
 INDUSTRIES = [
@@ -268,6 +271,11 @@ class ProductOut(BaseModel):
     stock_qty: float
     low_stock_at: float
     active: bool
+    # FBR line-item requirements. `unit` stays the shop-floor label; `fbr_uom`
+    # must be a value from FBR's own reference list.
+    hs_code: str = ""
+    tax_rate: float = 0
+    fbr_uom: str = FBR_DEFAULT_UOM
 
 
 class ProductCreate(BaseModel):
@@ -280,9 +288,17 @@ class ProductCreate(BaseModel):
     cost_minor: int = Field(default=0, ge=0)
     stock_qty: float = 0
     low_stock_at: float = 0
+    hs_code: str = ""
+    tax_rate: float = Field(default=0, ge=0, le=100)
+    fbr_uom: str = FBR_DEFAULT_UOM
 
 
 class ProductUpdate(BaseModel):
+    # extra='forbid' so a typo'd or unknown field is a 422 rather than a silent
+    # no-op: a tax_rate that looks saved but was dropped is how a retailer files
+    # zero-rated invoices without knowing it.
+    model_config = ConfigDict(extra="forbid")
+
     name: str | None = None
     sku: str | None = None
     barcode: str | None = None
@@ -293,6 +309,9 @@ class ProductUpdate(BaseModel):
     stock_qty: float | None = None
     low_stock_at: float | None = None
     active: bool | None = None
+    hs_code: str | None = None
+    tax_rate: float | None = Field(default=None, ge=0, le=100)
+    fbr_uom: str | None = None
 
 
 class SaleLine(BaseModel):
@@ -325,6 +344,44 @@ class SaleOut(BaseModel):
     item_count: int
     created_at: datetime
     items: list[SaleItemOut] = Field(default_factory=list)
+    tax_minor: int = 0
+    # Present once FBR has issued a number; None while a submission is queued.
+    fbr_invoice_number: str | None = None
+    fbr_status: str | None = None       # 'submitted' | 'pending' | None (FBR off)
+
+
+# ─── FBR Digital Invoicing ──────────────────────────────────────────────────
+class FbrSettingsOut(BaseModel):
+    enabled: bool
+    environment: str
+    seller_ntn_cnic: str
+    seller_business_name: str
+    seller_province: str
+    seller_address: str
+    prices_include_tax: bool
+    # The bearer token is never returned — only whether one is set.
+    token_set: bool
+
+
+class FbrSettingsUpdate(BaseModel):
+    enabled: bool | None = None
+    environment: str | None = None
+    seller_ntn_cnic: str | None = None
+    seller_business_name: str | None = None
+    seller_province: str | None = None
+    seller_address: str | None = None
+    prices_include_tax: bool | None = None
+    token: str | None = None
+
+
+class FbrInvoiceOut(BaseModel):
+    sale_id: str
+    status: str
+    fbr_invoice_number: str | None
+    error_code: str
+    error: str
+    attempts: int
+    created_at: datetime
 
 
 class PosSummary(BaseModel):
