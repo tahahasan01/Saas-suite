@@ -55,7 +55,7 @@ export default function CrmBoard() {
           <div className="mb-3 grid h-12 w-12 place-items-center rounded-full bg-elevated text-xl">✦</div>
           <p className="text-sm font-medium">No {t("leads").toLowerCase()} yet</p>
           <p className="mb-4 max-w-xs text-xs text-fg-muted">
-            Add your first {t("lead").toLowerCase()} manually, or connect WhatsApp to capture them automatically.
+            Add your first {t("lead").toLowerCase()} to get started — we&apos;ll score it and flag duplicates automatically.
           </p>
           <Button onClick={() => setAdding(true)}>+ Add {t("lead")}</Button>
         </div>

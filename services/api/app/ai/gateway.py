@@ -29,6 +29,10 @@ ai_v_interactions(id, lead_name, channel /* call|whatsapp|email|note|bot */,
 """.strip()
 
 
+class AiUnavailable(RuntimeError):
+    """No API key on this deployment — the feature is switched off, not broken."""
+
+
 def _client() -> AsyncAnthropic | None:
     return AsyncAnthropic(api_key=settings.anthropic_api_key) if settings.anthropic_api_key else None
 
@@ -52,8 +56,9 @@ def _extract_sql(text: str) -> str:
 async def ask(tenant_id: str, user_id: str, question: str) -> dict:
     client = _client()
     if client is None:
-        return {"answer": "AI is not configured — set ANTHROPIC_API_KEY in the environment.",
-                "sql": None, "rows": []}
+        # Never return this as an `answer` — the UI would render an ops message
+        # in the same place as a real result, which reads as a broken product.
+        raise AiUnavailable("AI is not configured on this deployment.")
 
     tokens_in = tokens_out = 0
 

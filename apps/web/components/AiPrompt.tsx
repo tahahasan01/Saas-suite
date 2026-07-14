@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { Card } from "@/components/ui";
 
@@ -15,6 +15,7 @@ export function AiPrompt() {
   const { t } = useSession();
   const [q, setQ] = useState("");
   const [res, setRes] = useState<AskResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const leads = t("leads").toLowerCase();
@@ -29,10 +30,17 @@ export function AiPrompt() {
     setQ(question);
     setBusy(true);
     setRes(null);
+    setError(null);
     try {
       setRes(await api<AskResponse>("/ai/ask", { method: "POST", body: JSON.stringify({ question }) }));
-    } catch {
-      setRes({ answer: "Something went wrong.", sql: null, rows: [] });
+    } catch (e) {
+      // 503 = no key on this deployment, 429 = monthly quota spent. Both are
+      // states worth naming; neither is an answer to the question asked.
+      setError(
+        e instanceof ApiError && typeof e.detail === "string"
+          ? e.detail
+          : "Something went wrong. Please try again.",
+      );
     } finally {
       setBusy(false);
     }
@@ -53,7 +61,7 @@ export function AiPrompt() {
         </button>
       </form>
 
-      {!res && !busy && (
+      {!res && !error && !busy && (
         <div className="mt-3 flex flex-wrap gap-2">
           {suggestions.map((s) => (
             <button key={s} onClick={() => run(s)}
@@ -61,6 +69,13 @@ export function AiPrompt() {
               {s}
             </button>
           ))}
+        </div>
+      )}
+
+      {error && (
+        <div className="mt-3 flex items-start gap-2 border-t border-line pt-3">
+          <span className="text-warning" aria-hidden>●</span>
+          <p className="text-sm text-fg-muted">{error}</p>
         </div>
       )}
 

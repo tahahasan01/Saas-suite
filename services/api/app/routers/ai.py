@@ -1,8 +1,9 @@
 """AI assistant endpoint — natural-language questions over the tenant's data."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 
+from .. import billing, db
 from ..ai import gateway
 from ..deps import AuthContext
 from ..models import AskRequest, AskResponse
@@ -14,5 +15,10 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 
 @router.post("/ask", response_model=AskResponse, dependencies=[Depends(rate_limit(20, 60))])
 async def ask(body: AskRequest, auth: AuthContext = Depends(require("crm", "read"))) -> AskResponse:
-    result = await gateway.ask(auth.tenant_id, auth.user_id, body.question)
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        await billing.check_ai_limit(conn)
+    try:
+        result = await gateway.ask(auth.tenant_id, auth.user_id, body.question)
+    except gateway.AiUnavailable as e:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(e))
     return AskResponse(**result)

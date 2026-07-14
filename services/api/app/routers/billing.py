@@ -23,8 +23,13 @@ async def get_billing(auth: AuthContext = Depends(current_auth)) -> BillingOut:
     days_left = None
     if sub and sub["status"] == "trialing" and sub["trial_ends_at"]:
         days_left = max(0, (sub["trial_ends_at"] - datetime.now(timezone.utc)).days)
+    # Report the status the tenant is actually being held to, not the stale
+    # 'trialing' row — otherwise an expired trial still reads as a live one.
+    reported = "trialing" if sub is None else sub["status"]
+    if billing.trial_expired(sub):
+        reported = "expired"
     return BillingOut(
-        plan=sub["plan"] if sub else "starter", status=sub["status"] if sub else "trialing",
+        plan=sub["plan"] if sub else "starter", status=reported,
         days_left=days_left, current_period_end=sub["current_period_end"] if sub else None,
         max_sections=limits["max_sections"], max_seats=limits["max_seats"], ai_monthly=limits["ai_monthly"],
         seats_used=seats, sections_used=sections)
@@ -50,22 +55,20 @@ async def upgrade(body: UpgradeRequest, auth: AuthContext = Depends(require("set
                                reference=f"BOS-{auth.tenant_id[:8].upper()}", bank=billing.BANK)
 
 
-@router.post("/payment-requests/{request_id}/confirm", response_model=BillingOut)
-async def confirm_payment(request_id: str, auth: AuthContext = Depends(require("settings", "admin"))) -> BillingOut:
-    """Owner confirms the bank transfer → activate the plan for 30 days.
-    (In production a platform admin verifies the transfer before activation.)"""
+@router.post("/payment-requests/{request_id}/submit", response_model=BillingOut)
+async def submit_payment(request_id: str, auth: AuthContext = Depends(require("settings", "admin"))) -> BillingOut:
+    """Customer states they have sent the bank transfer.
+
+    This records the claim and nothing more. It deliberately does NOT activate
+    the plan: the payer is not the party who gets to confirm that money arrived.
+    A human reconciles the transfer against the reference and runs
+    `scripts/activate_payment.py`, which is the only path to an active plan.
+    """
     async with db.tenant_conn(auth.tenant_id) as conn:
-        pr = await conn.fetchrow("select plan, status from payment_requests where id=$1", request_id)
+        pr = await conn.fetchrow("select status from payment_requests where id=$1", request_id)
         if pr is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Payment request not found")
         if pr["status"] != "pending":
             raise HTTPException(status.HTTP_409_CONFLICT, f"Already {pr['status']}")
-        await conn.execute("update payment_requests set status='paid' where id=$1", request_id)
-        period_end = datetime.now(timezone.utc) + timedelta(days=30)
-        await conn.execute(
-            """insert into subscriptions (tenant_id, plan, status, current_period_end, updated_at)
-               values ($1,$2,'active',$3, now())
-               on conflict (tenant_id) do update set plan=excluded.plan, status='active',
-                 current_period_end=excluded.current_period_end, updated_at=now()""",
-            auth.tenant_id, pr["plan"], period_end)
+        await conn.execute("update payment_requests set status='submitted' where id=$1", request_id)
     return await get_billing(auth)

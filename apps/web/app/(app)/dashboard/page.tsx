@@ -24,6 +24,9 @@ export default function Dashboard() {
 
   if (!me) return null;
   const firstName = me.user.name.split(" ")[0];
+  // The AI answers over CRM views only, and /ai/ask is gated on the crm
+  // entitlement — showing the box to a POS-only tenant just yields a 403.
+  const hasCrm = me.entitlements.some((e) => e.section_key === "crm" && e.enabled);
 
   const hasSignal = !!data && data.kpis.some((k) => k.value > 0);
   // Each tile borrows the series it summarises; the rest stay bare numbers.
@@ -39,7 +42,7 @@ export default function Dashboard() {
         <p className="mt-1 text-sm text-fg-muted">Here&apos;s what&apos;s happening in {me.tenant.name}.</p>
       </header>
 
-      <AiPrompt />
+      {hasCrm && <AiPrompt />}
 
       {loading ? (
         <SkeletonGrid />
@@ -192,7 +195,7 @@ function GetStarted({ leadWord }: { leadWord: string }) {
   const steps = [
     { label: `Add your first ${leadWord}`, href: "/crm", cta: "Add now" },
     { label: "Invite your team", href: "/settings/team", cta: "Invite" },
-    { label: "Turn on WhatsApp", href: "/settings/sections", cta: "Connect" },
+    { label: "Choose which modules you need", href: "/settings/sections", cta: "Set up" },
   ];
   return (
     <Card>

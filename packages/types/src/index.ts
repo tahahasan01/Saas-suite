@@ -277,7 +277,9 @@ export interface Payroll {
 // ── Billing ──────────────────────────────────────────────────────────────
 export interface Billing {
   plan: string;
-  status: "trialing" | "active" | "past_due" | "canceled";
+  /** `expired` is computed at read time from a lapsed trial_ends_at — it is not
+   *  a value the subscriptions row ever stores. */
+  status: "trialing" | "active" | "expired" | "past_due" | "canceled";
   days_left: number | null;
   current_period_end: string | null;
   max_sections: number;

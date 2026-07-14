@@ -31,6 +31,7 @@ from ..ratelimit import rate_limit
 from ..security import (
     SESSION_COOKIE,
     hash_password,
+    hash_session_token,
     new_session_token,
     verify_password,
 )
@@ -51,11 +52,12 @@ def _set_session_cookie(response: Response, token: str) -> None:
 
 
 async def _create_session(conn, user_id: str, tenant_id: str) -> str:
+    """Returns the raw token for the cookie; only its hash is persisted."""
     token = new_session_token()
     expires = datetime.now(timezone.utc) + timedelta(days=settings.session_ttl_days)
     await conn.execute(
         "insert into sessions (id, user_id, tenant_id, expires_at) values ($1,$2,$3,$4)",
-        token, user_id, tenant_id, expires,
+        hash_session_token(token), user_id, tenant_id, expires,
     )
     return token
 

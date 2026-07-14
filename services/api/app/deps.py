@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from fastapi import Cookie, HTTPException, status
 
 from . import db
-from .security import SESSION_COOKIE
+from .security import SESSION_COOKIE, hash_session_token
 
 
 @dataclass
@@ -44,7 +44,8 @@ async def current_auth(
             left join roles r on r.id = u.role_id
             where s.id = $1 and s.expires_at > now()
             """,
-            bos_session,
+            # The cookie holds the raw token; the table holds only its hash.
+            hash_session_token(bos_session),
         )
 
     if row is None:

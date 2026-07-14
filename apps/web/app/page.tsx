@@ -9,10 +9,12 @@ import { ProductShot } from "@/components/marketing/ProductShot";
 import { Reveal } from "@/components/marketing/Reveal";
 import { Marquee } from "@/components/marketing/Marquee";
 
+// Every entry here must be something the product actually does today. If it
+// isn't shipped, it doesn't go on the marquee.
 const CAPABILITIES = [
-  "AI lead scoring", "WhatsApp-first inbox", "Barcode billing", "Restock forecasting",
-  "FBR payroll tax", "Attendance anti-fraud", "Duplicate detection", "Invoice PDFs",
-  "Row-level tenant isolation", "Workflow automations", "Urdu-ready labels", "Bank transfer billing",
+  "Lead scoring", "Duplicate detection", "Barcode billing", "Restock forecasting",
+  "Seasonal demand forecast", "FBR payroll tax", "Invoice PDFs", "Ask-your-data AI",
+  "Row-level tenant isolation", "Workflow automations", "Industry re-skin", "Bank transfer billing",
 ];
 
 export default function Landing() {
@@ -69,8 +71,8 @@ export default function Landing() {
             className="animate-fade-up mt-7 max-w-xl text-base leading-relaxed text-fg-muted"
             style={{ animationDelay: "160ms" }}
           >
-            Sales, billing and staff in one system — localized to your industry, automated by AI,
-            and built WhatsApp-first for Pakistan.
+            Sales, billing and staff in one system — localized to your industry, with an AI that
+            answers questions about your own data. Built for Pakistan: PKR, CNIC, FBR tax.
           </p>
 
           <div className="animate-fade-up mt-9 flex flex-wrap items-center justify-center gap-3" style={{ animationDelay: "240ms" }}>
@@ -161,9 +163,9 @@ export default function Landing() {
 
         <div className="mt-12 grid gap-4 md:grid-cols-3">
           {[
-            { icon: <IconCrm />, title: "Sales / CRM", desc: "Kanban pipeline, AI lead scoring, duplicate detection, and invoicing that flows to accounts." },
-            { icon: <IconPos />, title: "POS & Inventory", desc: "Keyboard-fast billing, barcode scan, and AI that tells you what to restock before Eid." },
-            { icon: <IconHr />, title: "Staff / HRMS", desc: "Attendance with anti-fraud GPS checks, leave approvals, and payroll with FBR tax." },
+            { icon: <IconCrm />, title: "Sales / CRM", desc: "Kanban pipeline, lead scoring, duplicate detection, and invoicing that flows to accounts." },
+            { icon: <IconPos />, title: "POS & Inventory", desc: "Keyboard-fast billing, barcode scan, and demand forecasting that flags what to restock before Eid." },
+            { icon: <IconHr />, title: "Staff / HRMS", desc: "Attendance, leave approvals, and payroll computed on the real FBR 2025-26 slabs." },
           ].map((m, i) => (
             <Reveal key={m.title} delay={i * 110}>
               <Module {...m} />

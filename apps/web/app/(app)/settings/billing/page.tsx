@@ -6,12 +6,15 @@ import { api } from "@/lib/api";
 import { money } from "@/lib/format";
 import { Badge, Button, Card } from "@/components/ui";
 
-const statusTone = { trialing: "warning", active: "success", past_due: "danger", canceled: "danger" } as const;
+const statusTone = {
+  trialing: "warning", active: "success", expired: "danger", past_due: "danger", canceled: "danger",
+} as const;
 
 export default function BillingPage() {
   const [billing, setBilling] = useState<Billing | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [pay, setPay] = useState<PaymentInstructions | null>(null);
+  const [submitted, setSubmitted] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
@@ -28,12 +31,13 @@ export default function BillingPage() {
       setBusy(false);
     }
   }
-  async function confirmPaid() {
+  async function submitPaid() {
     if (!pay) return;
     setBusy(true);
     try {
-      await api(`/billing/payment-requests/${pay.payment_request_id}/confirm`, { method: "POST" });
+      await api(`/billing/payment-requests/${pay.payment_request_id}/submit`, { method: "POST" });
       setPay(null);
+      setSubmitted(true);
       load();
     } finally {
       setBusy(false);
@@ -52,7 +56,9 @@ export default function BillingPage() {
             <Badge tone={statusTone[billing.status]}>{billing.status}</Badge>
           </div>
           <p className="mt-1 text-sm text-fg-muted">
-            {billing.status === "trialing"
+            {billing.status === "expired"
+              ? "Your trial has ended — you're on Starter limits until you upgrade."
+              : billing.status === "trialing"
               ? `${billing.days_left ?? 0} days left in your free trial`
               : billing.current_period_end
               ? `Renews ${new Date(billing.current_period_end).toLocaleDateString("en-PK")}`
@@ -98,7 +104,17 @@ export default function BillingPage() {
         })}
       </div>
 
-      {pay && <PayModal pay={pay} busy={busy} onClose={() => setPay(null)} onConfirm={confirmPaid} />}
+      {submitted && (
+        <Card className="border-brand/40 bg-brand-subtle/20">
+          <p className="text-sm font-medium">Transfer noted — thank you.</p>
+          <p className="mt-1 text-sm text-fg-muted">
+            We&apos;ll match it against your reference and activate the plan, usually within one business day.
+            Nothing changes on your account until the money clears.
+          </p>
+        </Card>
+      )}
+
+      {pay && <PayModal pay={pay} busy={busy} onClose={() => setPay(null)} onSubmit={submitPaid} />}
     </div>
   );
 }
@@ -118,7 +134,7 @@ function Meter({ label, used, max }: { label: string; used: number; max: number 
   );
 }
 
-function PayModal({ pay, busy, onClose, onConfirm }: { pay: PaymentInstructions; busy: boolean; onClose: () => void; onConfirm: () => void }) {
+function PayModal({ pay, busy, onClose, onSubmit }: { pay: PaymentInstructions; busy: boolean; onClose: () => void; onSubmit: () => void }) {
   return (
     <div className="fixed inset-0 z-30 grid place-items-center bg-black/50 p-4" onClick={onClose}>
       <Card className="w-full max-w-sm space-y-3" >
@@ -132,10 +148,13 @@ function PayModal({ pay, busy, onClose, onConfirm }: { pay: PaymentInstructions;
             <Row k="Reference" v={pay.reference} accent />
           </div>
           <p className="text-xs text-fg-subtle">
-            After transferring, click below to activate. (We verify transfers before activation in production.)
+            Include the reference so we can match your transfer. We activate once it clears —
+            usually within one business day.
           </p>
           <div className="flex gap-2">
-            <Button onClick={onConfirm} disabled={busy} className="flex-1">{busy ? "Activating…" : "I've paid — activate"}</Button>
+            <Button onClick={onSubmit} disabled={busy} className="flex-1">
+              {busy ? "Sending…" : "I've sent the transfer"}
+            </Button>
             <button onClick={onClose} className="rounded-lg px-3 text-sm text-fg-muted">Cancel</button>
           </div>
         </div>
