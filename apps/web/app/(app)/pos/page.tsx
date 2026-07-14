@@ -104,6 +104,7 @@ export default function PosBilling() {
           <h1 className="text-xl font-semibold">Point of Sale</h1>
           <div className="flex gap-4 text-sm">
             <Link href="/pos/insights" className="text-brand hover:underline">✦ Insights</Link>
+            <Link href="/pos/drawer" className="text-brand hover:underline">Drawer</Link>
             <Link href="/pos/returns" className="text-brand hover:underline">Returns</Link>
             <Link href="/pos/products" className="text-brand hover:underline">Manage {t("products").toLowerCase()}</Link>
           </div>

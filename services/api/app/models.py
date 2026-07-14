@@ -739,3 +739,36 @@ class LeaveBalance(BaseModel):
     quota: int
     used: int        # approved working days this calendar year
     remaining: int
+
+
+# ─── Cash drawer ─────────────────────────────────────────────────────────────
+class DrawerOpen(BaseModel):
+    opening_float_minor: int = Field(default=0, ge=0)
+
+
+class DrawerClose(BaseModel):
+    counted_minor: int = Field(ge=0)
+    notes: str = ""
+
+
+class MethodTotal(BaseModel):
+    payment_method: str
+    count: int
+    total_minor: int
+
+
+class DrawerOut(BaseModel):
+    id: str
+    status: str
+    opened_at: datetime
+    opened_by: str | None
+    opening_float_minor: int
+    # Live while open; frozen at close.
+    expected_minor: int
+    cash_sales_minor: int
+    cash_refunds_minor: int
+    sales_by_method: list[MethodTotal] = Field(default_factory=list)
+    closed_at: datetime | None = None
+    counted_minor: int | None = None
+    variance_minor: int | None = None   # counted − expected: + over, − short
+    notes: str = ""

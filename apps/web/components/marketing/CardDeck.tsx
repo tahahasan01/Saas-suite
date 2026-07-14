@@ -82,18 +82,24 @@ const CARDS = [
     body: "A pharmacy has patients, a school has students. The words come from a table, not a translation file — so the whole app changes at signup.",
     visual: <VisualTerminology />, // seed.py:12-55, terminology.py:23-35
   },
+  {
+    kicker: "Platform",
+    title: "Turn off what you don't use",
+    body: "Sales, POS and Staff switch on and off in Settings. Off means gone from the nav — no clutter, no upsell nag — and the data stays put for when you switch it back.",
+    visual: <VisualSections />, // models.py:23 SECTIONS, app/(app)/settings/sections/
+  },
 ];
 
 export function CardDeck() {
   const { ref, progress } = useScrollProgress<HTMLElement>();
   const reduced = useReducedMotion();
 
-  // Reduced motion: the same nine cards as an ordinary list. Nothing sticks,
-  // nothing scales — a stacking deck is exactly the vestibular trigger the
-  // media query exists for.
+  // Reduced motion: the same cards as an ordinary list. Nothing sticks, nothing
+  // scales — a stacking deck is exactly the vestibular trigger the media query
+  // exists for. Keeps id/aria so `#modules` still lands here.
   if (reduced) {
     return (
-      <section className="mx-auto max-w-[1100px] px-6 py-20">
+      <section id="modules" aria-label="What Business OS ships" className="mx-auto max-w-[1100px] px-6 py-20">
         <DeckHeading />
         <ul className="mt-10 space-y-5">
           {CARDS.map((c, i) => (
@@ -111,7 +117,14 @@ export function CardDeck() {
   const active = progress * CARDS.length;
 
   return (
-    <section ref={ref} aria-label="What Business OS ships" className="mx-auto max-w-[1100px] px-6 pb-24 pt-20">
+    // id="modules" — the header nav points here now that the old Modules
+    // section (and its orbit) is gone.
+    <section
+      ref={ref}
+      id="modules"
+      aria-label="What Business OS ships"
+      className="mx-auto max-w-[1100px] px-6 pb-24 pt-20"
+    >
       <DeckHeading />
 
       <div className="mt-10">
@@ -147,7 +160,7 @@ function DeckHeading() {
       <div>
         <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-brand">Nº001 — Shipped</p>
         <h2 className="mt-3 text-[clamp(1.7rem,3.4vw,2.9rem)] font-black uppercase leading-[0.95] tracking-[-0.03em]">
-          Nine things it does today.
+          Ten things it does today.
         </h2>
       </div>
       <p className="max-w-sm text-sm leading-relaxed text-fg-muted">
@@ -359,6 +372,33 @@ function VisualRls() {
         <span className="text-[10px] text-success">✓</span>
         <span className="font-mono text-[9px] text-success">0 rows — policy, not filter</span>
       </div>
+    </Panel>
+  );
+}
+
+function VisualSections() {
+  const rows: [string, boolean][] = [
+    ["Sales / CRM", true],
+    ["POS & Inventory", true],
+    ["Staff / HRMS", false],
+  ];
+  return (
+    <Panel>
+      <p className="pb-2 font-mono text-[9px] uppercase tracking-wider text-fg-subtle">Settings · Modules</p>
+      {rows.map(([label, on]) => (
+        <div key={label} className="flex items-center justify-between border-t border-line/70 py-2 text-[10px]">
+          <span className={on ? "text-fg" : "text-fg-subtle"}>{label}</span>
+          {/* A switch, drawn — the real control lives in settings/sections. */}
+          <span
+            className={`flex h-3.5 w-6 shrink-0 items-center rounded-full p-0.5 transition-colors ${
+              on ? "justify-end bg-brand" : "justify-start bg-elevated"
+            }`}
+            aria-hidden
+          >
+            <span className="h-2.5 w-2.5 rounded-full bg-surface" />
+          </span>
+        </div>
+      ))}
     </Panel>
   );
 }

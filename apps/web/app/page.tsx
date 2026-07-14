@@ -5,7 +5,6 @@ import { useSession } from "@/lib/session";
 import { Wordmark } from "@/components/ui";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { RotatingWord } from "@/components/marketing/RotatingWord";
-import { HeroCanvas } from "@/components/marketing/HeroCanvas";
 import { ProductShot } from "@/components/marketing/ProductShot";
 import { Reveal } from "@/components/marketing/Reveal";
 import { Marquee } from "@/components/marketing/Marquee";
@@ -160,29 +159,11 @@ export default function Landing() {
       </section>
 
       {/* ─── Modules ──────────────────────────────────────────────────────── */}
-      <section id="modules" className="mx-auto max-w-6xl px-6 py-20">
-        <div className="grid items-center gap-10 lg:grid-cols-[1fr_460px]">
-          <Reveal>
-            <p className="text-sm font-medium text-brand">Three tools. One login. One AI.</p>
-            <h2 className="mt-2 text-[clamp(1.75rem,3.4vw,2.6rem)] font-bold leading-[1.05] tracking-tight">
-              Activate only what you need — the rest stays out of your way.
-            </h2>
-            <p className="mt-4 max-w-md text-fg-muted">
-              One core, three modules, wired together. Turn one off and it leaves the nav entirely —
-              turn it back on and its data is exactly where you left it.
-            </p>
-          </Reveal>
-
-          {/* One core, three orbiting modules — the thesis, rendered. */}
-          <div className="relative h-[300px] sm:h-[380px]">
-            <HeroCanvas />
-          </div>
-        </div>
-      </section>
-
-      {/* The module cards that used to sit here are now the deck below: nine
-          shipped capabilities, dealt one at a time so each gets read rather
-          than skimmed as a grid. */}
+      {/* The 3D orbit that sat here is gone, and the section with it. Its one
+          claim the deck didn't already make — turn a module off and it leaves
+          the nav — is now card Nº010, so `#modules` points at the deck and the
+          page no longer runs two headings back to back. Removing the orbit also
+          takes three.js off this route: nothing else in the app imports it. */}
       <CardDeck />
 
       {/* ─── The thesis ───────────────────────────────────────────────────── */}

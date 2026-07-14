@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+from datetime import datetime, timezone
 from decimal import Decimal
 
 import asyncpg
@@ -10,10 +11,14 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from .. import csv_io, db, fbr, fbr_submit
 from ..deps import AuthContext
 from ..models import (
+    DrawerClose,
+    DrawerOpen,
+    DrawerOut,
     ForecastItem,
     ForecastOut,
     ImportResult,
     ImportRowError,
+    MethodTotal,
     OccasionForecast,
     PosSummary,
     ProductCreate,
@@ -161,6 +166,98 @@ async def checkout(body: SaleCreate, auth: AuthContext = Depends(require("pos", 
         total_minor=sale["total_minor"], paid_minor=sale["paid_minor"], change_minor=sale["change_minor"],
         payment_method=sale["payment_method"], item_count=sale["item_count"], created_at=sale["created_at"],
         items=items, tax_minor=sale["tax_minor"], fbr_invoice_number=fbr_number, fbr_status=fbr_status)
+
+
+# ── Cash drawer ──────────────────────────────────────────────────────────────
+_CASH_SALES = """
+select coalesce(sum(total_minor), 0) as total, count(*) as n from pos_sales
+ where payment_method = 'cash' and created_at >= $1 and created_at <= $2
+"""
+# Refunds leave the drawer only if the money went in through it: returns against
+# card/wallet sales are reversed on that rail, not handed out of the till.
+_CASH_REFUNDS = """
+select coalesce(sum(r.refund_minor), 0) as total from pos_returns r
+  join pos_sales s on s.id = r.sale_id
+ where s.payment_method = 'cash' and r.created_at >= $1 and r.created_at <= $2
+"""
+_BY_METHOD = """
+select payment_method, count(*) as n, coalesce(sum(total_minor), 0) as total
+  from pos_sales where created_at >= $1 and created_at <= $2
+ group by payment_method order by total desc
+"""
+
+
+async def _drawer_out(conn, row) -> DrawerOut:
+    window_end = row["closed_at"] or datetime.now(timezone.utc)
+    cash = await conn.fetchrow(_CASH_SALES, row["opened_at"], window_end)
+    refunds = await conn.fetchval(_CASH_REFUNDS, row["opened_at"], window_end)
+    by_method = await conn.fetch(_BY_METHOD, row["opened_at"], window_end)
+    # Frozen at close; live while open.
+    expected = row["expected_minor"] if row["expected_minor"] is not None else (
+        row["opening_float_minor"] + cash["total"] - refunds)
+    opener = await conn.fetchval("select name from users where id=$1", row["opened_by"])
+    return DrawerOut(
+        id=str(row["id"]), status=row["status"], opened_at=row["opened_at"], opened_by=opener,
+        opening_float_minor=row["opening_float_minor"], expected_minor=expected,
+        cash_sales_minor=cash["total"], cash_refunds_minor=refunds,
+        sales_by_method=[MethodTotal(payment_method=r["payment_method"], count=r["n"],
+                                     total_minor=r["total"]) for r in by_method],
+        closed_at=row["closed_at"], counted_minor=row["counted_minor"],
+        variance_minor=(row["counted_minor"] - expected) if row["counted_minor"] is not None else None,
+        notes=row["notes"])
+
+
+@router.post("/drawer/open", response_model=DrawerOut, status_code=status.HTTP_201_CREATED)
+async def open_drawer(body: DrawerOpen, auth: AuthContext = Depends(require("pos", "write"))):
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        try:
+            row = await conn.fetchrow(
+                """insert into pos_drawers (tenant_id, opened_by, opening_float_minor)
+                   values ($1,$2,$3) returning *""",
+                auth.tenant_id, auth.user_id, body.opening_float_minor)
+        except asyncpg.UniqueViolationError:
+            raise HTTPException(status.HTTP_409_CONFLICT,
+                                "A drawer is already open — close it before starting a new one.")
+        return await _drawer_out(conn, row)
+
+
+@router.get("/drawer/current", response_model=DrawerOut)
+async def current_drawer(auth: AuthContext = Depends(require("pos", "read"))):
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        row = await conn.fetchrow("select * from pos_drawers where status='open'")
+        if row is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "No drawer is open")
+        return await _drawer_out(conn, row)
+
+
+@router.post("/drawer/close", response_model=DrawerOut)
+async def close_drawer(body: DrawerClose, auth: AuthContext = Depends(require("pos", "write"))):
+    """Freezes the expected figure at close: the shift's reconciliation is
+    evidence, and a later sale edit must not silently rewrite a signed-off
+    variance."""
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        row = await conn.fetchrow("select * from pos_drawers where status='open'")
+        if row is None:
+            raise HTTPException(status.HTTP_409_CONFLICT, "No drawer is open.")
+        now = datetime.now(timezone.utc)
+        cash = await conn.fetchrow(_CASH_SALES, row["opened_at"], now)
+        refunds = await conn.fetchval(_CASH_REFUNDS, row["opened_at"], now)
+        expected = row["opening_float_minor"] + cash["total"] - refunds
+        closed = await conn.fetchrow(
+            """update pos_drawers
+                  set status='closed', closed_by=$2, closed_at=$3,
+                      expected_minor=$4, counted_minor=$5, notes=$6
+                where id=$1 returning *""",
+            row["id"], auth.user_id, now, expected, body.counted_minor, body.notes)
+        return await _drawer_out(conn, closed)
+
+
+@router.get("/drawer/history", response_model=list[DrawerOut])
+async def drawer_history(auth: AuthContext = Depends(require("pos", "read"))):
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        rows = await conn.fetch(
+            "select * from pos_drawers where status='closed' order by closed_at desc limit 30")
+        return [await _drawer_out(conn, r) for r in rows]
 
 
 # ── CSV import / export ─────────────────────────────────────────────────────
