@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { money } from "@/lib/format";
 import { useSession } from "@/lib/session";
 import { Button, Card, Input, Select } from "@/components/ui";
+import { FbrStamp } from "@/components/pos/FbrStamp";
 
 interface Line {
   product: Product;
@@ -213,9 +214,13 @@ function Receipt({ sale, onClose }: { sale: Sale; onClose: () => void }) {
           </div>
           <div className="border-t border-line pt-2">
             <Row label="Total" value={money(sale.total_minor)} bold />
+            {sale.tax_minor > 0 && <Row label="incl. sales tax" value={money(sale.tax_minor)} />}
             <Row label="Paid" value={money(sale.paid_minor)} />
             <Row label="Change" value={money(sale.change_minor)} />
           </div>
+
+          <FbrStamp invoiceNumber={sale.fbr_invoice_number} status={sale.fbr_status} />
+
           <div className="no-print flex gap-2">
             <Button variant="subtle" onClick={() => window.print()} className="flex-1">Print</Button>
             <Button onClick={onClose} className="flex-1">New sale</Button>

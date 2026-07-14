@@ -8,7 +8,7 @@ import { money } from "@/lib/format";
 import { useSession } from "@/lib/session";
 import { Badge, Button, Card, Field, Input } from "@/components/ui";
 
-const blank = { name: "", price: "", stock: "", barcode: "", low: "" };
+const blank = { name: "", price: "", stock: "", barcode: "", low: "", hs_code: "", tax_rate: "" };
 
 /** Minor units in the API, rupees in the input — convert at the boundary only. */
 const toMinor = (rupees: string) => Math.round(Number(rupees || 0) * 100);
@@ -40,6 +40,8 @@ export default function ProductsPage() {
           price_minor: toMinor(form.price),
           stock_qty: Number(form.stock || 0),
           low_stock_at: Number(form.low || 0),
+          hs_code: form.hs_code,
+          tax_rate: Number(form.tax_rate || 0),
         }),
       });
       setForm(blank);
@@ -120,6 +122,12 @@ export default function ProductsPage() {
               <Field label="Barcode"><Input value={form.barcode} onChange={(e) => setForm({ ...form, barcode: e.target.value })} /></Field>
               <Field label="Low-stock at"><Input type="number" min={0} value={form.low} onChange={(e) => setForm({ ...form, low: e.target.value })} /></Field>
             </div>
+            {/* Required on every FBR line item — a wrong HS code is the most
+                common rejection (error 0052). */}
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="HS code"><Input value={form.hs_code} placeholder="0101.2100" onChange={(e) => setForm({ ...form, hs_code: e.target.value })} /></Field>
+              <Field label="Tax rate %"><Input type="number" min={0} max={100} step="0.01" value={form.tax_rate} placeholder="18" onChange={(e) => setForm({ ...form, tax_rate: e.target.value })} /></Field>
+            </div>
             <Button type="submit" disabled={busy} className="w-full">{busy ? "Adding…" : `Add ${t("product")}`}</Button>
           </form>
         </Card>
@@ -134,9 +142,16 @@ function ViewRow({ p, onEdit, onArchive }: { p: Product; onEdit: () => void; onA
     <tr className={`border-b border-line/60 ${p.active ? "" : "opacity-55"}`}>
       <td className="p-3">
         <p className="font-medium">{p.name}</p>
-        {p.barcode && <p className="text-xs text-fg-subtle">{p.barcode}</p>}
+        <p className="text-xs text-fg-subtle">
+          {p.barcode && <span>{p.barcode}</span>}
+          {p.barcode && p.hs_code && " · "}
+          {p.hs_code && <span>HS {p.hs_code}</span>}
+        </p>
       </td>
-      <td className="p-3 tabular-nums">{money(p.price_minor)}</td>
+      <td className="p-3 tabular-nums">
+        {money(p.price_minor)}
+        {p.tax_rate > 0 && <span className="ml-1 text-xs text-fg-subtle">+{p.tax_rate}%</span>}
+      </td>
       <td className="p-3">
         <span className="mr-2 tabular-nums">{p.stock_qty} {p.unit}</span>
         {low && <Badge tone="warning">low</Badge>}
@@ -155,15 +170,25 @@ function ViewRow({ p, onEdit, onArchive }: { p: Product; onEdit: () => void; onA
 /* Archiving rather than deleting: a sold product is referenced by past sales,
    so removing the row would rewrite history. */
 function EditRow({ p, onCancel, onSave }: { p: Product; onCancel: () => void; onSave: (b: Partial<Product>) => void }) {
-  const [name, setName] = useState(p.name);
-  const [price, setPrice] = useState((p.price_minor / 100).toString());
-  const [stock, setStock] = useState(p.stock_qty.toString());
+  const [f, setF] = useState({
+    name: p.name,
+    price: (p.price_minor / 100).toString(),
+    stock: p.stock_qty.toString(),
+    hs_code: p.hs_code,
+    tax_rate: p.tax_rate.toString(),
+  });
   const [saving, setSaving] = useState(false);
 
   async function save() {
     setSaving(true);
     try {
-      await onSave({ name, price_minor: toMinor(price), stock_qty: Number(stock || 0) });
+      await onSave({
+        name: f.name,
+        price_minor: toMinor(f.price),
+        stock_qty: Number(f.stock || 0),
+        hs_code: f.hs_code,
+        tax_rate: Number(f.tax_rate || 0),
+      });
     } finally {
       setSaving(false);
     }
@@ -171,10 +196,16 @@ function EditRow({ p, onCancel, onSave }: { p: Product; onCancel: () => void; on
 
   return (
     <tr className="border-b border-line/60 bg-elevated/40">
-      <td className="p-2"><Input value={name} onChange={(e) => setName(e.target.value)} aria-label="Name" /></td>
-      <td className="p-2"><Input type="number" min={0} step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} aria-label="Price" /></td>
-      <td className="p-2"><Input type="number" min={0} value={stock} onChange={(e) => setStock(e.target.value)} aria-label="Stock" /></td>
-      <td className="p-2 text-right">
+      <td className="p-2">
+        <Input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} aria-label="Name" />
+        <div className="mt-1 grid grid-cols-2 gap-1">
+          <Input value={f.hs_code} onChange={(e) => setF({ ...f, hs_code: e.target.value })} placeholder="HS code" aria-label="HS code" className="text-xs" />
+          <Input type="number" min={0} max={100} step="0.01" value={f.tax_rate} onChange={(e) => setF({ ...f, tax_rate: e.target.value })} placeholder="Tax %" aria-label="Tax rate" className="text-xs" />
+        </div>
+      </td>
+      <td className="p-2 align-top"><Input type="number" min={0} step="0.01" value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} aria-label="Price" /></td>
+      <td className="p-2 align-top"><Input type="number" min={0} value={f.stock} onChange={(e) => setF({ ...f, stock: e.target.value })} aria-label="Stock" /></td>
+      <td className="p-2 text-right align-top">
         <div className="flex justify-end gap-1">
           <Button size="sm" onClick={save} disabled={saving}>{saving ? "…" : "Save"}</Button>
           <Button size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>

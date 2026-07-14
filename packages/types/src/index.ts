@@ -154,6 +154,12 @@ export interface Product {
   stock_qty: number;
   low_stock_at: number;
   active: boolean;
+  /** Harmonized System code — required on every FBR line item. */
+  hs_code: string;
+  /** Sales tax percentage applied to this product. */
+  tax_rate: number;
+  /** Unit of measurement from FBR's reference list (distinct from `unit`). */
+  fbr_uom: string;
 }
 
 export interface SaleItem {
@@ -174,6 +180,34 @@ export interface Sale {
   item_count: number;
   created_at: string;
   items: SaleItem[];
+  tax_minor: number;
+  /** Issued by FBR; null while a submission is queued for retry. */
+  fbr_invoice_number: string | null;
+  /** 'submitted' | 'pending', or null when FBR invoicing is off. */
+  fbr_status: string | null;
+}
+
+// ─── FBR Digital Invoicing ──────────────────────────────────────────────────
+export interface FbrSettings {
+  enabled: boolean;
+  environment: "sandbox" | "production";
+  seller_ntn_cnic: string;
+  seller_business_name: string;
+  seller_province: string;
+  seller_address: string;
+  prices_include_tax: boolean;
+  /** The token itself is write-only and never returned. */
+  token_set: boolean;
+}
+
+export interface FbrInvoice {
+  sale_id: string;
+  status: string;
+  fbr_invoice_number: string | null;
+  error_code: string;
+  error: string;
+  attempts: number;
+  created_at: string;
 }
 
 export interface PosSummary {
