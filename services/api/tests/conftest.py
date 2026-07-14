@@ -33,6 +33,38 @@ class Tenant:
     employee_id: str
 
 
+@dataclass
+class PosTenant:
+    tenant_id: str
+
+
+async def _signup(client, sections: list[str]) -> str:
+    """Signs up a tenant, leaves `client` authenticated as its owner, returns its id."""
+    # Not a .test/.invalid domain: those are reserved TLDs and email-validator
+    # rejects them outright, which fails signup before it reaches any logic.
+    r = await client.post("/auth/signup", json={
+        "company_name": "Fixture Co",
+        "industry_type": "retail",
+        "sections": sections,
+        "name": "Test Owner",
+        "email": f"test+{uuid.uuid4().hex[:10]}@example.com",
+        "password": "Sup3rSecret!23",
+    })
+    r.raise_for_status()
+    # Cookie on the client, not per-request: httpx deprecates the latter.
+    client.cookies.set(SESSION_COOKIE, r.cookies[SESSION_COOKIE])
+    return r.json()["tenant"]["id"]
+
+
+async def _drop(tenant_id: str) -> None:
+    """Cascades to every tenant-scoped row."""
+    owner = await asyncpg.connect(settings.database_url)
+    try:
+        await owner.execute("delete from tenants where id = $1", uuid.UUID(tenant_id))
+    finally:
+        await owner.close()
+
+
 @pytest_asyncio.fixture
 async def client():
     # Drive the ASGI app directly. The pools are opened by hand because
@@ -53,28 +85,15 @@ async def tenant(client):
     Signup seeds sample employees, so this doubles as a check that a real
     tenant's first-run state is sane.
     """
-    # Not a .test/.invalid domain: those are reserved TLDs and email-validator
-    # rejects them outright, which fails signup before it reaches any logic.
-    email = f"test+{uuid.uuid4().hex[:10]}@example.com"
-    r = await client.post("/auth/signup", json={
-        "company_name": "Fixture Co",
-        "industry_type": "retail",
-        "sections": ["hrms"],
-        "name": "Test Owner",
-        "email": email,
-        "password": "Sup3rSecret!23",
-    })
-    r.raise_for_status()
-    # Cookie on the client, not per-request: httpx deprecates the latter.
-    client.cookies.set(SESSION_COOKIE, r.cookies[SESSION_COOKIE])
-    tenant_id = r.json()["tenant"]["id"]
-
+    tenant_id = await _signup(client, ["hrms"])
     employees = (await client.get("/hrms/employees")).json()
     yield Tenant(tenant_id=tenant_id, employee_id=employees[0]["id"])
+    await _drop(tenant_id)
 
-    # Cascades to every tenant-scoped row.
-    owner = await asyncpg.connect(settings.database_url)
-    try:
-        await owner.execute("delete from tenants where id = $1", uuid.UUID(tenant_id))
-    finally:
-        await owner.close()
+
+@pytest_asyncio.fixture
+async def pos_tenant(client):
+    """A freshly signed-up POS tenant, seeded with sample products."""
+    tenant_id = await _signup(client, ["pos"])
+    yield PosTenant(tenant_id=tenant_id)
+    await _drop(tenant_id)

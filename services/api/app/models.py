@@ -350,6 +350,50 @@ class SaleOut(BaseModel):
     fbr_status: str | None = None       # 'submitted' | 'pending' | None (FBR off)
 
 
+class SaleDetail(SaleOut):
+    """A sale plus what is still returnable on each line."""
+    returnable: list["ReturnableLine"] = Field(default_factory=list)
+
+
+class ReturnableLine(BaseModel):
+    sale_item_id: str
+    product_id: str | None
+    name: str
+    qty_sold: float
+    qty_returned: float
+    qty_returnable: float
+    price_minor: int
+
+
+class ReturnLine(BaseModel):
+    sale_item_id: str
+    qty: float = Field(gt=0)
+
+
+class ReturnCreate(BaseModel):
+    items: list[ReturnLine] = Field(min_length=1)
+    reason: str = ""
+    restock: bool = True   # damaged goods come back to the shop but not the shelf
+
+
+class ReturnItemOut(BaseModel):
+    name: str
+    qty: float
+    line_refund_minor: int
+
+
+class ReturnOut(BaseModel):
+    id: str
+    sale_id: str
+    reason: str
+    refund_minor: int
+    tax_minor: int
+    created_at: datetime
+    items: list[ReturnItemOut] = Field(default_factory=list)
+    fbr_invoice_number: str | None = None
+    fbr_status: str | None = None
+
+
 # ─── FBR Digital Invoicing ──────────────────────────────────────────────────
 class FbrSettingsOut(BaseModel):
     enabled: bool

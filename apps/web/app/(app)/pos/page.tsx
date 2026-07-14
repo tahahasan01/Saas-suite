@@ -104,6 +104,7 @@ export default function PosBilling() {
           <h1 className="text-xl font-semibold">Point of Sale</h1>
           <div className="flex gap-4 text-sm">
             <Link href="/pos/insights" className="text-brand hover:underline">✦ Insights</Link>
+            <Link href="/pos/returns" className="text-brand hover:underline">Returns</Link>
             <Link href="/pos/products" className="text-brand hover:underline">Manage {t("products").toLowerCase()}</Link>
           </div>
         </div>
@@ -203,7 +204,8 @@ function Receipt({ sale, onClose }: { sale: Sale; onClose: () => void }) {
       <Card className="w-full max-w-xs space-y-2 text-sm" >
         <div onClick={(e) => e.stopPropagation()} className="receipt-print space-y-2">
           <p className="text-center text-base font-semibold text-success">✓ Sale complete</p>
-          <p className="text-center text-xs text-fg-subtle">Receipt #{sale.id.slice(0, 8).toUpperCase()}</p>
+          {/* Full id, not a slice: this is what Returns looks the sale up by. */}
+          <p className="text-center font-mono text-[10px] text-fg-subtle">{sale.id}</p>
           <div className="border-t border-line pt-2">
             {sale.items.map((it, i) => (
               <div key={i} className="flex justify-between">

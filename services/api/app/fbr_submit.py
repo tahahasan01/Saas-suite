@@ -33,7 +33,7 @@ async def _record(conn, tenant_id: str, sale_id: str, result: fbr.FbrResult) -> 
         """insert into pos_fbr_invoices (tenant_id, sale_id, status, fbr_invoice_number,
                                          error_code, error, attempts, last_attempt_at)
            values ($1,$2,$3,$4,$5,$6,1, now())
-           on conflict (sale_id) do update
+           on conflict (sale_id) where return_id is null do update
              set status = excluded.status,
                  fbr_invoice_number = excluded.fbr_invoice_number,
                  error_code = excluded.error_code,
@@ -42,6 +42,45 @@ async def _record(conn, tenant_id: str, sale_id: str, result: fbr.FbrResult) -> 
                  last_attempt_at = now()""",
         tenant_id, sale_id, "submitted" if result.ok else "pending",
         result.invoice_number, result.error_code, result.error)
+
+
+async def submit_return(tenant_id: str, return_id: str, settings, lines,
+                        original_invoice_number: str) -> fbr.FbrResult:
+    """File a return as a Debit Note against the invoice the sale was filed under.
+
+    `lines` are (sale_item_row, qty, line_refund_minor). Only callable once the
+    original sale was accepted — a debit note cannot reference an invoice number
+    FBR never issued.
+    """
+    # Rows come from pos._RETURNABLE, which carries the FBR columns for exactly
+    # this reason.
+    items = [{
+        "name": row["name"],
+        "quantity": qty,
+        "hs_code": row["hs_code"],
+        "fbr_uom": row["fbr_uom"],
+        "tax_rate": row["tax_rate"],
+        "line_total_minor": line_refund,
+    } for row, qty, line_refund in lines]
+
+    payload = fbr.build_payload(settings, items, invoice_date=date.today())
+    payload["invoiceType"] = "Debit Note"
+    payload["invoiceRefNo"] = original_invoice_number
+
+    result = await fbr.post_invoice(settings, payload)
+    async with db.tenant_conn(tenant_id) as conn:
+        await conn.execute(
+            """insert into pos_fbr_invoices (tenant_id, sale_id, return_id, status,
+                                             fbr_invoice_number, error_code, error,
+                                             attempts, last_attempt_at)
+               select $1, r.sale_id, $2, $3, $4, $5, $6, 1, now()
+                 from pos_returns r where r.id = $2""",
+            tenant_id, return_id, "submitted" if result.ok else "pending",
+            result.invoice_number, result.error_code, result.error)
+    if not result.ok:
+        log.warning("FBR debit note for return %s not filed (%s): %s",
+                    return_id, result.error_code, result.error)
+    return result
 
 
 async def submit_sale(tenant_id: str, sale_id: str, settings, lines) -> fbr.FbrResult:

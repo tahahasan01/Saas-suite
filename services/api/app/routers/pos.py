@@ -18,7 +18,12 @@ from ..models import (
     ProductOut,
     ProductUpdate,
     RestockItem,
+    ReturnableLine,
+    ReturnCreate,
+    ReturnItemOut,
+    ReturnOut,
     SaleCreate,
+    SaleDetail,
     SaleItemOut,
     SaleOut,
 )
@@ -154,6 +159,121 @@ async def checkout(body: SaleCreate, auth: AuthContext = Depends(require("pos", 
         total_minor=sale["total_minor"], paid_minor=sale["paid_minor"], change_minor=sale["change_minor"],
         payment_method=sale["payment_method"], item_count=sale["item_count"], created_at=sale["created_at"],
         items=items, tax_minor=sale["tax_minor"], fbr_invoice_number=fbr_number, fbr_status=fbr_status)
+
+
+# ── Returns ─────────────────────────────────────────────────────────────────
+# What each line of a sale has left to give back. The left join + coalesce is
+# the guard against refunding three of two items across separate visits.
+_RETURNABLE = """
+select i.id as sale_item_id, i.product_id, i.name, i.qty as qty_sold, i.price_minor,
+       coalesce((select sum(r.qty) from pos_return_items r where r.sale_item_id = i.id), 0) as qty_returned,
+       -- Carried through for the FBR debit note: a note without an HS code is
+       -- rejected with error 0052.
+       coalesce(p.hs_code, '') as hs_code,
+       coalesce(p.tax_rate, 0) as tax_rate,
+       coalesce(p.fbr_uom, 'Numbers, pieces, units') as fbr_uom
+  from pos_sale_items i
+  left join pos_products p on p.id = i.product_id
+ where i.sale_id = $1
+ order by i.name
+"""
+
+
+@router.get("/sales/{sale_id}", response_model=SaleDetail)
+async def get_sale(sale_id: str, auth: AuthContext = Depends(require("pos", "read"))):
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        sale = await conn.fetchrow("select * from pos_sales where id=$1", sale_id)
+        if sale is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Sale not found")
+        lines = await conn.fetch(_RETURNABLE, sale_id)
+        fbr_row = await conn.fetchrow(
+            "select fbr_invoice_number, status from pos_fbr_invoices where sale_id=$1 and return_id is null",
+            sale_id)
+    returnable = [ReturnableLine(
+        sale_item_id=str(r["sale_item_id"]),
+        product_id=str(r["product_id"]) if r["product_id"] else None,
+        name=r["name"], qty_sold=float(r["qty_sold"]), qty_returned=float(r["qty_returned"]),
+        qty_returnable=float(r["qty_sold"]) - float(r["qty_returned"]), price_minor=r["price_minor"],
+    ) for r in lines]
+    return SaleDetail(
+        id=str(sale["id"]), subtotal_minor=sale["subtotal_minor"], discount_minor=sale["discount_minor"],
+        total_minor=sale["total_minor"], paid_minor=sale["paid_minor"], change_minor=sale["change_minor"],
+        payment_method=sale["payment_method"], item_count=sale["item_count"], created_at=sale["created_at"],
+        tax_minor=sale["tax_minor"],
+        fbr_invoice_number=fbr_row["fbr_invoice_number"] if fbr_row else None,
+        fbr_status=fbr_row["status"] if fbr_row else None,
+        items=[SaleItemOut(name=r["name"], qty=float(r["qty_sold"]), price_minor=r["price_minor"],
+                           line_total_minor=round(r["price_minor"] * float(r["qty_sold"])))
+               for r in lines],
+        returnable=returnable)
+
+
+@router.post("/sales/{sale_id}/returns", response_model=ReturnOut, status_code=status.HTTP_201_CREATED)
+async def create_return(sale_id: str, body: ReturnCreate,
+                        auth: AuthContext = Depends(require("pos", "write"))):
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        if await conn.fetchval("select 1 from pos_sales where id=$1", sale_id) is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Sale not found")
+        available = {str(r["sale_item_id"]): r for r in await conn.fetch(_RETURNABLE, sale_id)}
+
+        refund = tax_total = 0
+        lines = []
+        for want in body.items:
+            row = available.get(want.sale_item_id)
+            if row is None:
+                raise HTTPException(status.HTTP_404_NOT_FOUND, "That item isn't on this sale")
+            left = float(row["qty_sold"]) - float(row["qty_returned"])
+            if want.qty > left:
+                raise HTTPException(
+                    status.HTTP_409_CONFLICT,
+                    f"Only {left:g} of {row['name']} can be returned — {row['qty_returned']:g} already came back.")
+            line_refund = round(row["price_minor"] * want.qty)
+            refund += line_refund
+            lines.append((row, want.qty, line_refund))
+
+        fbr_cfg = await conn.fetchrow("select * from fbr_settings where tenant_id=$1", auth.tenant_id)
+        if fbr_cfg and fbr_cfg["enabled"]:
+            for row, qty, line_refund in lines:
+                rate = await conn.fetchval(
+                    "select coalesce(tax_rate, 0) from pos_products where id=$1", row["product_id"]) or 0
+                _, line_tax = fbr.split_tax(line_refund, Decimal(str(rate)), fbr_cfg["prices_include_tax"])
+                tax_total += line_tax
+
+        return_id = await conn.fetchval(
+            """insert into pos_returns (tenant_id, sale_id, cashier_id, reason, refund_minor, tax_minor)
+               values ($1,$2,$3,$4,$5,$6) returning id""",
+            auth.tenant_id, sale_id, auth.user_id, body.reason, refund, tax_total)
+
+        items = []
+        for row, qty, line_refund in lines:
+            await conn.execute(
+                """insert into pos_return_items (tenant_id, return_id, sale_item_id, product_id,
+                                                 name, qty, line_refund_minor)
+                   values ($1,$2,$3,$4,$5,$6,$7)""",
+                auth.tenant_id, return_id, row["sale_item_id"], row["product_id"], row["name"], qty, line_refund)
+            # Damaged goods come back to the shop but not to the shelf.
+            if body.restock and row["product_id"]:
+                await conn.execute("update pos_products set stock_qty = stock_qty + $1 where id=$2",
+                                   qty, row["product_id"])
+            items.append(ReturnItemOut(name=row["name"], qty=qty, line_refund_minor=line_refund))
+
+        original = await conn.fetchrow(
+            """select fbr_invoice_number from pos_fbr_invoices
+                where sale_id=$1 and return_id is null and status='submitted'""", sale_id)
+        created_at = await conn.fetchval("select created_at from pos_returns where id=$1", return_id)
+
+    fbr_number = fbr_status = None
+    if fbr_cfg and fbr_cfg["enabled"] and original and original["fbr_invoice_number"]:
+        # FBR models a return as a Debit Note against the original invoice. Only
+        # possible once the sale itself was filed — a return cannot reference an
+        # invoice number FBR never issued.
+        result = await fbr_submit.submit_return(
+            auth.tenant_id, str(return_id), fbr_cfg, lines, original["fbr_invoice_number"])
+        fbr_number, fbr_status = result.invoice_number, ("submitted" if result.ok else "pending")
+
+    return ReturnOut(id=str(return_id), sale_id=sale_id, reason=body.reason, refund_minor=refund,
+                     tax_minor=tax_total, created_at=created_at, items=items,
+                     fbr_invoice_number=fbr_number, fbr_status=fbr_status)
 
 
 @router.get("/summary", response_model=PosSummary)

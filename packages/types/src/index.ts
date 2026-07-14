@@ -187,6 +187,32 @@ export interface Sale {
   fbr_status: string | null;
 }
 
+export interface ReturnableLine {
+  sale_item_id: string;
+  product_id: string | null;
+  name: string;
+  qty_sold: number;
+  qty_returned: number;
+  qty_returnable: number;
+  price_minor: number;
+}
+
+export interface SaleDetail extends Sale {
+  returnable: ReturnableLine[];
+}
+
+export interface PosReturn {
+  id: string;
+  sale_id: string;
+  reason: string;
+  refund_minor: number;
+  tax_minor: number;
+  created_at: string;
+  items: { name: string; qty: number; line_refund_minor: number }[];
+  fbr_invoice_number: string | null;
+  fbr_status: string | null;
+}
+
 // ─── FBR Digital Invoicing ──────────────────────────────────────────────────
 export interface FbrSettings {
   enabled: boolean;
