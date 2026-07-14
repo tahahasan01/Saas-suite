@@ -6,6 +6,7 @@ import {
   INTERACTION_OUTCOMES,
   type FulfillmentSchema,
   type Invoice,
+  type Lead,
   type LeadDetail,
 } from "@business-os/types";
 import { api } from "@/lib/api";
@@ -24,6 +25,7 @@ export function LeadDrawer({ leadId, onClose, onChanged }: { leadId: string; onC
   const [schema, setSchema] = useState<FulfillmentSchema | null>(null);
   const [fdata, setFdata] = useState<Record<string, string>>({});
   const [fsaving, setFsaving] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const load = useCallback(() => {
     api<LeadDetail>(`/crm/leads/${leadId}`).then(setData).catch(() => setData(null));
@@ -108,12 +110,25 @@ export function LeadDrawer({ leadId, onClose, onChanged }: { leadId: string; onC
               <button onClick={onClose} className="text-fg-subtle hover:text-fg">✕</button>
             </div>
 
-            <dl className="mb-6 grid grid-cols-2 gap-2 text-sm">
-              <Info label="Phone" value={data.lead.phone || "—"} />
-              <Info label="Email" value={data.lead.email || "—"} />
-              <Info label="Value" value={money(data.lead.value_minor, data.lead.currency)} />
-              <Info label="Source" value={data.lead.source} />
-            </dl>
+            {editing ? (
+              <EditLead
+                lead={data.lead}
+                onCancel={() => setEditing(false)}
+                onSaved={() => { setEditing(false); load(); onChanged(); }}
+              />
+            ) : (
+              <>
+                <dl className="mb-2 grid grid-cols-2 gap-2 text-sm">
+                  <Info label="Phone" value={data.lead.phone || "—"} />
+                  <Info label="Email" value={data.lead.email || "—"} />
+                  <Info label="Value" value={money(data.lead.value_minor, data.lead.currency)} />
+                  <Info label="Source" value={data.lead.source} />
+                </dl>
+                <div className="mb-6">
+                  <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>Edit details</Button>
+                </div>
+              </>
+            )}
 
             {data.lead.stage_kind === "won" && schema && (
               <div className="mb-6 space-y-2 rounded-lg border border-brand/40 bg-brand-subtle/40 p-3">
@@ -219,5 +234,69 @@ function Info({ label, value }: { label: string; value: string }) {
       <dt className="text-xs text-fg-subtle">{label}</dt>
       <dd className="text-fg">{value}</dd>
     </div>
+  );
+}
+
+/** PATCH /crm/leads/{id} already accepted these; nothing ever called it, so a
+ *  typo in a phone number was permanent. */
+function EditLead({ lead, onCancel, onSaved }: { lead: Lead; onCancel: () => void; onSaved: () => void }) {
+  const [f, setF] = useState({
+    name: lead.name,
+    company: lead.company,
+    phone: lead.phone,
+    email: lead.email,
+    value: (lead.value_minor / 100).toString(),
+  });
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setErr(null);
+    try {
+      await api(`/crm/leads/${lead.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          name: f.name,
+          company: f.company,
+          phone: f.phone,
+          email: f.email,
+          value_minor: Math.round(Number(f.value || 0) * 100),
+        }),
+      });
+      onSaved();
+    } catch {
+      setErr("Couldn't save those changes. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={save} className="mb-6 space-y-3 rounded-lg border border-line bg-elevated/40 p-3">
+      <label className="block text-xs text-fg-subtle">Name
+        <Input className="mt-1" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required />
+      </label>
+      <label className="block text-xs text-fg-subtle">Company
+        <Input className="mt-1" value={f.company} onChange={(e) => setF({ ...f, company: e.target.value })} />
+      </label>
+      <div className="grid grid-cols-2 gap-2">
+        <label className="block text-xs text-fg-subtle">Phone
+          <Input className="mt-1" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />
+        </label>
+        <label className="block text-xs text-fg-subtle">Value (PKR)
+          <Input className="mt-1" type="number" min={0} step="0.01" value={f.value} onChange={(e) => setF({ ...f, value: e.target.value })} />
+        </label>
+      </div>
+      <label className="block text-xs text-fg-subtle">Email
+        <Input className="mt-1" type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
+      </label>
+      {err && <p className="text-xs text-danger">{err}</p>}
+      <div className="flex gap-2">
+        <Button size="sm" type="submit" disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
+        <Button size="sm" variant="ghost" type="button" onClick={onCancel}>Cancel</Button>
+      </div>
+    </form>
   );
 }

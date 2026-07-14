@@ -46,15 +46,20 @@ def _product(r: asyncpg.Record) -> ProductOut:
 
 
 @router.get("/products", response_model=list[ProductOut])
-async def list_products(q: str | None = None, auth: AuthContext = Depends(require("pos", "read"))):
+async def list_products(q: str | None = None, include_archived: bool = False,
+                        auth: AuthContext = Depends(require("pos", "read"))):
+    """Archived products stay listable behind a flag — otherwise archiving is a
+    one-way trip and the catalog can never be un-done."""
     async with db.tenant_conn(auth.tenant_id) as conn:
         if q:
             rows = await conn.fetch(
-                """select * from pos_products where active
+                """select * from pos_products where (active or $2)
                    and (name ilike '%'||$1||'%' or sku ilike '%'||$1||'%' or barcode = $1)
-                   order by name limit 50""", q)
+                   order by active desc, name limit 50""", q, include_archived)
         else:
-            rows = await conn.fetch("select * from pos_products where active order by name limit 200")
+            rows = await conn.fetch(
+                "select * from pos_products where (active or $1) order by active desc, name limit 200",
+                include_archived)
     return [_product(r) for r in rows]
 
 
