@@ -4,15 +4,21 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Billing } from "@business-os/types";
 import { api } from "@/lib/api";
+import { useSession } from "@/lib/session";
 
 export function TrialBanner() {
+  const { me } = useSession();
   const [billing, setBilling] = useState<Billing | null>(null);
+  // Billing is the owner's concern — an employee login must never see an
+  // "Upgrade" nudge (and the /billing call would be noise on their session).
+  const isEmployee = me?.employee_portal;
 
   useEffect(() => {
+    if (isEmployee) return;
     api<Billing>("/billing").then(setBilling).catch(() => {});
-  }, []);
+  }, [isEmployee]);
 
-  if (!billing || billing.status !== "trialing") return null;
+  if (isEmployee || !billing || billing.status !== "trialing") return null;
   const days = billing.days_left ?? 0;
   const urgent = days <= 3;
 

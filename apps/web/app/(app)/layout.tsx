@@ -17,8 +17,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    if (!loading && !me) router.replace("/login");
-  }, [me, loading, router]);
+    if (loading) return;
+    if (!me) { router.replace("/login"); return; }
+    // Keep the two worlds apart: an employee login only ever sees /me/*, and an
+    // admin has no self-service pages to land on. The backend enforces this too;
+    // this just avoids showing a screen that would only 403.
+    const inPortal = pathname === "/me" || pathname.startsWith("/me/");
+    if (me.employee_portal && !inPortal) router.replace("/me");
+    else if (!me.employee_portal && inPortal) router.replace("/dashboard");
+  }, [me, loading, pathname, router]);
 
   useEffect(() => setMenuOpen(false), [pathname]); // close drawer on navigate
 

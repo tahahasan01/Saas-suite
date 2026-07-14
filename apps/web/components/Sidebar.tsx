@@ -13,13 +13,21 @@ export function Sidebar() {
   if (!me) return null;
 
   const enabled = me.entitlements.filter((e) => e.enabled).map((e) => e.section_key);
-  const items: { href: string; label: string }[] = [
-    { href: "/dashboard", label: "Dashboard" },
-    ...enabled.map((s) => ({ href: `/${s}`, label: sectionLabel(s, t) })),
-    ...(enabled.includes("crm") ? [{ href: "/invoices", label: "Invoices" }] : []),
-    { href: "/automations", label: "Automations" },
-    { href: "/settings/team", label: "Settings" },
-  ];
+  // An employee login gets the self-service surface only — never the admin nav.
+  const items: { href: string; label: string }[] = me.employee_portal
+    ? [
+        { href: "/me", label: "My space" },
+        { href: "/me/attendance", label: "Attendance" },
+        { href: "/me/leave", label: "Leave" },
+        { href: "/me/payslips", label: "Payslips" },
+      ]
+    : [
+        { href: "/dashboard", label: "Dashboard" },
+        ...enabled.map((s) => ({ href: `/${s}`, label: sectionLabel(s, t) })),
+        ...(enabled.includes("crm") ? [{ href: "/invoices", label: "Invoices" }] : []),
+        { href: "/automations", label: "Automations" },
+        { href: "/settings/team", label: "Settings" },
+      ];
   const initials = me.tenant.name.slice(0, 2).toUpperCase();
 
   return (

@@ -11,14 +11,16 @@ from . import db
 
 
 async def create(kind: str, *, email: str, user_id: str | None = None, tenant_id: str | None = None,
-                 role_id: str | None = None, name: str = "", ttl_hours: int = 24) -> str:
+                 role_id: str | None = None, name: str = "", employee_id: str | None = None,
+                 ttl_hours: int = 24) -> str:
     token = secrets.token_urlsafe(32)
     expires = datetime.now(timezone.utc) + timedelta(hours=ttl_hours)
     async with db.owner_conn() as conn:
         await conn.execute(
-            """insert into auth_tokens (token, kind, user_id, tenant_id, role_id, email, name, expires_at)
-               values ($1,$2,$3,$4,$5,$6,$7,$8)""",
-            token, kind, user_id, tenant_id, role_id, email, name, expires)
+            """insert into auth_tokens (token, kind, user_id, tenant_id, role_id, email, name,
+                                        employee_id, expires_at)
+               values ($1,$2,$3,$4,$5,$6,$7,$8,$9)""",
+            token, kind, user_id, tenant_id, role_id, email, name, employee_id, expires)
     return token
 
 

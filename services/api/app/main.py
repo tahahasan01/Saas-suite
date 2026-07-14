@@ -58,6 +58,7 @@ app.include_router(invoices.router)
 app.include_router(pos.router)
 app.include_router(fbr.router)
 app.include_router(hrms.router)
+app.include_router(hrms.portal)
 app.include_router(billing.router)
 
 

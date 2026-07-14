@@ -86,6 +86,8 @@ class MeResponse(BaseModel):
     user: UserOut
     tenant: TenantOut
     entitlements: list[EntitlementOut]
+    # True when this login belongs to an employee: the app shows self-service.
+    employee_portal: bool = False
 
 
 class TerminologyResponse(BaseModel):
@@ -483,6 +485,7 @@ class EmployeeOut(BaseModel):
     salary_minor: int
     status: str
     present_today: bool = False
+    has_login: bool = False   # linked to a self-service portal user
 
 
 class EmployeeCreate(BaseModel):

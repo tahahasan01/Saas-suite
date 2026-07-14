@@ -56,6 +56,8 @@ export interface MeResponse {
   user: UserOut;
   tenant: TenantOut;
   entitlements: EntitlementOut[];
+  /** True when this login is an employee self-service account. */
+  employee_portal: boolean;
 }
 
 export interface TerminologyResponse {
@@ -285,6 +287,7 @@ export interface Employee {
   salary_minor: number;
   status: string;
   present_today: boolean;
+  has_login: boolean;
 }
 
 export interface Attendance {

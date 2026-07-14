@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from datetime import date, timedelta
 
-from .. import db, payroll
-from ..deps import AuthContext
+from .. import db, email, payroll, tokens
+from ..deps import AuthContext, current_auth, current_employee
 from ..models import (
     REQUEST_TYPES,
     AttendanceOut,
@@ -93,7 +93,8 @@ def _emp(r) -> EmployeeOut:
         designation=r["designation"], department=r["department"], join_date=r["join_date"],
         salary_minor=r["salary_minor"], status=r["status"],
         # Absent from the list query (create/update return the bare row) → default False.
-        present_today=bool(r["present_today"]) if "present_today" in r.keys() else False)
+        present_today=bool(r["present_today"]) if "present_today" in r.keys() else False,
+        has_login="user_id" in r.keys() and r["user_id"] is not None)
 
 
 def _att(r) -> AttendanceOut:
@@ -127,6 +128,46 @@ async def create_employee(body: EmployeeCreate, auth: AuthContext = Depends(requ
     return _emp(row)
 
 
+async def _employee_role(conn, tenant_id: str) -> str:
+    """The zero-permission role every portal login sits on. Created lazily and
+    reused. No permissions rows means the RBAC guards 403 it out of every admin
+    endpoint — the portal only reaches /me/*, which checks employee linkage."""
+    role_id = await conn.fetchval(
+        "select id from roles where tenant_id=$1 and name='Employee'", tenant_id)
+    if role_id is None:
+        role_id = await conn.fetchval(
+            "insert into roles (tenant_id, name, is_system) values ($1,'Employee',true) returning id",
+            tenant_id)
+    return str(role_id)
+
+
+@router.post("/employees/{employee_id}/invite", status_code=status.HTTP_204_NO_CONTENT)
+async def invite_employee(employee_id: str, response: Response,
+                          auth: AuthContext = Depends(require("hrms", "admin"))) -> Response:
+    """Give an employee their own self-service login. Sends an invite they accept
+    to set a password — the same flow as team invites, on the Employee role."""
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        emp = await conn.fetchrow(
+            "select email, name, user_id from hrms_employees where id=$1", employee_id)
+        if emp is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Employee not found")
+        if not emp["email"]:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                                "Add an email to this employee before inviting them.")
+        if emp["user_id"]:
+            raise HTTPException(status.HTTP_409_CONFLICT, "This employee already has a login.")
+        if await conn.fetchval("select 1 from users where email=$1", emp["email"]):
+            raise HTTPException(status.HTTP_409_CONFLICT, "That email already has an account.")
+        role_id = await _employee_role(conn, auth.tenant_id)
+        tenant_name = await conn.fetchval("select name from tenants where id=$1", auth.tenant_id)
+
+    token = await tokens.create("invite", email=emp["email"], tenant_id=auth.tenant_id,
+                                role_id=role_id, employee_id=employee_id, ttl_hours=72)
+    await email.send_invite(emp["email"], tenant_name, token)
+    response.status_code = status.HTTP_204_NO_CONTENT
+    return response
+
+
 @router.patch("/employees/{employee_id}", response_model=EmployeeOut)
 async def update_employee(employee_id: str, body: EmployeeUpdate, auth: AuthContext = Depends(require("hrms", "write"))):
     fields = body.model_dump(exclude_none=True)
@@ -145,23 +186,35 @@ _ATT_SELECT = """select a.*, e.name as employee_name from hrms_attendance a
                  join hrms_employees e on e.id = a.employee_id"""
 
 
+async def _do_checkin(conn, employee_id: str, *, method: str, lat=None, lng=None, flag: str = ""):
+    """The check-in write, shared by the admin action and an employee's own."""
+    tenant_id = await conn.fetchval("select tenant_id from hrms_employees where id=$1", employee_id)
+    if tenant_id is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Employee not found")
+    return await conn.fetchrow(
+        """insert into hrms_attendance (tenant_id, employee_id, check_in, status, method, lat, lng, fraud_flag)
+           values ($1,$2, now(),
+                   case when extract(hour from now()) >= 10 then 'late' else 'present' end, $3,$4,$5,$6)
+           on conflict (employee_id, work_date) do update set
+             check_in = coalesce(hrms_attendance.check_in, excluded.check_in),
+             method = excluded.method, lat = excluded.lat, lng = excluded.lng,
+             fraud_flag = excluded.fraud_flag,
+             status = case when extract(hour from now()) >= 10 then 'late' else 'present' end
+           returning id""",
+        tenant_id, employee_id, method, lat, lng, flag)
+
+
+async def _do_checkout(conn, employee_id: str):
+    return await conn.fetchrow(
+        "update hrms_attendance set check_out=now() where employee_id=$1 and work_date=current_date returning id",
+        employee_id)
+
+
 @router.post("/attendance/checkin", response_model=AttendanceOut)
 async def check_in(body: CheckInRequest, auth: AuthContext = Depends(require("hrms", "write"))):
-    flag = "mock_gps" if body.mock_gps else ""
     async with db.tenant_conn(auth.tenant_id) as conn:
-        if not await conn.fetchval("select 1 from hrms_employees where id=$1", body.employee_id):
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "Employee not found")
-        row = await conn.fetchrow(
-            """insert into hrms_attendance (tenant_id, employee_id, check_in, status, method, lat, lng, fraud_flag)
-               values ($1,$2, now(),
-                       case when extract(hour from now()) >= 10 then 'late' else 'present' end, $3,$4,$5,$6)
-               on conflict (employee_id, work_date) do update set
-                 check_in = coalesce(hrms_attendance.check_in, excluded.check_in),
-                 method = excluded.method, lat = excluded.lat, lng = excluded.lng,
-                 fraud_flag = excluded.fraud_flag,
-                 status = case when extract(hour from now()) >= 10 then 'late' else 'present' end
-               returning id""",
-            auth.tenant_id, body.employee_id, body.method, body.lat, body.lng, flag)
+        row = await _do_checkin(conn, body.employee_id, method=body.method, lat=body.lat, lng=body.lng,
+                                flag="mock_gps" if body.mock_gps else "")
         rec = await conn.fetchrow(_ATT_SELECT + " where a.id=$1", row["id"])
     return _att(rec)
 
@@ -169,9 +222,7 @@ async def check_in(body: CheckInRequest, auth: AuthContext = Depends(require("hr
 @router.post("/attendance/checkout", response_model=AttendanceOut)
 async def check_out(body: CheckInRequest, auth: AuthContext = Depends(require("hrms", "write"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
-        row = await conn.fetchrow(
-            "update hrms_attendance set check_out=now() where employee_id=$1 and work_date=current_date returning id",
-            body.employee_id)
+        row = await _do_checkout(conn, body.employee_id)
         if row is None:
             raise HTTPException(status.HTTP_409_CONFLICT, "No check-in recorded today")
         rec = await conn.fetchrow(_ATT_SELECT + " where a.id=$1", row["id"])
@@ -453,37 +504,128 @@ async def delete_holiday(holiday_id: str, response: Response,
     return response
 
 
+def _payslip(r, month_days: int) -> Payslip:
+    gross = r["salary_minor"]
+    unpaid = r["unpaid_leave_days"]
+    wfh = r["wfh_days"]
+    # Whatever is left once presence, approved leave and remote days are
+    # accounted for. A WFH day someone also clocked in for is counted once:
+    # accounted is capped at the days actually elapsed.
+    accounted = min(r["elapsed_days"], r["present_days"] + r["paid_leave_days"] + unpaid + wfh)
+    absent = max(0, r["elapsed_days"] - accounted)
+    per_day = gross / month_days if month_days else 0
+    deduction = round((absent + unpaid) * per_day)
+    tax = payroll.monthly_tax_minor(gross)
+    return Payslip(
+        employee_id=str(r["id"]), name=r["name"], gross_minor=gross,
+        present_days=r["present_days"], paid_leave_days=r["paid_leave_days"],
+        unpaid_leave_days=unpaid, wfh_days=wfh, absent_days=absent,
+        absence_deduction_minor=deduction, tax_minor=tax,
+        net_minor=max(0, gross - deduction - tax))
+
+
+async def _compute_payroll(conn, tenant_id: str, month: str) -> PayrollOut:
+    """Shared by the admin payroll run and an employee's own payslip — one code
+    path, so a payslip a worker sees can never disagree with the run."""
+    try:
+        first = date.fromisoformat(f"{month}-01")
+    except ValueError:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "month must be YYYY-MM")
+    off_days = await conn.fetchval("select weekly_off_days from tenants where id=$1", tenant_id)
+    rows = await conn.fetch(_PAYROLL, first, list(off_days or [0]))
+    month_days = rows[0]["month_days"] if rows else 0
+    return PayrollOut(month=month, working_days=month_days,
+                      payslips=[_payslip(r, month_days) for r in rows])
+
+
 @router.get("/payroll", response_model=PayrollOut)
 async def run_payroll(month: str | None = None, auth: AuthContext = Depends(require("hrms", "read"))):
     """Monthly payslips: gross − absence deduction − FBR tax. `month` = YYYY-MM."""
-    m = month or date.today().strftime("%Y-%m")
-    try:
-        first = date.fromisoformat(f"{m}-01")
-    except ValueError:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "month must be YYYY-MM")
     async with db.tenant_conn(auth.tenant_id) as conn:
-        off_days = await conn.fetchval(
-            "select weekly_off_days from tenants where id=$1", auth.tenant_id)
-        rows = await conn.fetch(_PAYROLL, first, list(off_days or [0]))
+        return await _compute_payroll(conn, auth.tenant_id, month or date.today().strftime("%Y-%m"))
 
-    slips = []
-    month_days = rows[0]["month_days"] if rows else 0
-    for r in rows:
-        gross = r["salary_minor"]
-        unpaid = r["unpaid_leave_days"]
-        wfh = r["wfh_days"]
-        # Whatever is left once presence, approved leave and remote days are
-        # accounted for. A WFH day someone also clocked in for is counted once:
-        # accounted is capped at the days actually elapsed.
-        accounted = min(r["elapsed_days"], r["present_days"] + r["paid_leave_days"] + unpaid + wfh)
-        absent = max(0, r["elapsed_days"] - accounted)
-        per_day = gross / month_days if month_days else 0
-        deduction = round((absent + unpaid) * per_day)
-        tax = payroll.monthly_tax_minor(gross)
-        slips.append(Payslip(
-            employee_id=str(r["id"]), name=r["name"], gross_minor=gross,
-            present_days=r["present_days"], paid_leave_days=r["paid_leave_days"],
-            unpaid_leave_days=unpaid, wfh_days=wfh, absent_days=absent,
-            absence_deduction_minor=deduction, tax_minor=tax,
-            net_minor=max(0, gross - deduction - tax)))
-    return PayrollOut(month=m, working_days=month_days, payslips=slips)
+
+# ── Employee self-service (/me) ──────────────────────────────────────────────
+# A separate router, guarded by current_employee rather than the section RBAC:
+# these endpoints resolve the caller to their OWN record and never take an
+# employee id from the path, so one employee can never read another's data.
+portal = APIRouter(prefix="/me", tags=["portal"])
+
+
+@portal.get("/profile", response_model=EmployeeOut)
+async def my_profile(auth: AuthContext = Depends(current_auth),
+                     employee_id: str = Depends(current_employee)):
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        row = await conn.fetchrow("select * from hrms_employees where id=$1", employee_id)
+    return _emp(row)
+
+
+@portal.get("/attendance", response_model=list[AttendanceOut])
+async def my_attendance(auth: AuthContext = Depends(current_auth),
+                        employee_id: str = Depends(current_employee)):
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        rows = await conn.fetch(
+            _ATT_SELECT + """ where a.employee_id=$1
+                              and a.work_date >= date_trunc('month', current_date)
+                              order by a.work_date desc""", employee_id)
+    return [_att(r) for r in rows]
+
+
+@portal.post("/attendance/checkin", response_model=AttendanceOut, status_code=status.HTTP_201_CREATED)
+async def my_checkin(auth: AuthContext = Depends(current_auth),
+                     employee_id: str = Depends(current_employee)):
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        row = await _do_checkin(conn, employee_id, method="self")
+        rec = await conn.fetchrow(_ATT_SELECT + " where a.id=$1", row["id"])
+    return _att(rec)
+
+
+@portal.post("/attendance/checkout", response_model=AttendanceOut)
+async def my_checkout(auth: AuthContext = Depends(current_auth),
+                      employee_id: str = Depends(current_employee)):
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        row = await _do_checkout(conn, employee_id)
+        if row is None:
+            raise HTTPException(status.HTTP_409_CONFLICT, "No check-in recorded today")
+        rec = await conn.fetchrow(_ATT_SELECT + " where a.id=$1", row["id"])
+    return _att(rec)
+
+
+@portal.get("/leave", response_model=list[LeaveOut])
+async def my_leave(auth: AuthContext = Depends(current_auth),
+                   employee_id: str = Depends(current_employee)):
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        rows = await conn.fetch(_LEAVE_SELECT + " where l.employee_id=$1 order by l.created_at desc",
+                                employee_id)
+    return [_leave(r) for r in rows]
+
+
+@portal.get("/leave/balances", response_model=list[LeaveBalance])
+async def my_balances(auth: AuthContext = Depends(current_auth),
+                      employee_id: str = Depends(current_employee)):
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        return await _balances(conn, auth.tenant_id, employee_id)
+
+
+@portal.post("/leave", response_model=LeaveOut, status_code=status.HTTP_201_CREATED)
+async def my_request_leave(body: LeaveCreate, auth: AuthContext = Depends(current_auth),
+                           employee_id: str = Depends(current_employee)):
+    """An employee requests their own leave. The employee_id in the body is
+    ignored — it is forced to the caller, so nobody can file against someone
+    else. Approval still belongs to an admin (hrms:admin)."""
+    # Direct call, not the HTTP route: this bypasses the hrms:write guard on
+    # purpose (the employee has no such permission) — /me is guarded by
+    # current_employee instead. The employee_id is forced to the caller.
+    forced = body.model_copy(update={"employee_id": employee_id})
+    return await create_leave(forced, auth)
+
+
+@portal.get("/payslips", response_model=list[Payslip])
+async def my_payslips(month: str | None = None, auth: AuthContext = Depends(current_auth),
+                      employee_id: str = Depends(current_employee)):
+    m = month or date.today().strftime("%Y-%m")
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        run = await _compute_payroll(conn, auth.tenant_id, m)
+    # Return only the caller's slip — the run computed everyone, but an employee
+    # sees exactly one payslip: their own.
+    return [s for s in run.payslips if s.employee_id == employee_id]

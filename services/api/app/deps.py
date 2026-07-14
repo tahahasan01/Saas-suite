@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from fastapi import Cookie, HTTPException, status
+from fastapi import Cookie, Depends, HTTPException, status
 
 from . import db
 from .security import SESSION_COOKIE, hash_session_token
@@ -61,3 +61,18 @@ async def current_auth(
         role_id=str(row["role_id"]) if row["role_id"] else None,
         industry_type=row["industry_type"],
     )
+
+
+async def current_employee(auth: AuthContext = Depends(current_auth)) -> str:
+    """The employee record this login belongs to, or 403.
+
+    Every /me/* endpoint depends on this and operates only on the returned id —
+    an employee can never reach another employee's data because the path never
+    carries an employee id at all.
+    """
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        emp_id = await conn.fetchval(
+            "select id from hrms_employees where user_id=$1 and status='active'", auth.user_id)
+    if emp_id is None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "This login is not linked to an employee record")
+    return str(emp_id)

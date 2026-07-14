@@ -55,7 +55,14 @@ async def _sub(conn: asyncpg.Connection) -> asyncpg.Record | None:
 
 async def check_seat_limit(conn: asyncpg.Connection) -> None:
     limits = effective_limits(await _sub(conn))
-    if await conn.fetchval("select count(*) from users") >= limits["max_seats"]:
+    # Seats are team members. Employee self-service logins sit on the 'Employee'
+    # role and are excluded — a 20-person shop must not exhaust its plan just by
+    # letting staff view their own payslips.
+    seats = await conn.fetchval(
+        """select count(*) from users u
+             left join roles r on r.id = u.role_id
+            where r.name is distinct from 'Employee'""")
+    if seats >= limits["max_seats"]:
         raise HTTPException(status.HTTP_403_FORBIDDEN,
                             f"Seat limit reached ({limits['max_seats']}). Upgrade your plan to add more users.")
 

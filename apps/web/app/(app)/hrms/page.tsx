@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Employee } from "@business-os/types";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { money } from "@/lib/format";
 import { Badge, Button, Card, Field, Input } from "@/components/ui";
 
@@ -99,7 +99,7 @@ export default function EmployeesPage() {
             </h2>
             <Card className="p-0">
               <ul className="divide-y divide-line">
-                {staff.map((e) => <Row key={e.id} e={e} />)}
+                {staff.map((e) => <Row key={e.id} e={e} onChanged={load} />)}
               </ul>
             </Card>
           </section>
@@ -109,13 +109,32 @@ export default function EmployeesPage() {
   );
 }
 
-function Row({ e }: { e: Employee }) {
+function Row({ e, onChanged }: { e: Employee; onChanged: () => void }) {
+  const [inviting, setInviting] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function invite() {
+    setInviting(true);
+    setErr(null);
+    try {
+      await api(`/hrms/employees/${e.id}/invite`, { method: "POST" });
+      setSent(true);
+      onChanged();
+    } catch (er) {
+      setErr(er instanceof ApiError && typeof er.detail === "string" ? er.detail : "Couldn't send invite.");
+    } finally {
+      setInviting(false);
+    }
+  }
+
   return (
     <li className="flex items-center gap-3 px-4 py-3">
       <Avatar name={e.name} present={e.present_today} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{e.name}</p>
         <p className="truncate text-xs text-fg-muted">{e.designation || "—"}{e.cnic && ` · ${e.cnic}`}</p>
+        {err && <p className="text-xs text-danger">{err}</p>}
       </div>
       <div className="hidden text-right sm:block">
         <p className="text-xs text-fg-subtle">Tenure</p>
@@ -123,6 +142,17 @@ function Row({ e }: { e: Employee }) {
       </div>
       <div className="w-28 text-right">
         <p className="text-sm tabular-nums">{money(e.salary_minor)}</p>
+      </div>
+      <div className="w-24 text-right">
+        {e.has_login ? (
+          <Badge tone="brand">Portal</Badge>
+        ) : sent ? (
+          <span className="text-xs text-success">Invite sent</span>
+        ) : (
+          <Button size="sm" variant="ghost" onClick={invite} disabled={inviting}>
+            {inviting ? "…" : "Enable login"}
+          </Button>
+        )}
       </div>
       <div className="w-20 text-right">
         {e.present_today ? <Badge tone="success">In today</Badge> : <Badge>Out</Badge>}

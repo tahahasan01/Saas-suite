@@ -203,6 +203,11 @@ async def accept_invite(body: AcceptInviteRequest, response: Response) -> UserOu
             """insert into users (tenant_id, email, password_hash, name, role_id, email_verified)
                values ($1,$2,$3,$4,$5,true) returning id""",
             row["tenant_id"], row["email"], hash_password(body.password), body.name, row["role_id"])
+        # An employee invite links the new login to its staff record, which is
+        # what every /me/* endpoint resolves the caller by.
+        if row["employee_id"]:
+            await conn.execute(
+                "update hrms_employees set user_id=$1 where id=$2", user_id, row["employee_id"])
         token = await _create_session(conn, str(user_id), str(row["tenant_id"]))
         role = await conn.fetchval("select name from roles where id=$1", row["role_id"])
     _set_session_cookie(response, token)
@@ -227,10 +232,15 @@ async def me(auth: AuthContext = Depends(current_auth)) -> MeResponse:
             "select section_key, enabled, limits from entitlements where tenant_id=$1 order by section_key",
             auth.tenant_id,
         )
+        # This login is the employee portal iff it is linked to a staff record.
+        # The frontend renders the self-service nav instead of the admin app.
+        is_employee = bool(await conn.fetchval(
+            "select 1 from hrms_employees where user_id=$1", auth.user_id))
     return MeResponse(
         user=UserOut(id=auth.user_id, email=auth.email, name=auth.name, role=auth.role),
         tenant=TenantOut(id=str(tenant_row["id"]), name=tenant_row["name"],
                          industry_type=tenant_row["industry_type"], status=tenant_row["status"]),
         entitlements=[EntitlementOut(section_key=r["section_key"], enabled=r["enabled"], limits=r["limits"])
                       for r in ent_rows],
+        employee_portal=is_employee,
     )
