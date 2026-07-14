@@ -119,12 +119,88 @@ body {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-10px); }
 }
+/* Track holds two identical copies; -50% lands exactly on the seam, so the loop
+   is invisible. */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
 .animate-fade-up { animation: fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .animate-fade-in { animation: fade-in 1s ease both; }
 .animate-float { animation: float-slow 6s ease-in-out infinite; }
+.animate-marquee { animation: marquee 42s linear infinite; }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-fade-up, .animate-fade-in, .animate-float { animation: none; }
+  .animate-fade-up, .animate-fade-in, .animate-float, .animate-marquee { animation: none; }
+}
+
+/* Marketing runs near-black rather than the app's navy: colour bleeds only read
+   as *light* against something close to true black. Declared after .theme-dark
+   so it wins when both sit on the same element. */
+.theme-marketing {
+  --color-canvas: #08080a;
+  --color-surface: #101015;
+  --color-elevated: #17171e;
+  --color-line: #24242e;
+  --color-line-strong: #353542;
+}
+
+/* Light bleeding in from off-canvas — the corners glow as if lit from outside. */
+.bleed {
+  position: relative;
+  isolation: isolate;
+}
+.bleed::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(38rem 26rem at 102% -2%, rgba(56, 189, 248, 0.30), transparent 60%),
+    radial-gradient(34rem 30rem at -2% 102%, rgba(124, 127, 245, 0.38), transparent 60%),
+    radial-gradient(46rem 30rem at 50% 55%, rgba(99, 102, 241, 0.10), transparent 70%);
+}
+
+/* Faint ruled grid, faded out at the edges so it never reads as a table. */
+.grid-lines::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.028) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.028) 1px, transparent 1px);
+  background-size: 88px 88px;
+  mask-image: radial-gradient(90% 70% at 50% 45%, #000 30%, transparent 100%);
+}
+
+/* Glow bleeding out from behind the glyphs themselves. */
+.text-glow {
+  text-shadow:
+    0 0 32px rgba(124, 127, 245, 0.55),
+    0 0 80px rgba(124, 127, 245, 0.35),
+    0 0 120px rgba(56, 189, 248, 0.22);
+}
+
+/* Depth: a soft brand bloom behind a section, and a hairline top edge that
+   catches light like a real surface. */
+.bloom {
+  position: relative;
+  isolation: isolate;
+}
+.bloom::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(40rem 24rem at 15% 0%, rgba(99, 102, 241, 0.14), transparent 65%),
+    radial-gradient(36rem 22rem at 85% 100%, rgba(56, 189, 248, 0.10), transparent 60%);
+}
+.edge-lit {
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
 }
 
 /* Atmospheric background: warm indigo glow + fine dot grid over the canvas */

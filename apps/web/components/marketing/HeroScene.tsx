@@ -1,18 +1,21 @@
 "use client";
 
 import { useMemo, useRef } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { useFrame } from "@react-three/fiber";
 import { Line } from "@react-three/drei";
 import type { Group, Mesh } from "three";
+import { LazyCanvas } from "./three/LazyCanvas";
 
 /* The unification core: one OS at the centre, three modules orbiting it, each
    wired back to the core. The spoke lives inside the orbiting group, so it stays
    attached without rebuilding geometry every frame. */
 
+// Radii are sized against the camera frustum below — at fov 40 / z 10 the visible
+// half-height is ~3.6, so 2.9 is the largest orbit that stays fully on canvas.
 const MODULES = [
-  { radius: 2.1, speed: 0.34, tilt: 0.32, phase: 0, color: "#818cf8" },
-  { radius: 2.7, speed: -0.24, tilt: -0.45, phase: 2.1, color: "#38bdf8" },
-  { radius: 3.2, speed: 0.18, tilt: 0.62, phase: 4.2, color: "#c084fc" },
+  { radius: 1.9, speed: 0.34, tilt: 0.32, phase: 0, color: "#818cf8" },
+  { radius: 2.4, speed: -0.24, tilt: -0.45, phase: 2.1, color: "#38bdf8" },
+  { radius: 2.9, speed: 0.18, tilt: 0.62, phase: 4.2, color: "#c084fc" },
 ];
 
 function Core() {
@@ -36,6 +39,24 @@ function Core() {
   );
 }
 
+/** A packet of data running the spoke from a module into the core — the one
+ *  thing three separate apps cannot do, made literal. */
+function Packet({ radius, color, offset }: { radius: number; color: string; offset: number }) {
+  const ref = useRef<Mesh>(null);
+  useFrame((state) => {
+    if (!ref.current) return;
+    const t = (state.clock.elapsedTime * 0.45 + offset) % 1;
+    ref.current.position.x = radius * (1 - t); // module → core
+    (ref.current.material as { opacity: number }).opacity = Math.sin(t * Math.PI);
+  });
+  return (
+    <mesh ref={ref}>
+      <sphereGeometry args={[0.065, 12, 12]} />
+      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={3} transparent />
+    </mesh>
+  );
+}
+
 function Module({ radius, speed, tilt, phase, color }: (typeof MODULES)[number]) {
   const orbit = useRef<Group>(null);
   useFrame((_, dt) => {
@@ -56,6 +77,8 @@ function Module({ radius, speed, tilt, phase, color }: (typeof MODULES)[number])
           <sphereGeometry args={[0.17, 24, 24]} />
           <meshStandardMaterial color={color} emissive={color} emissiveIntensity={2.2} roughness={0.25} />
         </mesh>
+        <Packet radius={radius} color={color} offset={0} />
+        <Packet radius={radius} color={color} offset={0.5} />
       </group>
     </group>
   );
@@ -75,14 +98,8 @@ function Parallax({ children }: { children: React.ReactNode }) {
 
 export default function HeroScene() {
   return (
-    <Canvas
-      camera={{ position: [0, 1.2, 7], fov: 42 }}
-      dpr={[1, 1.75]}
-      gl={{ antialias: true, alpha: true }}
-      // Decorative: the headline beside it carries the meaning.
-      aria-hidden
-      className="!absolute inset-0"
-    >
+    // Decorative: the headline beside it carries the meaning.
+    <LazyCanvas className="absolute inset-0" camera={{ position: [0, 1.6, 10], fov: 40 }}>
       <ambientLight intensity={0.4} />
       <pointLight position={[4, 4, 4]} intensity={70} color="#818cf8" />
       <pointLight position={[-5, -2, -3]} intensity={40} color="#38bdf8" />
@@ -92,6 +109,6 @@ export default function HeroScene() {
           <Module key={m.phase} {...m} />
         ))}
       </Parallax>
-    </Canvas>
+    </LazyCanvas>
   );
 }

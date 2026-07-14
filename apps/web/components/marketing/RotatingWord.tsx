@@ -4,6 +4,12 @@ import { useEffect, useState } from "react";
 
 const WORDS = ["Customers", "Students", "Patients", "Investors", "Guests", "Clients"];
 
+// The word is the hero's focal point, so the blank moment between words has to
+// be as short as legibility allows: a 300ms fade on a 2.2s cycle left the
+// headline visibly empty a quarter of the time.
+const HOLD = 2600;
+const FADE = 150;
+
 export function RotatingWord() {
   const [i, setI] = useState(0);
   const [show, setShow] = useState(true);
@@ -14,16 +20,17 @@ export function RotatingWord() {
       setTimeout(() => {
         setI((v) => (v + 1) % WORDS.length);
         setShow(true);
-      }, 260);
-    }, 2200);
+      }, FADE);
+    }, HOLD);
     return () => clearInterval(id);
   }, []);
 
+  // Solid ink rather than a bg-clip gradient: `color: transparent` would leave
+  // the glyphs unpainted behind the hero's glow. The colour lives in the glow.
   return (
     <span
-      className={`inline-block bg-gradient-to-r from-brand to-[#a78bfa] bg-clip-text text-transparent transition-all duration-300 ${
-        show ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0"
-      }`}
+      className={`inline-block transition-all ease-out ${show ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0"}`}
+      style={{ transitionDuration: `${FADE}ms` }}
     >
       {WORDS[i]}
     </span>
