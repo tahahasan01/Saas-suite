@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useSession } from "@/lib/session";
-import { Button, Card, Field, Input, Wordmark } from "@/components/ui";
+import {Button, Card, Field, Input} from "@/components/ui";
+import { AuthShell } from "@/components/AuthShell";
 
 export default function AcceptInvitePage() {
   const router = useRouter();
@@ -34,9 +35,7 @@ export default function AcceptInvitePage() {
   }
 
   return (
-    <main className="grid min-h-screen place-items-center p-4">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="flex justify-center"><Wordmark /></div>
+    <AuthShell eyebrow="Join workspace">
         <Card className="space-y-4">
           <div>
             <h1 className="text-lg font-semibold">Join your team</h1>
@@ -54,7 +53,6 @@ export default function AcceptInvitePage() {
             <Button type="submit" disabled={busy || !token} className="w-full">{busy ? "Joining…" : "Accept invite"}</Button>
           </form>
         </Card>
-      </div>
-    </main>
+    </AuthShell>
   );
 }

@@ -32,8 +32,22 @@ def _send_smtp(to: str, subject: str, body: str) -> None:
     msg["To"] = to
     msg["Subject"] = subject
     msg.set_content(body)
-    with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as s:
-        s.starttls()
+    with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=10) as s:
+        s.ehlo()
+        # STARTTLS is negotiated, not assumed. Calling it unconditionally breaks
+        # local catchers (Mailpit/MailHog offer no STARTTLS and raise
+        # SMTPNotSupportedError); skipping it unconditionally would hand
+        # credentials to a real provider in plaintext. So: upgrade when offered,
+        # and refuse to authenticate when it isn't.
+        if s.has_extn("starttls"):
+            s.starttls()
+            s.ehlo()  # re-EHLO: the server's capabilities change after upgrade
+        elif settings.smtp_user:
+            raise RuntimeError(
+                f"SMTP host {settings.smtp_host!r} does not offer STARTTLS, but SMTP_USER is set. "
+                "Refusing to send credentials in plaintext — use a TLS-capable host, "
+                "or clear SMTP_USER/SMTP_PASSWORD if this is a local mail catcher."
+            )
         if settings.smtp_user:
             s.login(settings.smtp_user, settings.smtp_password)
         s.send_message(msg)

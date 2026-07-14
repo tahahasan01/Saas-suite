@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import type { TrendPoint } from "@business-os/types";
+import type { StageSlice, TrendPoint } from "@business-os/types";
 
 /* Charts are plain SVG on a fixed viewBox scaled by CSS — no chart library.
    Single-series by design: the card title names the series, so no legend is
@@ -113,6 +113,91 @@ export function AreaChart({
           <p className="font-semibold">{format(active.value)}</p>
           <p className="text-fg-subtle">{shortDay(active.day)}</p>
         </div>
+      )}
+    </div>
+  );
+}
+
+/** Pipeline standing totals, one bar per stage.
+ *
+ *  Horizontal, not vertical: stage names are words ("Proposal sent"), and
+ *  vertical bars would either truncate them or tilt them 45°.
+ *
+ *  Bars are HTML, not SVG — the labels are real text that wraps, selects, and
+ *  scales with the user's font size, which SVG <text> does none of.
+ *
+ *  One measure (rupees in stage), so no legend and no per-bar hue: colour would
+ *  be encoding nothing. The exception is `won`, which is a genuine status rather
+ *  than another series, so it takes the status colour and is labelled — never
+ *  colour alone. */
+export function PipelineBars({
+  data,
+  format,
+  title,
+  hint,
+}: {
+  data: StageSlice[];
+  format: (n: number) => string;
+  title: string;
+  hint?: string;
+}) {
+  if (data.length === 0) return null;
+
+  // Scale to the largest stage, floor of 1 so an all-empty pipeline doesn't
+  // divide by zero and render every bar full-width.
+  const max = Math.max(1, ...data.map((d) => d.value));
+  const total = data.reduce((s, d) => s + d.value, 0);
+  const empty = total === 0;
+
+  return (
+    <div>
+      <div className="mb-4 flex items-baseline justify-between gap-3">
+        <h2 className="text-sm font-semibold">{title}</h2>
+        {hint && <span className="text-xs text-fg-subtle">{hint}</span>}
+      </div>
+
+      {empty ? (
+        <p className="py-6 text-center text-sm text-fg-subtle">
+          Nothing in the pipeline yet — stages will fill in as deals are added.
+        </p>
+      ) : (
+        <ul className="space-y-3">
+          {data.map((d) => {
+            const pct = (d.value / max) * 100;
+            const won = d.kind === "won";
+            return (
+              <li key={d.name}>
+                <div className="mb-1.5 flex items-baseline justify-between gap-3 text-xs">
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <span className="truncate font-medium text-fg">{d.name}</span>
+                    {/* Status is spelled out, never carried by colour alone. */}
+                    {won && <span className="shrink-0 text-[10px] font-medium text-success">won</span>}
+                  </span>
+                  <span className="shrink-0 tabular-nums text-fg-muted">
+                    {/* Value leads, count is the qualifier — one big deal and
+                        twenty small ones look identical without it. */}
+                    <span className="font-semibold text-fg">{format(d.value)}</span>
+                    <span className="ml-1.5 text-fg-subtle">
+                      {d.count} {d.count === 1 ? "deal" : "deals"}
+                    </span>
+                  </span>
+                </div>
+                {/* Track carries the full width so bars read against a common
+                    baseline; 4px rounded data-end, anchored left. */}
+                <div className="h-2 w-full overflow-hidden rounded-full bg-elevated">
+                  <div
+                    className={`h-2 rounded-full transition-[width] duration-500 ease-out ${
+                      won ? "bg-success" : "bg-[var(--color-chart-1)]"
+                    }`}
+                    // A stage with money in it never renders as a bare sliver:
+                    // below ~2% the bar disappears and reads as zero.
+                    style={{ width: `${d.value > 0 ? Math.max(2, pct) : 0}%` }}
+                  />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </div>
   );

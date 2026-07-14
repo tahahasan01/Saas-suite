@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { PAYMENT_METHODS, type Product, type Sale } from "@business-os/types";
+import { PAYMENT_METHODS, type PosSummary, type Product, type Sale } from "@business-os/types";
 import { api } from "@/lib/api";
-import { money } from "@/lib/format";
+import { money, moneyCompact } from "@/lib/format";
 import { useSession } from "@/lib/session";
 import { Button, Card, Input, Select } from "@/components/ui";
 import { FbrStamp } from "@/components/pos/FbrStamp";
@@ -12,6 +12,10 @@ import { FbrStamp } from "@/components/pos/FbrStamp";
 interface Line {
   product: Product;
   qty: number;
+}
+
+interface DrawerLite {
+  expected_minor: number;
 }
 
 export default function PosBilling() {
@@ -23,6 +27,9 @@ export default function PosBilling() {
   const [paid, setPaid] = useState("");
   const [method, setMethod] = useState("cash");
   const [receipt, setReceipt] = useState<Sale | null>(null);
+  const [category, setCategory] = useState("");
+  const [summary, setSummary] = useState<PosSummary | null>(null);
+  const [drawer, setDrawer] = useState<DrawerLite | null | undefined>(undefined); // undefined = loading
   const searchRef = useRef<HTMLInputElement>(null);
   const paidRef = useRef<HTMLInputElement>(null);
 
@@ -32,11 +39,25 @@ export default function PosBilling() {
       .catch(() => setResults([]));
   }, []);
 
+  const loadStatus = useCallback(() => {
+    api<PosSummary>("/pos/summary").then(setSummary).catch(() => setSummary(null));
+    api<DrawerLite>("/pos/drawer/current").then(setDrawer).catch(() => setDrawer(null));
+  }, []);
+
   useEffect(() => search(""), [search]);
+  useEffect(loadStatus, [loadStatus]);
   useEffect(() => {
     const id = setTimeout(() => search(q), 200);
     return () => clearTimeout(id);
   }, [q, search]);
+
+  // Categories that exist in the catalog; typing a search overrides the chip.
+  const categories = useMemo(
+    () => [...new Set(results.map((p) => p.category).filter(Boolean))].sort(),
+    [results]);
+  const shown = useMemo(
+    () => (category && !q ? results.filter((p) => p.category === category) : results),
+    [results, category, q]);
 
   function addToCart(p: Product) {
     setCart((c) => {
@@ -81,6 +102,7 @@ export default function PosBilling() {
     setDiscount("0");
     setPaid("");
     search(q);
+    loadStatus(); // today's figures and the drawer expectation just changed
     searchRef.current?.focus();
   }
 
@@ -110,6 +132,31 @@ export default function PosBilling() {
             <Link href="/pos/products" className="text-brand hover:underline">Manage {t("products").toLowerCase()}</Link>
           </div>
         </div>
+        {/* The shift at a glance — what Square keeps in the cashier's eyeline. */}
+        <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
+          {summary && (
+            <span className="rounded-lg border border-line bg-surface px-2.5 py-1.5 tabular-nums text-fg-muted">
+              Today: <span className="font-semibold text-fg">{moneyCompact(summary.sales_today_total_minor)}</span>
+              {" · "}{summary.sales_today_count} sale{summary.sales_today_count === 1 ? "" : "s"}
+            </span>
+          )}
+          {summary && summary.low_stock_count > 0 && (
+            <Link href="/pos/products" className="rounded-lg border border-warning/30 bg-warning/5 px-2.5 py-1.5 text-warning">
+              {summary.low_stock_count} low stock
+            </Link>
+          )}
+          {drawer === null && (
+            <Link href="/pos/drawer" className="rounded-lg border border-warning/30 bg-warning/5 px-2.5 py-1.5 text-warning">
+              No drawer open — open one to reconcile cash
+            </Link>
+          )}
+          {drawer && (
+            <Link href="/pos/drawer" className="rounded-lg border border-line bg-surface px-2.5 py-1.5 tabular-nums text-fg-muted">
+              Drawer: <span className="font-semibold text-fg">{moneyCompact(drawer.expected_minor)}</span> expected
+            </Link>
+          )}
+        </div>
+
         <Input
           ref={searchRef}
           autoFocus
@@ -119,14 +166,24 @@ export default function PosBilling() {
           placeholder={`Scan barcode or search ${t("products").toLowerCase()}…`}
           className="mb-3"
         />
+
+        {categories.length > 1 && !q && (
+          <div className="mb-3 flex flex-wrap gap-1.5">
+            <Chip active={category === ""} onClick={() => setCategory("")}>All</Chip>
+            {categories.map((c) => (
+              <Chip key={c} active={category === c} onClick={() => setCategory(c)}>{c}</Chip>
+            ))}
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {results.length === 0 && (
+          {shown.length === 0 && (
             <p className="col-span-full py-8 text-center text-sm text-fg-subtle">
               No {t("products").toLowerCase()}.{" "}
               <Link href="/pos/products" className="text-brand hover:underline">Add some →</Link>
             </p>
           )}
-          {results.map((p) => (
+          {shown.map((p) => (
             <button key={p.id} onClick={() => addToCart(p)}
                     className="rounded-lg border border-line bg-surface p-3 text-left transition-colors hover:border-brand/50">
               <p className="text-sm font-medium leading-tight">{p.name}</p>
@@ -188,6 +245,19 @@ export default function PosBilling() {
 
       {receipt && <Receipt sale={receipt} onClose={() => setReceipt(null)} />}
     </div>
+  );
+}
+
+function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`rounded-full border px-3 py-1 text-xs font-medium capitalize transition-colors ${
+        active ? "border-brand bg-brand-subtle text-brand" : "border-line text-fg-muted hover:text-fg"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 

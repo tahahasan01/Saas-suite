@@ -700,11 +700,22 @@ class ActivityItem(BaseModel):
     created_at: datetime
 
 
+class StageSlice(BaseModel):
+    """One pipeline stage's standing total. Value and count both, because a stage
+    holding one large deal and a stage holding twenty small ones are different
+    situations and a single number hides which you're in."""
+    name: str
+    kind: str          # 'active' | 'won'  ('lost' is excluded from pipeline)
+    count: int
+    value: int         # minor units (paisa), as everywhere else
+
+
 class DashboardOverview(BaseModel):
     sections: list[str]
     kpis: list[Kpi]
     revenue_trend: list[TrendPoint]
     leads_trend: list[TrendPoint]
+    pipeline: list[StageSlice]
     alerts: list[Alert]
     activity: list[ActivityItem]
 
@@ -830,3 +841,16 @@ class PoReceiveLine(BaseModel):
 
 class PoReceive(BaseModel):
     items: list[PoReceiveLine] = Field(min_length=1)
+
+
+# ─── Attendance week matrix ──────────────────────────────────────────────────
+class WeekRow(BaseModel):
+    id: str
+    name: str
+    # One per day: present | late | leave | wfh | holiday | off | pending | absent | none
+    cells: list[str]
+
+
+class WeekOut(BaseModel):
+    days: list[date]
+    employees: list[WeekRow]

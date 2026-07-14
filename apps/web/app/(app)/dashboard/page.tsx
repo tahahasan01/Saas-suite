@@ -8,7 +8,7 @@ import { money, moneyCompact, timeAgo } from "@/lib/format";
 import { useSession } from "@/lib/session";
 import { Card } from "@/components/ui";
 import { AiPrompt } from "@/components/AiPrompt";
-import { AreaChart, Sparkline } from "@/components/charts";
+import { AreaChart, PipelineBars, Sparkline } from "@/components/charts";
 
 export default function Dashboard() {
   const { me, t } = useSession();
@@ -77,14 +77,21 @@ export default function Dashboard() {
             <ActivityFeed items={data.activity} />
           </section>
 
-          {/* Both series exist only when POS and CRM are on — the all-in-one view. */}
-          {data.revenue_trend.length > 0 && data.leads_trend.length > 0 && (
+          {/* Was a second AreaChart of leads_trend — the same shape as the one
+              above it, so the page showed one idea twice while never answering
+              "where is my money sitting?". The leads trend still exists, as the
+              sparkline inside its own tile, which is where a supporting series
+              belongs. This asks a different question, so it gets a different
+              form. */}
+          {data.pipeline.length > 0 && (
             <Card>
-              <AreaChart
-                data={data.leads_trend}
-                format={(n) => `${n} ${n === 1 ? t("lead") : t("leads")}`}
-                title={`New ${t("leads")}`}
-                hint="Last 14 days"
+              {/* "deals" comes from the terminology table, so a school reads
+                  "Admissions by stage" and a clinic "Sales by stage". */}
+              <PipelineBars
+                data={data.pipeline}
+                format={(n) => moneyCompact(n)}
+                title={`${t("deals")} by stage`}
+                hint={`${data.pipeline.reduce((s, d) => s + d.count, 0)} total`}
               />
             </Card>
           )}

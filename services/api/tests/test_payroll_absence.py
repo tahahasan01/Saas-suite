@@ -115,3 +115,20 @@ async def test_backwards_dates_are_rejected(client, tenant):
         "from_date": "2026-05-10", "to_date": "2026-05-01",
     })
     assert r.status_code == 422
+
+
+async def test_week_matrix_has_no_absences_before_the_company_existed(client, tenant):
+    """The attendance grid must agree with payroll: a fresh tenant's staff are
+    never 'absent' for days before signup, even if a sample join_date is
+    backdated."""
+    week = (await client.get("/hrms/attendance/week")).json()
+    assert week["employees"], "expected seeded employees"
+    for emp in week["employees"]:
+        assert "absent" not in emp["cells"], f"{emp['name']} shows a phantom absence"
+
+
+async def test_week_matrix_marks_today_pending_not_absent(client, tenant):
+    week = (await client.get("/hrms/attendance/week")).json()
+    # The last column is today; nobody has checked in, but the day isn't over.
+    for emp in week["employees"]:
+        assert emp["cells"][-1] in ("pending", "off", "holiday", "none")

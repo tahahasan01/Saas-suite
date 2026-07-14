@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
-import { Button, Card, Field, Input, Wordmark } from "@/components/ui";
+import { Button, Card, Field, Input } from "@/components/ui";
+import { AuthShell } from "@/components/AuthShell";
 
 export default function ForgotPage() {
   const [email, setEmail] = useState("");
@@ -22,9 +23,7 @@ export default function ForgotPage() {
   }
 
   return (
-    <main className="grid min-h-screen place-items-center p-4">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="flex justify-center"><Wordmark /></div>
+    <AuthShell eyebrow="Reset password">
         <Card className="space-y-4">
           {sent ? (
             <div className="space-y-2 text-center">
@@ -50,7 +49,6 @@ export default function ForgotPage() {
             <Link href="/login" className="text-brand hover:underline">Back to sign in</Link>
           </p>
         </Card>
-      </div>
-    </main>
+    </AuthShell>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef } from "react";
+import { forwardRef, useState } from "react";
 import type { ButtonHTMLAttributes, InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
 
 function cx(...c: (string | false | undefined)[]) {
@@ -45,6 +45,52 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
     return <input ref={ref} className={cx(field, className)} {...p} />;
   },
 );
+
+/** Password field with a reveal toggle. Typing a password blind is the single
+ *  biggest cause of failed sign-ins, and on a phone keyboard it's brutal.
+ *
+ *  The toggle is a real <button type="button"> — not a div — so it's reachable
+ *  by keyboard and announces its state. type="button" matters: inside a form a
+ *  bare <button> defaults to submit, and clicking the eye would post the form. */
+export function PasswordInput({ className = "", ...p }: InputHTMLAttributes<HTMLInputElement>) {
+  const [shown, setShown] = useState(false);
+  return (
+    <div className="relative">
+      <input
+        type={shown ? "text" : "password"}
+        className={cx(field, "pr-10", className)}
+        {...p}
+      />
+      <button
+        type="button"
+        onClick={() => setShown((v) => !v)}
+        aria-pressed={shown}
+        aria-label={shown ? "Hide password" : "Show password"}
+        title={shown ? "Hide password" : "Show password"}
+        className="absolute inset-y-0 right-0 grid w-10 place-items-center rounded-r-lg text-fg-subtle transition-colors hover:text-fg"
+      >
+        {shown ? <EyeOffIcon /> : <EyeIcon />}
+      </button>
+    </div>
+  );
+}
+
+function EyeIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+function EyeOffIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M9.9 4.24A9.1 9.1 0 0 1 12 4c6.4 0 10 7 10 7a17.3 17.3 0 0 1-2.2 3.2M6.6 6.6A17.3 17.3 0 0 0 2 11s3.6 7 10 7a9.1 9.1 0 0 0 4.2-1M2 2l20 20" />
+      <path d="M14.1 14.1a3 3 0 1 1-4.2-4.2" />
+    </svg>
+  );
+}
 
 export function Textarea({ className = "", ...p }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return <textarea className={cx(field, "resize-none", className)} {...p} />;

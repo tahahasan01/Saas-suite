@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
-import { Card, Wordmark } from "@/components/ui";
+import {Card} from "@/components/ui";
+import { AuthShell } from "@/components/AuthShell";
 
 export default function VerifyPage() {
   const [state, setState] = useState<"loading" | "ok" | "fail">("loading");
@@ -17,9 +18,7 @@ export default function VerifyPage() {
   }, []);
 
   return (
-    <main className="grid min-h-screen place-items-center p-4">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="flex justify-center"><Wordmark /></div>
+    <AuthShell eyebrow="Verify email">
         <Card className="space-y-2 text-center">
           {state === "loading" && <p className="text-sm text-fg-muted">Verifying…</p>}
           {state === "ok" && (
@@ -38,7 +37,6 @@ export default function VerifyPage() {
             </>
           )}
         </Card>
-      </div>
-    </main>
+    </AuthShell>
   );
 }

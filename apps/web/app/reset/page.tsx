@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import { Button, Card, Field, Input, Wordmark } from "@/components/ui";
+import {Button, Card, Field, Input} from "@/components/ui";
+import { AuthShell } from "@/components/AuthShell";
 
 export default function ResetPage() {
   const router = useRouter();
@@ -34,9 +35,7 @@ export default function ResetPage() {
   }
 
   return (
-    <main className="grid min-h-screen place-items-center p-4">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="flex justify-center"><Wordmark /></div>
+    <AuthShell eyebrow="Set a new password">
         <Card className="space-y-4">
           {done ? (
             <div className="space-y-2 text-center">
@@ -61,7 +60,6 @@ export default function ResetPage() {
             </>
           )}
         </Card>
-      </div>
-    </main>
+    </AuthShell>
   );
 }

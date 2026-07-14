@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
-from datetime import date
+from datetime import date, timedelta
 
 from .. import db, payroll
 from ..deps import AuthContext
@@ -25,6 +25,8 @@ from ..models import (
     LeavePolicyUpdate,
     PayrollOut,
     Payslip,
+    WeekOut,
+    WeekRow,
 )
 from ..rbac import require
 
@@ -184,6 +186,63 @@ async def list_attendance(on: str | None = None, auth: AuthContext = Depends(req
         else:
             rows = await conn.fetch(_ATT_SELECT + " where a.work_date=current_date order by e.name")
     return [_att(r) for r in rows]
+
+
+@router.get("/attendance/week", response_model=WeekOut)
+async def attendance_week(auth: AuthContext = Depends(require("hrms", "read"))):
+    """Last 7 days as a matrix: one derived status per employee per day.
+
+    Derivation mirrors the payroll rules exactly — the matrix and the payslip
+    must never disagree about the same day. In particular: today with no
+    check-in is 'pending', not absent (the day isn't over), and WFH is its own
+    state, never leave.
+    """
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        # One clock for the whole matrix: `started`, attendance dates and
+        # "today" all come from the database, so a UTC/local split can't make an
+        # employee created moments ago look absent yesterday.
+        today = await conn.fetchval("select current_date")
+        days = [today - timedelta(days=i) for i in range(6, -1, -1)]
+        # `started` is floored at created_at exactly as payroll does — a
+        # backdated join_date must not make someone "absent" for days before
+        # the company was tracking them, or the grid and the payslip disagree.
+        employees = await conn.fetch(
+            """select id, name,
+                      greatest(coalesce(join_date, created_at::date), created_at::date) as started
+                 from hrms_employees where status='active' order by name""")
+        att = {(r["employee_id"], r["work_date"]): r["status"] for r in await conn.fetch(
+            "select employee_id, work_date, status from hrms_attendance where work_date >= $1", days[0])}
+        leave = await conn.fetch(
+            """select employee_id, request_type, from_date, to_date from hrms_leave_requests
+                where status='approved' and to_date >= $1 and from_date <= $2""", days[0], today)
+        holidays = {r["holiday_date"] for r in await conn.fetch(
+            "select holiday_date from hrms_holidays where holiday_date between $1 and $2", days[0], today)}
+        off_days = set(await conn.fetchval(
+            "select weekly_off_days from tenants where id=$1", auth.tenant_id) or [0])
+
+    on_leave = {(l["employee_id"], d): ("wfh" if l["request_type"] == "wfh" else "leave")
+                for l in leave
+                for d in days if l["from_date"] <= d <= l["to_date"]}
+
+    def cell(emp, d: date) -> str:
+        if d < emp["started"]:
+            return "none"                      # before the company tracked them
+        if (emp["id"], d) in att:
+            return att[(emp["id"], d)]         # 'present' | 'late'
+        if (emp["id"], d) in on_leave:
+            return on_leave[(emp["id"], d)]
+        if d in holidays:
+            return "holiday"
+        if d.isoweekday() % 7 in off_days:     # ISO Mon=1..Sun=7 -> dow Sun=0
+            return "off"
+        if d == today:
+            return "pending"                   # the day isn't over yet
+        return "absent"
+
+    return WeekOut(
+        days=days,
+        employees=[WeekRow(id=str(e["id"]), name=e["name"], cells=[cell(e, d) for d in days])
+                   for e in employees])
 
 
 # ── Leave ───────────────────────────────────────────────────────────────────

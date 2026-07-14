@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends
 
 from .. import db
 from ..deps import AuthContext, current_auth
-from ..models import ActivityItem, Alert, DashboardOverview, Kpi, TrendPoint
+from ..models import ActivityItem, Alert, DashboardOverview, Kpi, StageSlice, TrendPoint
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -29,6 +29,25 @@ select d::date as day, count(l.id)::bigint as value
   from generate_series(current_date - ($1::int - 1), current_date, interval '1 day') d
   left join crm_leads l on l.created_at::date = d::date
  group by d order by d
+"""
+
+# Pipeline by stage — "where is my money sitting?", which is the question the
+# dashboard could not answer. Kept as value AND count per stage: a stage can hold
+# one huge deal or twenty small ones, and those are different problems.
+#
+# left join so an empty stage plots as a real zero rather than vanishing — a
+# missing "Proposal sent" column reads as "no such stage", not "nothing in it".
+# 'lost' is excluded: it isn't pipeline, and including it would dominate the
+# axis for anyone with a long history.
+_PIPELINE = """
+select s.name, s.kind,
+       count(l.id)::bigint as count,
+       coalesce(sum(l.value_minor), 0)::bigint as value
+  from crm_stages s
+  left join crm_leads l on l.stage_id = s.id
+ where s.kind <> 'lost'
+ group by s.id, s.name, s.kind, s.position
+ order by s.position
 """
 
 _CRM = """
@@ -84,6 +103,7 @@ async def overview(auth: AuthContext = Depends(current_auth)) -> DashboardOvervi
     alerts: list[Alert] = []
     revenue: list[TrendPoint] = []
     leads: list[TrendPoint] = []
+    pipeline: list[StageSlice] = []
 
     async with db.tenant_conn(auth.tenant_id) as conn:
         enabled = {
@@ -98,6 +118,8 @@ async def overview(auth: AuthContext = Depends(current_auth)) -> DashboardOvervi
             c = await conn.fetchrow(_CRM)
             leads = [TrendPoint(day=r["day"], value=r["value"])
                      for r in await conn.fetch(_LEADS_TREND, TREND_DAYS)]
+            pipeline = [StageSlice(name=r["name"], kind=r["kind"], count=r["count"], value=r["value"])
+                        for r in await conn.fetch(_PIPELINE)]
             kpis += [
                 Kpi(key="open_leads", label="Open leads", value=c["open_leads"],
                     kind="count", href="/crm"),
@@ -139,4 +161,4 @@ async def overview(auth: AuthContext = Depends(current_auth)) -> DashboardOvervi
                     for r in await conn.fetch(_ACTIVITY)]
 
     return DashboardOverview(sections=sorted(enabled), kpis=kpis, revenue_trend=revenue,
-                             leads_trend=leads, alerts=alerts, activity=activity)
+                             leads_trend=leads, pipeline=pipeline, alerts=alerts, activity=activity)

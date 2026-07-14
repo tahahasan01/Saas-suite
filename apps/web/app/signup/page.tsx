@@ -13,7 +13,8 @@ import {
 } from "@business-os/types";
 import { api } from "@/lib/api";
 import { useSession } from "@/lib/session";
-import { Button, Card, Field, Input, Wordmark } from "@/components/ui";
+import { Button, Card, Field, Input } from "@/components/ui";
+import { AuthShell } from "@/components/AuthShell";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -55,8 +56,7 @@ export default function SignupPage() {
   }
 
   return (
-    <main className="mx-auto max-w-4xl p-6">
-      <div className="mb-6"><Wordmark /></div>
+    <AuthShell eyebrow="Create account" width="lg">
       <div className="grid gap-6 md:grid-cols-2">
       <Card className="space-y-4">
         <h1 className="text-lg font-semibold">Create your workspace</h1>
@@ -127,6 +127,6 @@ export default function SignupPage() {
         <p className="text-xs text-fg-subtle">Same system — the words change to fit your industry.</p>
       </Card>
       </div>
-    </main>
+    </AuthShell>
   );
 }

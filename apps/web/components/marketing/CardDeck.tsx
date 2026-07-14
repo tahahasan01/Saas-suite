@@ -27,30 +27,28 @@ const STEP = 13; // how much of each spent card stays visible above the next
 // list that happened to stick. A deck wants the next card already climbing.
 const GAP = 110;
 
+/* Five, not ten. The bar: a card earns its place by PROVING a promise the hero
+   already made — "one system, localized to your industry, with an AI; built for
+   Pakistan: PKR, CNIC, FBR." Each one below answers one clause of that
+   sentence, in that order, so the deck reads as evidence rather than a feature
+   list. Dealing ten meant the two that close a sale (FBR, cross-module AI) got
+   the same weight as lead scoring.
+
+   Cut, and why — all still true, all still shipped, none of them load-bearing
+   for the argument. Restore one only if it starts closing deals:
+     · Duplicate detection (crm.py:142) — real, but a detail, not a reason to buy.
+     · Lead scoring 1–100 (scoring.py:13) — a heuristic, not the AI story.
+     · Restock advice (pos.py:293) — every POS claims this.
+     · Seasonal / Ramadan forecast (pos.py:318) — charming, but "built for
+       Pakistan" is already carried harder by FBR and the payroll slabs.
+     · Module on/off (settings/sections) — a preference, not a promise. */
+
 const CARDS = [
   {
-    kicker: "Sales / CRM",
-    title: "Two records, one customer",
-    body: "Exact match on phone and email, plus fuzzy matching on company name. It surfaces up to five candidates and tells you why — before the split happens.",
-    visual: <VisualDuplicate />, // crm.py:142-154 — pg_trgm similarity()
-  },
-  {
-    kicker: "Sales / CRM",
-    title: "Every lead scored 1–100",
-    body: "A transparent weighting of source, contact detail and deal size. No API key, no black box — you can read the rule that ranked your list.",
-    visual: <VisualScoring />, // scoring.py:13-25
-  },
-  {
-    kicker: "POS & Inventory",
-    title: "Restock before you run out",
-    body: "Thirty days of real velocity per SKU. Anything with under ten days of cover gets flagged, with a quantity that carries you back to thirty.",
-    visual: <VisualRestock />, // pos.py:293-315
-  },
-  {
-    kicker: "POS & Inventory",
-    title: "Ramadan is on the calendar",
-    body: "A sixty-day look-ahead joins your fastest movers against Pakistani occasions — Ramadan, Eid, Back to School — and lifts the forecast to match.",
-    visual: <VisualSeasonal />, // pos.py:318-345, 0011_occasions.sql
+    kicker: "AI, everywhere",
+    title: "Ask across the whole business",
+    body: "Your CRM can't see your stock. Your POS can't see your staff. Here one question crosses all three — it writes the query, runs it read-only against your workspace, and answers in your own numbers.",
+    visual: <VisualAsk />, // ai/gateway.py:80-138, 0020_ai_cross_module.sql
   },
   {
     kicker: "FBR Digital Invoicing",
@@ -65,18 +63,6 @@ const CARDS = [
     visual: <VisualPayroll />, // payroll.py:9-16
   },
   {
-    kicker: "AI, everywhere",
-    title: "Ask across the whole business",
-    body: "Your CRM can't see your stock. Your POS can't see your staff. Here one question crosses all three — it writes the query, runs it read-only against your workspace, and answers in your own numbers.",
-    visual: <VisualAsk />, // ai/gateway.py:80-138, 0020_ai_cross_module.sql
-  },
-  {
-    kicker: "Platform",
-    title: "Isolation the database enforces",
-    body: "Row-level security on every tenant table — not a WHERE clause someone has to remember. A cross-tenant read returns nothing, and a test proves it.",
-    visual: <VisualRls />, // db.py:62-69, tests/test_rls.py
-  },
-  {
     kicker: "Platform",
     title: "Seven trades, seven vocabularies",
     body: "A pharmacy has patients, a school has students. The words come from a table, not a translation file — so the whole app changes at signup.",
@@ -84,9 +70,9 @@ const CARDS = [
   },
   {
     kicker: "Platform",
-    title: "Turn off what you don't use",
-    body: "Sales, POS and Staff switch on and off in Settings. Off means gone from the nav — no clutter, no upsell nag — and the data stays put for when you switch it back.",
-    visual: <VisualSections />, // models.py:23 SECTIONS, app/(app)/settings/sections/
+    title: "Isolation the database enforces",
+    body: "Row-level security on every tenant table — not a WHERE clause someone has to remember. A cross-tenant read returns nothing, and a test proves it.",
+    visual: <VisualRls />, // db.py:62-69, tests/test_rls.py
   },
 ];
 
@@ -160,7 +146,7 @@ function DeckHeading() {
       <div>
         <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-brand">Nº001 — Shipped</p>
         <h2 className="mt-3 text-[clamp(1.7rem,3.4vw,2.9rem)] font-black uppercase leading-[0.95] tracking-[-0.03em]">
-          Ten things it does today.
+          Five things it does today.
         </h2>
       </div>
       <p className="max-w-sm text-sm leading-relaxed text-fg-muted">
@@ -212,95 +198,9 @@ function Panel({ children }: { children: React.ReactNode }) {
   return <div className="rounded-lg border border-line bg-canvas/60 p-3.5">{children}</div>;
 }
 
-function VisualDuplicate() {
-  return (
-    <Panel>
-      <div className="flex items-center gap-1.5 rounded border border-warning/30 bg-warning/5 px-2 py-1.5">
-        <span className="text-[10px] text-warning">●</span>
-        <span className="text-[10px] text-fg-muted">2 possible duplicates</span>
-      </div>
-      {[
-        ["Khan Traders", "same phone"],
-        ["Khan Traders (Pvt)", "87% similar"],
-      ].map(([name, why]) => (
-        <div key={name} className="mt-2 flex items-center justify-between gap-2 border-t border-line/70 pt-2">
-          <span className="truncate text-[10px] text-fg">{name}</span>
-          <span className="shrink-0 font-mono text-[9px] text-fg-subtle">{why}</span>
-        </div>
-      ))}
-    </Panel>
-  );
-}
 
-function VisualScoring() {
-  const parts: [string, string, number][] = [
-    ["Referral source", "+30", 100],
-    ["Deal value", "+22", 73],
-    ["Base", "+20", 66],
-    ["Company named", "+10", 33],
-  ];
-  return (
-    <Panel>
-      <div className="mb-2.5 flex items-baseline justify-between">
-        <span className="font-mono text-[9px] uppercase tracking-wider text-fg-subtle">Score</span>
-        <span className="font-mono text-base font-semibold tabular-nums text-brand">82</span>
-      </div>
-      {parts.map(([label, delta, pct]) => (
-        <div key={label} className="mt-1.5 flex items-center gap-2">
-          <span className="w-24 shrink-0 truncate text-[9px] text-fg-muted">{label}</span>
-          <span className="h-1 flex-1 rounded-full bg-elevated">
-            <span className="block h-1 rounded-full bg-brand/70" style={{ width: `${pct}%` }} />
-          </span>
-          <span className="w-7 shrink-0 text-right font-mono text-[9px] tabular-nums text-fg-subtle">{delta}</span>
-        </div>
-      ))}
-    </Panel>
-  );
-}
 
-function VisualRestock() {
-  const rows: [string, string, boolean][] = [
-    ["Basmati 5kg", "4 days", true],
-    ["Cooking oil 1L", "8 days", true],
-    ["Tea 950g", "26 days", false],
-  ];
-  return (
-    <Panel>
-      <div className="flex justify-between pb-2 font-mono text-[9px] uppercase tracking-wider text-fg-subtle">
-        <span>SKU</span>
-        <span>Cover</span>
-      </div>
-      {rows.map(([sku, cover, low]) => (
-        <div key={sku} className="flex justify-between border-t border-line/70 py-2 text-[10px]">
-          <span className="text-fg-muted">{sku}</span>
-          <span className={`font-mono tabular-nums ${low ? "text-warning" : "text-fg-subtle"}`}>{cover}</span>
-        </div>
-      ))}
-    </Panel>
-  );
-}
 
-function VisualSeasonal() {
-  return (
-    <Panel>
-      <div className="flex items-center gap-2">
-        <span className="rounded bg-brand-subtle px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-brand">
-          In 41 days
-        </span>
-        <span className="text-[10px] text-fg">Ramadan</span>
-      </div>
-      {[
-        ["Basmati 5kg", "+40%"],
-        ["Cooking oil 1L", "+35%"],
-      ].map(([sku, lift]) => (
-        <div key={sku} className="mt-2 flex justify-between border-t border-line/70 pt-2 text-[10px]">
-          <span className="text-fg-muted">{sku}</span>
-          <span className="font-mono tabular-nums text-success">{lift}</span>
-        </div>
-      ))}
-    </Panel>
-  );
-}
 
 function VisualFbr() {
   return (
@@ -376,32 +276,6 @@ function VisualRls() {
   );
 }
 
-function VisualSections() {
-  const rows: [string, boolean][] = [
-    ["Sales / CRM", true],
-    ["POS & Inventory", true],
-    ["Staff / HRMS", false],
-  ];
-  return (
-    <Panel>
-      <p className="pb-2 font-mono text-[9px] uppercase tracking-wider text-fg-subtle">Settings · Modules</p>
-      {rows.map(([label, on]) => (
-        <div key={label} className="flex items-center justify-between border-t border-line/70 py-2 text-[10px]">
-          <span className={on ? "text-fg" : "text-fg-subtle"}>{label}</span>
-          {/* A switch, drawn — the real control lives in settings/sections. */}
-          <span
-            className={`flex h-3.5 w-6 shrink-0 items-center rounded-full p-0.5 transition-colors ${
-              on ? "justify-end bg-brand" : "justify-start bg-elevated"
-            }`}
-            aria-hidden
-          >
-            <span className="h-2.5 w-2.5 rounded-full bg-surface" />
-          </span>
-        </div>
-      ))}
-    </Panel>
-  );
-}
 
 function VisualTerminology() {
   const map: [string, string][] = [

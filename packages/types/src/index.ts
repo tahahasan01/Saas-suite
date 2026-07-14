@@ -450,11 +450,35 @@ export interface ActivityItem {
   created_at: string;
 }
 
+/** One pipeline stage's standing total. Value and count both: a stage holding
+ *  one large deal and a stage holding twenty small ones are different
+ *  situations, and a single number hides which you're in. */
+export interface StageSlice {
+  name: string;
+  kind: "active" | "won"; // 'lost' is excluded from pipeline
+  count: number;
+  value: number; // minor units (paisa)
+}
+
 export interface DashboardOverview {
   sections: string[];
   kpis: Kpi[];
   revenue_trend: TrendPoint[];
   leads_trend: TrendPoint[];
+  pipeline: StageSlice[];
   alerts: Alert[];
   activity: ActivityItem[];
+}
+
+// ─── Attendance week matrix ──────────────────────────────────────────────────
+export interface AttendanceWeekRow {
+  id: string;
+  name: string;
+  /** One per day: present | late | leave | wfh | holiday | off | pending | absent | none */
+  cells: string[];
+}
+
+export interface AttendanceWeek {
+  days: string[];
+  employees: AttendanceWeekRow[];
 }

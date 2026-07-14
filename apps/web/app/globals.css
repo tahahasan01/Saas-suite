@@ -216,6 +216,16 @@ body {
 .pill-invert {
   background: var(--color-fg);
   color: var(--color-canvas);
+  /* Owns its radius deliberately. Button's primary variant hardcodes
+     `bg-brand … rounded-lg`, and overriding that from a className relies on
+     Tailwind's utility *ordering* to break the tie — which is not a contract.
+     Declaring the properties here wins on cascade position instead: this rule
+     sits after the utilities import, so it lands regardless of class order. */
+  border-radius: 9999px;
+  box-shadow: none;
+}
+.pill-invert:hover {
+  background: var(--color-fg);
 }
 
 /* Dark: glow bleeding out from behind the glyphs themselves. Light: there is
