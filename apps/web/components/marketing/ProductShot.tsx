@@ -33,18 +33,37 @@ function Chart() {
 
   return (
     <svg viewBox={`0 0 ${w} ${h}`} className="h-auto w-full" aria-hidden>
+      {/* Tokens, not literals: this chart used to hardcode #262b39 rules and a
+          #14171f marker ring, which are invisible the moment the page is in
+          light mode. --color-chart-* already exists for exactly this. */}
       <defs>
         <linearGradient id="shot-fill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#818cf8" stopOpacity="0.35" />
-          <stop offset="100%" stopColor="#818cf8" stopOpacity="0" />
+          <stop offset="0%" stopColor="var(--color-chart-1)" stopOpacity="0.35" />
+          <stop offset="100%" stopColor="var(--color-chart-1)" stopOpacity="0" />
         </linearGradient>
       </defs>
       {[0.25, 0.6, 0.95].map((f) => (
-        <line key={f} x1="0" x2={w} y1={h * f} y2={h * f} stroke="#262b39" strokeWidth="1" />
+        <line key={f} x1="0" x2={w} y1={h * f} y2={h * f} stroke="var(--color-chart-grid)" strokeWidth="1" />
       ))}
       <path d={`${line} L${w},${h} L0,${h} Z`} fill="url(#shot-fill)" />
-      <path d={line} fill="none" stroke="#818cf8" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-      <circle cx={x(SERIES.length - 1)} cy={y(SERIES[SERIES.length - 1])} r="4" fill="#818cf8" stroke="#14171f" strokeWidth="2" />
+      <path
+        d={line}
+        fill="none"
+        stroke="var(--color-chart-1)"
+        strokeWidth="2"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+      {/* The marker ring is the card's own surface punching through the line —
+          so it has to track the surface token, not a fixed near-black. */}
+      <circle
+        cx={x(SERIES.length - 1)}
+        cy={y(SERIES[SERIES.length - 1])}
+        r="4"
+        fill="var(--color-chart-1)"
+        stroke="var(--color-surface)"
+        strokeWidth="2"
+      />
     </svg>
   );
 }

@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useSession } from "@/lib/session";
 import { Wordmark } from "@/components/ui";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { RotatingWord } from "@/components/marketing/RotatingWord";
 import { HeroCanvas } from "@/components/marketing/HeroCanvas";
 import { ProductShot } from "@/components/marketing/ProductShot";
 import { Reveal } from "@/components/marketing/Reveal";
 import { Marquee } from "@/components/marketing/Marquee";
-import { ScrollGallery } from "@/components/marketing/ScrollGallery";
+import { CardDeck } from "@/components/marketing/CardDeck";
 import { ScrubWords } from "@/components/marketing/ScrubWords";
 import { ScrollRows } from "@/components/marketing/ScrollRows";
 import { Testimonials } from "@/components/marketing/Testimonials";
@@ -25,9 +26,10 @@ export default function Landing() {
   const { me } = useSession();
 
   return (
-    // Composed dark on purpose — the marketing surface keeps its own scheme
-    // regardless of the app's light/dark toggle.
-    <div className="theme-dark theme-marketing min-h-screen bg-canvas text-fg">
+    // Follows the document toggle like the rest of the app. `theme-marketing`
+    // stays because it still means something — it swaps the app's navy for
+    // near-black *when dark is on* — but it no longer forces the scheme.
+    <div className="theme-marketing min-h-screen bg-canvas text-fg">
       <header className="sticky top-0 z-30 border-b border-line/60 bg-canvas/70 backdrop-blur-lg">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
           <Wordmark />
@@ -35,6 +37,7 @@ export default function Landing() {
             <a href="#modules" className="hidden text-fg-muted hover:text-fg sm:block">Product</a>
             <a href="#industries" className="hidden text-fg-muted hover:text-fg sm:block">Industries</a>
             <Link href="/pricing" className="hidden text-fg-muted hover:text-fg sm:block">Pricing</Link>
+            <ThemeToggle />
             {me ? (
               <Link href="/dashboard" className="rounded-lg bg-brand px-4 py-1.5 font-medium text-brand-fg hover:bg-brand-hover">Dashboard</Link>
             ) : (
@@ -177,10 +180,10 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* The module cards that used to sit here are now the pinned rail below:
-          same five surfaces, but scrubbed through one at a time instead of
-          skimmed as a grid. */}
-      <ScrollGallery />
+      {/* The module cards that used to sit here are now the deck below: nine
+          shipped capabilities, dealt one at a time so each gets read rather
+          than skimmed as a grid. */}
+      <CardDeck />
 
       {/* ─── The thesis ───────────────────────────────────────────────────── */}
       {/* Lands once, in full colour, straight after the rail — the page has

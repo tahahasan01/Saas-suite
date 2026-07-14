@@ -41,14 +41,19 @@ export function ScrubWords({ text, kicker }: { text: string; kicker: string }) {
   return (
     <section ref={ref} style={{ ...SLAB, height: "220vh" }}>
       <div className="sticky top-0 flex h-screen items-center overflow-hidden">
-        <div className="mx-auto max-w-5xl px-6">
+        <div className="mx-auto w-full max-w-[1400px] px-6">
           <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-brand-fg/70">{kicker}</p>
-          <p className="mt-6 text-[clamp(1.6rem,4vw,3rem)] font-bold leading-[1.15] tracking-[-0.02em]">
+          <p className="mt-6 text-[clamp(1.8rem,4.6vw,4rem)] font-bold leading-[1.1] tracking-[-0.025em]">
             {words.map((w, i) => (
               <span
                 key={`${w}-${i}`}
                 className="text-brand-fg transition-opacity duration-200 ease-out"
-                style={{ opacity: Math.min(1, Math.max(0.16, lit - i)) }}
+                // Floor at 0.38, not 0.16: white-on-indigo at 0.16 is barely
+                // above the slab and the whole sentence reads as a grey smear
+                // instead of as text with a lit word travelling through it. The
+                // dim state has to stay legible — it's the contrast *step* that
+                // carries the effect, not the darkness of the floor.
+                style={{ opacity: Math.min(1, Math.max(0.38, lit - i)) }}
               >
                 {w}{i < words.length - 1 ? " " : ""}
               </span>

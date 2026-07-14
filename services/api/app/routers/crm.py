@@ -3,9 +3,9 @@ Guarded by require('crm', ...) which checks the crm entitlement + RBAC."""
 from __future__ import annotations
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
-from .. import db, fulfillment, scoring
+from .. import csv_io, db, fulfillment, scoring
 from ..deps import AuthContext
 from ..workflow import engine as wf
 from ..models import (
@@ -13,6 +13,8 @@ from ..models import (
     DuplicateMatch,
     FulfillmentData,
     FulfillmentSchema,
+    ImportResult,
+    ImportRowError,
     InteractionCreate,
     InteractionOut,
     LeadCreate,
@@ -85,6 +87,65 @@ async def list_pipelines(auth: AuthContext = Depends(require("crm", "read"))):
             StageOut(id=str(s["id"]), name=s["name"], position=s["position"], kind=s["kind"]))
     return [PipelineOut(id=str(p["id"]), name=p["name"], is_default=p["is_default"],
                         stages=by_pipe.get(str(p["id"]), [])) for p in pipelines]
+
+
+# ── CSV import / export ─────────────────────────────────────────────────────
+@router.post("/leads/import", response_model=ImportResult)
+async def import_leads(request: Request, skip_duplicates: bool = True,
+                       auth: AuthContext = Depends(require("crm", "write"))) -> ImportResult:
+    """Bulk-load leads from a CSV posted as the raw request body.
+
+    Row-level tolerance on purpose: a 2,000-row file with three bad rows imports
+    1,997 and names the three — failing the whole file sends the user back to
+    Excel to hunt for a needle. Duplicate checks run inside the same transaction,
+    so a phone number appearing twice *within the file* is caught too.
+    """
+    rows = csv_io.read_rows(await request.body(), csv_io.LEAD_HEADERS)
+
+    created = skipped = 0
+    errors: list[ImportRowError] = []
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        pid = await _ensure_default_pipeline(conn, auth.tenant_id)
+        stage_id = await conn.fetchval(
+            "select id from crm_stages where pipeline_id=$1 order by position limit 1", pid)
+        for i, row in enumerate(rows, start=2):  # 1-based, after the header line
+            name = row.get("name", "")
+            if not name:
+                errors.append(ImportRowError(row=i, error="Missing name"))
+                continue
+            company, phone, email = row.get("company", ""), row.get("phone", ""), row.get("email", "")
+            if skip_duplicates and await _find_duplicates(conn, name, company, phone, email):
+                skipped += 1
+                continue
+            value_minor = csv_io.parse_money_minor(row.get("value", ""))
+            await conn.execute(
+                """insert into crm_leads (tenant_id, pipeline_id, stage_id, owner_id, name,
+                                          company, phone, email, source, value_minor, score)
+                   values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)""",
+                auth.tenant_id, pid, stage_id, auth.user_id, name, company, phone, email,
+                row.get("source", "") or "import", value_minor,
+                scoring.score_lead(source="import", company=company, phone=phone,
+                                   email=email, value_minor=value_minor))
+            created += 1
+            # Deliberately no wf.emit here: a 2,000-row import must not fire
+            # 2,000 automations/notifications at the owner.
+    return ImportResult(created=created, skipped_duplicates=skipped, errors=errors[:50])
+
+
+@router.get("/leads/export")
+async def export_leads(auth: AuthContext = Depends(require("crm", "read"))) -> Response:
+    """Their data is theirs — export is also what makes import trustworthy."""
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        rows = await conn.fetch(
+            """select l.name, l.company, l.phone, l.email, l.source,
+                      (l.value_minor / 100.0) as value, s.name as stage, l.created_at
+                 from crm_leads l join crm_stages s on s.id = l.stage_id
+                order by l.created_at""")
+    body = csv_io.to_csv(
+        ["name", "company", "phone", "email", "source", "value", "stage", "created_at"],
+        [dict(r) for r in rows])
+    return Response(body, media_type="text/csv",
+                    headers={"Content-Disposition": 'attachment; filename="leads.csv"'})
 
 
 @router.get("/summary", response_model=CrmSummary)

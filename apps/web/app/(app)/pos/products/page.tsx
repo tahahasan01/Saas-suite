@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { money } from "@/lib/format";
 import { useSession } from "@/lib/session";
 import { Badge, Button, Card, Field, Input } from "@/components/ui";
+import { ImportCsv } from "@/components/ImportCsv";
 
 const blank = { name: "", price: "", stock: "", barcode: "", low: "", hs_code: "", tax_rate: "" };
 
@@ -65,7 +66,10 @@ export default function ProductsPage() {
         <h1 className="text-2xl font-semibold">{word}</h1>
         <Link href="/pos" className="text-sm text-brand hover:underline">← Back to billing</Link>
       </div>
-      <p className="mb-6 text-sm text-fg-muted">Manage your catalog and stock levels.</p>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-fg-muted">Manage your catalog and stock levels.</p>
+        <ImportCsv path="/pos/products" onDone={load} />
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <Card className="p-0">

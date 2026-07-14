@@ -97,3 +97,11 @@ async def pos_tenant(client):
     tenant_id = await _signup(client, ["pos"])
     yield PosTenant(tenant_id=tenant_id)
     await _drop(tenant_id)
+
+
+@pytest_asyncio.fixture
+async def crm_tenant(client):
+    """A freshly signed-up CRM tenant (sample leads seeded)."""
+    tenant_id = await _signup(client, ["crm"])
+    yield PosTenant(tenant_id=tenant_id)  # shape is just {tenant_id}
+    await _drop(tenant_id)

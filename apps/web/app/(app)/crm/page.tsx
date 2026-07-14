@@ -7,6 +7,7 @@ import { money } from "@/lib/format";
 import { useSession } from "@/lib/session";
 import { Button } from "@/components/ui";
 import { AddLeadForm } from "@/components/crm/AddLeadForm";
+import { ImportCsv } from "@/components/ImportCsv";
 import { LeadDrawer } from "@/components/crm/LeadDrawer";
 
 export default function CrmBoard() {
@@ -45,9 +46,12 @@ export default function CrmBoard() {
 
   return (
     <>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-semibold">{t("leads")}</h1>
-        <Button onClick={() => setAdding(true)}>+ New {t("lead")}</Button>
+        <div className="flex items-center gap-3">
+          <ImportCsv path="/crm/leads" onDone={() => pipeline && loadLeads(pipeline.id)} />
+          <Button onClick={() => setAdding(true)}>+ New {t("lead")}</Button>
+        </div>
       </div>
 
       {leads.length === 0 ? (

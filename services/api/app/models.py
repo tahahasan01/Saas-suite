@@ -707,3 +707,15 @@ class DashboardOverview(BaseModel):
     leads_trend: list[TrendPoint]
     alerts: list[Alert]
     activity: list[ActivityItem]
+
+
+# ─── CSV import ──────────────────────────────────────────────────────────────
+class ImportRowError(BaseModel):
+    row: int          # 1-based line number in the file, header included
+    error: str
+
+
+class ImportResult(BaseModel):
+    created: int
+    skipped_duplicates: int
+    errors: list[ImportRowError] = Field(default_factory=list)

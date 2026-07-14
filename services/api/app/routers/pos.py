@@ -5,13 +5,15 @@ import math
 from decimal import Decimal
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
-from .. import db, fbr, fbr_submit
+from .. import csv_io, db, fbr, fbr_submit
 from ..deps import AuthContext
 from ..models import (
     ForecastItem,
     ForecastOut,
+    ImportResult,
+    ImportRowError,
     OccasionForecast,
     PosSummary,
     ProductCreate,
@@ -159,6 +161,56 @@ async def checkout(body: SaleCreate, auth: AuthContext = Depends(require("pos", 
         total_minor=sale["total_minor"], paid_minor=sale["paid_minor"], change_minor=sale["change_minor"],
         payment_method=sale["payment_method"], item_count=sale["item_count"], created_at=sale["created_at"],
         items=items, tax_minor=sale["tax_minor"], fbr_invoice_number=fbr_number, fbr_status=fbr_status)
+
+
+# ── CSV import / export ─────────────────────────────────────────────────────
+@router.post("/products/import", response_model=ImportResult)
+async def import_products(request: Request, skip_duplicates: bool = True,
+                          auth: AuthContext = Depends(require("pos", "write"))) -> ImportResult:
+    """Bulk-load the catalog from CSV. A shop's stock list almost always already
+    exists in Excel — retyping 500 SKUs by hand is how trials die."""
+    rows = csv_io.read_rows(await request.body(), csv_io.PRODUCT_HEADERS)
+
+    created = skipped = 0
+    errors: list[ImportRowError] = []
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        for i, row in enumerate(rows, start=2):
+            name, barcode, sku = row.get("name", ""), row.get("barcode", ""), row.get("sku", "")
+            if not name:
+                errors.append(ImportRowError(row=i, error="Missing name"))
+                continue
+            if skip_duplicates and await conn.fetchval(
+                """select 1 from pos_products
+                    where ($1 <> '' and barcode = $1) or ($2 <> '' and sku = $2) or lower(name) = lower($3)
+                    limit 1""", barcode, sku, name):
+                skipped += 1
+                continue
+            tax_rate = min(100.0, max(0.0, csv_io.parse_number(row.get("tax_rate", ""))))
+            await conn.execute(
+                """insert into pos_products (tenant_id, name, sku, barcode, category, price_minor,
+                                             cost_minor, stock_qty, hs_code, tax_rate)
+                   values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)""",
+                auth.tenant_id, name, sku, barcode, row.get("category", ""),
+                csv_io.parse_money_minor(row.get("price", "")),
+                csv_io.parse_money_minor(row.get("cost", "")),
+                csv_io.parse_number(row.get("stock", "")),
+                row.get("hs_code", ""), tax_rate)
+            created += 1
+    return ImportResult(created=created, skipped_duplicates=skipped, errors=errors[:50])
+
+
+@router.get("/products/export")
+async def export_products(auth: AuthContext = Depends(require("pos", "read"))) -> Response:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        rows = await conn.fetch(
+            """select name, sku, barcode, category, (price_minor / 100.0) as price,
+                      (cost_minor / 100.0) as cost, stock_qty as stock, hs_code, tax_rate
+                 from pos_products where active order by name""")
+    body = csv_io.to_csv(
+        ["name", "sku", "barcode", "category", "price", "cost", "stock", "hs_code", "tax_rate"],
+        [dict(r) for r in rows])
+    return Response(body, media_type="text/csv",
+                    headers={"Content-Disposition": 'attachment; filename="products.csv"'})
 
 
 # ── Returns ─────────────────────────────────────────────────────────────────
