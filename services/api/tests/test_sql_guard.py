@@ -37,3 +37,47 @@ def test_blocks_unsafe(sql):
 
 def test_enforces_limit():
     assert "limit" in sanitize("select count(*) from ai_v_leads").lower()
+
+
+# ── Section scoping ─────────────────────────────────────────────────────────
+# The AI answers across every module a tenant enabled — which means the guard,
+# not the endpoint, is what stops a POS-only tenant reading CRM data.
+from app.ai.sql_guard import VIEWS_BY_SECTION, views_for  # noqa: E402
+
+
+def test_views_are_scoped_to_enabled_sections():
+    assert views_for({"pos"}) == VIEWS_BY_SECTION["pos"]
+    assert views_for({"crm", "hrms"}) == VIEWS_BY_SECTION["crm"] | VIEWS_BY_SECTION["hrms"]
+    assert views_for(set()) == set()
+
+
+def test_pos_only_tenant_cannot_reach_crm_views():
+    with pytest.raises(UnsafeQuery):
+        sanitize("select * from ai_v_leads", allowed=views_for({"pos"}))
+
+
+def test_crm_only_tenant_cannot_reach_staff_data():
+    with pytest.raises(UnsafeQuery):
+        sanitize("select * from ai_v_employees", allowed=views_for({"crm"}))
+
+
+def test_a_join_is_refused_if_either_side_is_out_of_scope():
+    """The dangerous shape: a legal view joined to one the tenant doesn't have."""
+    with pytest.raises(UnsafeQuery):
+        sanitize("select * from ai_v_sales s join ai_v_leads l on l.name = s.cashier",
+                 allowed=views_for({"pos"}))
+
+
+def test_cross_module_join_is_allowed_when_both_sections_are_on():
+    """The differentiator: one question spanning sales and staff."""
+    sql = sanitize(
+        "select s.cashier, sum(s.total) from ai_v_sales s "
+        "join ai_v_employees e on e.name = s.cashier group by s.cashier",
+        allowed=views_for({"pos", "hrms"}))
+    assert "limit" in sql.lower()
+
+
+def test_every_section_view_is_actually_queryable():
+    for section, views in VIEWS_BY_SECTION.items():
+        for v in views:
+            assert sanitize(f"select * from {v}", allowed=views_for({section}))

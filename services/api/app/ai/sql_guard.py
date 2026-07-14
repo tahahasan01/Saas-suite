@@ -6,8 +6,21 @@ from __future__ import annotations
 
 import re
 
-# Curated views the AI is allowed to query (see migration 0004).
-ALLOWED_VIEWS = {"ai_v_leads", "ai_v_interactions"}
+# Curated views per section (migrations 0004, 0020). The allowlist is built from
+# the tenant's enabled sections, so a POS-only tenant's AI can never reach a CRM
+# view even if the model writes one into a query.
+VIEWS_BY_SECTION = {
+    "crm": {"ai_v_leads", "ai_v_interactions"},
+    "pos": {"ai_v_sales", "ai_v_sale_items", "ai_v_products", "ai_v_returns"},
+    "hrms": {"ai_v_employees", "ai_v_attendance", "ai_v_leave"},
+}
+
+# Every view that exists. Used only as the default for callers that do not scope.
+ALLOWED_VIEWS = set().union(*VIEWS_BY_SECTION.values())
+
+
+def views_for(sections) -> set[str]:
+    return set().union(*(VIEWS_BY_SECTION.get(s, set()) for s in sections)) if sections else set()
 
 _STARTS_SELECT = re.compile(r"^\s*select\b", re.IGNORECASE)
 _FORBIDDEN = re.compile(
@@ -24,8 +37,12 @@ class UnsafeQuery(Exception):
     pass
 
 
-def sanitize(sql: str, max_limit: int = 200) -> str:
-    """Return a safe SELECT (with an enforced LIMIT) or raise UnsafeQuery."""
+def sanitize(sql: str, max_limit: int = 200, allowed: set[str] | None = None) -> str:
+    """Return a safe SELECT (with an enforced LIMIT) or raise UnsafeQuery.
+
+    `allowed` scopes the query to the views a tenant's enabled sections grant.
+    """
+    allowed = ALLOWED_VIEWS if allowed is None else allowed
     s = sql.strip().rstrip(";").strip()
     if not s:
         raise UnsafeQuery("empty query")
@@ -43,7 +60,7 @@ def sanitize(sql: str, max_limit: int = 200) -> str:
         raise UnsafeQuery("query references no table")
     for ref in refs:
         name = ref.split(".")[-1].lower()
-        if name not in ALLOWED_VIEWS:
+        if name not in allowed:
             raise UnsafeQuery(f"table '{ref}' is not queryable")
 
     if not _HAS_LIMIT.search(s):

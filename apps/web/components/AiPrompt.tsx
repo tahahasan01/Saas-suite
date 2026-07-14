@@ -12,18 +12,25 @@ interface AskResponse {
 }
 
 export function AiPrompt() {
-  const { t } = useSession();
+  const { me, t } = useSession();
   const [q, setQ] = useState("");
   const [res, setRes] = useState<AskResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const on = (key: string) => !!me?.entitlements.some((e) => e.section_key === key && e.enabled);
   const leads = t("leads").toLowerCase();
+
+  // Suggestions follow the tenant's modules — and lead with a cross-module
+  // question when they have more than one, because that is the answer no
+  // separate CRM, POS or HR product can give.
   const suggestions = [
-    `How many ${leads} are in Qualified?`,
-    `What's my total won value this month?`,
-    `Which ${leads} haven't been contacted?`,
-  ];
+    on("pos") && on("hrms") && "Who sold the most this week, and were they in every day?",
+    on("crm") && on("pos") && `Compare my won ${leads} to my actual sales this month`,
+    on("crm") && `Which ${leads} haven't been contacted?`,
+    on("pos") && "What's running out of stock?",
+    on("hrms") && "Who is off today?",
+  ].filter(Boolean).slice(0, 3) as string[];
 
   async function run(question: string) {
     if (!question.trim()) return;

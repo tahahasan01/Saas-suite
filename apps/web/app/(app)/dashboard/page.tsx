@@ -24,9 +24,6 @@ export default function Dashboard() {
 
   if (!me) return null;
   const firstName = me.user.name.split(" ")[0];
-  // The AI answers over CRM views only, and /ai/ask is gated on the crm
-  // entitlement — showing the box to a POS-only tenant just yields a 403.
-  const hasCrm = me.entitlements.some((e) => e.section_key === "crm" && e.enabled);
 
   const hasSignal = !!data && data.kpis.some((k) => k.value > 0);
   // Each tile borrows the series it summarises; the rest stay bare numbers.
@@ -42,7 +39,7 @@ export default function Dashboard() {
         <p className="mt-1 text-sm text-fg-muted">Here&apos;s what&apos;s happening in {me.tenant.name}.</p>
       </header>
 
-      {hasCrm && <AiPrompt />}
+      <AiPrompt />
 
       {loading ? (
         <SkeletonGrid />

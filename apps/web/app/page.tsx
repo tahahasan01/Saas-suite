@@ -8,6 +8,10 @@ import { HeroCanvas } from "@/components/marketing/HeroCanvas";
 import { ProductShot } from "@/components/marketing/ProductShot";
 import { Reveal } from "@/components/marketing/Reveal";
 import { Marquee } from "@/components/marketing/Marquee";
+import { ScrollGallery } from "@/components/marketing/ScrollGallery";
+import { ScrubWords } from "@/components/marketing/ScrubWords";
+import { ScrollRows } from "@/components/marketing/ScrollRows";
+import { Testimonials } from "@/components/marketing/Testimonials";
 
 // Every entry here must be something the product actually does today. If it
 // isn't shipped, it doesn't go on the marquee.
@@ -105,8 +109,15 @@ export default function Landing() {
             {[
               ["3", "modules, one login"],
               ["7", "industries, re-skinned"],
-              ["1", "AI across every screen"],
-              ["PKR", "flat pricing, unlimited seats"],
+              // "Every screen" overstated it — there's one /ai/ask endpoint and
+              // one prompt component. The stronger true claim is the reach: one
+              // question spans CRM, POS and HRMS via the ai_v_* views.
+              ["1", "AI, across all three modules"],
+              // NOT "unlimited seats" — billing.py caps starter at 5 and growth
+              // at 20, and check_seat_limit returns 403 at the cap. The FAQ
+              // below has always said this correctly; the tile used to contradict
+              // both it and the code.
+              ["PKR", "flat pricing, not per-seat"],
             ].map(([v, l], i) => (
               <Reveal key={l} delay={i * 70}>
                 <dt className="text-2xl font-semibold tracking-tight text-fg">{v}</dt>
@@ -127,8 +138,12 @@ export default function Landing() {
         <div className="mx-auto max-w-6xl px-6 py-20">
           <Reveal className="mx-auto max-w-2xl text-center">
             <p className="text-sm font-medium text-brand">One screen, every side of the business</p>
+            {/* Was "A won deal moves your stock. Nobody re-types anything." —
+                no code does that. Stock is written by POS sales and returns
+                only. What IS true is the read side: one dashboard, and one AI
+                question, spanning all three modules. */}
             <h2 className="mt-2 text-3xl font-semibold tracking-tight">
-              A won deal moves your stock. Nobody re-types anything.
+              Sales, stock and staff. One dashboard, one question away.
             </h2>
             <p className="mt-4 text-fg-muted">
               Because it&apos;s one system — not three apps taped together — the dashboard reads sales,
@@ -160,19 +175,26 @@ export default function Landing() {
             <HeroCanvas />
           </div>
         </div>
-
-        <div className="mt-12 grid gap-4 md:grid-cols-3">
-          {[
-            { icon: <IconCrm />, title: "Sales / CRM", desc: "Kanban pipeline, lead scoring, duplicate detection, and invoicing that flows to accounts." },
-            { icon: <IconPos />, title: "POS & Inventory", desc: "Keyboard-fast billing, barcode scan, and demand forecasting that flags what to restock before Eid." },
-            { icon: <IconHr />, title: "Staff / HRMS", desc: "Attendance, leave approvals, and payroll computed on the real FBR 2025-26 slabs." },
-          ].map((m, i) => (
-            <Reveal key={m.title} delay={i * 110}>
-              <Module {...m} />
-            </Reveal>
-          ))}
-        </div>
       </section>
+
+      {/* The module cards that used to sit here are now the pinned rail below:
+          same five surfaces, but scrubbed through one at a time instead of
+          skimmed as a grid. */}
+      <ScrollGallery />
+
+      {/* ─── The thesis ───────────────────────────────────────────────────── */}
+      {/* Lands once, in full colour, straight after the rail — the page has
+          just shown five surfaces, and this is the sentence that says why
+          they're one purchase. */}
+      {/* The payoff line is "one question can cross all three" — which is
+          shipped (ai_v_* views span CRM/POS/HRMS, section-scoped and guarded).
+          It is NOT "the won deal already moved your stock": nothing in crm.py
+          writes stock_qty, and the workflow engine's only action is `notify`.
+          Keep this sentence pinned to what the code does. */}
+      <ScrubWords
+        kicker="Nº002 — The thesis"
+        text="Three apps means three bills, three logins, and a spreadsheet in the middle where the truth goes missing. One system means one question can cross all three."
+      />
 
       {/* ─── How it works ─────────────────────────────────────────────────── */}
       <section className="border-y border-line/60 bg-surface/30">
@@ -210,8 +232,11 @@ export default function Landing() {
         </Reveal>
         <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {[
+            // These pairs must match seed.py's terminology rows exactly — they
+            // are a promise about words the app will actually show. Real estate
+            // seeds lead→Buyer; "Prospect" appeared nowhere in the product.
             ["Retail", "Customer"], ["Restaurant", "Guest"], ["Pharmacy", "Patient"], ["Wholesale", "Buyer"],
-            ["Education", "Student"], ["Software house", "Client"], ["Real estate", "Prospect"],
+            ["Education", "Student"], ["Software house", "Client"], ["Real estate", "Buyer"],
           ].map(([industry, word], i) => (
             <Reveal key={industry} delay={i * 60}>
               <div className="edge-lit group rounded-xl border border-line bg-gradient-to-b from-surface/80 to-surface/40 p-4 transition hover:border-brand/40">
@@ -228,54 +253,16 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ─── AI band ──────────────────────────────────────────────────────── */}
-      <section className="atmosphere border-y border-line/60">
-        <div className="mx-auto grid max-w-6xl items-center gap-10 px-6 py-20 lg:grid-cols-2">
-          <div>
-            <p className="text-sm font-medium text-brand">Not a chatbot. A consultant.</p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-tight">Just ask. The AI runs the query.</h2>
-            <p className="mt-4 max-w-lg text-fg-muted">
-              Every screen has an AI prompt box. It scores your leads, forecasts demand, catches fraud, and
-              answers plain-language questions about your own data — safely, tenant-isolated.
-            </p>
-          </div>
-          <div className="rounded-2xl border border-line bg-surface/80 p-5 shadow-xl">
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-brand">✦</span>
-              <span className="text-fg-muted">how many customers are in Qualified this week?</span>
-            </div>
-            <div className="mt-4 border-t border-line pt-4 text-sm">
-              <p className="text-fg">You have <span className="font-semibold text-fg">12 customers</span> in the Qualified stage, worth <span className="font-semibold text-brand">Rs 840,000</span>. 3 need follow-up today.</p>
-              <p className="mt-3 font-mono text-[11px] text-fg-subtle">select count(*) from ai_v_leads where stage = &apos;Qualified&apos;…</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* ─── Comparison ───────────────────────────────────────────────────── */}
-      <section className="bloom mx-auto max-w-4xl px-6 py-20">
-        <Reveal>
-          <h2 className="text-center text-3xl font-semibold tracking-tight">Why not just buy three apps?</h2>
-        </Reveal>
-        <div className="mt-10 grid gap-4 sm:grid-cols-2">
-          <Reveal className="rounded-2xl border border-line bg-surface/50 p-6">
-            <p className="mb-4 text-sm font-semibold text-fg-subtle">Separate tools</p>
-            <ul className="space-y-2.5 text-sm text-fg-muted">
-              {["Data doesn't connect", "Per-seat pricing that balloons", "Generic, English-first UI", "Three logins, three bills", "AI as a paid add-on"].map((t) => (
-                <li key={t} className="flex gap-2"><span className="text-danger">✕</span>{t}</li>
-              ))}
-            </ul>
-          </Reveal>
-          <Reveal delay={140} className="edge-lit rounded-2xl border border-brand/40 bg-gradient-to-b from-brand-subtle/50 to-brand-subtle/10 p-6">
-            <p className="mb-4 text-sm font-semibold text-brand">Business OS</p>
-            <ul className="space-y-2.5 text-sm text-fg">
-              {["A won sale updates your stock", "Flat PKR price, unlimited value", "Speaks your industry's language", "One login, one bill, one AI", "AI-native, everywhere, included"].map((t) => (
-                <li key={t} className="flex gap-2"><span className="text-success">✓</span>{t}</li>
-              ))}
-            </ul>
-          </Reveal>
-        </div>
-      </section>
+      {/* The two-column ✕/✓ table that used to make this argument is now the
+          pinned rows below — the same five points, but arriving one at a time
+          so each one is actually read. */}
+      <ScrollRows />
+
+      {/* ─── Customers ────────────────────────────────────────────────────── */}
+      {/* Placeholder content — see the note in Testimonials.tsx. Real quotes
+          and logos, or this section comes out before launch. */}
+      <Testimonials />
 
       {/* ─── FAQ ──────────────────────────────────────────────────────────── */}
       <section className="mx-auto max-w-3xl px-6 py-20">
@@ -290,8 +277,13 @@ export default function Landing() {
              "Yes — enforced by the database itself, not just app code. Every row is tagged to your workspace and Postgres row-level security blocks cross-tenant reads even if a query tried."],
             ["What does it cost per user?",
              "Nothing. Pricing is a flat monthly rate in PKR per workspace, with seat limits by plan — not a per-seat charge that punishes you for growing."],
+            // Do not restore the old answer ("POS is designed to keep billing
+            // during a drop and sync when the line returns") without building
+            // it first: there is no service worker, no local queue and no sync
+            // reconciliation anywhere in apps/web. FBR store-and-forward is
+            // real, but it is server-side and a different promise.
             ["Does it work on slow or patchy internet?",
-             "The app is built for it, and POS is designed to keep billing during a drop and sync when the line returns."],
+             "Honestly: POS needs a connection to bill today — offline billing is on the roadmap, not in the product. What is built is FBR store-and-forward: if the tax gateway is unreachable, your sale still completes and the invoice files itself later."],
             ["Can I pay by bank transfer?",
              "Yes. Card isn't required — bank transfer is a first-class option, because that's how business actually gets paid here."],
           ].map(([q, a]) => (
@@ -327,24 +319,3 @@ export default function Landing() {
   );
 }
 
-function Module({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) {
-  return (
-    <div className="edge-lit group h-full rounded-2xl border border-line bg-gradient-to-b from-surface/90 to-surface/40 p-6 transition hover:border-brand/40">
-      <div className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br from-brand/30 to-brand/5 text-brand ring-1 ring-brand/20 transition group-hover:scale-105">
-        {icon}
-      </div>
-      <h3 className="text-base font-semibold">{title}</h3>
-      <p className="mt-2 text-sm text-fg-muted">{desc}</p>
-    </div>
-  );
-}
-
-function IconCrm() {
-  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3v18h18" /><rect x="7" y="12" width="3" height="6" /><rect x="12" y="8" width="3" height="10" /><rect x="17" y="5" width="3" height="13" /></svg>;
-}
-function IconPos() {
-  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="12" rx="2" /><path d="M7 20h10M12 16v4" /></svg>;
-}
-function IconHr() {
-  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="8" r="3" /><path d="M15 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M16 3.1a4 4 0 0 1 0 7.8M21 21v-2a4 4 0 0 0-3-3.8" /></svg>;
-}
