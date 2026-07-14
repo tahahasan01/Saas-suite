@@ -1,8 +1,8 @@
-"""HRMS — employees, attendance (web check-in/out + anti-fraud flag), leave.
+"""HRMS — employees, attendance, leave, the working-day calendar, and payroll.
 Guarded by the 'hrms' section. Mobile face-match/biometric plug into attendance later."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from datetime import date
 
@@ -14,6 +14,8 @@ from ..models import (
     EmployeeCreate,
     EmployeeOut,
     EmployeeUpdate,
+    HolidayCreate,
+    HolidayOut,
     HrmsSummary,
     LeaveCreate,
     LeaveOut,
@@ -22,9 +24,53 @@ from ..models import (
 )
 from ..rbac import require
 
-WORKING_DAYS = 26
-
 router = APIRouter(prefix="/hrms", tags=["hrms"])
+
+# Absence is derived from evidence, not from a status field: a working day with
+# no check-in and no approved leave. The previous query counted
+# `attendance.status = 'absent'`, which no code path ever wrote, so the
+# deduction was structurally always zero.
+#
+# $1 = first day of the month, $2 = the tenant's weekly rest days (ISO dow).
+_PAYROLL = """
+with working_days as (
+  select d::date as day
+    from generate_series($1::date,
+                         ($1::date + interval '1 month' - interval '1 day')::date,
+                         interval '1 day') d
+   where not (extract(dow from d)::int = any($2::int[]))
+     and not exists (select 1 from hrms_holidays h where h.holiday_date = d::date)
+)
+select e.id, e.name, e.salary_minor,
+       -- Per-day pay divides by the whole month's working days …
+       (select count(*) from working_days) as month_days,
+       -- … and only *completed* working days can be judged: `< current_date`,
+       -- never `<=`, or everyone is absent until they clock in this morning.
+       -- The created_at floor matters too — without it a business that signs up
+       -- mid-month sees staff docked for days before the system existed.
+       (select count(*) from working_days w
+         where w.day < current_date
+           and w.day >= greatest(coalesce(e.join_date, e.created_at::date), e.created_at::date)
+       ) as elapsed_days,
+       (select count(distinct a.work_date) from hrms_attendance a
+         where a.employee_id = e.id and a.check_in is not null
+           and a.work_date in (select day from working_days)) as present_days,
+       (select count(*) from working_days w
+         where w.day < current_date
+           and exists (select 1 from hrms_leave_requests l
+                        where l.employee_id = e.id and l.status = 'approved'
+                          and l.leave_type <> 'unpaid'
+                          and w.day between l.from_date and l.to_date)) as paid_leave_days,
+       (select count(*) from working_days w
+         where w.day < current_date
+           and exists (select 1 from hrms_leave_requests l
+                        where l.employee_id = e.id and l.status = 'approved'
+                          and l.leave_type = 'unpaid'
+                          and w.day between l.from_date and l.to_date)) as unpaid_leave_days
+  from hrms_employees e
+ where e.status = 'active'
+ order by e.name
+"""
 
 
 def _emp(r) -> EmployeeOut:
@@ -187,6 +233,36 @@ async def summary(auth: AuthContext = Depends(require("hrms", "read"))):
                        on_leave_today=row["on_leave"], pending_leaves=row["pending"])
 
 
+# ── Holidays ────────────────────────────────────────────────────────────────
+@router.get("/holidays", response_model=list[HolidayOut])
+async def list_holidays(auth: AuthContext = Depends(require("hrms", "read"))):
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        rows = await conn.fetch("select * from hrms_holidays order by holiday_date")
+    return [HolidayOut(id=str(r["id"]), holiday_date=r["holiday_date"], name=r["name"]) for r in rows]
+
+
+@router.post("/holidays", response_model=HolidayOut, status_code=status.HTTP_201_CREATED)
+async def create_holiday(body: HolidayCreate, auth: AuthContext = Depends(require("hrms", "write"))):
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        row = await conn.fetchrow(
+            """insert into hrms_holidays (tenant_id, holiday_date, name) values ($1,$2,$3)
+               on conflict (tenant_id, holiday_date) do update set name = excluded.name
+               returning *""",
+            auth.tenant_id, body.holiday_date, body.name)
+    return HolidayOut(id=str(row["id"]), holiday_date=row["holiday_date"], name=row["name"])
+
+
+@router.delete("/holidays/{holiday_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_holiday(holiday_id: str, response: Response,
+                         auth: AuthContext = Depends(require("hrms", "write"))) -> Response:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        await conn.execute("delete from hrms_holidays where id=$1", holiday_id)
+    # Must set the code on the injected response, as logout/read-all do —
+    # returning it unset yields no status at all.
+    response.status_code = status.HTTP_204_NO_CONTENT
+    return response
+
+
 @router.get("/payroll", response_model=PayrollOut)
 async def run_payroll(month: str | None = None, auth: AuthContext = Depends(require("hrms", "read"))):
     """Monthly payslips: gross − absence deduction − FBR tax. `month` = YYYY-MM."""
@@ -196,25 +272,24 @@ async def run_payroll(month: str | None = None, auth: AuthContext = Depends(requ
     except ValueError:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "month must be YYYY-MM")
     async with db.tenant_conn(auth.tenant_id) as conn:
-        rows = await conn.fetch(
-            """select e.id, e.name, e.salary_minor,
-                      count(a.id) filter (where a.check_in is not null) as present,
-                      count(a.id) filter (where a.status = 'absent') as absent
-               from hrms_employees e
-               left join hrms_attendance a on a.employee_id = e.id
-                    and a.work_date >= $1::date and a.work_date < ($1::date + interval '1 month')
-               where e.status = 'active'
-               group by e.id, e.name, e.salary_minor order by e.name""",
-            first)
+        off_days = await conn.fetchval(
+            "select weekly_off_days from tenants where id=$1", auth.tenant_id)
+        rows = await conn.fetch(_PAYROLL, first, list(off_days or [0]))
+
     slips = []
+    month_days = rows[0]["month_days"] if rows else 0
     for r in rows:
         gross = r["salary_minor"]
-        per_day = gross / WORKING_DAYS if WORKING_DAYS else 0
-        deduction = round(r["absent"] * per_day)
+        unpaid = r["unpaid_leave_days"]
+        # Whatever is left once presence and approved leave are accounted for.
+        absent = max(0, r["elapsed_days"] - r["present_days"] - r["paid_leave_days"] - unpaid)
+        per_day = gross / month_days if month_days else 0
+        deduction = round((absent + unpaid) * per_day)
         tax = payroll.monthly_tax_minor(gross)
         slips.append(Payslip(
             employee_id=str(r["id"]), name=r["name"], gross_minor=gross,
-            present_days=r["present"], absent_days=r["absent"],
+            present_days=r["present_days"], paid_leave_days=r["paid_leave_days"],
+            unpaid_leave_days=unpaid, absent_days=absent,
             absence_deduction_minor=deduction, tax_minor=tax,
             net_minor=max(0, gross - deduction - tax)))
-    return PayrollOut(month=m, working_days=WORKING_DAYS, payslips=slips)
+    return PayrollOut(month=m, working_days=month_days, payslips=slips)

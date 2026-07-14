@@ -12,6 +12,7 @@ const tabs = [
   { href: "/hrms/attendance", label: "Attendance" },
   { href: "/hrms/leave", label: "Leave" },
   { href: "/hrms/payroll", label: "Payroll" },
+  { href: "/hrms/holidays", label: "Holidays" },
 ];
 
 export default function HrmsLayout({ children }: { children: React.ReactNode }) {

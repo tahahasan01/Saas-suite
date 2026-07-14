@@ -13,6 +13,12 @@ from fastapi import HTTPException, Request, status
 _hits: dict[str, deque[float]] = defaultdict(deque)
 
 
+def reset() -> None:
+    """Drop all windows. Tests sign up many tenants from one IP and would
+    otherwise throttle themselves into order-dependent failures."""
+    _hits.clear()
+
+
 def _client_ip(request: Request) -> str:
     # Behind Cloudflare/proxy the real IP is in X-Forwarded-For.
     fwd = request.headers.get("x-forwarded-for")

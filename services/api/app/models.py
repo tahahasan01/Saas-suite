@@ -454,7 +454,9 @@ class Payslip(BaseModel):
     name: str
     gross_minor: int
     present_days: int
-    absent_days: int
+    paid_leave_days: int      # approved annual/sick/casual — not deducted
+    unpaid_leave_days: int    # approved 'unpaid' leave — deducted
+    absent_days: int          # a working day with no check-in and no leave
     absence_deduction_minor: int
     tax_minor: int
     net_minor: int
@@ -464,6 +466,17 @@ class PayrollOut(BaseModel):
     month: str
     working_days: int
     payslips: list[Payslip]
+
+
+class HolidayOut(BaseModel):
+    id: str
+    holiday_date: date
+    name: str
+
+
+class HolidayCreate(BaseModel):
+    holiday_date: date
+    name: str = Field(min_length=1, max_length=120)
 
 
 # ── Billing ─────────────────────────────────────────────────────────────────

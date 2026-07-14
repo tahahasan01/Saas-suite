@@ -262,10 +262,21 @@ export interface Payslip {
   name: string;
   gross_minor: number;
   present_days: number;
+  /** Approved annual/sick/casual leave — not deducted. */
+  paid_leave_days: number;
+  /** Approved 'unpaid' leave — deducted. */
+  unpaid_leave_days: number;
+  /** A completed working day with no check-in and no approved leave. */
   absent_days: number;
   absence_deduction_minor: number;
   tax_minor: number;
   net_minor: number;
+}
+
+export interface Holiday {
+  id: string;
+  holiday_date: string;
+  name: string;
 }
 
 export interface Payroll {
