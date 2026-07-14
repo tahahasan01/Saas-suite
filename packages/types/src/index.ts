@@ -277,6 +277,8 @@ export interface Leave {
   id: string;
   employee_id: string;
   employee_name: string;
+  /** 'wfh' is not leave — the employee is working, so it is never deducted. */
+  request_type: "leave" | "wfh";
   leave_type: string;
   from_date: string;
   to_date: string;
@@ -300,7 +302,9 @@ export interface Payslip {
   paid_leave_days: number;
   /** Approved 'unpaid' leave — deducted. */
   unpaid_leave_days: number;
-  /** A completed working day with no check-in and no approved leave. */
+  /** Approved work-from-home — time worked, never deducted. */
+  wfh_days: number;
+  /** A completed working day with no check-in, leave or WFH. */
   absent_days: number;
   absence_deduction_minor: number;
   tax_minor: number;

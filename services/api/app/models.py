@@ -424,6 +424,7 @@ class ForecastOut(BaseModel):
 
 # ── HRMS ────────────────────────────────────────────────────────────────────
 LEAVE_TYPES = ["annual", "sick", "casual", "unpaid"]
+REQUEST_TYPES = ["leave", "wfh"]
 
 
 class EmployeeOut(BaseModel):
@@ -482,6 +483,8 @@ class AttendanceOut(BaseModel):
 
 class LeaveCreate(BaseModel):
     employee_id: str
+    # 'wfh' is not leave — the employee is working, so it is never deducted.
+    request_type: str = "leave"
     leave_type: str = "annual"
     from_date: date
     to_date: date
@@ -492,6 +495,7 @@ class LeaveOut(BaseModel):
     id: str
     employee_id: str
     employee_name: str
+    request_type: str
     leave_type: str
     from_date: date
     to_date: date
@@ -513,7 +517,8 @@ class Payslip(BaseModel):
     present_days: int
     paid_leave_days: int      # approved annual/sick/casual — not deducted
     unpaid_leave_days: int    # approved 'unpaid' leave — deducted
-    absent_days: int          # a working day with no check-in and no leave
+    wfh_days: int             # approved work-from-home — worked, never deducted
+    absent_days: int          # a working day with no check-in, leave or WFH
     absence_deduction_minor: int
     tax_minor: int
     net_minor: int

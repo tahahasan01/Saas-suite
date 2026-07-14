@@ -73,3 +73,42 @@ async def test_payslip_separates_paid_from_unpaid_leave(client, tenant):
     slip = await _payslip(client, tenant.employee_id)
     assert slip["paid_leave_days"] == 0
     assert slip["unpaid_leave_days"] == 0
+
+
+async def test_work_from_home_is_worked_time_not_leave(client, tenant):
+    """An approved WFH day must never be counted as leave or docked — the whole
+    reason WFH is a request_type rather than a leave_type."""
+    r = await client.post("/hrms/leave", json={
+        "employee_id": tenant.employee_id, "request_type": "wfh",
+        "from_date": date.today().isoformat(), "to_date": date.today().isoformat(),
+        "reason": "Remote",
+    })
+    assert r.status_code == 201
+    assert r.json()["request_type"] == "wfh"
+    await client.post(f"/hrms/leave/{r.json()['id']}/approve")
+
+    slip = await _payslip(client, tenant.employee_id)
+    assert slip["paid_leave_days"] == 0    # not leave
+    assert slip["unpaid_leave_days"] == 0  # and certainly not unpaid
+    assert slip["absence_deduction_minor"] == 0
+
+
+async def test_requests_can_be_filtered_by_type(client, tenant):
+    today = date.today().isoformat()
+    await client.post("/hrms/leave", json={"employee_id": tenant.employee_id, "request_type": "wfh",
+                                           "from_date": today, "to_date": today})
+    await client.post("/hrms/leave", json={"employee_id": tenant.employee_id, "request_type": "leave",
+                                           "leave_type": "sick", "from_date": today, "to_date": today})
+    wfh = (await client.get("/hrms/leave?request_type=wfh")).json()
+    leave = (await client.get("/hrms/leave?request_type=leave")).json()
+    assert [x["request_type"] for x in wfh] == ["wfh"]
+    assert [x["request_type"] for x in leave] == ["leave"]
+    assert len((await client.get("/hrms/leave")).json()) == 2
+
+
+async def test_backwards_dates_are_rejected(client, tenant):
+    r = await client.post("/hrms/leave", json={
+        "employee_id": tenant.employee_id, "request_type": "leave", "leave_type": "annual",
+        "from_date": "2026-05-10", "to_date": "2026-05-01",
+    })
+    assert r.status_code == 422

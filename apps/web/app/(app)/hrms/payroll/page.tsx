@@ -37,6 +37,7 @@ export default function PayrollPage() {
               <th className="p-3 text-right">Gross</th>
               <th className="p-3 text-right">Present</th>
               <th className="p-3 text-right">Leave</th>
+              <th className="p-3 text-right">WFH</th>
               <th className="p-3 text-right">Absent</th>
               <th className="p-3 text-right">Deduction</th>
               <th className="p-3 text-right">FBR tax</th>
@@ -45,7 +46,7 @@ export default function PayrollPage() {
           </thead>
           <tbody>
             {(!data || data.payslips.length === 0) && (
-              <tr><td colSpan={8} className="p-6 text-center text-fg-subtle">No employees to run payroll for.</td></tr>
+              <tr><td colSpan={9} className="p-6 text-center text-fg-subtle">No employees to run payroll for.</td></tr>
             )}
             {data?.payslips.map((p) => (
               <tr key={p.employee_id} className="border-b border-line/60">
@@ -57,6 +58,7 @@ export default function PayrollPage() {
                     ? "—"
                     : `${p.paid_leave_days + p.unpaid_leave_days}${p.unpaid_leave_days ? ` (${p.unpaid_leave_days} unpaid)` : ""}`}
                 </td>
+                <td className="p-3 text-right tabular-nums text-fg-muted">{p.wfh_days || "—"}</td>
                 <td className={`p-3 text-right tabular-nums ${p.absent_days ? "text-warning" : "text-fg-muted"}`}>
                   {p.absent_days || "—"}
                 </td>

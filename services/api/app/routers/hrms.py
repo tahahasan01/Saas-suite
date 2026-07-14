@@ -9,6 +9,7 @@ from datetime import date
 from .. import db, payroll
 from ..deps import AuthContext
 from ..models import (
+    REQUEST_TYPES,
     AttendanceOut,
     CheckInRequest,
     EmployeeCreate,
@@ -59,14 +60,22 @@ select e.id, e.name, e.salary_minor,
          where w.day < current_date
            and exists (select 1 from hrms_leave_requests l
                         where l.employee_id = e.id and l.status = 'approved'
-                          and l.leave_type <> 'unpaid'
+                          and l.request_type = 'leave' and l.leave_type <> 'unpaid'
                           and w.day between l.from_date and l.to_date)) as paid_leave_days,
        (select count(*) from working_days w
          where w.day < current_date
            and exists (select 1 from hrms_leave_requests l
                         where l.employee_id = e.id and l.status = 'approved'
-                          and l.leave_type = 'unpaid'
-                          and w.day between l.from_date and l.to_date)) as unpaid_leave_days
+                          and l.request_type = 'leave' and l.leave_type = 'unpaid'
+                          and w.day between l.from_date and l.to_date)) as unpaid_leave_days,
+       -- Approved WFH is time worked. It counts toward presence and is never
+       -- deducted; the `request_type` filters above keep it out of leave.
+       (select count(*) from working_days w
+         where w.day < current_date
+           and exists (select 1 from hrms_leave_requests l
+                        where l.employee_id = e.id and l.status = 'approved'
+                          and l.request_type = 'wfh'
+                          and w.day between l.from_date and l.to_date)) as wfh_days
   from hrms_employees e
  where e.status = 'active'
  order by e.name
@@ -182,24 +191,37 @@ _LEAVE_SELECT = """select l.*, e.name as employee_name from hrms_leave_requests 
 def _leave(r) -> LeaveOut:
     return LeaveOut(
         id=str(r["id"]), employee_id=str(r["employee_id"]), employee_name=r["employee_name"],
-        leave_type=r["leave_type"], from_date=r["from_date"], to_date=r["to_date"],
-        reason=r["reason"], status=r["status"])
+        request_type=r["request_type"], leave_type=r["leave_type"], from_date=r["from_date"],
+        to_date=r["to_date"], reason=r["reason"], status=r["status"])
 
 
 @router.get("/leave", response_model=list[LeaveOut])
-async def list_leave(auth: AuthContext = Depends(require("hrms", "read"))):
+async def list_leave(request_type: str | None = None,
+                     auth: AuthContext = Depends(require("hrms", "read"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
-        rows = await conn.fetch(_LEAVE_SELECT + " order by l.created_at desc")
+        rows = await conn.fetch(
+            _LEAVE_SELECT + " where ($1::text is null or l.request_type = $1) order by l.created_at desc",
+            request_type)
     return [_leave(r) for r in rows]
 
 
 @router.post("/leave", response_model=LeaveOut, status_code=status.HTTP_201_CREATED)
 async def create_leave(body: LeaveCreate, auth: AuthContext = Depends(require("hrms", "write"))):
+    if body.request_type not in REQUEST_TYPES:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            f"request_type must be one of {REQUEST_TYPES}")
+    if body.to_date < body.from_date:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "to_date cannot be before from_date")
+    # A WFH day is worked, so it carries no leave subtype — storing one would
+    # let it be mistaken for unpaid leave and deducted.
+    leave_type = "annual" if body.request_type == "wfh" else body.leave_type
     async with db.tenant_conn(auth.tenant_id) as conn:
         rid = await conn.fetchval(
-            """insert into hrms_leave_requests (tenant_id, employee_id, leave_type, from_date, to_date, reason)
-               values ($1,$2,$3,$4,$5,$6) returning id""",
-            auth.tenant_id, body.employee_id, body.leave_type, body.from_date, body.to_date, body.reason)
+            """insert into hrms_leave_requests (tenant_id, employee_id, request_type, leave_type,
+                                                from_date, to_date, reason)
+               values ($1,$2,$3,$4,$5,$6,$7) returning id""",
+            auth.tenant_id, body.employee_id, body.request_type, leave_type,
+            body.from_date, body.to_date, body.reason)
         rec = await conn.fetchrow(_LEAVE_SELECT + " where l.id=$1", rid)
     return _leave(rec)
 
@@ -281,15 +303,19 @@ async def run_payroll(month: str | None = None, auth: AuthContext = Depends(requ
     for r in rows:
         gross = r["salary_minor"]
         unpaid = r["unpaid_leave_days"]
-        # Whatever is left once presence and approved leave are accounted for.
-        absent = max(0, r["elapsed_days"] - r["present_days"] - r["paid_leave_days"] - unpaid)
+        wfh = r["wfh_days"]
+        # Whatever is left once presence, approved leave and remote days are
+        # accounted for. A WFH day someone also clocked in for is counted once:
+        # accounted is capped at the days actually elapsed.
+        accounted = min(r["elapsed_days"], r["present_days"] + r["paid_leave_days"] + unpaid + wfh)
+        absent = max(0, r["elapsed_days"] - accounted)
         per_day = gross / month_days if month_days else 0
         deduction = round((absent + unpaid) * per_day)
         tax = payroll.monthly_tax_minor(gross)
         slips.append(Payslip(
             employee_id=str(r["id"]), name=r["name"], gross_minor=gross,
             present_days=r["present_days"], paid_leave_days=r["paid_leave_days"],
-            unpaid_leave_days=unpaid, absent_days=absent,
+            unpaid_leave_days=unpaid, wfh_days=wfh, absent_days=absent,
             absence_deduction_minor=deduction, tax_minor=tax,
             net_minor=max(0, gross - deduction - tax)))
     return PayrollOut(month=m, working_days=month_days, payslips=slips)
