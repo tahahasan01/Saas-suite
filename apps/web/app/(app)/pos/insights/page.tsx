@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { OccasionForecast, RestockItem } from "@business-os/types";
 import { api } from "@/lib/api";
@@ -38,10 +37,6 @@ export default function PosInsights() {
 
   return (
     <>
-      <div className="mb-1 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Inventory insights</h1>
-        <Link href="/pos" className="text-sm text-brand hover:underline">← Back to billing</Link>
-      </div>
       <p className="mb-6 text-sm text-fg-muted">AI restocking advice and seasonal demand forecasts.</p>
 
       {/* Restock now */}

@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import type { Product } from "@business-os/types";
 import { api } from "@/lib/api";
 import { money } from "@/lib/format";
@@ -62,10 +61,6 @@ export default function ProductsPage() {
 
   return (
     <>
-      <div className="mb-1 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">{word}</h1>
-        <Link href="/pos" className="text-sm text-brand hover:underline">← Back to billing</Link>
-      </div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-fg-muted">Manage your catalog and stock levels.</p>
         <ImportCsv path="/pos/products" onDone={load} />

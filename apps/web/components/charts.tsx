@@ -204,7 +204,7 @@ export function PipelineBars({
 }
 
 /** Bare trend line for stat tiles — no axes, no hover; the tile states the number. */
-export function Sparkline({ data }: { data: TrendPoint[] }) {
+export function Sparkline({ data, color = "var(--color-chart-1)" }: { data: TrendPoint[]; color?: string }) {
   if (data.length < 2) return null;
   const w = 120;
   const h = 28;
@@ -214,7 +214,7 @@ export function Sparkline({ data }: { data: TrendPoint[] }) {
     .join(" ");
   return (
     <svg viewBox={`0 0 ${w} ${h}`} className="h-7 w-full" aria-hidden="true" preserveAspectRatio="none">
-      <polyline points={pts} fill="none" stroke="var(--color-chart-1)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }

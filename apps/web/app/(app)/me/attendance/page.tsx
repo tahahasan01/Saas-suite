@@ -19,7 +19,6 @@ export default function MyAttendance() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="mb-4 text-xl font-semibold">My attendance</h1>
       <p className="mb-4 text-sm text-fg-muted">This month, newest first.</p>
       <Card className="p-0">
         <table className="w-full text-sm">

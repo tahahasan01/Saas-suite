@@ -22,7 +22,7 @@ export default function MyPayslips() {
   return (
     <div className="mx-auto max-w-lg">
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">My payslip</h1>
+        <p className="text-sm text-fg-muted">Choose a month to see that payslip.</p>
         <Input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="w-40" />
       </div>
 

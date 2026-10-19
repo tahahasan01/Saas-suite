@@ -69,7 +69,7 @@ export default function CrmBoard() {
   return (
     <>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">{t("leads")}</h1>
+        <p className="text-sm text-fg-muted">Drag a card to move it to the next stage.</p>
         <div className="flex items-center gap-3">
           <ImportCsv path="/crm/leads" onDone={() => pipeline && loadLeads(pipeline.id)} />
           <Button onClick={() => setAdding(true)}>+ New {t("lead")}</Button>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { api, ApiError } from "@/lib/api";
 import { money, relativeDate } from "@/lib/format";
 import { Badge, Button, Card, Field, Input } from "@/components/ui";
@@ -73,10 +72,6 @@ export default function DrawerPage() {
 
   return (
     <>
-      <div className="mb-1 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Cash drawer</h1>
-        <Link href="/pos" className="text-sm text-brand hover:underline">← Back to billing</Link>
-      </div>
       <p className="mb-6 text-sm text-fg-muted">Open with a float, count at close, reconcile the difference.</p>
 
       {err && <p className="mb-4 rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">{err}</p>}

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import type { SaleDetail } from "@business-os/types";
 import { api, ApiError } from "@/lib/api";
 import { money, relativeDate } from "@/lib/format";
@@ -65,10 +64,6 @@ export default function ReturnsPage() {
 
   return (
     <>
-      <div className="mb-1 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Returns</h1>
-        <Link href="/pos" className="text-sm text-brand hover:underline">← Back to billing</Link>
-      </div>
       <p className="mb-6 text-sm text-fg-muted">Find the sale, choose what&apos;s coming back, refund it.</p>
 
       <form onSubmit={find} className="mb-5 flex max-w-md gap-2">

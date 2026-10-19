@@ -3,18 +3,24 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "@/lib/session";
-import { Sidebar } from "@/components/Sidebar";
-import { NotificationBell } from "@/components/NotificationBell";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { Sidebar } from "@/components/shell/Sidebar";
+import { Topbar } from "@/components/shell/Topbar";
+import { ModuleHeader } from "@/components/shell/ModuleHeader";
+import { CommandPalette } from "@/components/shell/CommandPalette";
 import { TrialBanner } from "@/components/TrialBanner";
 
-/** Shared shell for all authenticated pages. Sidebar is static on desktop and
- * a hamburger slide-over on mobile. Guards auth once here. */
+const COLLAPSE_KEY = "bos.sidebar.collapsed";
+
+/** Shared shell for all authenticated pages: the teal sidebar (an icon rail
+ *  when collapsed, a slide-over on mobile), the top bar with Ctrl+K, and the
+ *  module header with its tabs. Guards auth once here. */
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { me, loading } = useSession();
   const router = useRouter();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -29,44 +35,51 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => setMenuOpen(false), [pathname]); // close drawer on navigate
 
+  useEffect(() => {
+    try { setCollapsed(localStorage.getItem(COLLAPSE_KEY) === "1"); } catch { /* storage unavailable */ }
+  }, []);
+  function toggleCollapsed() {
+    setCollapsed((c) => {
+      try { localStorage.setItem(COLLAPSE_KEY, c ? "0" : "1"); } catch { /* storage unavailable */ }
+      return !c;
+    });
+  }
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setPaletteOpen(true); }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   if (loading || !me) return <main className="grid min-h-screen place-items-center text-fg-subtle">Loading…</main>;
 
   return (
-    <div className="min-h-screen md:grid md:grid-cols-[220px_1fr]">
+    <div className="flex min-h-screen">
       {/* Desktop sidebar */}
-      <div className="hidden md:block">
-        <Sidebar />
+      <div className="sticky top-0 hidden h-screen shrink-0 md:block">
+        <Sidebar collapsed={collapsed} onToggle={toggleCollapsed} />
       </div>
 
       {/* Mobile slide-over sidebar */}
       {menuOpen && (
         <div className="fixed inset-0 z-40 md:hidden" onClick={() => setMenuOpen(false)}>
           <div className="absolute inset-0 bg-black/50" />
-          <div className="absolute inset-y-0 left-0 w-64" onClick={(e) => e.stopPropagation()}>
+          <div className="absolute inset-y-0 left-0" onClick={(e) => e.stopPropagation()}>
             <Sidebar />
           </div>
         </div>
       )}
 
-      <div className="flex min-h-screen flex-col">
+      <div className="flex min-w-0 flex-1 flex-col">
         <TrialBanner />
-        <header className="flex items-center justify-between border-b border-line px-4 py-2.5 md:justify-end md:px-6">
-          <button
-            onClick={() => setMenuOpen(true)}
-            className="grid h-9 w-9 place-items-center rounded-lg text-fg-muted hover:bg-elevated md:hidden"
-            aria-label="Open menu"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M3 6h18M3 12h18M3 18h18" />
-            </svg>
-          </button>
-          <div className="flex items-center gap-1">
-            <ThemeToggle />
-            <NotificationBell />
-          </div>
-        </header>
-        <main className="flex-1 p-4 md:p-6">{children}</main>
+        <Topbar onOpenMenu={() => setMenuOpen(true)} onOpenPalette={() => setPaletteOpen(true)} />
+        <ModuleHeader />
+        <main className="flex-1 px-4 py-6 md:px-8">{children}</main>
       </div>
+
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </div>
   );
 }

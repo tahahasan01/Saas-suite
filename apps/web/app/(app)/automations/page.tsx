@@ -52,7 +52,6 @@ export default function AutomationsPage() {
 
   return (
     <>
-      <h1 className="mb-1 text-2xl font-semibold">Automations</h1>
       <p className="mb-6 text-sm text-fg-muted">Rules that run automatically. No code required.</p>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_340px]">

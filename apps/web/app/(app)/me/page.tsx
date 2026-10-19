@@ -47,7 +47,7 @@ export default function MySpace() {
   return (
     <div className="mx-auto max-w-3xl space-y-5">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Hi, {firstName}</h1>
+        <h1 className="font-display text-[28px] font-bold tracking-tight">Hi, {firstName}</h1>
         {profile && (
           <p className="mt-1 text-sm text-fg-muted">
             {profile.designation || "Team member"}{profile.department && ` · ${profile.department}`}

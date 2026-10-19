@@ -211,16 +211,6 @@ export default function PosBilling() {
     <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
       {/* Catalog */}
       <div>
-        <div className="mb-4 flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Point of Sale</h1>
-          <div className="flex gap-4 text-sm">
-            <Link href="/pos/insights" className="text-brand hover:underline">✦ Insights</Link>
-            <Link href="/pos/purchase-orders" className="text-brand hover:underline">Orders</Link>
-            <Link href="/pos/drawer" className="text-brand hover:underline">Drawer</Link>
-            <Link href="/pos/returns" className="text-brand hover:underline">Returns</Link>
-            <Link href="/pos/products" className="text-brand hover:underline">Manage {t("products").toLowerCase()}</Link>
-          </div>
-        </div>
         {/* The shift at a glance — what Square keeps in the cashier's eyeline. */}
         <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
           {summary && (

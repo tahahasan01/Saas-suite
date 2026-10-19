@@ -43,7 +43,6 @@ export default function MyLeave() {
   return (
     <div className="mx-auto grid max-w-4xl gap-6 lg:grid-cols-[1fr_300px]">
       <div>
-        <h1 className="mb-4 text-xl font-semibold">My leave</h1>
         <Card className="p-0">
           <table className="w-full text-sm">
             <thead>

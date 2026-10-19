@@ -27,7 +27,6 @@ export default function InvoicesPage() {
 
   return (
     <>
-      <h1 className="mb-1 text-2xl font-semibold">Invoices</h1>
       <p className="mb-6 text-sm text-fg-muted">Quotation & invoice requests from sales, approved by accounts.</p>
 
       <Card className="p-0">

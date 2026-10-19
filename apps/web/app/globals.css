@@ -8,39 +8,69 @@
    Light is the default: this is a tool people use all day in bright offices.
    Dark is a *selected* counterpart — its own steps, not an inverted flip. */
 @theme {
-  --color-canvas: #f6f7f9;
+  --color-canvas: #f3f6f5;
   --color-surface: #ffffff;
-  --color-elevated: #f1f3f7;
-  --color-line: #e3e6ec;
-  --color-line-strong: #cfd4de;
+  --color-elevated: #ebf0ef;
+  --color-line: #dde5e3;
+  --color-line-strong: #c3cfcc;
 
-  --color-fg: #111726;
-  --color-fg-muted: #5b6478;
-  --color-fg-subtle: #8b94a7;
+  --color-fg: #10201e;
+  --color-fg-muted: #4f625f;
+  --color-fg-subtle: #5b6d6a; /* ≥ 4.5:1 on surface, canvas and elevated */
 
-  /* Magenta, per theme — not one value in two places. The reference's hot pink
-     is built to glow against near-black; on white it reads loud and its
-     contrast against small text goes marginal. So light takes a deeper magenta
-     that stays legible on a bright office screen, dark takes the bright one
-     that actually glows. Same hue family, two jobs. */
-  --color-brand: #c2185b;
-  --color-brand-hover: #a3144d;
+  /* Deep teal brand (D-91). Light uses the deeper step so white text on a
+     brand button stays well above WCAG AA. */
+  --color-brand: #0e7c6b;
+  --color-brand-hover: #0b6658;
   --color-brand-fg: #ffffff;
-  --color-brand-subtle: #c2185b14;
+  --color-brand-subtle: #0e7c6b14;
 
-  --color-success: #068a63;
+  /* The bold frame (D-90): the sidebar is the one loud surface. */
+  --color-frame: #0b3d38;
+  --color-frame-raised: #114a44;
+  --color-frame-fg: #e8f3f1;
+  --color-frame-muted: #9cbcb7;
+  --color-saffron: #f4a62a;
+
+  --color-success: #0f8a5f;
   --color-warning: #b45309;
   --color-danger: #c62828;
 
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
 
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: var(--font-plex), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: var(--font-bricolage), var(--font-plex), ui-sans-serif, system-ui, sans-serif;
 
-  /* Chart ink — sequential single hue (brand), read against the chart surface. */
-  --color-chart-1: #c2185b;
-  --color-chart-2: #0ea5e9;
-  --color-chart-grid: #eceef3;
+  --color-chart-1: #0e7c6b;
+  --color-chart-2: #f4a62a;
+  --color-chart-grid: #e6ecea;
+}
+
+/* Module palette. `static` because the shell reads these by computed name
+   (`var(${m.color}-ink)`), which Tailwind's source scan can't see; without it
+   unused-looking tokens are dropped from the build. */
+@theme static {
+  /* One colour per module — icon tiles, module headers, chart series. */
+  --color-mod-crm: #e4573d;
+  --color-mod-pos: #f4a62a;
+  --color-mod-inventory: #2f80d9;
+  --color-mod-hrms: #7a55c7;
+  --color-mod-payroll: #27a06a;
+  --color-mod-invoices: #d04679;
+  --color-mod-automations: #0e9fb8;
+  --color-mod-settings: #6b7c79;
+  /* Module colours are fills, never text. Each pairs with the ink drawn on
+     it (icons, counts): white where it clears 3:1, dark where it doesn't. */
+  --color-brand-ink: #ffffff;
+  --color-mod-crm-ink: #ffffff;
+  --color-mod-pos-ink: #10201e;
+  --color-mod-inventory-ink: #ffffff;
+  --color-mod-hrms-ink: #ffffff;
+  --color-mod-payroll-ink: #ffffff;
+  --color-mod-invoices-ink: #ffffff;
+  --color-mod-automations-ink: #ffffff;
+  --color-mod-settings-ink: #ffffff;
 }
 
 /* Dark theme. `[data-theme]` re-themes the document (toggle); `.theme-dark`
@@ -48,32 +78,34 @@
    — CSS variables inherit, so one token block serves both. */
 :root[data-theme="dark"],
 .theme-dark {
-  --color-canvas: #0d0f15;
-  --color-surface: #14171f;
-  --color-elevated: #1b1f2b;
-  --color-line: #262b39;
-  --color-line-strong: #38404f;
+  --color-canvas: #0b1312;
+  --color-surface: #111c1a;
+  --color-elevated: #172523;
+  --color-line: #22322f;
+  --color-line-strong: #33463f;
 
-  --color-fg: #e9ebf1;
-  --color-fg-muted: #9aa2b4;
-  --color-fg-subtle: #6d7484;
+  --color-fg: #e6efed;
+  --color-fg-muted: #9fb3af;
+  --color-fg-subtle: #879c98;
 
-  --color-brand: #ff4d9d;
-  --color-brand-hover: #ff6cad;
-  /* Near-black, NOT white. A brand button is bg-brand + text-brand-fg, and
-     white on #ff4d9d is ~2.3:1 — unreadable, and worse than the indigo it
-     replaced. Ink on hot pink lands ~8:1 and matches the reference, where the
-     loud colour carries the glow and the buttons stay high-contrast. */
-  --color-brand-fg: #14060d;
-  --color-brand-subtle: #ff4d9d22;
+  /* Brighter teal that holds contrast on dark surfaces; dark ink on it. */
+  --color-brand: #2ec4a9;
+  --color-brand-hover: #4fd4bb;
+  --color-brand-fg: #04201b;
+  --color-brand-subtle: #2ec4a922;
+
+  --color-frame: #081f1c;
+  --color-frame-raised: #0f2d29;
+  --color-frame-fg: #e2f1ee;
+  --color-frame-muted: #8fb0aa;
 
   --color-success: #34d399;
   --color-warning: #fbbf24;
   --color-danger: #f87171;
 
-  --color-chart-1: #ff4d9d;
-  --color-chart-2: #38bdf8;
-  --color-chart-grid: #242938;
+  --color-chart-1: #2ec4a9;
+  --color-chart-2: #f4b54a;
+  --color-chart-grid: #1f2e2b;
 }
 
 /* ─── Base ─────────────────────────────────────────────────────────────────*/

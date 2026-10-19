@@ -9,6 +9,7 @@ import { useSession } from "@/lib/session";
 import { Card } from "@/components/ui";
 import { AiPrompt } from "@/components/AiPrompt";
 import { AreaChart, PipelineBars, Sparkline } from "@/components/charts";
+import { MODULES, moduleFor, tileStyle } from "@/lib/modules";
 
 export default function Dashboard() {
   const { me, t } = useSession();
@@ -35,7 +36,7 @@ export default function Dashboard() {
   return (
     <>
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Good to see you, {firstName}</h1>
+        <h1 className="font-display text-[28px] font-bold tracking-tight">Good to see you, {firstName}</h1>
         <p className="mt-1 text-sm text-fg-muted">Here&apos;s what&apos;s happening in {me.tenant.name}.</p>
       </header>
 
@@ -101,17 +102,31 @@ export default function Dashboard() {
   );
 }
 
+/** A tile wears the colour and icon of the module its number comes from, so
+ *  "Rs 42k" reads as sales and "12" as staff before the label is read. */
 function StatTile({ kpi, trend }: { kpi: Kpi; trend?: TrendPoint[] }) {
   const value = kpi.kind === "money" ? moneyCompact(kpi.value) : kpi.value.toLocaleString("en-PK");
+  const m = moduleFor(kpi.href, MODULES);
+  const token = m?.color ?? "--color-brand";
+  const color = `var(${token})`;
+  const Icon = m?.icon;
   return (
     <Link href={kpi.href} className="group">
-      <Card className="h-full transition-colors group-hover:border-line-strong">
+      <Card className="relative h-full overflow-hidden transition-colors group-hover:border-line-strong">
+        <span className="absolute inset-x-0 top-0 h-1" style={{ background: color }} aria-hidden />
         <div className="flex items-start justify-between gap-2">
-          <p className="text-xs font-medium text-fg-muted">{kpi.label}</p>
+          <div className="flex items-center gap-2.5">
+            {Icon && (
+              <span className="grid h-8 w-8 place-items-center rounded-lg" style={tileStyle(token)}>
+                <Icon size={16} strokeWidth={2.2} aria-hidden />
+              </span>
+            )}
+            <p className="text-sm font-medium text-fg-muted">{kpi.label}</p>
+          </div>
           {kpi.delta_pct !== null && <Delta pct={kpi.delta_pct} />}
         </div>
-        <p className="mt-2 text-2xl font-semibold tracking-tight tabular-nums">{value}</p>
-        {trend && <div className="mt-3"><Sparkline data={trend} /></div>}
+        <p className="mt-3 font-display text-[28px] font-bold leading-none tracking-tight tabular-nums">{value}</p>
+        {trend && <div className="mt-3"><Sparkline data={trend} color={color} /></div>}
       </Card>
     </Link>
   );

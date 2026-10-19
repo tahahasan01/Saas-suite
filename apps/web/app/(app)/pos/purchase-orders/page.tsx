@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import type { Product } from "@business-os/types";
 import { api, ApiError } from "@/lib/api";
 import { money, relativeDate } from "@/lib/format";
@@ -38,10 +37,6 @@ export default function PurchaseOrdersPage() {
 
   return (
     <>
-      <div className="mb-1 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Purchase orders</h1>
-        <Link href="/pos" className="text-sm text-brand hover:underline">← Back to billing</Link>
-      </div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-fg-muted">Order from suppliers, receive deliveries, stock rises automatically.</p>
         <Button size="sm" variant={creating ? "subtle" : "primary"} onClick={() => setCreating((v) => !v)}>
