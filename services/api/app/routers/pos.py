@@ -8,7 +8,7 @@ from decimal import Decimal
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
-from .. import csv_io, db, fbr, fbr_submit, pricing
+from .. import csv_io, db, fbr, fbr_submit, pricing, refs
 from ..deps import AuthContext
 from ..models import (
     DrawerClose,
@@ -261,6 +261,7 @@ async def create_po(body: PoCreate, auth: AuthContext = Depends(require("pos", "
     """Created straight into 'ordered' — the SME phones the order in; this
     record exists so the delivery can be received against it."""
     async with db.tenant_conn(auth.tenant_id) as conn:
+        await refs.ensure_visible(conn, "pos_suppliers", body.supplier_id)
         po = await conn.fetchrow(
             """insert into pos_purchase_orders (tenant_id, supplier_id, created_by, notes)
                values ($1,$2,$3,$4) returning *""",

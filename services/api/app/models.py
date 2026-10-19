@@ -331,7 +331,8 @@ class SaleCreate(BaseModel):
     items: list[SaleLine] = Field(min_length=1)
     discount_minor: int = Field(default=0, ge=0)
     paid_minor: int = Field(default=0, ge=0)
-    payment_method: str = "cash"
+    # Matches PAYMENT_METHODS in packages/types.
+    payment_method: Literal["cash", "card", "jazzcash", "easypaisa", "bank"] = "cash"
 
 
 class SaleItemOut(BaseModel):

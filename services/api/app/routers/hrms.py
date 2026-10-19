@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from datetime import date, timedelta
 
-from .. import db, email, payroll, tokens
+from .. import db, email, payroll, refs, tokens
 from ..deps import AuthContext, current_auth, current_employee
 from ..models import (
     REQUEST_TYPES,
@@ -331,6 +331,7 @@ async def create_leave(body: LeaveCreate, auth: AuthContext = Depends(require("h
     # let it be mistaken for unpaid leave and deducted.
     leave_type = "annual" if body.request_type == "wfh" else body.leave_type
     async with db.tenant_conn(auth.tenant_id) as conn:
+        await refs.ensure_visible(conn, "hrms_employees", body.employee_id)
         # One person cannot be in two states on the same day — a pending or
         # approved request already covering any of these dates blocks a new one.
         clash = await conn.fetchrow(

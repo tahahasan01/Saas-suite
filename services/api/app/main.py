@@ -4,6 +4,8 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 
+import asyncpg
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -60,6 +62,13 @@ app.include_router(fbr.router)
 app.include_router(hrms.router)
 app.include_router(hrms.portal)
 app.include_router(billing.router)
+
+
+@app.exception_handler(asyncpg.DataError)
+async def invalid_value_handler(request: Request, exc: asyncpg.DataError) -> JSONResponse:
+    # A malformed id or value reaching the database (e.g. "not-a-uuid" in a
+    # path) is the caller's mistake, not a server error.
+    return JSONResponse(status_code=422, content={"detail": "Invalid identifier or value."})
 
 
 @app.exception_handler(Exception)

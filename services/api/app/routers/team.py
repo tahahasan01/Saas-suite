@@ -4,7 +4,7 @@ from __future__ import annotations
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
-from .. import audit, billing, db, email, tokens
+from .. import audit, billing, db, email, refs, tokens
 from ..deps import AuthContext
 from ..models import InviteRequest, RoleCreate, RoleOut, TeamUser, UserCreate, UserUpdate
 from ..rbac import require
@@ -27,6 +27,7 @@ async def list_users(auth: AuthContext = Depends(require("settings", "read"))):
 @router.post("/users", response_model=TeamUser, status_code=status.HTTP_201_CREATED)
 async def create_user(body: UserCreate, auth: AuthContext = Depends(require("settings", "admin"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
+        await refs.ensure_visible(conn, "roles", body.role_id)
         await billing.check_seat_limit(conn)
         try:
             user_id = await conn.fetchval(
@@ -48,6 +49,7 @@ async def update_user(user_id: str, body: UserUpdate, auth: AuthContext = Depend
         current = await conn.fetchrow("select role_id, status from users where id=$1", user_id)
         if current is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+        await refs.ensure_visible(conn, "roles", body.role_id)
         role_id = body.role_id or current["role_id"]
         new_status = body.status or current["status"]
         await conn.execute("update users set role_id=$1, status=$2, updated_at=now() where id=$3",
