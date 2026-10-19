@@ -1,63 +1,116 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Product } from "@business-os/types";
 import { api } from "@/lib/api";
 import { money } from "@/lib/format";
 import { useSession } from "@/lib/session";
-import { Badge, Button, Card, Field, Input } from "@/components/ui";
+import { useAction } from "@/lib/useAction";
+import { Badge, Button, Card, EmptyState, ErrorState, Field, Input } from "@/components/ui";
+import { Dialog } from "@/components/Dialog";
+import { DataTable, type Column } from "@/components/DataTable";
 import { ImportCsv } from "@/components/ImportCsv";
+import { blurOnWheel } from "@/components/pos/labels";
 
 const blank = { name: "", price: "", stock: "", barcode: "", low: "", hs_code: "", tax_rate: "" };
 
 /** Minor units in the API, rupees in the input — convert at the boundary only. */
 const toMinor = (rupees: string) => Math.round(Number(rupees || 0) * 100);
 
+/** Shared by every number field here: the wheel doesn't change amounts. */
+const num = { type: "number", inputMode: "decimal", min: 0, onWheel: blurOnWheel } as const;
+
 export default function ProductsPage() {
   const { t } = useSession();
-  const [items, setItems] = useState<Product[]>([]);
+  const [items, setItems] = useState<Product[] | null>(null); // null = loading
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState(blank);
-  const [busy, setBusy] = useState(false);
-  const [editing, setEditing] = useState<string | null>(null);
+  const [editing, setEditing] = useState<Product | null>(null);
+  const [archiving, setArchiving] = useState<Product | null>(null);
   const [showArchived, setShowArchived] = useState(false);
+  const [filter, setFilter] = useState("");
+  const word = t("products");
+  const one = t("product");
 
   const load = useCallback(() => {
+    setLoadError(null);
     api<Product[]>(`/pos/products?include_archived=${showArchived}`)
       .then(setItems)
-      .catch(() => setItems([]));
-  }, [showArchived]);
+      .catch(() => setLoadError(`Couldn't load ${word.toLowerCase()}.`));
+  }, [showArchived, word]);
   useEffect(load, [load]);
+
+  // Every write says when it fails — a failed save used to look like a good one (I2).
+  const create = useAction(
+    (body: Record<string, unknown>) => api("/pos/products", { method: "POST", body: JSON.stringify(body) }),
+    { success: `${one} added`, failure: `Couldn't add the ${one.toLowerCase()}` });
+  const patch = useAction(
+    (id: string, body: Partial<Product>) =>
+      api(`/pos/products/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(body) }),
+    { failure: "Couldn't save" });
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true);
-    try {
-      await api("/pos/products", {
-        method: "POST",
-        body: JSON.stringify({
-          name: form.name,
-          barcode: form.barcode,
-          price_minor: toMinor(form.price),
-          stock_qty: Number(form.stock || 0),
-          low_stock_at: Number(form.low || 0),
-          hs_code: form.hs_code,
-          tax_rate: Number(form.tax_rate || 0),
-        }),
-      });
-      setForm(blank);
-      load();
-    } finally {
-      setBusy(false);
-    }
+    const ok = await create.run({
+      name: form.name,
+      barcode: form.barcode,
+      price_minor: toMinor(form.price),
+      stock_qty: Number(form.stock || 0),
+      low_stock_at: Number(form.low || 0),
+      hs_code: form.hs_code,
+      tax_rate: Number(form.tax_rate || 0),
+    });
+    if (ok !== undefined) { setForm(blank); load(); }
   }
 
-  async function patch(id: string, body: Partial<Product>) {
-    await api(`/pos/products/${id}`, { method: "PATCH", body: JSON.stringify(body) });
-    setEditing(null);
-    load();
+  async function save(id: string, body: Partial<Product>) {
+    const ok = await patch.run(id, body);
+    if (ok !== undefined) { setEditing(null); setArchiving(null); load(); }
   }
 
-  const word = t("products");
+  const shown = useMemo(() => {
+    const f = filter.trim().toLowerCase();
+    if (!items || !f) return items ?? [];
+    return items.filter((p) => [p.name, p.barcode, p.sku, p.hs_code].some((v) => v?.toLowerCase().includes(f)));
+  }, [items, filter]);
+
+  const columns: Column<Product>[] = [
+    {
+      key: "name", header: "Name", primary: true,
+      cell: (p) => (
+        <div className="min-w-0">
+          <p className="font-medium break-words">{p.name}</p>
+          <p className="text-xs text-fg-subtle">
+            {p.barcode && <span>{p.barcode}</span>}
+            {p.barcode && p.hs_code && " · "}
+            {p.hs_code && <span>HS {p.hs_code}</span>}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: "price", header: "Price", align: "right",
+      cell: (p) => (
+        <span className="tabular-nums">
+          {money(p.price_minor)}
+          {p.tax_rate > 0 && <span className="ml-1 text-xs text-fg-subtle">+{p.tax_rate}%</span>}
+        </span>
+      ),
+    },
+    {
+      key: "stock", header: "Stock",
+      cell: (p) => {
+        const low = p.active && p.low_stock_at > 0 && p.stock_qty <= p.low_stock_at;
+        return (
+          <span className="inline-flex flex-wrap items-center gap-1.5">
+            <span className="tabular-nums">{p.stock_qty} {p.unit}</span>
+            {low && <Badge tone="warning">low</Badge>}
+            {!p.active && <Badge>archived</Badge>}
+          </span>
+        );
+      },
+    },
+  ];
 
   return (
     <>
@@ -66,109 +119,111 @@ export default function ProductsPage() {
         <ImportCsv path="/pos/products" onDone={load} />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        <Card className="p-0">
-          <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
-            <span className="text-xs text-fg-subtle">{items.length} {word.toLowerCase()}</span>
-            <label className="flex cursor-pointer items-center gap-2 text-xs text-fg-muted">
+      {/* Stacks below xl: beside a 248px sidebar at 1024 the side card pushed
+          the page sideways. minmax(0,1fr) lets the table shrink, not overflow. */}
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Input
+              type="search" value={filter} onChange={(e) => setFilter(e.target.value)}
+              placeholder={`Search ${word.toLowerCase()}…`} aria-label={`Search ${word.toLowerCase()}`}
+              className="max-w-xs flex-1"
+            />
+            <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-fg-muted">
               <input
                 type="checkbox"
                 checked={showArchived}
                 onChange={(e) => setShowArchived(e.target.checked)}
-                className="accent-[var(--color-brand)]"
+                className="size-6 accent-[var(--color-brand)]"
               />
               Show archived
             </label>
           </div>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-line text-left text-xs text-fg-subtle">
-                <th className="p-3">Name</th>
-                <th className="p-3">Price</th>
-                <th className="p-3">Stock</th>
-                <th className="p-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.length === 0 && (
-                <tr><td colSpan={4} className="p-6 text-center text-fg-subtle">No {word.toLowerCase()} yet.</td></tr>
-              )}
-              {items.map((p) =>
-                editing === p.id ? (
-                  <EditRow key={p.id} p={p} onCancel={() => setEditing(null)} onSave={(b) => patch(p.id, b)} />
-                ) : (
-                  <ViewRow
-                    key={p.id}
-                    p={p}
-                    onEdit={() => setEditing(p.id)}
-                    onArchive={() => patch(p.id, { active: !p.active })}
-                  />
-                ),
-              )}
-            </tbody>
-          </table>
-        </Card>
 
-        <Card className="space-y-3">
-          <h2 className="text-sm font-semibold">Add {t("product")}</h2>
+          {loadError ? (
+            <ErrorState message={loadError} onRetry={load} />
+          ) : (
+            <>
+              {items && <p className="text-xs text-fg-subtle">{shown.length} {word.toLowerCase()}</p>}
+              <DataTable
+                columns={columns}
+                rows={shown}
+                rowKey={(p) => p.id}
+                loading={items === null}
+                caption={word}
+                empty={<EmptyState title={filter ? `Nothing matches "${filter}".` : `No ${word.toLowerCase()} yet.`}
+                                   hint={filter ? undefined : `Add your first ${one.toLowerCase()} or import a CSV.`} />}
+                actions={(p) => (
+                  <>
+                    <Button size="sm" variant="ghost" onClick={() => setEditing(p)} aria-label={`Edit ${p.name}`}>Edit</Button>
+                    {p.active ? (
+                      <Button size="sm" variant="ghost" onClick={() => setArchiving(p)} aria-label={`Archive ${p.name}`}>Archive</Button>
+                    ) : (
+                      <Button size="sm" variant="ghost" disabled={patch.busy} onClick={() => void save(p.id, { active: true })} aria-label={`Restore ${p.name}`}>
+                        Restore
+                      </Button>
+                    )}
+                  </>
+                )}
+              />
+            </>
+          )}
+        </div>
+
+        <Card className="h-fit space-y-3">
+          <h2 className="text-sm font-semibold">Add {one}</h2>
           <form onSubmit={add} className="space-y-3">
             <Field label="Name"><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></Field>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Price (PKR)"><Input type="number" min={0} step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required /></Field>
-              <Field label="Stock"><Input type="number" min={0} value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} /></Field>
+              <Field label="Price (PKR)"><Input {...num} step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required /></Field>
+              <Field label="Stock"><Input {...num} step="any" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} /></Field>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Barcode"><Input value={form.barcode} onChange={(e) => setForm({ ...form, barcode: e.target.value })} /></Field>
-              <Field label="Low-stock at"><Input type="number" min={0} value={form.low} onChange={(e) => setForm({ ...form, low: e.target.value })} /></Field>
+              <Field label="Barcode"><Input inputMode="numeric" value={form.barcode} onChange={(e) => setForm({ ...form, barcode: e.target.value })} /></Field>
+              <Field label="Low-stock at"><Input {...num} step="any" value={form.low} onChange={(e) => setForm({ ...form, low: e.target.value })} /></Field>
             </div>
             {/* Required on every FBR line item — a wrong HS code is the most
                 common rejection (error 0052). */}
             <div className="grid grid-cols-2 gap-3">
               <Field label="HS code"><Input value={form.hs_code} placeholder="0101.2100" onChange={(e) => setForm({ ...form, hs_code: e.target.value })} /></Field>
-              <Field label="Tax rate %"><Input type="number" min={0} max={100} step="0.01" value={form.tax_rate} placeholder="18" onChange={(e) => setForm({ ...form, tax_rate: e.target.value })} /></Field>
+              <Field label="Tax rate %"><Input {...num} max={100} step="0.01" value={form.tax_rate} placeholder="18" onChange={(e) => setForm({ ...form, tax_rate: e.target.value })} /></Field>
             </div>
-            <Button type="submit" disabled={busy} className="w-full">{busy ? "Adding…" : `Add ${t("product")}`}</Button>
+            <Button type="submit" disabled={create.busy} className="w-full">{create.busy ? "Adding…" : `Add ${one}`}</Button>
           </form>
         </Card>
       </div>
+
+      {editing && (
+        <EditDialog p={editing} busy={patch.busy} onCancel={() => setEditing(null)} onSave={(b) => void save(editing.id, b)} />
+      )}
+
+      {/* Archiving rather than deleting: a sold product is referenced by past
+          sales, so removing the row would rewrite history. Still asked first —
+          it vanishes from the till. */}
+      <Dialog
+        open={archiving !== null}
+        onOpenChange={(o) => { if (!o) setArchiving(null); }}
+        title={`Archive ${archiving?.name ?? ""}?`}
+        description={`It disappears from the till and search. Past sales keep it, and you can restore it from "Show archived".`}
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setArchiving(null)}>Keep it</Button>
+            <Button variant="danger" disabled={patch.busy} onClick={() => archiving && void save(archiving.id, { active: false })}>
+              {patch.busy ? "Archiving…" : "Archive"}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-fg-muted">{archiving?.stock_qty ?? 0} {archiving?.unit} in stock.</p>
+      </Dialog>
     </>
   );
 }
 
-function ViewRow({ p, onEdit, onArchive }: { p: Product; onEdit: () => void; onArchive: () => void }) {
-  const low = p.active && p.low_stock_at > 0 && p.stock_qty <= p.low_stock_at;
-  return (
-    <tr className={`border-b border-line/60 ${p.active ? "" : "opacity-55"}`}>
-      <td className="p-3">
-        <p className="font-medium">{p.name}</p>
-        <p className="text-xs text-fg-subtle">
-          {p.barcode && <span>{p.barcode}</span>}
-          {p.barcode && p.hs_code && " · "}
-          {p.hs_code && <span>HS {p.hs_code}</span>}
-        </p>
-      </td>
-      <td className="p-3 tabular-nums">
-        {money(p.price_minor)}
-        {p.tax_rate > 0 && <span className="ml-1 text-xs text-fg-subtle">+{p.tax_rate}%</span>}
-      </td>
-      <td className="p-3">
-        <span className="mr-2 tabular-nums">{p.stock_qty} {p.unit}</span>
-        {low && <Badge tone="warning">low</Badge>}
-        {!p.active && <Badge>archived</Badge>}
-      </td>
-      <td className="p-3 text-right">
-        <div className="flex justify-end gap-1">
-          <Button size="sm" variant="ghost" onClick={onEdit}>Edit</Button>
-          <Button size="sm" variant="ghost" onClick={onArchive}>{p.active ? "Archive" : "Restore"}</Button>
-        </div>
-      </td>
-    </tr>
-  );
-}
-
-/* Archiving rather than deleting: a sold product is referenced by past sales,
-   so removing the row would rewrite history. */
-function EditRow({ p, onCancel, onSave }: { p: Product; onCancel: () => void; onSave: (b: Partial<Product>) => void }) {
+function EditDialog({ p, busy, onCancel, onSave }: {
+  p: Product; busy: boolean; onCancel: () => void; onSave: (b: Partial<Product>) => void;
+}) {
   const [f, setF] = useState({
     name: p.name,
     price: (p.price_minor / 100).toString(),
@@ -176,40 +231,41 @@ function EditRow({ p, onCancel, onSave }: { p: Product; onCancel: () => void; on
     hs_code: p.hs_code,
     tax_rate: p.tax_rate.toString(),
   });
-  const [saving, setSaving] = useState(false);
 
-  async function save() {
-    setSaving(true);
-    try {
-      await onSave({
-        name: f.name,
-        price_minor: toMinor(f.price),
-        stock_qty: Number(f.stock || 0),
-        hs_code: f.hs_code,
-        tax_rate: Number(f.tax_rate || 0),
-      });
-    } finally {
-      setSaving(false);
-    }
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    onSave({
+      name: f.name,
+      price_minor: toMinor(f.price),
+      stock_qty: Number(f.stock || 0),
+      hs_code: f.hs_code,
+      tax_rate: Number(f.tax_rate || 0),
+    });
   }
 
   return (
-    <tr className="border-b border-line/60 bg-elevated/40">
-      <td className="p-2">
-        <Input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} aria-label="Name" />
-        <div className="mt-1 grid grid-cols-2 gap-1">
-          <Input value={f.hs_code} onChange={(e) => setF({ ...f, hs_code: e.target.value })} placeholder="HS code" aria-label="HS code" className="text-xs" />
-          <Input type="number" min={0} max={100} step="0.01" value={f.tax_rate} onChange={(e) => setF({ ...f, tax_rate: e.target.value })} placeholder="Tax %" aria-label="Tax rate" className="text-xs" />
+    <Dialog
+      open
+      onOpenChange={(o) => { if (!o) onCancel(); }}
+      title={`Edit ${p.name}`}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onCancel}>Cancel</Button>
+          <Button type="submit" form="edit-product" disabled={busy}>{busy ? "Saving…" : "Save"}</Button>
+        </>
+      }
+    >
+      <form id="edit-product" onSubmit={submit} className="space-y-3">
+        <Field label="Name"><Input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required /></Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Price (PKR)"><Input {...num} step="0.01" value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} required /></Field>
+          <Field label="Stock"><Input {...num} step="any" value={f.stock} onChange={(e) => setF({ ...f, stock: e.target.value })} /></Field>
         </div>
-      </td>
-      <td className="p-2 align-top"><Input type="number" min={0} step="0.01" value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} aria-label="Price" /></td>
-      <td className="p-2 align-top"><Input type="number" min={0} value={f.stock} onChange={(e) => setF({ ...f, stock: e.target.value })} aria-label="Stock" /></td>
-      <td className="p-2 text-right align-top">
-        <div className="flex justify-end gap-1">
-          <Button size="sm" onClick={save} disabled={saving}>{saving ? "…" : "Save"}</Button>
-          <Button size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="HS code"><Input value={f.hs_code} onChange={(e) => setF({ ...f, hs_code: e.target.value })} placeholder="0101.2100" /></Field>
+          <Field label="Tax rate %"><Input {...num} max={100} step="0.01" value={f.tax_rate} onChange={(e) => setF({ ...f, tax_rate: e.target.value })} /></Field>
         </div>
-      </td>
-    </tr>
+      </form>
+    </Dialog>
   );
 }

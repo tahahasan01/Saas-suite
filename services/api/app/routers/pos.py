@@ -9,6 +9,7 @@ from decimal import Decimal
 
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from pydantic import Field
 
 from .. import csv_io, db, fbr, fbr_submit, pricing, refs
 from ..deps import AuthContext
@@ -576,7 +577,22 @@ select i.id as sale_item_id, i.product_id, i.name, i.qty as qty_sold, i.price_mi
 """
 
 
-@router.get("/sales/{sale_id}", response_model=SaleDetail)
+class RefundableLine(ReturnableLine):
+    """A returnable line plus the two figures a refund is computed from
+    (pricing.refund_for), so the Returns screen previews what will actually be
+    paid out rather than list price x qty (audit I8)."""
+    paid_minor: int        # what the customer paid for the line: after discount, with tax
+    refunded_minor: int    # already given back on earlier returns
+
+
+class SaleLookup(SaleDetail):
+    returnable: list[RefundableLine] = Field(default_factory=list)
+    # Never refund more than this in total: what was paid (cash-rounded) less
+    # earlier refunds. create_return caps at the same figure.
+    refundable_minor: int = 0
+
+
+@router.get("/sales/{sale_id}", response_model=SaleLookup)
 async def get_sale(sale_id: str, auth: AuthContext = Depends(require("pos", "read"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
         sale = await conn.fetchrow("select * from pos_sales where id=$1", sale_id)
@@ -586,13 +602,16 @@ async def get_sale(sale_id: str, auth: AuthContext = Depends(require("pos", "rea
         fbr_row = await conn.fetchrow(
             "select fbr_invoice_number, status from pos_fbr_invoices where sale_id=$1 and return_id is null",
             sale_id)
-    returnable = [ReturnableLine(
+        already = await conn.fetchval(
+            "select coalesce(sum(refund_minor), 0) from pos_returns where sale_id=$1", sale_id)
+    returnable = [RefundableLine(
         sale_item_id=str(r["sale_item_id"]),
         product_id=str(r["product_id"]) if r["product_id"] else None,
         name=r["name"], qty_sold=float(r["qty_sold"]), qty_returned=float(r["qty_returned"]),
         qty_returnable=float(r["qty_sold"]) - float(r["qty_returned"]), price_minor=r["price_minor"],
+        paid_minor=r["total_minor"], refunded_minor=r["refunded_minor"],
     ) for r in lines]
-    return SaleDetail(
+    return SaleLookup(
         id=str(sale["id"]), subtotal_minor=sale["subtotal_minor"], discount_minor=sale["discount_minor"],
         total_minor=sale["total_minor"], paid_minor=sale["paid_minor"], change_minor=sale["change_minor"],
         payment_method=sale["payment_method"], item_count=sale["item_count"], created_at=sale["created_at"],
@@ -603,7 +622,8 @@ async def get_sale(sale_id: str, auth: AuthContext = Depends(require("pos", "rea
         items=[SaleItemOut(name=r["name"], qty=float(r["qty_sold"]), price_minor=r["price_minor"],
                            line_total_minor=round(r["price_minor"] * float(r["qty_sold"])))
                for r in lines],
-        returnable=returnable)
+        returnable=returnable,
+        refundable_minor=max(0, sale["total_minor"] + sale["rounding_minor"] - already))
 
 
 @router.post("/sales/{sale_id}/returns", response_model=ReturnOut, status_code=status.HTTP_201_CREATED)

@@ -283,3 +283,30 @@ async def test_the_cash_drawer_expects_the_rounded_cash_that_was_taken(client, e
                                           "paid_minor": 9_400, "payment_method": "cash"})
     drawer = (await client.get("/pos/drawer/current")).json()
     assert drawer["expected_minor"] == 50_000 + 9_400  # Rs 94 went into the till, not Rs 94.40
+
+
+async def test_the_sale_lookup_says_what_a_return_will_refund(client, inclusive_shop):
+    """Audit I8: the Returns screen previewed price x qty, ignoring the
+    discount share, so the cashier could hand out more cash than was recorded.
+    The lookup must carry what each line was actually paid, what it has
+    already refunded, and what is left to refund on the whole sale."""
+    a, b = inclusive_shop
+    sale = (await client.post("/pos/sales", json={
+        "items": [{"product_id": a, "qty": 2}, {"product_id": b, "qty": 1}],  # gross Rs 250
+        "discount_minor": 2_000, "paid_minor": 23_000, "payment_method": "cash"})).json()
+    detail = (await client.get(f"/pos/sales/{sale['id']}")).json()
+    lines = {l["product_id"]: l for l in detail["returnable"]}
+    # Rs 20 discount spread by value: Rs 16 off line a, Rs 4 off line b.
+    assert lines[a]["paid_minor"] == 18_400
+    assert lines[b]["paid_minor"] == 4_600
+    assert lines[a]["refunded_minor"] == 0
+    assert detail["refundable_minor"] == sale["amount_due_minor"] == 23_000
+
+    r = await client.post(f"/pos/sales/{sale['id']}/returns", json={
+        "items": [{"sale_item_id": lines[a]["sale_item_id"], "qty": 1}]})
+    assert r.json()["refund_minor"] == 9_200   # the preview's figure: half of Rs 184, not Rs 100
+
+    after = (await client.get(f"/pos/sales/{sale['id']}")).json()
+    line_a = next(l for l in after["returnable"] if l["product_id"] == a)
+    assert line_a["refunded_minor"] == 9_200
+    assert after["refundable_minor"] == 23_000 - 9_200

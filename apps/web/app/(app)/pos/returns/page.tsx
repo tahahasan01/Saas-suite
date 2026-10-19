@@ -1,150 +1,173 @@
 "use client";
 
 import { useState } from "react";
-import type { SaleDetail } from "@business-os/types";
+import type { ReturnableLine, SaleDetail } from "@business-os/types";
 import { api, ApiError } from "@/lib/api";
 import { money, relativeDate } from "@/lib/format";
-import { Badge, Button, Card, Input } from "@/components/ui";
+import { useAction } from "@/lib/useAction";
+import { Badge, Button, Card, ErrorState, Input } from "@/components/ui";
+import { DataTable, type Column } from "@/components/DataTable";
+import { blurOnWheel } from "@/components/pos/labels";
+import { previewRefund } from "@/components/pos/refund";
 
 /* Returns are looked up by receipt: that is the only identifier a customer
    standing at the counter actually has. */
 
+/** The lookup also says what each line was paid (after discount, with tax),
+ *  what it has refunded already, and what is left on the sale — the figures
+ *  the server refunds from. Optional: an API from before I8 doesn't send them. */
+type Line = ReturnableLine & { paid_minor?: number; refunded_minor?: number };
+type Sale = Omit<SaleDetail, "returnable"> & { returnable: Line[]; refundable_minor?: number };
+
 export default function ReturnsPage() {
   const [q, setQ] = useState("");
-  const [sale, setSale] = useState<SaleDetail | null>(null);
+  const [sale, setSale] = useState<Sale | null>(null);
   const [qty, setQty] = useState<Record<string, number>>({});
   const [reason, setReason] = useState("");
   const [restock, setRestock] = useState(true);
-  const [err, setErr] = useState<string | null>(null);
-  const [done, setDone] = useState<{ refund: number } | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [findError, setFindError] = useState<{ text: string; retry: boolean } | null>(null);
+  const [finding, setFinding] = useState(false);
+  const [done, setDone] = useState<{ refund: number; restocked: boolean } | null>(null);
 
-  async function find(e: React.FormEvent) {
-    e.preventDefault();
-    setErr(null);
+  const lookup = (id: string) => api<Sale>(`/pos/sales/${encodeURIComponent(id)}`);
+
+  async function find(e?: React.FormEvent) {
+    e?.preventDefault();
+    const id = q.trim();
+    if (!id) return;
+    setFindError(null);
     setDone(null);
     setSale(null);
+    setFinding(true);
     try {
-      const found = await api<SaleDetail>(`/pos/sales/${q.trim()}`);
-      setSale(found);
+      setSale(await lookup(id));
       setQty({});
-    } catch {
-      setErr("No sale with that receipt number.");
-    }
-  }
-
-  const refund = sale
-    ? sale.returnable.reduce((sum, l) => sum + Math.round(l.price_minor * (qty[l.sale_item_id] ?? 0)), 0)
-    : 0;
-
-  async function submit() {
-    if (!sale) return;
-    const items = Object.entries(qty)
-      .filter(([, n]) => n > 0)
-      .map(([sale_item_id, n]) => ({ sale_item_id, qty: n }));
-    if (!items.length) return;
-
-    setBusy(true);
-    setErr(null);
-    try {
-      const r = await api<{ refund_minor: number }>(`/pos/sales/${sale.id}/returns`, {
-        method: "POST",
-        body: JSON.stringify({ items, reason, restock }),
-      });
-      setDone({ refund: r.refund_minor });
-      setSale(await api<SaleDetail>(`/pos/sales/${sale.id}`)); // reflect what's left
-      setQty({});
-      setReason("");
-    } catch (e) {
-      setErr(e instanceof ApiError && typeof e.detail === "string" ? e.detail : "Couldn't process that return.");
+    } catch (err) {
+      // "Not found" (or not even a receipt number: 422) means check the number;
+      // anything else means try again (I9).
+      setFindError(err instanceof ApiError && (err.status === 404 || err.status === 422)
+        ? { text: "No sale with that receipt number. Check it against the receipt.", retry: false }
+        : { text: "Couldn't look the sale up. Check the connection and try again.", retry: true });
     } finally {
-      setBusy(false);
+      setFinding(false);
     }
   }
+
+  // From the server's own figures, never price x qty — that ignored the
+  // discount share and could hand out more cash than was recorded (I8).
+  const refund = sale ? previewRefund(sale.returnable, qty, sale.refundable_minor) : 0;
+  const chosen = Object.values(qty).some((n) => n > 0);
+  const over = sale?.returnable.find((l) => (qty[l.sale_item_id] ?? 0) > l.qty_returnable);
+
+  const submit = useAction(async () => {
+    if (!sale) return undefined;
+    const items = Object.entries(qty).filter(([, n]) => n > 0).map(([sale_item_id, n]) => ({ sale_item_id, qty: n }));
+    const r = await api<{ refund_minor: number }>(`/pos/sales/${encodeURIComponent(sale.id)}/returns`, {
+      method: "POST",
+      body: JSON.stringify({ items, reason, restock }),
+    });
+    setDone({ refund: r.refund_minor, restocked: restock });
+    setQty({});
+    setReason("");
+    setSale(await lookup(sale.id).catch(() => null)); // reflect what's left
+    return r;
+  }, { failure: "Couldn't process that return" });
+
+  const columns: Column<Line>[] = [
+    {
+      key: "item", header: "Item", primary: true,
+      cell: (l) => (
+        <div className="min-w-0">
+          <p className="font-medium break-words">{l.name}</p>
+          <p className="text-xs text-fg-subtle">
+            {l.paid_minor !== undefined
+              ? `${money(l.paid_minor)} paid for ${l.qty_sold}`
+              : `${money(l.price_minor)} each`}
+          </p>
+        </div>
+      ),
+    },
+    { key: "sold", header: "Sold", align: "right", cell: (l) => l.qty_sold },
+    { key: "returned", header: "Returned", align: "right", cell: (l) => l.qty_returned || "—" },
+    {
+      key: "now", header: "Return now", align: "right",
+      cell: (l) => l.qty_returnable > 0 ? (
+        <Input
+          type="number" inputMode="decimal" min={0} max={l.qty_returnable} step="any" onWheel={blurOnWheel}
+          value={qty[l.sale_item_id] ?? ""} placeholder={`max ${l.qty_returnable}`}
+          onChange={(e) => setQty({ ...qty, [l.sale_item_id]: Number(e.target.value || 0) })}
+          className="ml-auto w-24 text-right"
+          aria-label={`Return quantity for ${l.name}`}
+        />
+      ) : (
+        <Badge>fully returned</Badge>
+      ),
+    },
+  ];
 
   return (
     <>
       <p className="mb-6 text-sm text-fg-muted">Find the sale, choose what&apos;s coming back, refund it.</p>
 
-      <form onSubmit={find} className="mb-5 flex max-w-md gap-2">
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Receipt / sale ID" aria-label="Receipt number" />
-        <Button type="submit" disabled={!q.trim()}>Find sale</Button>
+      <form onSubmit={find} className="mb-5 flex max-w-md flex-wrap gap-2">
+        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Receipt / sale ID" aria-label="Receipt number"
+               autoComplete="off" spellCheck={false} className="min-w-0 flex-1" />
+        <Button type="submit" disabled={!q.trim() || finding}>{finding ? "Finding…" : "Find sale"}</Button>
       </form>
 
-      {err && !sale && <p className="text-sm text-danger">{err}</p>}
+      {findError && (
+        <div className="mb-5 max-w-md">
+          <ErrorState message={findError.text} onRetry={findError.retry ? () => void find() : undefined} />
+        </div>
+      )}
 
       {done && (
         <Card className="mb-5 border-success/40 bg-success/5">
           <p className="text-sm font-medium text-success">Refunded {money(done.refund)}</p>
           <p className="mt-0.5 text-xs text-fg-muted">
-            {restock ? "Stock returned to the shelf." : "Stock not restocked."}
+            {done.restocked ? "Stock returned to the shelf." : "Stock not restocked."}
             {sale?.fbr_status && " A debit note has been filed with FBR."}
           </p>
         </Card>
       )}
 
       {sale && (
-        <div className="grid gap-5 lg:grid-cols-[1fr_300px]">
-          <Card className="p-0">
-            <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
-              <div>
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
+          <div className="min-w-0 space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="min-w-0">
                 <p className="text-sm font-medium">Sale {sale.id.slice(0, 8).toUpperCase()}</p>
-                <p className="text-xs text-fg-subtle">{relativeDate(sale.created_at)} · {money(sale.total_minor)}</p>
+                <p className="text-xs text-fg-subtle">{relativeDate(sale.created_at)} · {money(sale.amount_due_minor || sale.total_minor)} paid</p>
               </div>
               {sale.fbr_invoice_number && <Badge tone="success">Filed with FBR</Badge>}
             </div>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-line text-left text-xs text-fg-subtle">
-                  <th className="p-3">Item</th>
-                  <th className="p-3 text-right">Sold</th>
-                  <th className="p-3 text-right">Returned</th>
-                  <th className="p-3 text-right">Return now</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sale.returnable.map((l) => (
-                  <tr key={l.sale_item_id} className="border-b border-line/60">
-                    <td className="p-3">
-                      <p className="font-medium">{l.name}</p>
-                      <p className="text-xs text-fg-subtle">{money(l.price_minor)} each</p>
-                    </td>
-                    <td className="p-3 text-right tabular-nums text-fg-muted">{l.qty_sold}</td>
-                    <td className="p-3 text-right tabular-nums text-fg-muted">{l.qty_returned || "—"}</td>
-                    <td className="p-3 text-right">
-                      {l.qty_returnable > 0 ? (
-                        <Input
-                          type="number" min={0} max={l.qty_returnable} step="any"
-                          value={qty[l.sale_item_id] ?? ""}
-                          onChange={(e) => setQty({ ...qty, [l.sale_item_id]: Number(e.target.value || 0) })}
-                          className="ml-auto w-20 text-right"
-                          aria-label={`Return quantity for ${l.name}`}
-                        />
-                      ) : (
-                        <Badge>fully returned</Badge>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card>
+            <DataTable columns={columns} rows={sale.returnable} rowKey={(l) => l.sale_item_id} caption="Items on this sale"
+                       className="[&_dd]:overflow-visible" />
+          </div>
 
-          <Card className="space-y-3">
+          <Card className="h-fit space-y-3">
             <h2 className="text-sm font-semibold">Refund</h2>
-            <p className="text-2xl font-semibold tabular-nums">{money(refund)}</p>
-            <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason (optional)" />
-            <label className="flex cursor-pointer items-start gap-2 text-sm">
+            {refund === null ? (
+              <p className="text-sm text-fg-muted">The exact refund is worked out when you confirm.</p>
+            ) : (
+              <p className="text-2xl font-semibold tabular-nums">{money(refund)}</p>
+            )}
+            {sale.refundable_minor === 0 && (
+              <p className="text-xs text-fg-muted">Everything paid for this sale has been refunded.</p>
+            )}
+            <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason (optional)" aria-label="Reason" />
+            <label className="flex min-h-11 cursor-pointer items-start gap-2 text-sm">
               <input type="checkbox" checked={restock} onChange={(e) => setRestock(e.target.checked)}
-                     className="mt-1 accent-[var(--color-brand)]" />
+                     className="mt-0.5 size-6 shrink-0 accent-[var(--color-brand)]" />
               <span>
                 Put stock back
                 <span className="block text-xs text-fg-subtle">Uncheck for damaged goods.</span>
               </span>
             </label>
-            {err && <p className="text-xs text-danger">{err}</p>}
-            <Button onClick={submit} disabled={busy || refund === 0} className="w-full">
-              {busy ? "Refunding…" : `Refund ${money(refund)}`}
+            {over && <p role="alert" className="text-xs text-danger">Only {over.qty_returnable} of {over.name} can be returned.</p>}
+            {submit.error && <p role="alert" className="text-xs text-danger">{submit.error}</p>}
+            <Button onClick={() => void submit.run()} disabled={submit.busy || !chosen || !!over || refund === 0} className="w-full">
+              {submit.busy ? "Refunding…" : refund === null ? "Refund" : `Refund ${money(refund)}`}
             </Button>
           </Card>
         </div>

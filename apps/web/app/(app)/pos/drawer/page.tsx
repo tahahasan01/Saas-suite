@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import { money, relativeDate } from "@/lib/format";
-import { Badge, Button, Card, Field, Input } from "@/components/ui";
+import { useAction } from "@/lib/useAction";
+import { Badge, Button, Card, EmptyState, ErrorState, Field, Input, LoadingRows } from "@/components/ui";
+import { Dialog } from "@/components/Dialog";
+import { DataTable, type Column } from "@/components/DataTable";
+import { blurOnWheel, methodLabel } from "@/components/pos/labels";
 
 interface MethodTotal { payment_method: string; count: number; total_minor: number }
 interface Drawer {
@@ -23,66 +27,83 @@ interface Drawer {
 }
 
 export default function DrawerPage() {
-  const [drawer, setDrawer] = useState<Drawer | null>(null);
-  const [history, setHistory] = useState<Drawer[]>([]);
+  // undefined = still loading; null = no drawer open (the API answers 404).
+  const [drawer, setDrawer] = useState<Drawer | null | undefined>(undefined);
+  const [drawerError, setDrawerError] = useState(false);
+  const [history, setHistory] = useState<Drawer[] | null>(null);
+  const [historyError, setHistoryError] = useState(false);
   const [float_, setFloat] = useState("");
   const [counted, setCounted] = useState("");
   const [notes, setNotes] = useState("");
-  const [err, setErr] = useState<string | null>(null);
   const [closed, setClosed] = useState<Drawer | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
   const load = useCallback(() => {
-    api<Drawer>("/pos/drawer/current").then(setDrawer).catch(() => setDrawer(null));
-    api<Drawer[]>("/pos/drawer/history").then(setHistory).catch(() => setHistory([]));
+    setDrawerError(false);
+    setHistoryError(false);
+    api<Drawer | null>("/pos/drawer/current")
+      .then((d) => setDrawer(d ?? null))
+      .catch((e) => {
+        // "No drawer is open" is an answer, not a failure; anything else is.
+        if (e instanceof ApiError && e.status === 404) setDrawer(null);
+        else setDrawerError(true);
+      });
+    api<Drawer[]>("/pos/drawer/history").then(setHistory).catch(() => setHistoryError(true));
   }, []);
   useEffect(load, [load]);
 
+  const openDrawer = useAction(
+    (minor: number) => api("/pos/drawer/open", { method: "POST", body: JSON.stringify({ opening_float_minor: minor }) }),
+    { success: "Drawer opened", failure: "Couldn't open the drawer" });
+  const closeDrawer = useAction(
+    (body: { counted_minor: number; notes: string }) =>
+      api<Drawer>("/pos/drawer/close", { method: "POST", body: JSON.stringify(body) }),
+    { failure: "Couldn't close the drawer" });
+
   async function open(e: React.FormEvent) {
     e.preventDefault();
-    setErr(null);
     setClosed(null);
-    try {
-      await api("/pos/drawer/open", {
-        method: "POST",
-        body: JSON.stringify({ opening_float_minor: Math.round(Number(float_ || 0) * 100) }),
-      });
+    if (await openDrawer.run(Math.round(Number(float_ || 0) * 100)) !== undefined) {
       setFloat("");
       load();
-    } catch (e) {
-      setErr(e instanceof ApiError && typeof e.detail === "string" ? e.detail : "Couldn't open the drawer.");
     }
   }
 
-  async function close(e: React.FormEvent) {
-    e.preventDefault();
-    setErr(null);
-    try {
-      const d = await api<Drawer>("/pos/drawer/close", {
-        method: "POST",
-        body: JSON.stringify({ counted_minor: Math.round(Number(counted || 0) * 100), notes }),
-      });
+  const countedMinor = Math.round(Number(counted || 0) * 100);
+
+  async function close() {
+    const d = await closeDrawer.run({ counted_minor: countedMinor, notes });
+    if (d !== undefined) {
+      setConfirming(false);
       setClosed(d);
       setCounted("");
       setNotes("");
       load();
-    } catch (e) {
-      setErr(e instanceof ApiError && typeof e.detail === "string" ? e.detail : "Couldn't close the drawer.");
     }
   }
+
+  const historyColumns: Column<Drawer>[] = [
+    { key: "closed", header: "Closed", primary: true, cell: (d) => (d.closed_at ? relativeDate(d.closed_at) : "—") },
+    { key: "expected", header: "Expected", align: "right", cell: (d) => money(d.expected_minor) },
+    { key: "counted", header: "Counted", align: "right", cell: (d) => (d.counted_minor !== null ? money(d.counted_minor) : "—") },
+    { key: "variance", header: "Over / short", align: "right", cell: (d) => <Variance v={d.variance_minor} /> },
+  ];
 
   return (
     <>
       <p className="mb-6 text-sm text-fg-muted">Open with a float, count at close, reconcile the difference.</p>
 
-      {err && <p className="mb-4 rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">{err}</p>}
-
       {closed && <Reconciliation d={closed} />}
 
-      {drawer ? (
-        <div className="grid gap-5 lg:grid-cols-[1fr_300px]">
+      {drawerError ? (
+        <ErrorState message="Couldn't load the drawer." onRetry={load} />
+      ) : drawer === undefined ? (
+        <LoadingRows label="Loading drawer" />
+      ) : drawer ? (
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
           <Card className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="min-w-0">
                 <p className="text-sm font-semibold">Drawer open</p>
                 <p className="text-xs text-fg-subtle">
                   Since {relativeDate(drawer.opened_at)}{drawer.opened_by && ` · ${drawer.opened_by}`}
@@ -103,8 +124,8 @@ export default function DrawerPage() {
                 <p className="mb-2 text-xs font-semibold text-fg-muted">Sales this shift</p>
                 <ul className="space-y-1">
                   {drawer.sales_by_method.map((m) => (
-                    <li key={m.payment_method} className="flex justify-between text-sm">
-                      <span className="capitalize text-fg-muted">{m.payment_method} · {m.count}</span>
+                    <li key={m.payment_method} className="flex justify-between gap-3 text-sm">
+                      <span className="text-fg-muted">{methodLabel(m.payment_method)} · {m.count}</span>
                       <span className="tabular-nums">{money(m.total_minor)}</span>
                     </li>
                   ))}
@@ -113,69 +134,81 @@ export default function DrawerPage() {
             )}
           </Card>
 
-          <Card className="space-y-3">
+          <Card className="h-fit space-y-3">
             <h2 className="text-sm font-semibold">Close drawer</h2>
-            <form onSubmit={close} className="space-y-3">
+            {/* Closing freezes the shift's figures, so it's confirmed with the
+                difference in front of the cashier first (I7). */}
+            <form onSubmit={(e) => { e.preventDefault(); setConfirming(true); }} className="space-y-3">
               <Field label="Cash counted (PKR)">
-                <Input type="number" min={0} step="0.01" value={counted} required
-                       onChange={(e) => setCounted(e.target.value)} />
+                <Input type="number" inputMode="decimal" min={0} step="0.01" value={counted} required
+                       onWheel={blurOnWheel} onChange={(e) => setCounted(e.target.value)} />
               </Field>
               <Field label="Notes">
                 <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" />
               </Field>
-              <Button type="submit" className="w-full">Close &amp; reconcile</Button>
+              <Button type="submit" className="w-full" disabled={closeDrawer.busy}>Close &amp; reconcile</Button>
             </form>
           </Card>
+
+          <Dialog
+            open={confirming}
+            onOpenChange={setConfirming}
+            title="Close the drawer?"
+            description="The shift's figures are frozen once it's closed."
+            size="sm"
+            footer={
+              <>
+                <Button variant="ghost" onClick={() => setConfirming(false)}>Keep counting</Button>
+                <Button onClick={() => void close()} disabled={closeDrawer.busy}>
+                  {closeDrawer.busy ? "Closing…" : "Close drawer"}
+                </Button>
+              </>
+            }
+          >
+            <dl className="space-y-1 text-sm">
+              <div className="flex justify-between gap-3"><dt className="text-fg-muted">Expected</dt><dd className="tabular-nums">{money(drawer.expected_minor)}</dd></div>
+              <div className="flex justify-between gap-3"><dt className="text-fg-muted">Counted</dt><dd className="tabular-nums">{money(countedMinor)}</dd></div>
+              <div className="flex justify-between gap-3 font-medium"><dt>Over / short</dt><dd><Variance v={countedMinor - drawer.expected_minor} /></dd></div>
+            </dl>
+          </Dialog>
         </div>
       ) : (
         <Card className="max-w-sm space-y-3">
           <h2 className="text-sm font-semibold">Open drawer</h2>
           <form onSubmit={open} className="space-y-3">
             <Field label="Opening float (PKR)">
-              <Input type="number" min={0} step="0.01" value={float_} placeholder="e.g. 5000"
-                     onChange={(e) => setFloat(e.target.value)} />
+              <Input type="number" inputMode="decimal" min={0} step="0.01" value={float_} placeholder="e.g. 5000"
+                     onWheel={blurOnWheel} onChange={(e) => setFloat(e.target.value)} />
             </Field>
-            <Button type="submit" className="w-full">Open drawer</Button>
+            <Button type="submit" className="w-full" disabled={openDrawer.busy}>{openDrawer.busy ? "Opening…" : "Open drawer"}</Button>
           </form>
         </Card>
       )}
 
-      {history.length > 0 && (
-        <Card className="mt-6 p-0">
-          <p className="border-b border-line px-4 py-2.5 text-sm font-semibold">Past shifts</p>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-line text-left text-xs text-fg-subtle">
-                <th className="p-3">Closed</th>
-                <th className="p-3 text-right">Expected</th>
-                <th className="p-3 text-right">Counted</th>
-                <th className="p-3 text-right">Over / short</th>
-              </tr>
-            </thead>
-            <tbody>
-              {history.map((d) => (
-                <tr key={d.id} className="border-b border-line/60">
-                  <td className="p-3 text-fg-muted">{d.closed_at ? relativeDate(d.closed_at) : "—"}</td>
-                  <td className="p-3 text-right tabular-nums">{money(d.expected_minor)}</td>
-                  <td className="p-3 text-right tabular-nums">{d.counted_minor !== null ? money(d.counted_minor) : "—"}</td>
-                  <td className="p-3 text-right">
-                    <Variance v={d.variance_minor} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
-      )}
+      <section className="mt-6 space-y-2">
+        <h2 className="text-sm font-semibold">Past shifts</h2>
+        {historyError ? (
+          <ErrorState message="Couldn't load past shifts." onRetry={load} />
+        ) : (
+          <DataTable
+            columns={historyColumns}
+            rows={history ?? []}
+            rowKey={(d) => d.id}
+            loading={history === null}
+            caption="Past shifts"
+            empty={<EmptyState title="No closed shifts yet." />}
+          />
+        )}
+      </section>
     </>
   );
 }
 
 function Stat({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div>
+    <div className="min-w-0">
       <dt className="text-xs text-fg-subtle">{label}</dt>
-      <dd className={`text-lg font-semibold tabular-nums ${accent ? "text-brand" : ""}`}>{value}</dd>
+      <dd className={`text-lg font-semibold tabular-nums break-words ${accent ? "text-brand" : ""}`}>{value}</dd>
     </div>
   );
 }
