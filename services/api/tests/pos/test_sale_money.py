@@ -241,3 +241,45 @@ async def test_refunds_never_exceed_the_rounded_cash_actually_paid(client, exclu
     r = await client.post(f"/pos/sales/{sale['id']}/returns", json={
         "items": [{"sale_item_id": item["sale_item_id"], "qty": 1}]})
     assert r.json()["refund_minor"] == 9_400  # what was paid, not the Rs 94.40 invoice value
+
+
+async def test_capping_a_refund_never_makes_a_line_negative(client, exclusive_shop, pos_tenant):
+    """Security review of d519065: the excess over what was paid came off the
+    last line alone, which can be smaller than the excess."""
+    a, b = exclusive_shop
+    owner = await asyncpg.connect(settings.database_url)
+    try:  # Rs 10 cash unit; Rs 95 + Rs 1 lines, 18% exclusive = Rs 113.28 → due Rs 110
+        await owner.execute("update tenants set cash_rounding_minor = 1000 where id = $1",
+                            uuid.UUID(pos_tenant.tenant_id))
+        await owner.execute("update pos_products set price_minor = 9_500 where id = $1", uuid.UUID(a))
+        await owner.execute("update pos_products set price_minor = 100 where id = $1", uuid.UUID(b))
+    finally:
+        await owner.close()
+    sale = (await client.post("/pos/sales", json={
+        "items": [{"product_id": a, "qty": 1}, {"product_id": b, "qty": 1}],
+        "paid_minor": 11_000, "payment_method": "cash"})).json()
+    assert sale["amount_due_minor"] == 11_000
+    lines = {l["name"]: l["sale_item_id"] for l in
+             (await client.get(f"/pos/sales/{sale['id']}")).json()["returnable"]}
+    first, second = list(lines.values())
+    r = await client.post(f"/pos/sales/{sale['id']}/returns", json={
+        "items": [{"sale_item_id": first, "qty": 1}, {"sale_item_id": second, "qty": 1}]})
+    body = r.json()
+    assert body["refund_minor"] == 11_000
+    assert all(item["line_refund_minor"] >= 0 for item in body["items"])
+
+
+async def test_the_cash_drawer_expects_the_rounded_cash_that_was_taken(client, exclusive_shop):
+    """Security review of d519065: the drawer summed invoice totals, so every
+    rounded cash sale showed up as a false shortage or overage."""
+    a, _ = exclusive_shop
+    owner = await asyncpg.connect(settings.database_url)
+    try:
+        await owner.execute("update pos_products set price_minor = 8_000 where id = $1", uuid.UUID(a))
+    finally:
+        await owner.close()
+    assert (await client.post("/pos/drawer/open", json={"opening_float_minor": 50_000})).status_code in (200, 201)
+    await client.post("/pos/sales", json={"items": [{"product_id": a, "qty": 1}],
+                                          "paid_minor": 9_400, "payment_method": "cash"})
+    drawer = (await client.get("/pos/drawer/current")).json()
+    assert drawer["expected_minor"] == 50_000 + 9_400  # Rs 94 went into the till, not Rs 94.40

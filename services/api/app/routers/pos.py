@@ -412,8 +412,10 @@ async def cancel_po(po_id: str, auth: AuthContext = Depends(require("pos", "writ
 
 
 # ── Cash drawer ──────────────────────────────────────────────────────────────
+# Money that went into the till: the amount due (total + cash rounding), not
+# the invoice value — otherwise every rounded sale is a false variance.
 _CASH_SALES = """
-select coalesce(sum(total_minor), 0) as total, count(*) as n from pos_sales
+select coalesce(sum(total_minor + rounding_minor), 0) as total, count(*) as n from pos_sales
  where payment_method = 'cash' and created_at >= $1 and created_at <= $2
 """
 # Refunds leave the drawer only if the money went in through it: returns against
@@ -424,7 +426,7 @@ select coalesce(sum(r.refund_minor), 0) as total from pos_returns r
  where s.payment_method = 'cash' and r.created_at >= $1 and r.created_at <= $2
 """
 _BY_METHOD = """
-select payment_method, count(*) as n, coalesce(sum(total_minor), 0) as total
+select payment_method, count(*) as n, coalesce(sum(total_minor + rounding_minor), 0) as total
   from pos_sales where created_at >= $1 and created_at <= $2
  group by payment_method order by total desc
 """
@@ -640,11 +642,20 @@ async def create_return(sale_id: str, body: ReturnCreate,
         # than was actually paid for the sale.
         already = await conn.fetchval(
             "select coalesce(sum(refund_minor), 0) from pos_returns where sale_id=$1", sale_id)
-        excess = refund - (sale["total_minor"] + sale["rounding_minor"] - already)
-        if excess > 0:
-            row, qty, last = lines[-1]
-            lines[-1] = (row, qty, last - excess)
-            refund -= excess
+        refundable = max(0, sale["total_minor"] + sale["rounding_minor"] - already)
+        if refundable == 0:
+            raise HTTPException(status.HTTP_409_CONFLICT, "Everything paid for this sale has been refunded.")
+        excess = refund - refundable
+        # Take any excess off the lines from the last one back, never pushing a
+        # line below zero (one small line can be smaller than the excess).
+        for i in range(len(lines) - 1, -1, -1):
+            if excess <= 0:
+                break
+            row, qty, amount = lines[i]
+            cut = min(excess, amount)
+            lines[i] = (row, qty, amount - cut)
+            excess -= cut
+            refund -= cut
 
         fbr_cfg = await conn.fetchrow("select * from fbr_settings where tenant_id=$1", auth.tenant_id)
         if fbr_cfg and fbr_cfg["enabled"]:
