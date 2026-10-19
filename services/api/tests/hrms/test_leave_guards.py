@@ -40,3 +40,40 @@ async def test_nobody_approves_their_own_leave(client, tenant):
     leave = (await _request(client, tenant.employee_id)).json()
     r = await client.post(f"/hrms/leave/{leave['id']}/approve")
     assert r.status_code == 403
+
+
+async def test_two_approvals_cannot_together_exceed_the_quota(client, tenant):
+    """Security review of df354c6: each approval checked the balance before
+    either committed, so two requests that fit only one at a time both passed."""
+    import asyncio
+
+    a = (await _request(client, tenant.employee_id, from_date="2026-11-02", to_date="2026-11-07")).json()
+    b = (await _request(client, tenant.employee_id, from_date="2026-11-10", to_date="2026-11-16")).json()
+    # 6 + 6 working days of casual leave against a quota of 10.
+    responses = await asyncio.gather(client.post(f"/hrms/leave/{a['id']}/approve"),
+                                     client.post(f"/hrms/leave/{b['id']}/approve"))
+    assert sorted(r.status_code for r in responses) == [200, 409]
+
+
+async def test_approvals_for_one_employee_queue_behind_each_other(client, tenant):
+    """The mechanism behind the quota guarantee, made deterministic: while
+    another transaction holds the employee, an approval must wait for it
+    rather than check the balance concurrently."""
+    import asyncio
+
+    leave = (await _request(client, tenant.employee_id)).json()
+    blocker = await asyncpg.connect(settings.database_url)
+    try:
+        tx = blocker.transaction()
+        await tx.start()
+        await blocker.execute("select 1 from hrms_employees where id=$1 for update",
+                              uuid.UUID(tenant.employee_id))
+        approval = asyncio.create_task(client.post(f"/hrms/leave/{leave['id']}/approve"))
+        await asyncio.sleep(0.5)
+        waited = not approval.done()
+        await tx.commit()
+        r = await approval
+    finally:
+        await blocker.close()
+    assert waited
+    assert r.status_code == 200

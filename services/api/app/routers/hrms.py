@@ -443,6 +443,9 @@ async def decide_leave(leave_id: str, decision: str,
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Leave request not found")
         if req["status"] != "pending":
             raise HTTPException(status.HTTP_409_CONFLICT, f"This request was already {req['status']}.")
+        # Decisions for one employee run one at a time: two requests that each
+        # fit the remaining quota must not both pass the balance check below.
+        await conn.execute("select 1 from hrms_employees where id=$1 for update", req["employee_id"])
         requester = await conn.fetchval(
             "select user_id from hrms_employees where id=$1", req["employee_id"])
         if requester is not None and str(requester) == auth.user_id:
