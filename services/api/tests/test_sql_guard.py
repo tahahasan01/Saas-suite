@@ -36,6 +36,12 @@ UNSAFE = [
     "select current_setting('app.tenant_id') from ai_v_leads",        # read session context
     "select query_to_xml('select * from users', true, true, '') from ai_v_leads",  # SQL in a string
     "select * from ai_v_leads where name in (select email from users)",  # subquery to raw table
+    # CTE scope: a CTE name must only excuse references that can actually see it.
+    "with users as (select * from users) select * from users",           # body reads the real table
+    "with users as (select * from users) select * from users, ai_v_leads",  # ...even next to a legal view
+    "select * from ai_v_leads where name in (with s as (select 1) select * from s)",  # nested WITH
+    "select * from (with auth_tokens as (select 1 as x) select * from ai_v_leads) a, auth_tokens",
+    "with recursive x as (select * from ai_v_leads) select * from x",     # recursion not needed
 ]
 
 

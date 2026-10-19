@@ -67,19 +67,42 @@ def _check_functions(tree: exp.Expression) -> None:
             raise UnsafeQuery(f"function '{fn.sql_name()}' is not allowed")
 
 
+def _check_table(table: exp.Table, allowed: set[str], visible_ctes: set[str]) -> None:
+    name = table.name.lower()
+    if table.db and table.db.lower() != "public":
+        raise UnsafeQuery(f"table '{table.sql()}' is not queryable")
+    if name in visible_ctes and not table.db:
+        return
+    if name not in allowed:
+        raise UnsafeQuery(f"table '{table.sql()}' is not queryable")
+
+
 def _check_tables(tree: exp.Expression, allowed: set[str]) -> None:
-    cte_names = {cte.alias_or_name.lower() for cte in tree.find_all(exp.CTE)}
+    """A CTE name only excuses a reference that SQL scoping lets see it. To keep
+    that rule simple and checkable: WITH is allowed only at the top level, never
+    RECURSIVE, and a CTE body sees only the CTEs defined before it (a
+    non-recursive CTE cannot see itself, so `with users as (select * from
+    users)` reads the real table)."""
+    withs = list(tree.find_all(exp.With))
+    top = tree.args.get("with_")
+    if any(w is not top for w in withs):
+        raise UnsafeQuery("WITH is only allowed at the top of the query")
+    if top is not None and top.args.get("recursive"):
+        raise UnsafeQuery("recursive queries are not allowed")
+    ctes = list(top.expressions) if top is not None else []
+
+    seen: set[str] = set()
+    for cte in ctes:
+        for table in cte.this.find_all(exp.Table):
+            _check_table(table, allowed, seen)
+        seen.add(cte.alias_or_name.lower())
+
     tables = list(tree.find_all(exp.Table))
     if not tables:
         raise UnsafeQuery("query references no table")
     for table in tables:
-        name = table.name.lower()
-        if table.db and table.db.lower() != "public":
-            raise UnsafeQuery(f"table '{table.sql()}' is not queryable")
-        if name in cte_names and not table.db:
-            continue
-        if name not in allowed:
-            raise UnsafeQuery(f"table '{table.sql()}' is not queryable")
+        if table.find_ancestor(exp.CTE) is None:
+            _check_table(table, allowed, seen)
     if not any(t.name.lower() in allowed for t in tables):
         raise UnsafeQuery("query references no allowed view")
 
