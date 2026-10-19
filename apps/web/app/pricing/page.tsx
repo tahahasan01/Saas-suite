@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Wordmark } from "@/components/ui";
+import { salesMailto } from "@/components/marketing/contact";
 
 const tiers = [
   {
@@ -8,6 +9,7 @@ const tiers = [
     tagline: "For a small shop or team getting started.",
     features: ["1 app (CRM, POS, or Staff)", "Up to 5 users", "Industry-localized UI", "Basic automations", "100 AI queries / month"],
     cta: "Start free trial",
+    href: "/signup",
     highlight: false,
   },
   {
@@ -16,6 +18,7 @@ const tiers = [
     tagline: "Run your whole business in one place.",
     features: ["All 3 apps (CRM + POS + Staff)", "Up to 20 users", "Unlimited automations", "Predictive inventory + lead scoring", "Invoice PDFs + FBR payroll tax", "1,000 AI queries / month"],
     cta: "Start free trial",
+    href: "/signup",
     highlight: true,
   },
   {
@@ -24,16 +27,25 @@ const tiers = [
     tagline: "For larger teams with advanced needs.",
     features: ["Unlimited users", "Row-level data isolation", "Dedicated support", "Custom AI limits", "Onboarding & training"],
     cta: "Contact sales",
+    // Enterprise is quoted, not self-serve: this goes to a person, not /signup.
+    href: salesMailto(),
     highlight: false,
   },
 ];
 
+const ctaClass = (highlight: boolean) =>
+  `mt-6 rounded-lg px-4 py-2 text-center text-sm font-medium pointer-coarse:py-3 ${
+    highlight ? "bg-brand text-brand-fg hover:bg-brand-hover" : "border border-line hover:border-line-strong"
+  }`;
+
 export default function PricingPage() {
   return (
-    <main className="mx-auto max-w-5xl px-6 py-10">
-      <header className="mb-10 flex items-center justify-between">
-        <Wordmark />
-        <Link href="/login" className="text-sm text-fg-muted hover:text-fg">Sign in</Link>
+    <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
+      <header className="mb-10 flex items-center justify-between gap-3">
+        <Link href="/" aria-label="Business OS home" className="rounded-lg">
+          <Wordmark />
+        </Link>
+        <Link href="/login" className="py-2 text-sm text-fg-muted hover:text-fg">Sign in</Link>
       </header>
 
       <div className="mb-10 text-center">
@@ -62,10 +74,9 @@ export default function PricingPage() {
                 </li>
               ))}
             </ul>
-            <Link href="/signup"
-                  className={`mt-6 rounded-lg px-4 py-2 text-center text-sm font-medium ${t.highlight ? "bg-brand text-brand-fg hover:bg-brand-hover" : "border border-line hover:border-line-strong"}`}>
-              {t.cta}
-            </Link>
+            {t.href.startsWith("mailto:")
+              ? <a href={t.href} className={ctaClass(t.highlight)}>{t.cta}</a>
+              : <Link href={t.href} className={ctaClass(t.highlight)}>{t.cta}</Link>}
           </div>
         ))}
       </div>

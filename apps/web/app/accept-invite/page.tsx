@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useSession } from "@/lib/session";
-import {Button, Card, Field, Input} from "@/components/ui";
+import { Button, Card, Field, Input, PasswordInput } from "@/components/ui";
 import { AuthShell } from "@/components/AuthShell";
 
 export default function AcceptInvitePage() {
@@ -43,13 +43,14 @@ export default function AcceptInvitePage() {
           </div>
           <form onSubmit={submit} className="space-y-3">
             <Field label="Your name">
-              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+              <Input name="name" autoComplete="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
             </Field>
             <Field label="Password (min 8 chars)">
-              <Input type="password" minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
+              <PasswordInput name="new-password" autoComplete="new-password" minLength={8}
+                             value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
             </Field>
             {!token && <p className="text-sm text-warning">This invite link is missing its token.</p>}
-            {error && <p className="text-sm text-danger">{error}</p>}
+            {error && <p role="alert" className="text-sm text-danger">{error}</p>}
             <Button type="submit" disabled={busy || !token} className="w-full">{busy ? "Joining…" : "Accept invite"}</Button>
           </form>
         </Card>

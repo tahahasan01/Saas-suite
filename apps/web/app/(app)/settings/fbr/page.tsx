@@ -2,49 +2,66 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { FbrInvoice, FbrSettings } from "@business-os/types";
-import { api, ApiError } from "@/lib/api";
+import { api } from "@/lib/api";
 import { relativeDate } from "@/lib/format";
-import { Badge, Button, Card, Field, Input, Select } from "@/components/ui";
+import { errorText, useAction } from "@/lib/useAction";
+import { Badge, Button, Card, ErrorState, Field, Input, LoadingRows, Select } from "@/components/ui";
+import { Dialog } from "@/components/Dialog";
 
 const PROVINCES = ["Punjab", "Sindh", "Khyber Pakhtunkhwa", "Balochistan", "Islamabad Capital Territory",
                    "Gilgit-Baltistan", "Azad Jammu and Kashmir"];
 
+type Patch = Partial<FbrSettings> & { token?: string };
+
 export default function FbrSettingsPage() {
   const [cfg, setCfg] = useState<FbrSettings | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [invoices, setInvoices] = useState<FbrInvoice[]>([]);
   const [token, setToken] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
+  const [confirmProd, setConfirmProd] = useState(false);
 
-  const load = useCallback(() => {
-    api<FbrSettings>("/fbr/settings").then(setCfg).catch(() => setCfg(null));
+  const loadInvoices = useCallback(() => {
     api<FbrInvoice[]>("/fbr/invoices?pending_only=true").then(setInvoices).catch(() => setInvoices([]));
   }, []);
-  useEffect(load, [load]);
-
-  async function save(patch: Partial<FbrSettings> & { token?: string }) {
-    setBusy(true);
-    setErr(null);
-    setSaved(false);
+  const load = useCallback(async () => {
+    setLoadError(null);
+    loadInvoices();
     try {
-      setCfg(await api<FbrSettings>("/fbr/settings", { method: "PUT", body: JSON.stringify(patch) }));
-      setToken("");
-      setSaved(true);
-      load();
+      setCfg(await api<FbrSettings>("/fbr/settings"));
     } catch (e) {
-      setErr(e instanceof ApiError && typeof e.detail === "string" ? e.detail : "Couldn't save.");
-    } finally {
-      setBusy(false);
+      setLoadError(errorText(e));
     }
+  }, [loadInvoices]);
+  useEffect(() => { load(); }, [load]);
+
+  const put = useCallback(async (patch: Patch) => {
+    const next = await api<FbrSettings>("/fbr/settings", { method: "PUT", body: JSON.stringify(patch) });
+    setCfg(next);
+    loadInvoices();
+    return next;
+  }, [loadInvoices]);
+
+  // Whole-setting changes (token, pricing, environment, on/off) say so in a toast.
+  const save = useAction(put, { success: "FBR settings saved", failure: "Couldn't save FBR settings" });
+
+  if (!cfg) {
+    return loadError
+      ? <ErrorState message={`Couldn't load FBR settings. ${loadError}`} onRetry={load} />
+      : <LoadingRows label="Loading FBR settings" />;
   }
 
-  if (!cfg) return <p className="text-sm text-fg-subtle">Loading…</p>;
+  async function saveToken() {
+    if (await save.run({ token })) setToken("");
+  }
+
+  async function switchToProduction() {
+    if (await save.run({ environment: "production" })) setConfirmProd(false);
+  }
 
   return (
     <div className="max-w-2xl space-y-5">
       <header>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-lg font-semibold">FBR Digital Invoicing</h2>
           <Badge tone={cfg.enabled ? "success" : "neutral"}>{cfg.enabled ? "On" : "Off"}</Badge>
           {cfg.enabled && <Badge tone={cfg.environment === "production" ? "brand" : "warning"}>{cfg.environment}</Badge>}
@@ -58,26 +75,16 @@ export default function FbrSettingsPage() {
 
       <Card className="space-y-3">
         <h3 className="text-sm font-semibold">Seller details</h3>
-        <p className="text-xs text-fg-subtle">These must match your FBR registration exactly.</p>
+        <p className="text-xs text-fg-subtle">These must match your FBR registration exactly. Each field saves when you leave it.</p>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="NTN or CNIC">
-            <Input defaultValue={cfg.seller_ntn_cnic} placeholder="7 or 13 digits"
-                   onBlur={(e) => e.target.value !== cfg.seller_ntn_cnic && save({ seller_ntn_cnic: e.target.value })} />
-          </Field>
-          <Field label="Business name">
-            <Input defaultValue={cfg.seller_business_name}
-                   onBlur={(e) => e.target.value !== cfg.seller_business_name && save({ seller_business_name: e.target.value })} />
-          </Field>
-          <Field label="Province">
-            <Select defaultValue={cfg.seller_province} onChange={(e) => save({ seller_province: e.target.value })}>
-              <option value="">Select…</option>
-              {PROVINCES.map((p) => <option key={p} value={p}>{p}</option>)}
-            </Select>
-          </Field>
-          <Field label="Address">
-            <Input defaultValue={cfg.seller_address}
-                   onBlur={(e) => e.target.value !== cfg.seller_address && save({ seller_address: e.target.value })} />
-          </Field>
+          <SellerField label="NTN or CNIC" value={cfg.seller_ntn_cnic} placeholder="7 or 13 digits" inputMode="numeric"
+                       onSave={(v) => put({ seller_ntn_cnic: v })} />
+          <SellerField label="Business name" value={cfg.seller_business_name}
+                       onSave={(v) => put({ seller_business_name: v })} />
+          <SellerField label="Province" value={cfg.seller_province} options={PROVINCES}
+                       onSave={(v) => put({ seller_province: v })} />
+          <SellerField label="Address" value={cfg.seller_address}
+                       onSave={(v) => put({ seller_address: v })} />
         </div>
       </Card>
 
@@ -86,18 +93,23 @@ export default function FbrSettingsPage() {
         <p className="text-xs text-fg-subtle">
           Generate this at e.fbr.gov.pk. It&apos;s valid for 5 years. We store it and never show it again.
         </p>
-        <div className="flex gap-2">
-          <Input type="password" value={token} onChange={(e) => setToken(e.target.value)}
-                 placeholder={cfg.token_set ? "A token is saved — paste a new one to replace it" : "Paste your FBR token"} />
-          <Button disabled={busy || !token} onClick={() => save({ token })}>Save</Button>
-        </div>
+        <form className="flex flex-col gap-2 sm:flex-row sm:items-end" onSubmit={(e) => { e.preventDefault(); saveToken(); }}>
+          <div className="min-w-0 flex-1">
+            <Field label="FBR API token">
+              <Input type="password" value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off"
+                     placeholder={cfg.token_set ? "A token is saved — paste a new one to replace it" : "Paste your FBR token"} />
+            </Field>
+          </div>
+          <Button type="submit" disabled={save.busy || !token}>Save token</Button>
+        </form>
       </Card>
 
       <Card className="space-y-3">
         <h3 className="text-sm font-semibold">How you price</h3>
         <label className="flex cursor-pointer items-start gap-2 text-sm">
-          <input type="checkbox" checked={cfg.prices_include_tax} className="mt-1 accent-[var(--color-brand)]"
-                 onChange={(e) => save({ prices_include_tax: e.target.checked })} />
+          <input type="checkbox" checked={cfg.prices_include_tax} disabled={save.busy}
+                 className="mt-1 h-4 w-4 accent-[var(--color-brand)]"
+                 onChange={(e) => save.run({ prices_include_tax: e.target.checked })} />
           <span>
             Shelf prices include sales tax
             <span className="block text-xs text-fg-subtle">
@@ -108,25 +120,36 @@ export default function FbrSettingsPage() {
       </Card>
 
       <Card className="space-y-3">
-        <h3 className="text-sm font-semibold">Environment</h3>
-        <Select value={cfg.environment} onChange={(e) => save({ environment: e.target.value as FbrSettings["environment"] })}>
-          <option value="sandbox">Sandbox — test filings, nothing is official</option>
-          <option value="production">Production — real filings to FBR</option>
-        </Select>
-        <div className="flex items-center justify-between border-t border-line pt-3">
+        <h3 className="text-sm font-semibold">Where filings go</h3>
+        {/* Production is never one slip away: picking it opens a confirmation,
+            and the select stays on Sandbox until that's confirmed. */}
+        <Field label="Environment">
+          <Select
+            value={cfg.environment}
+            disabled={save.busy}
+            onChange={(e) => {
+              const env = e.target.value as FbrSettings["environment"];
+              if (env === "production") setConfirmProd(true);
+              else save.run({ environment: env });
+            }}
+          >
+            <option value="sandbox">Sandbox — test filings, nothing is official</option>
+            <option value="production">Production — real filings to FBR</option>
+          </Select>
+        </Field>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
           <div>
             <p className="text-sm font-medium">{cfg.enabled ? "Filing is on" : "Filing is off"}</p>
             <p className="text-xs text-fg-subtle">
               {cfg.enabled ? "Every sale is transmitted to FBR." : "Sales are not being reported to FBR."}
             </p>
           </div>
-          <Button variant={cfg.enabled ? "subtle" : "primary"} disabled={busy}
-                  onClick={() => save({ enabled: !cfg.enabled })}>
+          <Button variant={cfg.enabled ? "subtle" : "primary"} disabled={save.busy}
+                  onClick={() => save.run({ enabled: !cfg.enabled })}>
             {cfg.enabled ? "Turn off" : "Turn on"}
           </Button>
         </div>
-        {err && <p className="text-xs text-danger">{err}</p>}
-        {saved && !err && <p className="text-xs text-success">Saved.</p>}
+        {save.error && <p role="alert" className="text-xs text-danger">{save.error}</p>}
       </Card>
 
       {invoices.length > 0 && (
@@ -140,12 +163,84 @@ export default function FbrSettingsPage() {
                   <span className="font-mono text-fg-muted">{i.sale_id.slice(0, 8)}</span>
                   <span className="text-fg-subtle">{relativeDate(i.created_at)} · {i.attempts} tries</span>
                 </div>
-                <p className="mt-0.5 text-danger">{i.error_code && `[${i.error_code}] `}{i.error}</p>
+                <p className="mt-0.5 break-words text-danger">{i.error_code && `[${i.error_code}] `}{i.error}</p>
               </li>
             ))}
           </ul>
         </Card>
       )}
+
+      <Dialog
+        open={confirmProd}
+        onOpenChange={(o) => { if (!save.busy) setConfirmProd(o); }}
+        title="Switch to Production?"
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setConfirmProd(false)} disabled={save.busy}>Cancel</Button>
+            <Button variant="danger" onClick={switchToProduction} disabled={save.busy}>
+              {save.busy ? "Switching…" : "Switch to Production"}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-2 text-sm">
+          <p>
+            This sends real invoices to FBR. {cfg.enabled ? "From your next sale" : "Once filing is on"}, every
+            sale is filed officially under {cfg.seller_ntn_cnic ? <span className="font-medium">{cfg.seller_ntn_cnic}</span> : "your NTN"} and
+            can&apos;t be taken back.
+          </p>
+          <p className="text-fg-muted">Stay on Sandbox until your test filings go through cleanly.</p>
+        </div>
+      </Dialog>
+    </div>
+  );
+}
+
+/** One seller field that saves itself on blur and says what happened right
+ *  under it — before, a failed save of the NTN looked exactly like a good one. */
+function SellerField({ label, value, onSave, options, placeholder, inputMode }: {
+  label: string;
+  value: string;
+  onSave: (v: string) => Promise<unknown>;
+  options?: string[];
+  placeholder?: string;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
+}) {
+  const [draft, setDraft] = useState(value);
+  const [saved, setSaved] = useState(false);
+  const act = useAction(onSave, { failure: `Couldn't save ${label}` });
+  useEffect(() => setDraft(value), [value]);
+
+  async function commit(v: string) {
+    if (v === value) return;
+    setSaved(false);
+    if (await act.run(v)) setSaved(true);
+  }
+
+  const status = act.busy ? (
+    <span className="text-fg-subtle">Saving…</span>
+  ) : act.error ? (
+    <span className="text-danger">{act.error}</span>
+  ) : saved ? (
+    <span className="text-success">Saved</span>
+  ) : null;
+
+  return (
+    <div className="min-w-0">
+      <Field label={label}>
+        {options ? (
+          <Select value={draft} disabled={act.busy} onChange={(e) => { setDraft(e.target.value); commit(e.target.value); }}>
+            <option value="">Select…</option>
+            {options.map((p) => <option key={p} value={p}>{p}</option>)}
+          </Select>
+        ) : (
+          <Input value={draft} placeholder={placeholder} inputMode={inputMode} aria-invalid={act.error ? true : undefined}
+                 onChange={(e) => { setDraft(e.target.value); setSaved(false); act.clearError(); }}
+                 onBlur={(e) => commit(e.target.value)} />
+        )}
+      </Field>
+      <p aria-live="polite" className="mt-1 min-h-4 text-xs">{status}</p>
     </div>
   );
 }

@@ -7,29 +7,38 @@ import { useSession } from "@/lib/session";
 import { NotificationBell } from "@/components/NotificationBell";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
-export function Topbar({ onOpenMenu, onOpenPalette }: { onOpenMenu: () => void; onOpenPalette: () => void }) {
+export function Topbar({ menuOpen, onOpenMenu, onOpenPalette }:
+  { menuOpen: boolean; onOpenMenu: () => void; onOpenPalette: () => void }) {
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-line bg-surface/90 px-4 backdrop-blur md:px-8">
+    // The safe-area top inset is added to the bar's height (viewport-fit=cover
+    // lets the page run under the notch), so the controls keep their 56px.
+    <header className="sticky top-0 z-30 flex h-[calc(3.5rem+env(safe-area-inset-top))] items-center gap-3 border-b border-line bg-surface/90 px-4 pt-[env(safe-area-inset-top)] backdrop-blur md:px-8">
+      {/* shrink-0: in a full row the flex layout squeezed this to 20px wide —
+          and on a phone it's the only way to navigate. */}
       <button
         onClick={onOpenMenu}
-        className="grid h-9 w-9 place-items-center rounded-lg text-fg-muted hover:bg-elevated md:hidden"
+        className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-fg-muted hover:bg-elevated md:hidden pointer-coarse:h-11 pointer-coarse:w-11"
         aria-label="Open menu"
+        aria-expanded={menuOpen}
+        aria-controls="mobile-nav"
       >
-        <Menu size={20} />
+        <Menu size={20} aria-hidden />
       </button>
 
       <button
         onClick={onOpenPalette}
-        className="flex h-9 w-full max-w-md items-center gap-2.5 rounded-xl border border-line bg-canvas px-3 text-sm text-fg-subtle transition-colors hover:border-line-strong"
+        aria-label="Go to a screen"
+        aria-keyshortcuts="Control+K"
+        className="flex h-9 w-full min-w-0 max-w-md items-center gap-2.5 rounded-xl border border-line bg-canvas px-3 text-sm text-fg-subtle transition-colors hover:border-line-strong pointer-coarse:h-11"
       >
         <Search size={16} aria-hidden />
-        <span className="flex-1 text-left">Go to…</span>
+        <span className="flex-1 truncate text-left" aria-hidden>Go to…</span>
         <kbd className="hidden rounded-md border border-line bg-surface px-1.5 py-0.5 text-[11px] font-medium text-fg-muted sm:inline">
           Ctrl K
         </kbd>
       </button>
 
-      <div className="ml-auto flex items-center gap-1">
+      <div className="ml-auto flex shrink-0 items-center gap-1">
         <ThemeToggle />
         <NotificationBell />
         <UserMenu />
@@ -62,13 +71,13 @@ function UserMenu() {
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-haspopup="menu"
-        className="ml-1 grid h-9 w-9 place-items-center rounded-full bg-brand text-sm font-semibold text-brand-fg"
+        className="ml-1 grid h-9 w-9 place-items-center rounded-full bg-brand text-sm font-semibold text-brand-fg pointer-coarse:h-11 pointer-coarse:w-11"
         aria-label="Account menu"
       >
         {initials}
       </button>
       {open && (
-        <div role="menu" className="absolute right-0 mt-2 w-64 overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
+        <div role="menu" className="absolute right-0 z-40 mt-2 w-64 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
           <div className="border-b border-line px-4 py-3">
             <p className="truncate font-medium">{me.user.name}</p>
             <p className="truncate text-sm text-fg-subtle">{me.user.email}</p>

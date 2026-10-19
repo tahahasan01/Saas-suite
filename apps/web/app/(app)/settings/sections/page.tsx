@@ -1,45 +1,53 @@
 "use client";
 
-import { useState } from "react";
 import { SECTION_LABELS, type EntitlementOut } from "@business-os/types";
 import { api } from "@/lib/api";
 import { useSession } from "@/lib/session";
-import { Card } from "@/components/ui";
+import { useAction } from "@/lib/useAction";
+import { Card, Switch } from "@/components/ui";
 
 export default function SectionsPage() {
   const { me, refresh } = useSession();
-  const [saving, setSaving] = useState<string | null>(null);
 
-  if (!me) return null;
-
-  async function toggle(section: string, enabled: boolean) {
-    setSaving(section);
-    try {
+  // A refusal (e.g. the plan's module limit) used to vanish silently and the
+  // switch just didn't move; useAction shows the server's reason as a toast.
+  const toggle = useAction(
+    async (section: string, enabled: boolean) => {
       await api(`/entitlements/${section}`, { method: "PATCH", body: JSON.stringify({ enabled }) });
       await refresh(); // updates the sidebar nav immediately
-    } finally {
-      setSaving(null);
-    }
-  }
+      return { section, enabled };
+    },
+    {
+      success: (r) => {
+        const { section, enabled } = r as { section: keyof typeof SECTION_LABELS; enabled: boolean };
+        return `${SECTION_LABELS[section]} ${enabled ? "turned on" : "turned off"}`;
+      },
+      failure: "Couldn't change the module",
+    },
+  );
+
+  if (!me) return null;
 
   return (
     <div className="max-w-xl space-y-3">
       <p className="text-sm text-fg-subtle">Turn business modules on or off for your workspace.</p>
-      {me.entitlements.map((e: EntitlementOut) => (
-        <Card key={e.section_key} className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium">{SECTION_LABELS[e.section_key]}</p>
-            <p className="text-xs text-fg-subtle">{e.enabled ? "Enabled" : "Disabled"}</p>
-          </div>
-          <button
-            onClick={() => toggle(e.section_key, !e.enabled)}
-            disabled={saving === e.section_key}
-            className={`relative h-6 w-11 rounded-full transition ${e.enabled ? "bg-brand" : "bg-elevated"} disabled:opacity-50`}
-          >
-            <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${e.enabled ? "left-[22px]" : "left-0.5"}`} />
-          </button>
-        </Card>
-      ))}
+      {me.entitlements.map((e: EntitlementOut) => {
+        const label = SECTION_LABELS[e.section_key];
+        return (
+          <Card key={e.section_key} className="flex items-center justify-between gap-4 py-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium">{label}</p>
+              <p className="text-xs text-fg-subtle">{e.enabled ? "On" : "Off"}</p>
+            </div>
+            <Switch
+              checked={e.enabled}
+              label={`${label} module`}
+              disabled={toggle.busy}
+              onChange={(next) => toggle.run(e.section_key, next)}
+            />
+          </Card>
+        );
+      })}
     </div>
   );
 }

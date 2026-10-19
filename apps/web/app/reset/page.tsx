@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import {Button, Card, Field, Input} from "@/components/ui";
+import { Button, Card, Field, PasswordInput } from "@/components/ui";
 import { AuthShell } from "@/components/AuthShell";
 
 export default function ResetPage() {
@@ -48,10 +48,13 @@ export default function ResetPage() {
               <h1 className="text-lg font-semibold">Choose a new password</h1>
               <form onSubmit={submit} className="space-y-3">
                 <Field label="New password (min 8 chars)">
-                  <Input type="password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} required />
+                  {/* new-password: a password manager offers to generate and
+                      save one instead of filling in the old one. */}
+                  <PasswordInput name="new-password" autoComplete="new-password" minLength={8} autoFocus
+                                 value={password} onChange={(e) => setPassword(e.target.value)} required />
                 </Field>
                 {!token && <p className="text-sm text-warning">This reset link is missing its token.</p>}
-                {error && <p className="text-sm text-danger">{error}</p>}
+                {error && <p role="alert" className="text-sm text-danger">{error}</p>}
                 <Button type="submit" disabled={busy || !token} className="w-full">{busy ? "Updating…" : "Update password"}</Button>
               </form>
               <p className="text-center text-sm text-fg-subtle">

@@ -28,21 +28,28 @@ export default function Landing() {
     // Follows the document toggle like the rest of the app. `theme-marketing`
     // stays because it still means something — it swaps the app's navy for
     // near-black *when dark is on* — but it no longer forces the scheme.
-    <div className="theme-marketing min-h-screen bg-canvas text-fg">
+    <div className="theme-marketing min-h-dvh bg-canvas text-fg">
       <header className="sticky top-0 z-30 border-b border-line/60 bg-canvas/70 backdrop-blur-lg">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
-          <Wordmark />
-          <nav className="flex items-center gap-6 text-sm">
+        {/* Compact below sm: at 320 the wordmark, toggle, "Sign in" and
+            "Start free" with desktop gaps needed ~350px of a 272px row, so the
+            gaps tighten, the side padding drops, the section links go and the
+            wordmark shrinks to its tile. */}
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3 sm:px-6 sm:py-3.5">
+          {/* Under 360px only the "B" tile shows; the link keeps the full name. */}
+          <Link href="/" aria-label="Business OS home" className="shrink-0 rounded-lg max-[359px]:[&_span]:sr-only">
+            <Wordmark />
+          </Link>
+          <nav aria-label="Site" className="flex min-w-0 items-center gap-1 text-sm sm:gap-6">
             <a href="#modules" className="hidden text-fg-muted hover:text-fg sm:block">Product</a>
             <a href="#industries" className="hidden text-fg-muted hover:text-fg sm:block">Industries</a>
             <Link href="/pricing" className="hidden text-fg-muted hover:text-fg sm:block">Pricing</Link>
             <ThemeToggle />
             {me ? (
-              <Link href="/dashboard" className="rounded-lg bg-brand px-4 py-1.5 font-medium text-brand-fg hover:bg-brand-hover">Dashboard</Link>
+              <Link href="/dashboard" className="whitespace-nowrap rounded-lg bg-brand px-3 py-1.5 font-medium text-brand-fg hover:bg-brand-hover sm:px-4 pointer-coarse:py-2.5">Dashboard</Link>
             ) : (
               <>
-                <Link href="/login" className="text-fg-muted hover:text-fg">Sign in</Link>
-                <Link href="/signup" className="rounded-lg bg-brand px-4 py-1.5 font-medium text-brand-fg hover:bg-brand-hover">Start free</Link>
+                <Link href="/login" className="whitespace-nowrap rounded-lg px-2 py-1.5 text-fg-muted hover:text-fg sm:px-0 pointer-coarse:py-2.5">Sign in</Link>
+                <Link href="/signup" className="whitespace-nowrap rounded-lg bg-brand px-3 py-1.5 font-medium text-brand-fg hover:bg-brand-hover sm:px-4 pointer-coarse:py-2.5">Start free</Link>
               </>
             )}
           </nav>
@@ -54,7 +61,7 @@ export default function Landing() {
           nothing else competes with it. Light bleeds in from the corners and out
           from behind the glyphs. */}
       <section className="bleed grid-lines relative isolate overflow-hidden">
-        <div className="mx-auto flex min-h-[86vh] max-w-6xl flex-col items-center justify-center px-6 py-20 text-center">
+        <div className="mx-auto flex min-h-[86dvh] max-w-6xl flex-col items-center justify-center px-6 py-20 text-center">
           {/* Chip flanked by rules — the reference's label treatment. The rules
               are what stop a lone pill from floating; they pin it to the
               centreline and read as a masthead. */}

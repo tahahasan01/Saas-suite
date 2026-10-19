@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Wordmark } from "@/components/ui";
 
 /* The doorstep: login, signup, forgot, reset, accept-invite, verify.
@@ -55,7 +56,7 @@ export function AuthShell({
   width?: "sm" | "lg";
 }) {
   return (
-    <main className="grid min-h-screen lg:grid-cols-[minmax(0,44%)_1fr]">
+    <main className="grid min-h-dvh lg:grid-cols-[minmax(0,44%)_1fr]">
       {/* ── Brand panel ── hidden below lg: on a phone it would push the form
           below the fold, and the form is the entire reason anyone is here. */}
       <aside
@@ -65,10 +66,12 @@ export function AuthShell({
         <Wordmark />
 
         <div>
-          <h2 className="max-w-md text-[clamp(1.75rem,2.6vw,2.5rem)] font-semibold leading-[1.1] tracking-[-0.03em] text-fg">
+          {/* A <p>, not a heading: the panel comes first in the DOM, and an h2
+              here put the outline ahead of each page's own h1 ("Welcome back"). */}
+          <p className="max-w-md text-[clamp(1.75rem,2.6vw,2.5rem)] font-semibold leading-[1.1] tracking-[-0.03em] text-fg">
             Sales, stock and staff.{" "}
             <span className="text-brand">One login.</span>
-          </h2>
+          </p>
 
           <ul className="mt-9 max-w-md space-y-5">
             {PROOF.map(([title, body]) => (
@@ -93,15 +96,18 @@ export function AuthShell({
         </p>
       </aside>
 
-      {/* ── Form side ── min-h-screen on the *child* of a grid cell, so it is
+      {/* ── Form side ── min-h-dvh on the *child* of a grid cell, so it is
           genuinely full height and `items-center` centres against the viewport
-          rather than against the content. */}
-      <div className="flex min-h-screen items-center justify-center bg-canvas p-6">
+          rather than against the content. dvh, not vh: on a phone 100vh is
+          taller than the visible area and parked the button under the toolbar. */}
+      <div className="flex min-h-dvh items-center justify-center bg-canvas px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))] sm:px-6">
         <div className={`w-full ${width === "lg" ? "max-w-2xl" : "max-w-sm"}`}>
           {/* The panel carries the wordmark on desktop; on mobile it's gone, so
               the form side has to. */}
           <div className="flex justify-center lg:hidden">
-            <Wordmark />
+            <Link href="/" aria-label="Business OS home" className="rounded-lg">
+              <Wordmark />
+            </Link>
           </div>
 
           <div className="mt-6 flex items-center gap-4 lg:mt-0">

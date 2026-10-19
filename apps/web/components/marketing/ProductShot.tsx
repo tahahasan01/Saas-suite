@@ -81,7 +81,9 @@ export function ProductShot() {
         </span>
       </div>
 
-      <div className="grid grid-cols-[128px_1fr] sm:grid-cols-[148px_1fr]">
+      {/* One column below sm, where the sidebar is hidden: the old 128px first
+          column then held the *content*, squeezing the whole mock into it. */}
+      <div className="grid sm:grid-cols-[148px_minmax(0,1fr)]">
         {/* Sidebar */}
         <aside className="hidden border-r border-line bg-canvas/40 p-3 sm:block">
           <div className="mb-4 flex items-center gap-2">
@@ -100,7 +102,7 @@ export function ProductShot() {
           </ul>
         </aside>
 
-        <div className="space-y-3 p-3 sm:p-4">
+        <div className="min-w-0 space-y-3 p-3 sm:p-4">
           <div>
             <p className="text-xs font-semibold sm:text-sm">Good to see you, Ayesha</p>
             <p className="text-[10px] text-fg-subtle">Here&apos;s what&apos;s happening in Khan Traders.</p>

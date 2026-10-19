@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { salesMailto } from "./contact";
 import { Reveal } from "./Reveal";
 
 /* Replaces the old "five reasons it's one bill" rows, which restated three
@@ -77,12 +78,14 @@ export function Pricing() {
                 More than 20 people, or limits that need to be yours. We&apos;ll quote it.
               </p>
             </div>
-            <Link
-              href="/pricing"
+            {/* An email to sales, not a link back to /pricing (which then sent
+                "Contact sales" to /signup: there was no way to reach anyone). */}
+            <a
+              href={salesMailto()}
               className="rounded-xl border border-line px-6 py-3 text-sm font-medium text-fg transition hover:border-line-strong"
             >
               Talk to us
-            </Link>
+            </a>
           </div>
         </Reveal>
 

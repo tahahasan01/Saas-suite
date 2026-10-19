@@ -13,7 +13,7 @@ import {
 } from "@business-os/types";
 import { api } from "@/lib/api";
 import { useSession } from "@/lib/session";
-import { Button, Card, Field, Input } from "@/components/ui";
+import { Button, Card, Field, Input, PasswordInput, Select } from "@/components/ui";
 import { AuthShell } from "@/components/AuthShell";
 
 export default function SignupPage() {
@@ -57,33 +57,31 @@ export default function SignupPage() {
 
   return (
     <AuthShell eyebrow="Create account" width="lg">
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
       <Card className="space-y-4">
         <h1 className="text-lg font-semibold">Create your workspace</h1>
         <form onSubmit={submit} className="space-y-3">
           <Field label="Company name">
-            <Input value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} required />
+            <Input name="organization" autoComplete="organization" value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} required />
           </Field>
           <Field label="Industry">
-            <select
-              className="w-full rounded-md border border-line bg-canvas px-3 py-2 text-sm"
-              value={industry}
-              onChange={(e) => setIndustry(e.target.value as Industry)}
-            >
+            <Select value={industry} onChange={(e) => setIndustry(e.target.value as Industry)}>
               {INDUSTRIES.map((i) => (
                 <option key={i} value={i}>{INDUSTRY_LABELS[i]}</option>
               ))}
-            </select>
+            </Select>
           </Field>
-          <div className="space-y-1">
-            <span className="text-xs font-medium text-fg-muted">Enable sections</span>
+          <div role="group" aria-labelledby="sections-label" className="space-y-1">
+            <span id="sections-label" className="text-xs font-medium text-fg-muted">Enable sections</span>
             <div className="flex flex-wrap gap-2">
+              {/* Toggle buttons: aria-pressed says which are on, not just the colour. */}
               {SECTIONS.map((s) => (
                 <button
                   type="button"
                   key={s}
                   onClick={() => toggle(s)}
-                  className={`rounded-md border px-3 py-1 text-sm ${
+                  aria-pressed={sections.includes(s)}
+                  className={`rounded-md border px-3 py-1 text-sm pointer-coarse:min-h-11 ${
                     sections.includes(s)
                       ? "border-brand bg-brand-subtle text-brand"
                       : "border-line text-fg-muted"
@@ -95,19 +93,20 @@ export default function SignupPage() {
             </div>
           </div>
           <label className="flex cursor-pointer items-center gap-2 text-sm text-fg-muted">
-            <input type="checkbox" checked={sampleData} onChange={(e) => setSampleData(e.target.checked)} className="accent-[var(--color-brand)]" />
+            <input type="checkbox" checked={sampleData} onChange={(e) => setSampleData(e.target.checked)} className="h-4 w-4 shrink-0 accent-[var(--color-brand)]" />
             Start with sample data (so you can explore right away)
           </label>
           <Field label="Your name">
-            <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+            <Input name="name" autoComplete="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
           </Field>
           <Field label="Email">
-            <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+            <Input type="email" name="email" autoComplete="username" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
           </Field>
           <Field label="Password (min 8 chars)">
-            <Input type="password" minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
+            <PasswordInput name="new-password" autoComplete="new-password" minLength={8}
+                           value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
           </Field>
-          {error && <p className="text-sm text-danger">{error}</p>}
+          {error && <p role="alert" className="text-sm text-danger">{error}</p>}
           <Button type="submit" disabled={busy || sections.length === 0} className="w-full">
             {busy ? "Creating…" : "Create workspace"}
           </Button>

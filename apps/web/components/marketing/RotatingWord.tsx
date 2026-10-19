@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useMediaQuery } from "@/components/shell/useMediaQuery";
 
 // Each word must be a label the app actually renders — these are the seeded
 // `lead` terms from seed.py, one per industry: retail, education, pharmacy,
@@ -18,8 +19,12 @@ const FADE = 150;
 export function RotatingWord() {
   const [i, setI] = useState(0);
   const [show, setShow] = useState(true);
+  // Reduced motion: no rotation at all, the first word stays. A word that
+  // keeps changing mid-sentence is exactly the movement that setting asks to stop.
+  const reduce = useMediaQuery("(prefers-reduced-motion: reduce)");
 
   useEffect(() => {
+    if (reduce) { setI(0); setShow(true); return; }
     const id = setInterval(() => {
       setShow(false);
       setTimeout(() => {
@@ -28,7 +33,7 @@ export function RotatingWord() {
       }, FADE);
     }, HOLD);
     return () => clearInterval(id);
-  }, []);
+  }, [reduce]);
 
   // Solid ink rather than a bg-clip gradient: `color: transparent` would leave
   // the glyphs unpainted behind the hero's glow. The colour lives in the glow.
