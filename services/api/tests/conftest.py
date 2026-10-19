@@ -20,6 +20,19 @@ from app.main import app
 from app.security import SESSION_COOKIE
 
 
+MODULE_MARKERS = ("core", "ai", "crm", "pos", "fbr", "hrms")
+
+
+def pytest_collection_modifyitems(items):
+    """Mark every test with the module folder it lives in, so a module can be
+    run on its own: `pytest -m pos` (or `pytest tests/pos`). Markers are
+    registered in pytest.ini; --strict-markers catches a folder added without one."""
+    for item in items:
+        folder = item.path.parent.name
+        if folder in MODULE_MARKERS:
+            item.add_marker(getattr(pytest.mark, folder))
+
+
 @pytest.fixture(autouse=True)
 def _fresh_rate_limits():
     """Every test signs up from the same IP; without this the limiter starts
