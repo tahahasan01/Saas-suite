@@ -140,3 +140,33 @@ async def test_listing_one_line_twice_cannot_return_more_than_was_bought(client,
     assert r.status_code == 422
     detail = (await client.get(f"/pos/sales/{sale['id']}")).json()["returnable"][0]
     assert detail["qty_returned"] == 0
+
+
+async def test_a_short_payment_is_refused(client, exclusive_shop):
+    a, _ = exclusive_shop
+    r = await client.post("/pos/sales", json={"items": [{"product_id": a, "qty": 1}],
+                                              "paid_minor": 10_000, "payment_method": "cash"})
+    assert r.status_code == 422  # total is Rs 118 with GST; Rs 100 is short
+    assert "short" in r.json()["detail"].lower()
+
+
+async def test_zero_paid_means_the_exact_amount_was_tendered(client, exclusive_shop):
+    a, _ = exclusive_shop
+    r = await client.post("/pos/sales", json={"items": [{"product_id": a, "qty": 1}],
+                                              "payment_method": "card"})
+    assert r.status_code == 201
+    assert (r.json()["paid_minor"], r.json()["change_minor"]) == (11_800, 0)
+
+
+async def test_a_quote_prices_the_cart_without_recording_anything(client, exclusive_shop):
+    """The till shows the server's own total (D-21) — exclusive tax included."""
+    a, b = exclusive_shop
+    before = (await client.get("/pos/summary")).json()["sales_today_count"]
+    r = await client.post("/pos/sales/quote", json={
+        "items": [{"product_id": a, "qty": 1}, {"product_id": b, "qty": 2}], "discount_minor": 2_000})
+    assert r.status_code == 200
+    q = r.json()
+    assert (q["subtotal_minor"], q["discount_minor"]) == (20_000, 2_000)
+    assert q["tax_minor"] == 3_240                # 18% of the Rs 180 after discount
+    assert q["total_minor"] == 21_240
+    assert (await client.get("/pos/summary")).json()["sales_today_count"] == before

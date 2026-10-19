@@ -36,6 +36,8 @@ from ..models import (
     ReturnItemOut,
     ReturnOut,
     SaleCreate,
+    SaleQuote,
+    SaleQuoteRequest,
     SaleDetail,
     SaleItemOut,
     SaleOut,
@@ -182,25 +184,48 @@ async def checkout(body: SaleCreate, response: Response,
         return replay
 
 
+async def _price_cart(conn, tenant_id: str, items, discount_minor: int):
+    """The one way a cart is priced, for a quote and for the sale itself:
+    returns (lines as (product, qty, PricedLine), fbr settings, PricedSale)."""
+    products = []
+    for it in items:
+        p = await conn.fetchrow(
+            """select id, name, price_minor, hs_code, tax_rate, fbr_uom
+                 from pos_products where id=$1 and active""", it.product_id)
+        if p is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, f"Product {it.product_id} not found")
+        products.append((p, it.qty))
+
+    fbr_cfg = await conn.fetchrow("select * from fbr_settings where tenant_id=$1", tenant_id)
+    fbr_on = bool(fbr_cfg and fbr_cfg["enabled"])
+    priced = pricing.price_sale(
+        [(p["price_minor"], qty, Decimal(str(p["tax_rate"] or 0))) for p, qty in products],
+        discount_minor, tax_on=fbr_on, inclusive=bool(fbr_on and fbr_cfg["prices_include_tax"]))
+    return [(p, qty, pl) for (p, qty), pl in zip(products, priced.lines)], fbr_cfg, priced
+
+
+@router.post("/sales/quote", response_model=SaleQuote)
+async def quote_sale(body: SaleQuoteRequest, auth: AuthContext = Depends(require("pos", "write"))):
+    """Price a cart exactly as a sale would be priced, without recording it, so
+    the till shows the server's own total (tax-exclusive prices included)."""
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        _, _, priced = await _price_cart(conn, auth.tenant_id, body.items, body.discount_minor)
+    return SaleQuote(subtotal_minor=priced.subtotal_minor, discount_minor=priced.discount_minor,
+                     tax_minor=priced.tax_minor, total_minor=priced.total_minor)
+
+
 async def _record_sale(body: SaleCreate, auth: AuthContext, fingerprint: str) -> SaleOut:
     async with db.tenant_conn(auth.tenant_id) as conn:
-        products = []
-        for it in body.items:
-            p = await conn.fetchrow(
-                """select id, name, price_minor, hs_code, tax_rate, fbr_uom
-                     from pos_products where id=$1 and active""", it.product_id)
-            if p is None:
-                raise HTTPException(status.HTTP_404_NOT_FOUND, f"Product {it.product_id} not found")
-            products.append((p, it.qty))
-
-        fbr_cfg = await conn.fetchrow("select * from fbr_settings where tenant_id=$1", auth.tenant_id)
-        fbr_on = bool(fbr_cfg and fbr_cfg["enabled"])
-        priced = pricing.price_sale(
-            [(p["price_minor"], qty, Decimal(str(p["tax_rate"] or 0))) for p, qty in products],
-            body.discount_minor, tax_on=fbr_on, inclusive=bool(fbr_on and fbr_cfg["prices_include_tax"]))
-        lines = [(p, qty, pl) for (p, qty), pl in zip(products, priced.lines)]
+        lines, fbr_cfg, priced = await _price_cart(conn, auth.tenant_id, body.items, body.discount_minor)
         total = priced.total_minor
-        change = max(0, body.paid_minor - total)
+        # 0 means the exact amount was tendered (card, wallet, bank). Anything
+        # less than the total is a short payment, never a silent zero change.
+        paid = body.paid_minor or total
+        if paid < total:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                f"Payment is short by Rs {(total - paid) / 100:,.2f} (total Rs {total / 100:,.2f}).")
+        change = paid - total
 
         sale_id = await conn.fetchval(
             """insert into pos_sales (tenant_id, cashier_id, subtotal_minor, discount_minor, total_minor,
@@ -208,7 +233,7 @@ async def _record_sale(body: SaleCreate, auth: AuthContext, fingerprint: str) ->
                                       client_uuid, payload_sha256)
                values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) returning id""",
             auth.tenant_id, auth.user_id, priced.subtotal_minor, priced.discount_minor, total,
-            body.paid_minor, change, body.payment_method, len(lines), priced.tax_minor,
+            paid, change, body.payment_method, len(lines), priced.tax_minor,
             body.client_uuid, fingerprint)
         items = []
         for p, qty, pl in lines:

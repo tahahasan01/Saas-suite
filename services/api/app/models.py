@@ -335,6 +335,18 @@ class SaleCreate(BaseModel):
     payment_method: Literal["cash", "card", "jazzcash", "easypaisa", "bank"] = "cash"
 
 
+class SaleQuoteRequest(BaseModel):
+    items: list[SaleLine] = Field(min_length=1)
+    discount_minor: int = Field(default=0, ge=0)
+
+
+class SaleQuote(BaseModel):
+    subtotal_minor: int
+    discount_minor: int
+    tax_minor: int
+    total_minor: int
+
+
 class SaleItemOut(BaseModel):
     name: str
     qty: float

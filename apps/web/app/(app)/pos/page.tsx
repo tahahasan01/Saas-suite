@@ -18,6 +18,14 @@ interface DrawerLite {
   expected_minor: number;
 }
 
+/** The server's own pricing of the cart (POST /pos/sales/quote, D-21). */
+interface Quote {
+  subtotal_minor: number;
+  discount_minor: number;
+  tax_minor: number;
+  total_minor: number;
+}
+
 /** One id per cart (D-81): resending the same cart returns the original sale,
  *  so a retry after a timeout or a double F7 can never charge twice. */
 function newCartKey(): string {
@@ -50,6 +58,9 @@ export default function PosBilling() {
   const inFlight = useRef(false); // a ref, so a second F7 in the same tick sees it
   const [charging, setCharging] = useState(false);
   const [chargeError, setChargeError] = useState<string | null>(null);
+  // True only when we can't know whether the sale was recorded (network
+  // failure or server error) — not for a refusal like "payment is short".
+  const [unconfirmed, setUnconfirmed] = useState(false);
 
   const search = useCallback((text: string) => {
     api<Product[]>(`/pos/products${text ? `?q=${encodeURIComponent(text)}` : ""}`)
@@ -81,7 +92,7 @@ export default function PosBilling() {
   // the server. Until it is retried as-is (same cart id) or cleared on purpose,
   // the cart can't change — otherwise a retry could replay the old sale and
   // leave the new items uncharged.
-  const locked = chargeError !== null;
+  const locked = unconfirmed || charging;
 
   function addToCart(p: Product) {
     if (locked) return;
@@ -107,14 +118,39 @@ export default function PosBilling() {
     }
   }
 
-  const subtotal = cart.reduce((s, l) => s + l.product.price_minor * l.qty, 0);
+  const localSubtotal = cart.reduce((s, l) => s + l.product.price_minor * l.qty, 0);
   const discountMinor = Math.round(Number(discount || 0) * 100);
-  const total = Math.max(0, subtotal - discountMinor);
+
+  // Totals come from the server's pricing (discount spread, tax inclusive or
+  // exclusive) so the till never shows a different amount from the receipt.
+  // The local sum is only a placeholder while the quote is in flight.
+  const [quote, setQuote] = useState<Quote | null>(null);
+  const quoteSeq = useRef(0);
+  useEffect(() => {
+    const seq = ++quoteSeq.current;
+    if (cart.length === 0) { setQuote(null); return; }
+    const id = setTimeout(() => {
+      api<Quote>("/pos/sales/quote", {
+        method: "POST",
+        body: JSON.stringify({
+          items: cart.map((l) => ({ product_id: l.product.id, qty: l.qty })),
+          discount_minor: discountMinor,
+        }),
+      })
+        .then((q) => { if (seq === quoteSeq.current) setQuote(q); })
+        .catch(() => { if (seq === quoteSeq.current) setQuote(null); });
+    }, 150);
+    return () => clearTimeout(id);
+  }, [cart, discountMinor]);
+
+  const subtotal = quote?.subtotal_minor ?? localSubtotal;
+  const total = quote?.total_minor ?? Math.max(0, localSubtotal - discountMinor);
   const paidMinor = Math.round(Number(paid || 0) * 100);
 
   function clearCart() {
     setCart([]);
     setChargeError(null);
+    setUnconfirmed(false);
     cartKey.current = newCartKey(); // a new cart is a new sale
   }
 
@@ -123,6 +159,7 @@ export default function PosBilling() {
     inFlight.current = true;
     setCharging(true);
     setChargeError(null);
+    setUnconfirmed(false);
     try {
       const sale = await api<Sale>("/pos/sales", {
         method: "POST",
@@ -130,7 +167,7 @@ export default function PosBilling() {
           client_uuid: cartKey.current, // reused if this attempt fails and is retried
           items: cart.map((l) => ({ product_id: l.product.id, qty: l.qty })),
           discount_minor: discountMinor,
-          paid_minor: paidMinor || total,
+          paid_minor: paidMinor, // 0 = exact amount tendered; the server prices the sale
           payment_method: method,
         }),
       });
@@ -142,9 +179,12 @@ export default function PosBilling() {
       loadStatus(); // today's figures and the drawer expectation just changed
       searchRef.current?.focus();
     } catch (e) {
-      setChargeError(e instanceof ApiError && e.status < 500
-        ? e.message
-        : "The sale wasn't confirmed. Check the connection and press Charge again — it won't be charged twice.");
+      if (e instanceof ApiError && e.status < 500) {
+        setChargeError(e.message); // refused, so nothing was recorded: fix and retry
+      } else {
+        setUnconfirmed(true);
+        setChargeError("The sale wasn't confirmed. Check the connection and press Charge again — it won't be charged twice.");
+      }
     } finally {
       inFlight.current = false;
       setCharging(false);
@@ -268,6 +308,7 @@ export default function PosBilling() {
             <span className="text-fg-muted">Discount (PKR)</span>
             <Input type="number" min={0} value={discount} onChange={(e) => setDiscount(e.target.value)} disabled={locked} className="w-24 py-1 text-right" />
           </div>
+          {quote && quote.tax_minor > 0 && <Row label="Sales tax" value={money(quote.tax_minor)} />}
           <Row label="Total" value={money(total)} bold />
         </div>
 
@@ -282,7 +323,8 @@ export default function PosBilling() {
         )}
         {chargeError && (
           <p role="alert" className="mt-2 text-sm text-danger">
-            {chargeError} The cart is locked until you retry it or clear it (<kbd>F1</kbd>).
+            {chargeError}
+            {unconfirmed && <> The cart is locked until you retry it or clear it (<kbd>F1</kbd>).</>}
           </p>
         )}
         <Button onClick={charge} disabled={cart.length === 0 || charging} className="mt-3 w-full">
