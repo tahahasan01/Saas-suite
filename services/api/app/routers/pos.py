@@ -119,8 +119,50 @@ async def update_product(product_id: str, body: ProductUpdate, auth: AuthContext
     return _product(row)
 
 
+async def _replay_sale(tenant_id: str, client_uuid) -> SaleOut | None:
+    """The sale already recorded for this cart, exactly as it was stored."""
+    async with db.tenant_conn(tenant_id) as conn:
+        sale = await conn.fetchrow("select * from pos_sales where client_uuid=$1", client_uuid)
+        if sale is None:
+            return None
+        rows = await conn.fetch(
+            """select name, qty, price_minor, line_total_minor from pos_sale_items
+                where sale_id=$1 order by name""", sale["id"])
+        fbr_row = await conn.fetchrow(
+            """select fbr_invoice_number, status from pos_fbr_invoices
+                where sale_id=$1 and return_id is null""", sale["id"])
+    return SaleOut(
+        id=str(sale["id"]), subtotal_minor=sale["subtotal_minor"], discount_minor=sale["discount_minor"],
+        total_minor=sale["total_minor"], paid_minor=sale["paid_minor"], change_minor=sale["change_minor"],
+        payment_method=sale["payment_method"], item_count=sale["item_count"], created_at=sale["created_at"],
+        items=[SaleItemOut(name=r["name"], qty=float(r["qty"]), price_minor=r["price_minor"],
+                           line_total_minor=r["line_total_minor"]) for r in rows],
+        tax_minor=sale["tax_minor"],
+        fbr_invoice_number=fbr_row["fbr_invoice_number"] if fbr_row else None,
+        fbr_status=fbr_row["status"] if fbr_row else None)
+
+
 @router.post("/sales", response_model=SaleOut, status_code=status.HTTP_201_CREATED)
-async def checkout(body: SaleCreate, auth: AuthContext = Depends(require("pos", "write"))):
+async def checkout(body: SaleCreate, response: Response,
+                   auth: AuthContext = Depends(require("pos", "write"))):
+    if body.client_uuid is not None:
+        replay = await _replay_sale(auth.tenant_id, body.client_uuid)
+        if replay is not None:
+            response.status_code = status.HTTP_200_OK
+            return replay
+    try:
+        return await _record_sale(body, auth)
+    except asyncpg.UniqueViolationError:
+        # A copy of this cart committed between our check and our insert; the
+        # unique index refused the second sale, so answer with the first.
+        replay = await _replay_sale(auth.tenant_id, body.client_uuid)
+        if replay is None:
+            raise
+        response.status_code = status.HTTP_200_OK
+        return replay
+
+
+async def _record_sale(body: SaleCreate, auth: AuthContext) -> SaleOut:
     async with db.tenant_conn(auth.tenant_id) as conn:
         products = []
         for it in body.items:
@@ -142,10 +184,12 @@ async def checkout(body: SaleCreate, auth: AuthContext = Depends(require("pos", 
 
         sale_id = await conn.fetchval(
             """insert into pos_sales (tenant_id, cashier_id, subtotal_minor, discount_minor, total_minor,
-                                      paid_minor, change_minor, payment_method, item_count, tax_minor)
-               values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning id""",
+                                      paid_minor, change_minor, payment_method, item_count, tax_minor,
+                                      client_uuid)
+               values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning id""",
             auth.tenant_id, auth.user_id, priced.subtotal_minor, priced.discount_minor, total,
-            body.paid_minor, change, body.payment_method, len(lines), priced.tax_minor)
+            body.paid_minor, change, body.payment_method, len(lines), priced.tax_minor,
+            body.client_uuid)
         items = []
         for p, qty, pl in lines:
             await conn.execute(
