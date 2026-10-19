@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
@@ -546,8 +547,10 @@ class AttendanceOut(BaseModel):
 class LeaveCreate(BaseModel):
     employee_id: str
     # 'wfh' is not leave — the employee is working, so it is never deducted.
-    request_type: str = "leave"
-    leave_type: str = "annual"
+    request_type: Literal["leave", "wfh"] = "leave"
+    # Exactly the types balances know (annual/sick/casual have quotas, unpaid
+    # has none). An unknown type used to be stored, then crash the approval.
+    leave_type: Literal["annual", "sick", "casual", "unpaid"] = "annual"
     from_date: date
     to_date: date
     reason: str = ""

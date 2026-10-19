@@ -436,9 +436,17 @@ async def decide_leave(leave_id: str, decision: str,
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "decision must be approve or reject")
     new_status = "approved" if decision == "approve" else "rejected"
     async with db.tenant_conn(auth.tenant_id) as conn:
-        req = await conn.fetchrow("select * from hrms_leave_requests where id=$1", leave_id)
+        # Locked so two approvers can't both decide it.
+        req = await conn.fetchrow("select * from hrms_leave_requests where id=$1 for update", leave_id)
         if req is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Leave request not found")
+        if req["status"] != "pending":
+            raise HTTPException(status.HTTP_409_CONFLICT, f"This request was already {req['status']}.")
+        requester = await conn.fetchval(
+            "select user_id from hrms_employees where id=$1", req["employee_id"])
+        if requester is not None and str(requester) == auth.user_id:
+            raise HTTPException(status.HTTP_403_FORBIDDEN,
+                                "You can't decide your own leave — another approver must.")
 
         # Quota applies to paid leave only: unpaid is already deducted from pay,
         # and WFH is worked time.
