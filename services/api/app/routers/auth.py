@@ -172,9 +172,12 @@ async def reset(body: ResetRequest, response: Response) -> Response:
     row = await tokens.consume(body.token, "reset")
     if row is None or not row["user_id"]:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid or expired reset link")
-    async with db.owner_conn() as conn:
+    async with db.owner_conn() as conn, conn.transaction():
         await conn.execute("update users set password_hash=$1, updated_at=now() where id=$2",
                            hash_password(body.password), row["user_id"])
+        # A reset is how a user recovers from a stolen session, so every
+        # session that existed before it must die with the old password.
+        await conn.execute("delete from sessions where user_id=$1", row["user_id"])
     response.status_code = status.HTTP_204_NO_CONTENT
     return response
 

@@ -26,10 +26,11 @@ async def create(kind: str, *, email: str, user_id: str | None = None, tenant_id
 
 async def consume(token: str, kind: str) -> asyncpg.Record | None:
     """Return the token row and mark it used, or None if invalid/expired/used."""
+    # One statement, so the row lock decides the race: a concurrent consumer
+    # re-checks `not used` after the winner commits and gets nothing back.
     async with db.owner_conn() as conn:
-        row = await conn.fetchrow(
-            "select * from auth_tokens where token=$1 and kind=$2 and not used and expires_at > now()",
+        return await conn.fetchrow(
+            """update auth_tokens set used = true
+                where token = $1 and kind = $2 and not used and expires_at > now()
+            returning *""",
             token, kind)
-        if row:
-            await conn.execute("update auth_tokens set used=true where token=$1", token)
-        return row
