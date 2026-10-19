@@ -6,6 +6,7 @@ payroll column that is always zero because nothing writes the status it reads.
 """
 from __future__ import annotations
 
+import asyncio  # noqa: F401  (FakeFbr.hold is an asyncio.Event)
 import uuid
 from dataclasses import dataclass
 
@@ -14,10 +15,23 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
-from app import db, ratelimit
+from app import db, fbr, ratelimit
 from app.config import settings
 from app.main import app
 from app.security import SESSION_COOKIE
+
+
+MODULE_MARKERS = ("core", "ai", "crm", "pos", "fbr", "hrms")
+
+
+def pytest_collection_modifyitems(items):
+    """Mark every test with the module folder it lives in, so a module can be
+    run on its own: `pytest -m pos` (or `pytest tests/pos`). Markers are
+    registered in pytest.ini; --strict-markers catches a folder added without one."""
+    for item in items:
+        folder = item.path.parent.name
+        if folder in MODULE_MARKERS:
+            item.add_marker(getattr(pytest.mark, folder))
 
 
 @pytest.fixture(autouse=True)
@@ -105,3 +119,34 @@ async def crm_tenant(client):
     tenant_id = await _signup(client, ["crm"])
     yield PosTenant(tenant_id=tenant_id)  # shape is just {tenant_id}
     await _drop(tenant_id)
+
+
+# ── FBR (PRAL) stand-in ─────────────────────────────────────────────────────
+class FakeFbr:
+    """Stands in for PRAL. `outcomes` is consumed in order; when it runs out,
+    every call succeeds with a fresh invoice number."""
+
+    def __init__(self):
+        self.payloads: list[dict] = []
+        self.outcomes: list = []
+        self.hold = None  # set to an asyncio.Event to freeze transmissions mid-flight
+        self._n = 0
+
+    async def __call__(self, cfg, payload):
+        self.payloads.append(payload)
+        if self.hold is not None:
+            await self.hold.wait()
+        outcome = self.outcomes.pop(0) if self.outcomes else "ok"
+        if isinstance(outcome, Exception):
+            raise outcome
+        if outcome == "fail":
+            return fbr.FbrResult(ok=False, error_code="0401", error="Seller not registered")
+        self._n += 1
+        return fbr.FbrResult(ok=True, invoice_number=f"FBR-{self._n}")
+
+
+@pytest.fixture
+def fake_fbr(monkeypatch):
+    fake = FakeFbr()
+    monkeypatch.setattr(fbr, "post_invoice", fake)
+    return fake

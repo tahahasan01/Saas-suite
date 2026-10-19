@@ -58,6 +58,17 @@ async def owner_conn() -> AsyncIterator[asyncpg.Connection]:
         yield conn
 
 
+async def _use_tenant_clock(conn: asyncpg.Connection) -> None:
+    """Run this transaction in the tenant's timezone (D-11): current_date,
+    now()::date and timestamp-to-date casts become the tenant's local day.
+    Reads the tenant row through RLS, so app.tenant_id must already be set."""
+    await conn.execute(
+        """select set_config('TimeZone',
+                  coalesce((select timezone from tenants
+                             where id = current_setting('app.tenant_id', true)::uuid),
+                           'Asia/Karachi'), true)""")
+
+
 @asynccontextmanager
 async def tenant_conn(tenant_id: str) -> AsyncIterator[asyncpg.Connection]:
     """Runtime connection scoped to a tenant. Opens a transaction and sets the
@@ -66,6 +77,7 @@ async def tenant_conn(tenant_id: str) -> AsyncIterator[asyncpg.Connection]:
         async with conn.transaction():
             # is_local = true -> reset at end of transaction
             await conn.execute("SELECT set_config('app.tenant_id', $1, true)", str(tenant_id))
+            await _use_tenant_clock(conn)
             yield conn
 
 
@@ -78,4 +90,5 @@ async def readonly_tenant_conn(tenant_id: str, timeout_ms: int = 5000) -> AsyncI
             await conn.execute("SET TRANSACTION READ ONLY")  # must be first statement
             await conn.execute(f"SET LOCAL statement_timeout = {int(timeout_ms)}")
             await conn.execute("SELECT set_config('app.tenant_id', $1, true)", str(tenant_id))
+            await _use_tenant_clock(conn)
             yield conn

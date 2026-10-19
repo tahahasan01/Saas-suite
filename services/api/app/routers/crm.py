@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
-from .. import csv_io, db, fulfillment, scoring
+from .. import csv_io, db, fulfillment, refs, scoring
 from ..deps import AuthContext
 from ..workflow import engine as wf
 from ..models import (
@@ -218,7 +218,12 @@ async def _find_duplicates(conn, name: str, company: str, phone: str, email: str
 @router.post("/leads", response_model=LeadOut, status_code=status.HTTP_201_CREATED)
 async def create_lead(body: LeadCreate, auth: AuthContext = Depends(require("crm", "write"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
+        await refs.ensure_visible(conn, "crm_pipelines", body.pipeline_id)
+        await refs.ensure_visible(conn, "crm_stages", body.stage_id)
         pid = body.pipeline_id or await _ensure_default_pipeline(conn, auth.tenant_id)
+        if body.stage_id and not await conn.fetchval(
+                "select 1 from crm_stages where id=$1 and pipeline_id=$2", body.stage_id, pid):
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "That stage isn't in this pipeline")
         if not body.force:
             dups = await _find_duplicates(conn, body.name, body.company, body.phone, body.email)
             if dups:
@@ -264,6 +269,7 @@ async def update_lead(lead_id: str, body: LeadUpdate, auth: AuthContext = Depend
     async with db.tenant_conn(auth.tenant_id) as conn:
         if not await conn.fetchval("select 1 from crm_leads where id=$1", lead_id):
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Lead not found")
+        await refs.ensure_visible(conn, "users", fields.get("owner_id"))
         # Moving to a stage in another pipeline keeps pipeline_id consistent.
         stage_kind: str | None = None
         if "stage_id" in fields:

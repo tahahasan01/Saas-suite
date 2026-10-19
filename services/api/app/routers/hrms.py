@@ -2,11 +2,13 @@
 Guarded by the 'hrms' section. Mobile face-match/biometric plug into attendance later."""
 from __future__ import annotations
 
+import calendar
+
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from datetime import date, timedelta
 
-from .. import db, email, payroll, tokens
+from .. import db, email, payroll, refs, tokens
 from ..deps import AuthContext, current_auth, current_employee
 from ..models import (
     REQUEST_TYPES,
@@ -194,12 +196,12 @@ async def _do_checkin(conn, employee_id: str, *, method: str, lat=None, lng=None
     return await conn.fetchrow(
         """insert into hrms_attendance (tenant_id, employee_id, check_in, status, method, lat, lng, fraud_flag)
            values ($1,$2, now(),
-                   case when extract(hour from now()) >= 10 then 'late' else 'present' end, $3,$4,$5,$6)
+                   case when localtime >= (select late_after from tenants where id = $1) then 'late' else 'present' end, $3,$4,$5,$6)
            on conflict (employee_id, work_date) do update set
              check_in = coalesce(hrms_attendance.check_in, excluded.check_in),
              method = excluded.method, lat = excluded.lat, lng = excluded.lng,
              fraud_flag = excluded.fraud_flag,
-             status = case when extract(hour from now()) >= 10 then 'late' else 'present' end
+             status = case when localtime >= (select late_after from tenants where id = $1) then 'late' else 'present' end
            returning id""",
         tenant_id, employee_id, method, lat, lng, flag)
 
@@ -329,6 +331,7 @@ async def create_leave(body: LeaveCreate, auth: AuthContext = Depends(require("h
     # let it be mistaken for unpaid leave and deducted.
     leave_type = "annual" if body.request_type == "wfh" else body.leave_type
     async with db.tenant_conn(auth.tenant_id) as conn:
+        await refs.ensure_visible(conn, "hrms_employees", body.employee_id)
         # One person cannot be in two states on the same day — a pending or
         # approved request already covering any of these dates blocks a new one.
         clash = await conn.fetchrow(
@@ -385,8 +388,9 @@ async def _policy(conn, tenant_id: str):
 async def _balances(conn, tenant_id: str, employee_id: str) -> list[LeaveBalance]:
     policy = await _policy(conn, tenant_id)
     off = list(await conn.fetchval("select weekly_off_days from tenants where id=$1", tenant_id) or [0])
-    year_start = date(date.today().year, 1, 1)
-    year_end = date(date.today().year, 12, 31)
+    today = await conn.fetchval("select current_date")  # the tenant's local day
+    year_start = date(today.year, 1, 1)
+    year_end = date(today.year, 12, 31)
     used = {r["leave_type"]: r["used"]
             for r in await conn.fetch(_USED_BY_TYPE, employee_id, year_start, year_end, off)}
     out = []
@@ -434,9 +438,20 @@ async def decide_leave(leave_id: str, decision: str,
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "decision must be approve or reject")
     new_status = "approved" if decision == "approve" else "rejected"
     async with db.tenant_conn(auth.tenant_id) as conn:
-        req = await conn.fetchrow("select * from hrms_leave_requests where id=$1", leave_id)
+        # Locked so two approvers can't both decide it.
+        req = await conn.fetchrow("select * from hrms_leave_requests where id=$1 for update", leave_id)
         if req is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Leave request not found")
+        if req["status"] != "pending":
+            raise HTTPException(status.HTTP_409_CONFLICT, f"This request was already {req['status']}.")
+        # Decisions for one employee run one at a time: two requests that each
+        # fit the remaining quota must not both pass the balance check below.
+        await conn.execute("select 1 from hrms_employees where id=$1 for update", req["employee_id"])
+        requester = await conn.fetchval(
+            "select user_id from hrms_employees where id=$1", req["employee_id"])
+        if requester is not None and str(requester) == auth.user_id:
+            raise HTTPException(status.HTTP_403_FORBIDDEN,
+                                "You can't decide your own leave — another approver must.")
 
         # Quota applies to paid leave only: unpaid is already deducted from pay,
         # and WFH is worked time.
@@ -504,7 +519,7 @@ async def delete_holiday(holiday_id: str, response: Response,
     return response
 
 
-def _payslip(r, month_days: int) -> Payslip:
+def _payslip(r, month_days: int, pay_date: date) -> Payslip:
     gross = r["salary_minor"]
     unpaid = r["unpaid_leave_days"]
     wfh = r["wfh_days"]
@@ -515,7 +530,7 @@ def _payslip(r, month_days: int) -> Payslip:
     absent = max(0, r["elapsed_days"] - accounted)
     per_day = gross / month_days if month_days else 0
     deduction = round((absent + unpaid) * per_day)
-    tax = payroll.monthly_tax_minor(gross)
+    tax = payroll.monthly_tax_minor(gross, pay_date)
     return Payslip(
         employee_id=str(r["id"]), name=r["name"], gross_minor=gross,
         present_days=r["present_days"], paid_leave_days=r["paid_leave_days"],
@@ -534,15 +549,20 @@ async def _compute_payroll(conn, tenant_id: str, month: str) -> PayrollOut:
     off_days = await conn.fetchval("select weekly_off_days from tenants where id=$1", tenant_id)
     rows = await conn.fetch(_PAYROLL, first, list(off_days or [0]))
     month_days = rows[0]["month_days"] if rows else 0
+    # Salaries are paid for the month, so its last day decides the tax year.
+    pay_date = first.replace(day=calendar.monthrange(first.year, first.month)[1])
+    ty = payroll.tax_year_for(pay_date)
     return PayrollOut(month=month, working_days=month_days,
-                      payslips=[_payslip(r, month_days) for r in rows])
+                      payslips=[_payslip(r, month_days, pay_date) for r in rows],
+                      tax_year=ty.label, tax_rates_verified=ty.verified)
 
 
 @router.get("/payroll", response_model=PayrollOut)
 async def run_payroll(month: str | None = None, auth: AuthContext = Depends(require("hrms", "read"))):
     """Monthly payslips: gross − absence deduction − FBR tax. `month` = YYYY-MM."""
     async with db.tenant_conn(auth.tenant_id) as conn:
-        return await _compute_payroll(conn, auth.tenant_id, month or date.today().strftime("%Y-%m"))
+        month = month or (await conn.fetchval("select current_date")).strftime("%Y-%m")
+        return await _compute_payroll(conn, auth.tenant_id, month)
 
 
 # ── Employee self-service (/me) ──────────────────────────────────────────────
@@ -623,8 +643,8 @@ async def my_request_leave(body: LeaveCreate, auth: AuthContext = Depends(curren
 @portal.get("/payslips", response_model=list[Payslip])
 async def my_payslips(month: str | None = None, auth: AuthContext = Depends(current_auth),
                       employee_id: str = Depends(current_employee)):
-    m = month or date.today().strftime("%Y-%m")
     async with db.tenant_conn(auth.tenant_id) as conn:
+        m = month or (await conn.fetchval("select current_date")).strftime("%Y-%m")
         run = await _compute_payroll(conn, auth.tenant_id, m)
     # Return only the caller's slip — the run computed everyone, but an employee
     # sees exactly one payslip: their own.

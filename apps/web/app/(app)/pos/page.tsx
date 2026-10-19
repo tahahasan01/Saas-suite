@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { PAYMENT_METHODS, type PosSummary, type Product, type Sale } from "@business-os/types";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { money, moneyCompact } from "@/lib/format";
 import { useSession } from "@/lib/session";
 import { Button, Card, Input, Select } from "@/components/ui";
@@ -16,6 +16,30 @@ interface Line {
 
 interface DrawerLite {
   expected_minor: number;
+}
+
+/** The server's own pricing of the cart (POST /pos/sales/quote, D-21). */
+interface Quote {
+  subtotal_minor: number;
+  discount_minor: number;
+  tax_minor: number;
+  total_minor: number;
+  rounding_minor: number;    // cash rounding (due - total)
+  amount_due_minor: number;  // what the customer pays
+}
+
+/** One id per cart (D-81): resending the same cart returns the original sale,
+ *  so a retry after a timeout or a double F7 can never charge twice. */
+function newCartKey(): string {
+  // randomUUID is missing outside secure contexts (plain-http LAN tills), so
+  // fall back to building a v4 UUID from getRandomValues.
+  const c = globalThis.crypto as Crypto & { randomUUID?: () => string };
+  if (typeof c.randomUUID === "function") return c.randomUUID();
+  const b = c.getRandomValues(new Uint8Array(16));
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  const h = [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
 }
 
 export default function PosBilling() {
@@ -32,6 +56,13 @@ export default function PosBilling() {
   const [drawer, setDrawer] = useState<DrawerLite | null | undefined>(undefined); // undefined = loading
   const searchRef = useRef<HTMLInputElement>(null);
   const paidRef = useRef<HTMLInputElement>(null);
+  const cartKey = useRef<string>(newCartKey());
+  const inFlight = useRef(false); // a ref, so a second F7 in the same tick sees it
+  const [charging, setCharging] = useState(false);
+  const [chargeError, setChargeError] = useState<string | null>(null);
+  // True only when we can't know whether the sale was recorded (network
+  // failure or server error) — not for a refusal like "payment is short".
+  const [unconfirmed, setUnconfirmed] = useState(false);
 
   const search = useCallback((text: string) => {
     api<Product[]>(`/pos/products${text ? `?q=${encodeURIComponent(text)}` : ""}`)
@@ -59,7 +90,14 @@ export default function PosBilling() {
     () => (category && !q ? results.filter((p) => p.category === category) : results),
     [results, category, q]);
 
+  // After a charge that wasn't confirmed, the sale may already be recorded on
+  // the server. Until it is retried as-is (same cart id) or cleared on purpose,
+  // the cart can't change — otherwise a retry could replay the old sale and
+  // leave the new items uncharged.
+  const locked = unconfirmed || charging;
+
   function addToCart(p: Product) {
+    if (locked) return;
     setCart((c) => {
       const i = c.findIndex((l) => l.product.id === p.id);
       if (i >= 0) return c.map((l, j) => (j === i ? { ...l, qty: l.qty + 1 } : l));
@@ -68,6 +106,7 @@ export default function PosBilling() {
   }
 
   function setQty(id: string, qty: number) {
+    if (locked) return;
     setCart((c) => (qty <= 0 ? c.filter((l) => l.product.id !== id) : c.map((l) => (l.product.id === id ? { ...l, qty } : l))));
   }
 
@@ -81,36 +120,86 @@ export default function PosBilling() {
     }
   }
 
-  const subtotal = cart.reduce((s, l) => s + l.product.price_minor * l.qty, 0);
+  const localSubtotal = cart.reduce((s, l) => s + l.product.price_minor * l.qty, 0);
   const discountMinor = Math.round(Number(discount || 0) * 100);
-  const total = Math.max(0, subtotal - discountMinor);
+
+  // Totals come from the server's pricing (discount spread, tax inclusive or
+  // exclusive) so the till never shows a different amount from the receipt.
+  // The local sum is only a placeholder while the quote is in flight.
+  const [quote, setQuote] = useState<Quote | null>(null);
+  const quoteSeq = useRef(0);
+  useEffect(() => {
+    const seq = ++quoteSeq.current;
+    if (cart.length === 0) { setQuote(null); return; }
+    const id = setTimeout(() => {
+      api<Quote>("/pos/sales/quote", {
+        method: "POST",
+        body: JSON.stringify({
+          items: cart.map((l) => ({ product_id: l.product.id, qty: l.qty })),
+          discount_minor: discountMinor,
+          payment_method: method, // cash is rounded to the rupee, card isn't
+        }),
+      })
+        .then((q) => { if (seq === quoteSeq.current) setQuote(q); })
+        .catch(() => { if (seq === quoteSeq.current) setQuote(null); });
+    }, 150);
+    return () => clearTimeout(id);
+  }, [cart, discountMinor, method]);
+
+  const subtotal = quote?.subtotal_minor ?? localSubtotal;
+  // What the customer pays: the server's total, rounded for cash.
+  const total = quote?.amount_due_minor ?? Math.max(0, localSubtotal - discountMinor);
   const paidMinor = Math.round(Number(paid || 0) * 100);
 
-  async function charge() {
-    if (cart.length === 0) return;
-    const sale = await api<Sale>("/pos/sales", {
-      method: "POST",
-      body: JSON.stringify({
-        items: cart.map((l) => ({ product_id: l.product.id, qty: l.qty })),
-        discount_minor: discountMinor,
-        paid_minor: paidMinor || total,
-        payment_method: method,
-      }),
-    });
-    setReceipt(sale);
+  function clearCart() {
     setCart([]);
-    setDiscount("0");
-    setPaid("");
-    search(q);
-    loadStatus(); // today's figures and the drawer expectation just changed
-    searchRef.current?.focus();
+    setChargeError(null);
+    setUnconfirmed(false);
+    cartKey.current = newCartKey(); // a new cart is a new sale
+  }
+
+  async function charge() {
+    if (cart.length === 0 || inFlight.current) return;
+    inFlight.current = true;
+    setCharging(true);
+    setChargeError(null);
+    setUnconfirmed(false);
+    try {
+      const sale = await api<Sale>("/pos/sales", {
+        method: "POST",
+        body: JSON.stringify({
+          client_uuid: cartKey.current, // reused if this attempt fails and is retried
+          items: cart.map((l) => ({ product_id: l.product.id, qty: l.qty })),
+          discount_minor: discountMinor,
+          paid_minor: paidMinor, // 0 = exact amount tendered; the server prices the sale
+          payment_method: method,
+        }),
+      });
+      setReceipt(sale);
+      clearCart();
+      setDiscount("0");
+      setPaid("");
+      search(q);
+      loadStatus(); // today's figures and the drawer expectation just changed
+      searchRef.current?.focus();
+    } catch (e) {
+      if (e instanceof ApiError && e.status < 500) {
+        setChargeError(e.message); // refused, so nothing was recorded: fix and retry
+      } else {
+        setUnconfirmed(true);
+        setChargeError("The sale wasn't confirmed. Check the connection and press Charge again — it won't be charged twice.");
+      }
+    } finally {
+      inFlight.current = false;
+      setCharging(false);
+    }
   }
 
   // Keyboard-first checkout (cashier never touches the mouse).
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "F2") { e.preventDefault(); searchRef.current?.focus(); }
-      else if (e.key === "F1") { e.preventDefault(); setCart([]); }
+      else if (e.key === "F1") { e.preventDefault(); clearCart(); }
       else if (e.key === "F6") { e.preventDefault(); paidRef.current?.focus(); }
       else if (e.key === "F7") { e.preventDefault(); void charge(); }
     }
@@ -208,9 +297,9 @@ export default function PosBilling() {
                 <p className="text-xs text-fg-subtle">{money(l.product.price_minor)}</p>
               </div>
               <div className="flex items-center gap-1">
-                <button onClick={() => setQty(l.product.id, l.qty - 1)} className="h-6 w-6 rounded bg-elevated">−</button>
+                <button onClick={() => setQty(l.product.id, l.qty - 1)} disabled={locked} className="h-6 w-6 rounded bg-elevated disabled:opacity-40">−</button>
                 <span className="w-7 text-center">{l.qty}</span>
-                <button onClick={() => setQty(l.product.id, l.qty + 1)} className="h-6 w-6 rounded bg-elevated">+</button>
+                <button onClick={() => setQty(l.product.id, l.qty + 1)} disabled={locked} className="h-6 w-6 rounded bg-elevated disabled:opacity-40">+</button>
               </div>
               <span className="w-16 text-right">{money(l.product.price_minor * l.qty)}</span>
             </div>
@@ -221,22 +310,35 @@ export default function PosBilling() {
           <Row label="Subtotal" value={money(subtotal)} />
           <div className="flex items-center justify-between">
             <span className="text-fg-muted">Discount (PKR)</span>
-            <Input type="number" min={0} value={discount} onChange={(e) => setDiscount(e.target.value)} className="w-24 py-1 text-right" />
+            <Input type="number" min={0} value={discount} onChange={(e) => setDiscount(e.target.value)} disabled={locked} className="w-24 py-1 text-right" />
           </div>
-          <Row label="Total" value={money(total)} bold />
+          {quote && quote.tax_minor > 0 && <Row label="Sales tax" value={money(quote.tax_minor)} />}
+          {quote && quote.rounding_minor !== 0 && (
+            <>
+              <Row label="Total" value={money(quote.total_minor)} />
+              <Row label="Cash rounding" value={money(quote.rounding_minor)} />
+            </>
+          )}
+          <Row label={quote && quote.rounding_minor !== 0 ? "Amount due" : "Total"} value={money(total)} bold />
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <Select value={method} onChange={(e) => setMethod(e.target.value)}>
+          <Select value={method} onChange={(e) => setMethod(e.target.value)} disabled={locked}>
             {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
           </Select>
-          <Input ref={paidRef} type="number" min={0} value={paid} onChange={(e) => setPaid(e.target.value)} placeholder="Amount paid" />
+          <Input ref={paidRef} type="number" min={0} value={paid} onChange={(e) => setPaid(e.target.value)} disabled={locked} placeholder="Amount paid" />
         </div>
         {paidMinor > 0 && paidMinor >= total && (
           <p className="mt-2 text-right text-sm text-success">Change: {money(paidMinor - total)}</p>
         )}
-        <Button onClick={charge} disabled={cart.length === 0} className="mt-3 w-full">
-          Charge {money(total)}
+        {chargeError && (
+          <p role="alert" className="mt-2 text-sm text-danger">
+            {chargeError}
+            {unconfirmed && <> The cart is locked until you retry it or clear it (<kbd>F1</kbd>).</>}
+          </p>
+        )}
+        <Button onClick={charge} disabled={cart.length === 0 || charging} className="mt-3 w-full">
+          {charging ? "Recording sale…" : `Charge ${money(total)}`}
         </Button>
         <p className="mt-2 text-center text-[11px] text-fg-subtle">
           <kbd>F2</kbd> search · <kbd>F6</kbd> pay · <kbd>F7</kbd> charge · <kbd>F1</kbd> clear
@@ -287,7 +389,9 @@ function Receipt({ sale, onClose }: { sale: Sale; onClose: () => void }) {
             ))}
           </div>
           <div className="border-t border-line pt-2">
-            <Row label="Total" value={money(sale.total_minor)} bold />
+            {sale.rounding_minor !== 0 && <Row label="Total" value={money(sale.total_minor)} />}
+            {sale.rounding_minor !== 0 && <Row label="Cash rounding" value={money(sale.rounding_minor)} />}
+            <Row label={sale.rounding_minor !== 0 ? "Amount due" : "Total"} value={money(sale.amount_due_minor || sale.total_minor)} bold />
             {sale.tax_minor > 0 && <Row label="incl. sales tax" value={money(sale.tax_minor)} />}
             <Row label="Paid" value={money(sale.paid_minor)} />
             <Row label="Change" value={money(sale.change_minor)} />

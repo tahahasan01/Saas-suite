@@ -43,6 +43,9 @@ async def current_auth(
             join tenants t on t.id = s.tenant_id
             left join roles r on r.id = u.role_id
             where s.id = $1 and s.expires_at > now()
+              -- A disabled user or suspended tenant loses access immediately,
+              -- not when the 30-day session finally expires.
+              and u.status = 'active' and t.status = 'active'
             """,
             # The cookie holds the raw token; the table holds only its hash.
             hash_session_token(bos_session),

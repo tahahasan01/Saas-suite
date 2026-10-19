@@ -1,6 +1,8 @@
 """POS — products, checkout (sales), inventory. Guarded by the 'pos' section."""
 from __future__ import annotations
 
+import hashlib
+import json
 import math
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -8,7 +10,7 @@ from decimal import Decimal
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
-from .. import csv_io, db, fbr, fbr_submit
+from .. import csv_io, db, fbr, fbr_submit, pricing, refs
 from ..deps import AuthContext
 from ..models import (
     DrawerClose,
@@ -34,6 +36,8 @@ from ..models import (
     ReturnItemOut,
     ReturnOut,
     SaleCreate,
+    SaleQuote,
+    SaleQuoteRequest,
     SaleDetail,
     SaleItemOut,
     SaleOut,
@@ -119,45 +123,147 @@ async def update_product(product_id: str, body: ProductUpdate, auth: AuthContext
     return _product(row)
 
 
-@router.post("/sales", response_model=SaleOut, status_code=status.HTTP_201_CREATED)
-async def checkout(body: SaleCreate, auth: AuthContext = Depends(require("pos", "write"))):
-    async with db.tenant_conn(auth.tenant_id) as conn:
-        subtotal = tax_total = 0
-        lines = []
-        for it in body.items:
-            p = await conn.fetchrow(
-                """select id, name, price_minor, hs_code, tax_rate, fbr_uom
-                     from pos_products where id=$1 and active""", it.product_id)
-            if p is None:
-                raise HTTPException(status.HTTP_404_NOT_FOUND, f"Product {it.product_id} not found")
-            line_total = round(p["price_minor"] * it.qty)
-            subtotal += line_total
-            lines.append((p, it.qty, line_total))
-        total = max(0, subtotal - body.discount_minor)
-        change = max(0, body.paid_minor - total)
+def _fingerprint(body: SaleCreate) -> str:
+    """What the cart *was*: a replay of the same client_uuid must match it."""
+    canonical = {
+        "items": sorted([str(i.product_id), float(i.qty)] for i in body.items),
+        "discount_minor": body.discount_minor,
+        "paid_minor": body.paid_minor,
+        "payment_method": body.payment_method,
+    }
+    return hashlib.sha256(json.dumps(canonical, sort_keys=True).encode()).hexdigest()
 
-        fbr_cfg = await conn.fetchrow("select * from fbr_settings where tenant_id=$1", auth.tenant_id)
-        if fbr_cfg and fbr_cfg["enabled"]:
-            for p, _qty, line_total in lines:
-                _, line_tax = fbr.split_tax(line_total, Decimal(str(p["tax_rate"] or 0)),
-                                            fbr_cfg["prices_include_tax"])
-                tax_total += line_tax
+
+async def _replay_sale(tenant_id: str, client_uuid, fingerprint: str) -> SaleOut | None:
+    """The sale already recorded for this cart, exactly as it was stored — or a
+    409 if this client_uuid was recorded for a different cart."""
+    async with db.tenant_conn(tenant_id) as conn:
+        sale = await conn.fetchrow("select * from pos_sales where client_uuid=$1", client_uuid)
+        if sale is None:
+            return None
+        if sale["payload_sha256"] and sale["payload_sha256"] != fingerprint:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "A sale with this cart id was already recorded with different items or amounts. "
+                "Check today's sales before charging again.")
+        rows = await conn.fetch(
+            """select name, qty, price_minor, line_total_minor from pos_sale_items
+                where sale_id=$1 order by name""", sale["id"])
+        fbr_row = await conn.fetchrow(
+            """select fbr_invoice_number, status from pos_fbr_invoices
+                where sale_id=$1 and return_id is null""", sale["id"])
+    return SaleOut(
+        id=str(sale["id"]), subtotal_minor=sale["subtotal_minor"], discount_minor=sale["discount_minor"],
+        total_minor=sale["total_minor"], paid_minor=sale["paid_minor"], change_minor=sale["change_minor"],
+        payment_method=sale["payment_method"], item_count=sale["item_count"], created_at=sale["created_at"],
+        items=[SaleItemOut(name=r["name"], qty=float(r["qty"]), price_minor=r["price_minor"],
+                           line_total_minor=r["line_total_minor"]) for r in rows],
+        tax_minor=sale["tax_minor"], rounding_minor=sale["rounding_minor"],
+        amount_due_minor=sale["total_minor"] + sale["rounding_minor"],
+        fbr_invoice_number=fbr_row["fbr_invoice_number"] if fbr_row else None,
+        fbr_status=fbr_row["status"] if fbr_row else None)
+
+
+@router.post("/sales", response_model=SaleOut, status_code=status.HTTP_201_CREATED)
+async def checkout(body: SaleCreate, response: Response,
+                   auth: AuthContext = Depends(require("pos", "write"))):
+    fingerprint = _fingerprint(body)
+    if body.client_uuid is not None:
+        replay = await _replay_sale(auth.tenant_id, body.client_uuid, fingerprint)
+        if replay is not None:
+            response.status_code = status.HTTP_200_OK
+            return replay
+    try:
+        return await _record_sale(body, auth, fingerprint)
+    except asyncpg.UniqueViolationError:
+        # A copy of this cart committed between our check and our insert; the
+        # unique index refused the second sale, so answer with the first.
+        replay = await _replay_sale(auth.tenant_id, body.client_uuid, fingerprint)
+        if replay is None:
+            raise
+        response.status_code = status.HTTP_200_OK
+        return replay
+
+
+async def _price_cart(conn, tenant_id: str, items, discount_minor: int):
+    """The one way a cart is priced, for a quote and for the sale itself:
+    returns (lines as (product, qty, PricedLine), fbr settings, PricedSale)."""
+    products = []
+    for it in items:
+        p = await conn.fetchrow(
+            """select id, name, price_minor, hs_code, tax_rate, fbr_uom
+                 from pos_products where id=$1 and active""", it.product_id)
+        if p is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, f"Product {it.product_id} not found")
+        products.append((p, it.qty))
+
+    fbr_cfg = await conn.fetchrow("select * from fbr_settings where tenant_id=$1", tenant_id)
+    fbr_on = bool(fbr_cfg and fbr_cfg["enabled"])
+    priced = pricing.price_sale(
+        [(p["price_minor"], qty, Decimal(str(p["tax_rate"] or 0))) for p, qty in products],
+        discount_minor, tax_on=fbr_on, inclusive=bool(fbr_on and fbr_cfg["prices_include_tax"]))
+    return [(p, qty, pl) for (p, qty), pl in zip(products, priced.lines)], fbr_cfg, priced
+
+
+async def _amount_due(conn, total_minor: int, payment_method: str) -> tuple[int, int]:
+    """Cash is rounded to the tenant's unit; every other method pays exactly."""
+    if payment_method != "cash":
+        return total_minor, 0
+    unit = await conn.fetchval(
+        "select cash_rounding_minor from tenants where id = current_setting('app.tenant_id')::uuid")
+    return pricing.cash_due(total_minor, unit or 0)
+
+
+@router.post("/sales/quote", response_model=SaleQuote)
+async def quote_sale(body: SaleQuoteRequest, auth: AuthContext = Depends(require("pos", "write"))):
+    """Price a cart exactly as a sale would be priced, without recording it, so
+    the till shows the server's own total (tax-exclusive prices included)."""
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        _, _, priced = await _price_cart(conn, auth.tenant_id, body.items, body.discount_minor)
+        due, rounding = await _amount_due(conn, priced.total_minor, body.payment_method)
+    return SaleQuote(subtotal_minor=priced.subtotal_minor, discount_minor=priced.discount_minor,
+                     tax_minor=priced.tax_minor, total_minor=priced.total_minor,
+                     rounding_minor=rounding, amount_due_minor=due)
+
+
+async def _record_sale(body: SaleCreate, auth: AuthContext, fingerprint: str) -> SaleOut:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        lines, fbr_cfg, priced = await _price_cart(conn, auth.tenant_id, body.items, body.discount_minor)
+        total = priced.total_minor
+        due, rounding = await _amount_due(conn, total, body.payment_method)
+        # 0 means the exact amount was tendered (card, wallet, bank). Anything
+        # less than what's due is a short payment, never a silent zero change.
+        paid = body.paid_minor or due
+        if paid < due:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                f"Payment is short by Rs {(due - paid) / 100:,.2f} (due Rs {due / 100:,.2f}).")
+        change = paid - due
 
         sale_id = await conn.fetchval(
             """insert into pos_sales (tenant_id, cashier_id, subtotal_minor, discount_minor, total_minor,
-                                      paid_minor, change_minor, payment_method, item_count, tax_minor)
-               values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning id""",
-            auth.tenant_id, auth.user_id, subtotal, body.discount_minor, total,
-            body.paid_minor, change, body.payment_method, len(lines), tax_total)
+                                      paid_minor, change_minor, payment_method, item_count, tax_minor,
+                                      client_uuid, payload_sha256, rounding_minor)
+               values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) returning id""",
+            auth.tenant_id, auth.user_id, priced.subtotal_minor, priced.discount_minor, total,
+            paid, change, body.payment_method, len(lines), priced.tax_minor,
+            body.client_uuid, fingerprint, rounding)
         items = []
-        for p, qty, line_total in lines:
+        for p, qty, pl in lines:
             await conn.execute(
-                """insert into pos_sale_items (tenant_id, sale_id, product_id, name, qty, price_minor, line_total_minor)
-                   values ($1,$2,$3,$4,$5,$6,$7)""",
-                auth.tenant_id, sale_id, p["id"], p["name"], qty, p["price_minor"], line_total)
+                """insert into pos_sale_items (tenant_id, sale_id, product_id, name, qty, price_minor,
+                                               line_total_minor, discount_minor, tax_minor, total_minor)
+                   values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)""",
+                auth.tenant_id, sale_id, p["id"], p["name"], qty, p["price_minor"],
+                pl.gross_minor, pl.discount_minor, pl.tax_minor, pl.total_minor)
             await conn.execute("update pos_products set stock_qty = stock_qty - $1 where id=$2", qty, p["id"])
-            items.append(SaleItemOut(name=p["name"], qty=qty, price_minor=p["price_minor"], line_total_minor=line_total))
+            items.append(SaleItemOut(name=p["name"], qty=qty, price_minor=p["price_minor"],
+                                     line_total_minor=pl.gross_minor))
         sale = await conn.fetchrow("select * from pos_sales where id=$1", sale_id)
+        if fbr_cfg and fbr_cfg["enabled"]:
+            # Outbox row in the sale's own transaction: if the process dies
+            # before transmission, the retry job still finds this sale (P0-4).
+            await fbr_submit.enqueue_sale(conn, auth.tenant_id, str(sale_id))
 
     fbr_number = fbr_status = None
     if fbr_cfg and fbr_cfg["enabled"]:
@@ -171,7 +277,8 @@ async def checkout(body: SaleCreate, auth: AuthContext = Depends(require("pos", 
         id=str(sale["id"]), subtotal_minor=sale["subtotal_minor"], discount_minor=sale["discount_minor"],
         total_minor=sale["total_minor"], paid_minor=sale["paid_minor"], change_minor=sale["change_minor"],
         payment_method=sale["payment_method"], item_count=sale["item_count"], created_at=sale["created_at"],
-        items=items, tax_minor=sale["tax_minor"], fbr_invoice_number=fbr_number, fbr_status=fbr_status)
+        items=items, tax_minor=sale["tax_minor"], rounding_minor=sale["rounding_minor"],
+        amount_due_minor=sale["total_minor"] + sale["rounding_minor"], fbr_invoice_number=fbr_number, fbr_status=fbr_status)
 
 
 # ── Suppliers & purchase orders ──────────────────────────────────────────────
@@ -213,6 +320,7 @@ async def create_po(body: PoCreate, auth: AuthContext = Depends(require("pos", "
     """Created straight into 'ordered' — the SME phones the order in; this
     record exists so the delivery can be received against it."""
     async with db.tenant_conn(auth.tenant_id) as conn:
+        await refs.ensure_visible(conn, "pos_suppliers", body.supplier_id)
         po = await conn.fetchrow(
             """insert into pos_purchase_orders (tenant_id, supplier_id, created_by, notes)
                values ($1,$2,$3,$4) returning *""",
@@ -304,8 +412,10 @@ async def cancel_po(po_id: str, auth: AuthContext = Depends(require("pos", "writ
 
 
 # ── Cash drawer ──────────────────────────────────────────────────────────────
+# Money that went into the till: the amount due (total + cash rounding), not
+# the invoice value — otherwise every rounded sale is a false variance.
 _CASH_SALES = """
-select coalesce(sum(total_minor), 0) as total, count(*) as n from pos_sales
+select coalesce(sum(total_minor + rounding_minor), 0) as total, count(*) as n from pos_sales
  where payment_method = 'cash' and created_at >= $1 and created_at <= $2
 """
 # Refunds leave the drawer only if the money went in through it: returns against
@@ -316,7 +426,7 @@ select coalesce(sum(r.refund_minor), 0) as total from pos_returns r
  where s.payment_method = 'cash' and r.created_at >= $1 and r.created_at <= $2
 """
 _BY_METHOD = """
-select payment_method, count(*) as n, coalesce(sum(total_minor), 0) as total
+select payment_method, count(*) as n, coalesce(sum(total_minor + rounding_minor), 0) as total
   from pos_sales where created_at >= $1 and created_at <= $2
  group by payment_method order by total desc
 """
@@ -450,7 +560,10 @@ async def export_products(auth: AuthContext = Depends(require("pos", "read"))) -
 # the guard against refunding three of two items across separate visits.
 _RETURNABLE = """
 select i.id as sale_item_id, i.product_id, i.name, i.qty as qty_sold, i.price_minor,
+       i.total_minor,
        coalesce((select sum(r.qty) from pos_return_items r where r.sale_item_id = i.id), 0) as qty_returned,
+       coalesce((select sum(r.line_refund_minor) from pos_return_items r
+                  where r.sale_item_id = i.id), 0) as refunded_minor,
        -- Carried through for the FBR debit note: a note without an HS code is
        -- rejected with error 0052.
        coalesce(p.hs_code, '') as hs_code,
@@ -483,7 +596,8 @@ async def get_sale(sale_id: str, auth: AuthContext = Depends(require("pos", "rea
         id=str(sale["id"]), subtotal_minor=sale["subtotal_minor"], discount_minor=sale["discount_minor"],
         total_minor=sale["total_minor"], paid_minor=sale["paid_minor"], change_minor=sale["change_minor"],
         payment_method=sale["payment_method"], item_count=sale["item_count"], created_at=sale["created_at"],
-        tax_minor=sale["tax_minor"],
+        tax_minor=sale["tax_minor"], rounding_minor=sale["rounding_minor"],
+        amount_due_minor=sale["total_minor"] + sale["rounding_minor"],
         fbr_invoice_number=fbr_row["fbr_invoice_number"] if fbr_row else None,
         fbr_status=fbr_row["status"] if fbr_row else None,
         items=[SaleItemOut(name=r["name"], qty=float(r["qty_sold"]), price_minor=r["price_minor"],
@@ -496,7 +610,11 @@ async def get_sale(sale_id: str, auth: AuthContext = Depends(require("pos", "rea
 async def create_return(sale_id: str, body: ReturnCreate,
                         auth: AuthContext = Depends(require("pos", "write"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
-        if await conn.fetchval("select 1 from pos_sales where id=$1", sale_id) is None:
+        # Lock the sale: two returns of its last unit must be checked one after
+        # the other, or both see it as still returnable.
+        sale = await conn.fetchrow(
+            "select total_minor, rounding_minor from pos_sales where id=$1 for update", sale_id)
+        if sale is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Sale not found")
         available = {str(r["sale_item_id"]): r for r in await conn.fetch(_RETURNABLE, sale_id)}
 
@@ -511,16 +629,41 @@ async def create_return(sale_id: str, body: ReturnCreate,
                 raise HTTPException(
                     status.HTTP_409_CONFLICT,
                     f"Only {left:g} of {row['name']} can be returned — {row['qty_returned']:g} already came back.")
-            line_refund = round(row["price_minor"] * want.qty)
+            # The customer's share of what they paid for the line (after discount,
+            # with tax) — never the list price.
+            line_refund = pricing.refund_for(
+                row["total_minor"], float(row["qty_sold"]), row["refunded_minor"],
+                float(row["qty_returned"]), want.qty)
             refund += line_refund
             lines.append((row, want.qty, line_refund))
+
+        # Line shares come from the invoice value; with cash rounding the
+        # customer may have paid a little less. Never refund more, in total,
+        # than was actually paid for the sale.
+        already = await conn.fetchval(
+            "select coalesce(sum(refund_minor), 0) from pos_returns where sale_id=$1", sale_id)
+        refundable = max(0, sale["total_minor"] + sale["rounding_minor"] - already)
+        if refundable == 0:
+            raise HTTPException(status.HTTP_409_CONFLICT, "Everything paid for this sale has been refunded.")
+        excess = refund - refundable
+        # Take any excess off the lines from the last one back, never pushing a
+        # line below zero (one small line can be smaller than the excess).
+        for i in range(len(lines) - 1, -1, -1):
+            if excess <= 0:
+                break
+            row, qty, amount = lines[i]
+            cut = min(excess, amount)
+            lines[i] = (row, qty, amount - cut)
+            excess -= cut
+            refund -= cut
 
         fbr_cfg = await conn.fetchrow("select * from fbr_settings where tenant_id=$1", auth.tenant_id)
         if fbr_cfg and fbr_cfg["enabled"]:
             for row, qty, line_refund in lines:
                 rate = await conn.fetchval(
                     "select coalesce(tax_rate, 0) from pos_products where id=$1", row["product_id"]) or 0
-                _, line_tax = fbr.split_tax(line_refund, Decimal(str(rate)), fbr_cfg["prices_include_tax"])
+                # A refund is an amount the customer paid, so tax is inside it.
+                _, line_tax = fbr.split_tax(line_refund, Decimal(str(rate)), True)
                 tax_total += line_tax
 
         return_id = await conn.fetchval(
@@ -544,6 +687,10 @@ async def create_return(sale_id: str, body: ReturnCreate,
         original = await conn.fetchrow(
             """select fbr_invoice_number from pos_fbr_invoices
                 where sale_id=$1 and return_id is null and status='submitted'""", sale_id)
+        if fbr_cfg and fbr_cfg["enabled"]:
+            # Queued even when the sale isn't filed yet: the retry job files the
+            # debit note once the sale has an FBR number to reference.
+            await fbr_submit.enqueue_return(conn, auth.tenant_id, sale_id, str(return_id))
         created_at = await conn.fetchval("select created_at from pos_returns where id=$1", return_id)
 
     fbr_number = fbr_status = None
