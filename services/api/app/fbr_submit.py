@@ -117,11 +117,12 @@ async def enqueue_return(conn, tenant_id: str, sale_id: str, return_id: str) -> 
 
 async def submit_sale(tenant_id: str, sale_id: str, settings, lines) -> fbr.FbrResult:
     """Transmit one freshly committed sale. Never raises."""
-    payload = fbr.build_payload(settings, _items(lines), invoice_date=date.today())
     async with db.tenant_conn(tenant_id) as conn:
         row_id = await conn.fetchval(
             "select id from pos_fbr_invoices where sale_id=$1 and return_id is null", sale_id)
         claimed = await _claim(conn, row_id)
+        today = await conn.fetchval("select current_date")  # the tenant's local day
+    payload = fbr.build_payload(settings, _items(lines), invoice_date=today)
     if not claimed:
         return _BUSY
     result = await _post(settings, payload)
@@ -138,10 +139,11 @@ async def submit_return(tenant_id: str, return_id: str, settings, lines,
     original sale was accepted. `lines` are (sale_item_row, qty, line_refund_minor)."""
     items = [_refund_item(row["name"], qty, row["hs_code"], row["fbr_uom"], row["tax_rate"], line_refund)
              for row, qty, line_refund in lines]
-    payload = _debit_note(settings, items, original_invoice_number, date.today())
     async with db.tenant_conn(tenant_id) as conn:
         row_id = await conn.fetchval("select id from pos_fbr_invoices where return_id=$1", return_id)
         claimed = await _claim(conn, row_id)
+        today = await conn.fetchval("select current_date")  # the tenant's local day
+    payload = _debit_note(settings, items, original_invoice_number, today)
     if not claimed:
         return _BUSY
     result = await _post(settings, payload)

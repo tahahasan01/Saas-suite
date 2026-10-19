@@ -196,12 +196,12 @@ async def _do_checkin(conn, employee_id: str, *, method: str, lat=None, lng=None
     return await conn.fetchrow(
         """insert into hrms_attendance (tenant_id, employee_id, check_in, status, method, lat, lng, fraud_flag)
            values ($1,$2, now(),
-                   case when extract(hour from now()) >= 10 then 'late' else 'present' end, $3,$4,$5,$6)
+                   case when localtime >= (select late_after from tenants where id = $1) then 'late' else 'present' end, $3,$4,$5,$6)
            on conflict (employee_id, work_date) do update set
              check_in = coalesce(hrms_attendance.check_in, excluded.check_in),
              method = excluded.method, lat = excluded.lat, lng = excluded.lng,
              fraud_flag = excluded.fraud_flag,
-             status = case when extract(hour from now()) >= 10 then 'late' else 'present' end
+             status = case when localtime >= (select late_after from tenants where id = $1) then 'late' else 'present' end
            returning id""",
         tenant_id, employee_id, method, lat, lng, flag)
 
@@ -387,8 +387,9 @@ async def _policy(conn, tenant_id: str):
 async def _balances(conn, tenant_id: str, employee_id: str) -> list[LeaveBalance]:
     policy = await _policy(conn, tenant_id)
     off = list(await conn.fetchval("select weekly_off_days from tenants where id=$1", tenant_id) or [0])
-    year_start = date(date.today().year, 1, 1)
-    year_end = date(date.today().year, 12, 31)
+    today = await conn.fetchval("select current_date")  # the tenant's local day
+    year_start = date(today.year, 1, 1)
+    year_end = date(today.year, 12, 31)
     used = {r["leave_type"]: r["used"]
             for r in await conn.fetch(_USED_BY_TYPE, employee_id, year_start, year_end, off)}
     out = []
@@ -556,7 +557,8 @@ async def _compute_payroll(conn, tenant_id: str, month: str) -> PayrollOut:
 async def run_payroll(month: str | None = None, auth: AuthContext = Depends(require("hrms", "read"))):
     """Monthly payslips: gross − absence deduction − FBR tax. `month` = YYYY-MM."""
     async with db.tenant_conn(auth.tenant_id) as conn:
-        return await _compute_payroll(conn, auth.tenant_id, month or date.today().strftime("%Y-%m"))
+        month = month or (await conn.fetchval("select current_date")).strftime("%Y-%m")
+        return await _compute_payroll(conn, auth.tenant_id, month)
 
 
 # ── Employee self-service (/me) ──────────────────────────────────────────────
@@ -637,8 +639,8 @@ async def my_request_leave(body: LeaveCreate, auth: AuthContext = Depends(curren
 @portal.get("/payslips", response_model=list[Payslip])
 async def my_payslips(month: str | None = None, auth: AuthContext = Depends(current_auth),
                       employee_id: str = Depends(current_employee)):
-    m = month or date.today().strftime("%Y-%m")
     async with db.tenant_conn(auth.tenant_id) as conn:
+        m = month or (await conn.fetchval("select current_date")).strftime("%Y-%m")
         run = await _compute_payroll(conn, auth.tenant_id, m)
     # Return only the caller's slip — the run computed everyone, but an employee
     # sees exactly one payslip: their own.
