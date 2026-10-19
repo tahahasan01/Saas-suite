@@ -1,41 +1,66 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Payslip } from "@business-os/types";
 import { api } from "@/lib/api";
+import { monthPKT } from "@/lib/dates";
 import { money } from "@/lib/format";
-import { Card, Input } from "@/components/ui";
+import { errorText } from "@/lib/useAction";
+import { Card, EmptyState, ErrorState, Field, Input, LoadingRows } from "@/components/ui";
+
+const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 export default function MyPayslips() {
-  const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  // Pakistan's month: in UTC the 1st still showed last month until 5am.
+  const [month, setMonth] = useState(monthPKT);
+  // Firefox and Safari show type=month as plain text; only fetch a whole YYYY-MM.
+  const [draft, setDraft] = useState(month);
   const [slip, setSlip] = useState<Payslip | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = useCallback((m: string) => {
     setLoaded(false);
-    api<Payslip[]>(`/me/payslips?month=${month}`)
+    setError(null);
+    api<Payslip[]>(`/me/payslips?month=${m}`)
       .then((s) => setSlip(s[0] ?? null))
-      .catch(() => setSlip(null))
+      .catch((e) => { setSlip(null); setError(errorText(e, "Couldn't load that payslip.")); })
       .finally(() => setLoaded(true));
-  }, [month]);
+  }, []);
+  useEffect(() => load(month), [load, month]);
 
   return (
     <div className="mx-auto max-w-lg">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <p className="text-sm text-fg-muted">Choose a month to see that payslip.</p>
-        <Input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="w-40" />
+        <Field label="Month">
+          <Input
+            type="month"
+            value={draft}
+            placeholder="YYYY-MM"
+            pattern="\d{4}-\d{2}"
+            className="block w-44"
+            onChange={(e) => {
+              setDraft(e.target.value);
+              if (MONTH_RE.test(e.target.value)) setMonth(e.target.value);
+            }}
+            onBlur={() => setDraft(month)}
+          />
+        </Field>
       </div>
 
       {!loaded ? (
-        <p className="text-sm text-fg-subtle">Loading…</p>
+        <LoadingRows rows={4} label="Loading payslip" />
+      ) : error ? (
+        <ErrorState message={error} onRetry={() => load(month)} />
       ) : !slip ? (
-        <Card><p className="py-6 text-center text-sm text-fg-subtle">No payslip for this month.</p></Card>
+        <EmptyState title="No payslip for this month." />
       ) : (
         <Card className="space-y-4">
           <div>
             <p className="text-sm font-semibold">{slip.name}</p>
             <p className="text-xs text-fg-subtle">
-              {new Date(`${month}-01`).toLocaleDateString("en-PK", { month: "long", year: "numeric" })}
+              {new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-PK", { month: "long", year: "numeric", timeZone: "UTC" })}
             </p>
           </div>
 
@@ -62,7 +87,7 @@ export default function MyPayslips() {
 
 function Line({ label, value, muted = false }: { label: string; value: string; muted?: boolean }) {
   return (
-    <div className="flex justify-between">
+    <div className="flex justify-between gap-3">
       <span className={muted ? "text-fg-subtle" : "text-fg-muted"}>{label}</span>
       <span className={`tabular-nums ${muted ? "text-fg-muted" : ""}`}>{value}</span>
     </div>

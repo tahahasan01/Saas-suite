@@ -1,33 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import type { HrmsSummary } from "@business-os/types";
-import { api } from "@/lib/api";
 import { Card } from "@/components/ui";
+import { HrmsSummaryProvider, useHrmsSummary } from "./summary";
 
 export default function HrmsLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const [s, setS] = useState<HrmsSummary | null>(null);
-  // Payroll lives under /hrms but is its own module; staff tiles don't belong there.
-  const onPayroll = pathname.startsWith("/hrms/payroll");
-
-  useEffect(() => {
-    api<HrmsSummary>("/hrms/summary").then(setS).catch(() => {});
-  }, [pathname]);
-
   return (
-    <>
-      {s && !onPayroll && (
-        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Tile label="Headcount" value={s.headcount} />
-          <Tile label="Present today" value={s.present_today} accent />
-          <Tile label="On leave" value={s.on_leave_today} />
-          <Tile label="Pending leaves" value={s.pending_leaves} />
-        </div>
-      )}
+    <HrmsSummaryProvider>
+      <Tiles />
       {children}
-    </>
+    </HrmsSummaryProvider>
+  );
+}
+
+function Tiles() {
+  const pathname = usePathname();
+  const { summary: s } = useHrmsSummary();
+  // Payroll lives under /hrms but is its own module; staff tiles don't belong there.
+  if (!s || pathname.startsWith("/hrms/payroll")) return null;
+  return (
+    <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <Tile label="Headcount" value={s.headcount} />
+      <Tile label="Present today" value={s.present_today} accent />
+      <Tile label="On leave" value={s.on_leave_today} />
+      <Tile label="Pending leaves" value={s.pending_leaves} />
+    </div>
   );
 }
 
