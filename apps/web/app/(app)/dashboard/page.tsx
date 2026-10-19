@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { DashboardOverview, Kpi, TrendPoint } from "@business-os/types";
 import { api } from "@/lib/api";
 import { money, moneyCompact, timeAgo } from "@/lib/format";
 import { useSession } from "@/lib/session";
-import { Card } from "@/components/ui";
+import { errorText } from "@/lib/useAction";
+import { Card, ErrorState } from "@/components/ui";
 import { AiPrompt } from "@/components/AiPrompt";
 import { AreaChart, PipelineBars, Sparkline } from "@/components/charts";
 import { MODULES, moduleFor, tileStyle } from "@/lib/modules";
@@ -15,13 +16,19 @@ export default function Dashboard() {
   const { me, t } = useSession();
   const [data, setData] = useState<DashboardOverview | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  // A failed load used to render nothing at all under the AI box — an empty
+  // page that looked like a quiet day.
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(null);
     api<DashboardOverview>("/dashboard/overview")
       .then(setData)
-      .catch(() => setData(null))
+      .catch((e) => setError(errorText(e, "Couldn't load your dashboard.")))
       .finally(() => setLoading(false));
   }, []);
+  useEffect(load, [load]);
 
   if (!me) return null;
   const firstName = me.user.name.split(" ")[0];
@@ -36,7 +43,7 @@ export default function Dashboard() {
   return (
     <>
       <header className="mb-6">
-        <h1 className="font-display text-[28px] font-bold tracking-tight">Good to see you, {firstName}</h1>
+        <h1 className="break-words font-display text-2xl font-bold tracking-tight sm:text-[28px]">Good to see you, {firstName}</h1>
         <p className="mt-1 text-sm text-fg-muted">Here&apos;s what&apos;s happening in {me.tenant.name}.</p>
       </header>
 
@@ -44,7 +51,9 @@ export default function Dashboard() {
 
       {loading ? (
         <SkeletonGrid />
-      ) : !data ? null : !hasSignal ? (
+      ) : error || !data ? (
+        <ErrorState message={error ?? "Couldn't load your dashboard."} onRetry={load} />
+      ) : !hasSignal ? (
         <GetStarted leadWord={t("lead")} />
       ) : (
         <div className="space-y-5">
@@ -115,13 +124,13 @@ function StatTile({ kpi, trend }: { kpi: Kpi; trend?: TrendPoint[] }) {
       <Card className="relative h-full overflow-hidden transition-colors group-hover:border-line-strong">
         <span className="absolute inset-x-0 top-0 h-1" style={{ background: color }} aria-hidden />
         <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2.5">
+          <div className="flex min-w-0 items-center gap-2.5">
             {Icon && (
               <span className="grid h-8 w-8 place-items-center rounded-lg" style={tileStyle(token)}>
                 <Icon size={16} strokeWidth={2.2} aria-hidden />
               </span>
             )}
-            <p className="text-sm font-medium text-fg-muted">{kpi.label}</p>
+            <p className="min-w-0 truncate text-sm font-medium text-fg-muted" title={kpi.label}>{kpi.label}</p>
           </div>
           {kpi.delta_pct !== null && <Delta pct={kpi.delta_pct} />}
         </div>
@@ -136,7 +145,7 @@ function Delta({ pct }: { pct: number }) {
   const up = pct >= 0;
   // Arrow + sign carry the direction; colour only reinforces it.
   return (
-    <span className={`text-xs font-medium tabular-nums ${up ? "text-success" : "text-danger"}`}>
+    <span className={`shrink-0 text-xs font-medium tabular-nums ${up ? "text-success" : "text-danger"}`}>
       {up ? "↑" : "↓"} {Math.abs(pct)}%
     </span>
   );
@@ -182,7 +191,8 @@ function ActivityFeed({ items }: { items: DashboardOverview["activity"] }) {
               <li key={i} className="flex gap-2.5 text-sm">
                 <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" aria-hidden />
                 <div className="min-w-0">
-                  <p className="truncate">
+                  {/* Truncated to one line, so the full sentence lives in the title. */}
+                  <p className="truncate" title={`${a.actor ?? "System"} ${verb} a ${a.entity}`}>
                     <span className="font-medium">{a.actor ?? "System"}</span>{" "}
                     <span className="text-fg-muted">{verb} a {a.entity}</span>
                   </p>
@@ -222,12 +232,12 @@ function GetStarted({ leadWord }: { leadWord: string }) {
       <p className="mb-4 text-sm text-fg-muted">Set up takes about 2 minutes. No manual required.</p>
       <ul className="space-y-2">
         {steps.map((s, i) => (
-          <li key={s.label} className="flex items-center justify-between rounded-lg border border-line px-4 py-3">
+          <li key={s.label} className="flex items-center justify-between gap-3 rounded-lg border border-line px-4 py-3">
             <span className="flex items-center gap-3">
               <span className="grid h-6 w-6 place-items-center rounded-full bg-elevated text-xs font-semibold text-fg-muted">{i + 1}</span>
               <span className="text-sm">{s.label}</span>
             </span>
-            <Link href={s.href} className="rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-brand-fg hover:bg-brand-hover">
+            <Link href={s.href} className="inline-flex shrink-0 items-center rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-brand-fg hover:bg-brand-hover pointer-coarse:min-h-11">
               {s.cta}
             </Link>
           </li>

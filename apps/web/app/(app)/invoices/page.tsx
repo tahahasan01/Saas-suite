@@ -5,70 +5,118 @@ import type { Invoice } from "@business-os/types";
 import { api } from "@/lib/api";
 import { money, relativeDate } from "@/lib/format";
 import { useSession } from "@/lib/session";
-import { Badge, Button, Card } from "@/components/ui";
+import { errorText, useAction } from "@/lib/useAction";
+import { Badge, Button, EmptyState, ErrorState } from "@/components/ui";
+import { DataTable, type Column } from "@/components/DataTable";
+import { Dialog } from "@/components/Dialog";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const tone = { pending: "warning", approved: "success", rejected: "danger" } as const;
 
 export default function InvoicesPage() {
   const { me } = useSession();
-  const [items, setItems] = useState<Invoice[]>([]);
+  // null = loading; "No invoice requests yet" while loading read as "they're gone".
+  const [items, setItems] = useState<Invoice[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState<Invoice | null>(null);
   const canApprove = me?.user.role === "Owner"; // accounts approver
 
   const load = useCallback(() => {
-    api<Invoice[]>("/crm/invoices").then(setItems).catch(() => setItems([]));
+    setLoadError(null);
+    api<Invoice[]>("/crm/invoices")
+      .then(setItems)
+      .catch((e) => setLoadError(errorText(e, "Couldn't load invoice requests.")));
   }, []);
   useEffect(load, [load]);
 
-  async function decide(id: string, action: "approve" | "reject") {
-    await api(`/crm/invoices/${id}/${action}`, { method: "POST" }).catch(() => {});
-    load();
+  // One guarded action per decision, so a double tap can't approve twice and
+  // a failure says so instead of quietly reloading the same list.
+  const approve = useAction(
+    (id: string) => api(`/crm/invoices/${id}/approve`, { method: "POST" }),
+    { success: "Invoice approved", failure: "Couldn't approve the invoice" },
+  );
+  const reject = useAction(
+    (id: string) => api(`/crm/invoices/${id}/reject`, { method: "POST" }),
+    { success: "Invoice rejected", failure: "Couldn't reject the invoice" },
+  );
+  const deciding = approve.busy || reject.busy;
+
+  async function confirmApprove() {
+    if (!confirming) return;
+    const ok = await approve.run(confirming.id);
+    setConfirming(null);
+    if (ok !== undefined) load();
   }
+  async function doReject(inv: Invoice) {
+    if ((await reject.run(inv.id)) !== undefined) load();
+  }
+
+  const columns: Column<Invoice>[] = [
+    { key: "client", header: "Client", primary: true, cell: (i) => <span className="font-medium">{i.lead_name}</span> },
+    { key: "total", header: "Total", align: "right", cell: (i) => money(i.total_minor) },
+    { key: "discount", header: "Discount", align: "right", cell: (i) => <span className="text-fg-muted">{i.discount_pct}%</span> },
+    { key: "status", header: "Status", cell: (i) => <Badge tone={tone[i.status]}>{i.status}</Badge> },
+    { key: "requested", header: "Requested", cell: (i) => <span className="text-fg-subtle">{relativeDate(i.created_at)}</span> },
+  ];
 
   return (
     <>
       <p className="mb-6 text-sm text-fg-muted">Quotation & invoice requests from sales, approved by accounts.</p>
 
-      <Card className="p-0">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-line text-left text-xs text-fg-subtle">
-              <th className="p-3">Client</th>
-              <th className="p-3">Total</th>
-              <th className="p-3">Discount</th>
-              <th className="p-3">Status</th>
-              <th className="p-3">Requested</th>
-              <th className="p-3"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.length === 0 && (
-              <tr><td colSpan={6} className="p-6 text-center text-fg-subtle">No invoice requests yet.</td></tr>
-            )}
-            {items.map((inv) => (
-              <tr key={inv.id} className="border-b border-line/60">
-                <td className="p-3 font-medium">{inv.lead_name}</td>
-                <td className="p-3">{money(inv.total_minor)}</td>
-                <td className="p-3 text-fg-muted">{inv.discount_pct}%</td>
-                <td className="p-3"><Badge tone={tone[inv.status]}>{inv.status}</Badge></td>
-                <td className="p-3 text-fg-subtle">{relativeDate(inv.created_at)}</td>
-                <td className="p-3 text-right">
-                  {inv.status === "pending" && canApprove && (
-                    <span className="flex justify-end gap-2">
-                      <Button size="sm" onClick={() => decide(inv.id, "approve")}>Approve</Button>
-                      <Button size="sm" variant="subtle" onClick={() => decide(inv.id, "reject")}>Reject</Button>
-                    </span>
-                  )}
-                  {inv.status === "approved" && (
-                    <a href={`${API}/crm/invoices/${inv.id}/pdf`} target="_blank" rel="noreferrer"
-                       className="text-xs text-brand hover:underline">Download PDF</a>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
+      {loadError ? (
+        <ErrorState message={loadError} onRetry={load} />
+      ) : (
+        <DataTable
+          columns={columns}
+          rows={items ?? []}
+          rowKey={(i) => i.id}
+          loading={items === null}
+          caption="Invoice requests"
+          empty={<EmptyState title="No invoice requests yet" hint="Sales request invoices from a lead's details on the CRM board." />}
+          actions={(inv) => (
+            <>
+              {inv.status === "pending" && canApprove && (
+                <>
+                  <Button size="sm" disabled={deciding} onClick={() => setConfirming(inv)}>Approve</Button>
+                  <Button size="sm" variant="subtle" disabled={deciding} onClick={() => doReject(inv)}>
+                    {reject.busy ? "Rejecting…" : "Reject"}
+                  </Button>
+                </>
+              )}
+              {inv.status === "approved" && (
+                <a href={`${API}/crm/invoices/${inv.id}/pdf`} target="_blank" rel="noreferrer"
+                   className="relative inline-flex items-center text-xs text-brand hover:underline pointer-coarse:min-h-11">
+                  Download PDF<span className="sr-only"> for {inv.lead_name}</span>
+                </a>
+              )}
+            </>
+          )}
+        />
+      )}
+
+      {/* Approving issues a real invoice for real money, so it asks first and
+          names the client and amount. */}
+      <Dialog
+        open={!!confirming}
+        onOpenChange={(o) => { if (!o && !approve.busy) setConfirming(null); }}
+        title="Approve this invoice?"
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" disabled={approve.busy} onClick={() => setConfirming(null)}>Cancel</Button>
+            <Button disabled={approve.busy} onClick={confirmApprove}>{approve.busy ? "Approving…" : "Approve"}</Button>
+          </>
+        }
+      >
+        {confirming && (
+          <p className="text-sm text-fg-muted">
+            <span className="font-medium text-fg">{money(confirming.total_minor)}</span> for{" "}
+            <span className="font-medium text-fg">{confirming.lead_name}</span>
+            {confirming.discount_pct > 0 && ` (after a ${confirming.discount_pct}% discount)`}. Once approved it can be
+            downloaded and sent to the client.
+          </p>
+        )}
+      </Dialog>
     </>
   );
 }

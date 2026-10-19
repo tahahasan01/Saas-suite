@@ -5,18 +5,28 @@ import type { Lead, Pipeline, Stage } from "@business-os/types";
 import { api } from "@/lib/api";
 import { money, moneyCompact } from "@/lib/format";
 import { useSession } from "@/lib/session";
-import { Button, Input, Select } from "@/components/ui";
+import { errorText } from "@/lib/useAction";
+import { useToast } from "@/components/Toast";
+import { Button, EmptyState, ErrorState, Input, LoadingRows, Select } from "@/components/ui";
+import { DataTable, type Column } from "@/components/DataTable";
 import { AddLeadForm } from "@/components/crm/AddLeadForm";
 import { ImportCsv } from "@/components/ImportCsv";
 import { LeadDrawer } from "@/components/crm/LeadDrawer";
+import { ScorePill } from "@/components/crm/ScorePill";
 
 type View = "board" | "list";
 type Sort = "newest" | "value" | "score";
 
 export default function CrmBoard() {
   const { t } = useSession();
-  const [pipeline, setPipeline] = useState<Pipeline | null>(null);
-  const [leads, setLeads] = useState<Lead[]>([]);
+  const toast = useToast();
+  // undefined = still loading, null = this tenant has no pipeline at all.
+  const [pipeline, setPipeline] = useState<Pipeline | null | undefined>(undefined);
+  const [pipelineError, setPipelineError] = useState<string | null>(null);
+  // null = loading. "No leads yet" while the list was still in flight told
+  // people their data was gone.
+  const [leads, setLeads] = useState<Lead[] | null>(null);
+  const [leadsError, setLeadsError] = useState<string | null>(null);
   const [openLead, setOpenLead] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
@@ -26,33 +36,47 @@ export default function CrmBoard() {
   const [sort, setSort] = useState<Sort>("newest");
 
   const loadLeads = useCallback((pid: string) => {
-    api<Lead[]>(`/crm/leads?pipeline_id=${pid}`).then(setLeads).catch(() => setLeads([]));
-  }, []);
+    setLeadsError(null);
+    api<Lead[]>(`/crm/leads?pipeline_id=${pid}`)
+      .then(setLeads)
+      .catch((e) => setLeadsError(errorText(e, `Couldn't load your ${t("leads").toLowerCase()}.`)));
+  }, [t]);
 
-  useEffect(() => {
-    api<Pipeline[]>("/crm/pipelines").then((ps) => {
-      const p = ps[0] ?? null;
-      setPipeline(p);
-      if (p) loadLeads(p.id);
-    });
+  const loadPipeline = useCallback(() => {
+    setPipelineError(null);
+    setPipeline(undefined);
+    api<Pipeline[]>("/crm/pipelines")
+      .then((ps) => {
+        const p = ps[0] ?? null;
+        setPipeline(p);
+        if (p) loadLeads(p.id);
+      })
+      .catch((e) => setPipelineError(errorText(e, "Couldn't load the pipeline.")));
   }, [loadLeads]);
 
-  async function moveLead(id: string, stageId: string) {
-    setLeads((cur) => cur.map((l) => (l.id === id ? { ...l, stage_id: stageId } : l))); // optimistic
+  useEffect(loadPipeline, [loadPipeline]);
+
+  /** The one way a lead changes stage — drag, the drawer's select and the list
+   *  view all call this. Resolves false when the server refused. */
+  const moveLead = useCallback(async (id: string, stageId: string) => {
+    setLeads((cur) => cur && cur.map((l) => (l.id === id ? { ...l, stage_id: stageId } : l))); // optimistic
     try {
       await api(`/crm/leads/${id}`, { method: "PATCH", body: JSON.stringify({ stage_id: stageId }) });
-    } catch {
-      if (pipeline) loadLeads(pipeline.id); // revert on failure
+      return true;
+    } catch (e) {
+      toast.error(`Couldn't move it: ${errorText(e)}`);
+      if (pipeline) loadLeads(pipeline.id); // revert to what the server has
+      return false;
     }
-  }
+  }, [pipeline, loadLeads, toast]);
 
   // Sources that actually occur, not the theoretical enum — a filter offering
   // options with zero hits is noise.
-  const sources = useMemo(() => [...new Set(leads.map((l) => l.source))].sort(), [leads]);
+  const sources = useMemo(() => [...new Set((leads ?? []).map((l) => l.source))].sort(), [leads]);
 
   const shown = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    let out = leads;
+    let out = leads ?? [];
     if (needle) {
       out = out.filter((l) =>
         [l.name, l.company, l.phone, l.email].some((f) => f.toLowerCase().includes(needle)));
@@ -64,14 +88,29 @@ export default function CrmBoard() {
       : +new Date(b.created_at) - +new Date(a.created_at));
   }, [leads, q, source, sort]);
 
-  if (!pipeline) return <p className="text-sm text-fg-subtle">Loading pipeline…</p>;
+  if (pipelineError) return <ErrorState message={pipelineError} onRetry={loadPipeline} />;
+  if (pipeline === undefined) return <LoadingRows label="Loading pipeline" />;
+  if (pipeline === null) {
+    return (
+      <EmptyState
+        title="No pipeline set up yet"
+        hint={`A pipeline is the list of stages a ${t("lead").toLowerCase()} moves through. Ask an admin to set one up, then try again.`}
+        action={<Button variant="subtle" onClick={loadPipeline}>Try again</Button>}
+      />
+    );
+  }
+
+  const open = openLead ? (leads ?? []).find((l) => l.id === openLead) : undefined;
 
   return (
     <>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-fg-muted">Drag a card to move it to the next stage.</p>
-        <div className="flex items-center gap-3">
-          <ImportCsv path="/crm/leads" onDone={() => pipeline && loadLeads(pipeline.id)} />
+        {/* Drag is mouse-only; touch and keyboard users need to hear the other way. */}
+        <p className="text-sm text-fg-muted">
+          Drag a card to another stage, or open it and choose <span className="font-medium text-fg">Move to stage</span>.
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <ImportCsv path="/crm/leads" onDone={() => loadLeads(pipeline.id)} />
           <Button onClick={() => setAdding(true)}>+ New {t("lead")}</Button>
         </div>
       </div>
@@ -82,7 +121,7 @@ export default function CrmBoard() {
           Tailwind resolves the conflict by stylesheet order, so a w-56 on the
           element itself silently loses. */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="w-56">
+        <div className="w-full sm:w-56">
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
@@ -92,7 +131,7 @@ export default function CrmBoard() {
         </div>
         {sources.length > 1 && (
           <div className="w-36">
-            <Select value={source} onChange={(e) => setSource(e.target.value)}>
+            <Select value={source} onChange={(e) => setSource(e.target.value)} aria-label="Source">
               <option value="">All sources</option>
               {sources.map((s) => <option key={s} value={s}>{s}</option>)}
             </Select>
@@ -105,15 +144,19 @@ export default function CrmBoard() {
             <option value="score">Best score</option>
           </Select>
         </div>
-        {(q || source) && (
+        {(q || source) && leads && (
           <span className="text-xs text-fg-subtle">{shown.length} of {leads.length}</span>
         )}
         <ViewToggle view={view} onChange={setView} />
       </div>
 
-      {leads.length === 0 ? (
-        <div className="grid place-items-center rounded-xl border border-dashed border-line py-16 text-center">
-          <div className="mb-3 grid h-12 w-12 place-items-center rounded-full bg-elevated text-xl">✦</div>
+      {leadsError ? (
+        <ErrorState message={leadsError} onRetry={() => loadLeads(pipeline.id)} />
+      ) : leads === null ? (
+        <LoadingRows label={`Loading ${t("leads").toLowerCase()}`} />
+      ) : leads.length === 0 ? (
+        <div className="grid place-items-center rounded-xl border border-dashed border-line px-4 py-16 text-center">
+          <div className="mb-3 grid h-12 w-12 place-items-center rounded-full bg-elevated text-xl" aria-hidden>✦</div>
           <p className="text-sm font-medium">No {t("leads").toLowerCase()} yet</p>
           <p className="mb-4 max-w-xs text-xs text-fg-muted">
             Add your first {t("lead").toLowerCase()} to get started — we&apos;ll score it and flag duplicates automatically.
@@ -136,12 +179,15 @@ export default function CrmBoard() {
       {adding && (
         <AddLeadForm
           onClose={() => setAdding(false)}
-          onCreated={(l) => { setLeads((c) => [l, ...c]); setAdding(false); }}
+          onCreated={(l) => { setLeads((c) => [l, ...(c ?? [])]); setAdding(false); }}
         />
       )}
       {openLead && (
         <LeadDrawer
           leadId={openLead}
+          name={open?.name ?? t("lead")}
+          stages={pipeline.stages}
+          onMove={moveLead}
           onClose={() => setOpenLead(null)}
           onChanged={() => loadLeads(pipeline.id)}
         />
@@ -156,10 +202,11 @@ function ViewToggle({ view, onChange }: { view: View; onChange: (v: View) => voi
       {(["board", "list"] as View[]).map((v) => (
         <button
           key={v}
+          type="button"
           role="tab"
           aria-selected={view === v}
           onClick={() => onChange(v)}
-          className={`rounded-md px-3 py-1 text-xs font-medium capitalize transition-colors ${
+          className={`rounded-md px-3 py-1 text-xs font-medium capitalize transition-colors pointer-coarse:min-h-10 pointer-coarse:px-4 ${
             view === v ? "bg-elevated text-fg" : "text-fg-muted hover:text-fg"
           }`}
         >
@@ -180,63 +227,82 @@ function Board({ stages, leads, dragId, setDragId, onOpen, onMove }: {
   onMove: (id: string, stageId: string) => void;
 }) {
   return (
-    <div className="flex gap-3 overflow-x-auto pb-4">
+    // `relative` makes this the containing block for the sr-only text inside
+    // the cards; without it those absolutely-positioned spans escape the
+    // scroller and widen the whole page by the board's width.
+    <div className="relative flex gap-3 overflow-x-auto overscroll-x-contain pb-4">
       {stages.map((stage) => {
         const cards = leads.filter((l) => l.stage_id === stage.id);
         const total = cards.reduce((sum, l) => sum + l.value_minor, 0);
         return (
-          <div
+          // A named region per stage, so a screen reader can jump between columns.
+          <section
             key={stage.id}
+            aria-label={stage.name}
             onDragOver={(e) => e.preventDefault()}
             onDrop={() => dragId && onMove(dragId, stage.id)}
             className="flex w-64 shrink-0 flex-col rounded-lg border border-line bg-surface"
           >
             {/* Count and value live in the header — the column's worth is what
                 you scan for, not something to hunt at the bottom. */}
-            <div className="flex items-baseline justify-between border-b border-line p-3">
-              <span className={`text-sm font-medium ${kindColor(stage.kind)}`}>{stage.name}</span>
-              <span className="text-xs tabular-nums text-fg-subtle">
+            <div className="flex items-baseline justify-between gap-2 border-b border-line p-3">
+              <h2 className={`relative min-w-0 truncate text-sm font-medium ${kindColor(stage.kind)}`} title={stage.name}>
+                {stage.name}
+                {stage.kind !== "active" && <span className="sr-only"> ({stage.kind})</span>}
+              </h2>
+              <span className="shrink-0 text-xs tabular-nums text-fg-subtle">
                 {cards.length}{total > 0 && ` · ${moneyCompact(total)}`}
               </span>
             </div>
-            <div className="min-h-16 flex-1 space-y-2 p-2">
+            <ul className="min-h-16 flex-1 space-y-2 p-2">
               {cards.map((l) => (
-                <LeadCard key={l.id} lead={l} onOpen={onOpen} setDragId={setDragId} />
+                <li key={l.id}>
+                  <LeadCard lead={l} onOpen={onOpen} setDragId={setDragId} />
+                </li>
               ))}
-            </div>
-          </div>
+            </ul>
+          </section>
         );
       })}
     </div>
   );
 }
 
+/** A real button: Tab reaches it, Enter/Space open it, and it works by touch.
+ *  Drag stays for the mouse; the drawer's "Move to stage" is the way for
+ *  everyone else. */
 function LeadCard({ lead: l, onOpen, setDragId }: {
   lead: Lead;
   onOpen: (id: string) => void;
   setDragId: (id: string | null) => void;
 }) {
+  const detailsId = `lead-${l.id}-details`;
   return (
-    <div
+    <button
+      type="button"
       draggable
-      onDragStart={() => setDragId(l.id)}
+      onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; setDragId(l.id); }}
       onDragEnd={() => setDragId(null)}
       onClick={() => onOpen(l.id)}
-      className="cursor-pointer rounded-md border border-line bg-elevated p-3 transition-colors hover:border-brand/50"
+      aria-label={`Open ${l.name}`}
+      aria-describedby={detailsId}
+      className="block w-full cursor-pointer rounded-md border border-line bg-elevated p-3 text-left transition-colors hover:border-brand/50"
     >
-      <div className="flex items-start justify-between gap-2">
-        <p className="min-w-0 truncate text-sm font-medium">{l.name}</p>
+      <span className="flex items-start justify-between gap-2">
+        <span className="min-w-0 truncate text-sm font-medium" title={l.name}>{l.name}</span>
         {l.score != null && <ScorePill score={l.score} />}
-      </div>
-      {l.company && <p className="truncate text-xs text-fg-subtle">{l.company}</p>}
-      <div className="mt-2 flex items-center justify-between gap-2">
-        <span className="text-xs font-medium tabular-nums">{money(l.value_minor, l.currency)}</span>
-        <span className="flex items-center gap-1.5 text-[10px] text-fg-subtle">
-          <span className="rounded bg-surface px-1.5 py-0.5">{l.source}</span>
-          <span title={new Date(l.created_at).toLocaleDateString("en-PK")}>{age(l.created_at)}</span>
+      </span>
+      <span id={detailsId} className="block">
+        {l.company && <span className="block truncate text-xs text-fg-subtle" title={l.company}>{l.company}</span>}
+        <span className="mt-2 flex items-center justify-between gap-2">
+          <span className="text-xs font-medium tabular-nums">{money(l.value_minor, l.currency)}</span>
+          <span className="flex items-center gap-1.5 text-[10px] text-fg-subtle">
+            <span className="rounded bg-surface px-1.5 py-0.5">{l.source}</span>
+            <span title={new Date(l.created_at).toLocaleDateString("en-PK")}>{age(l.created_at)}</span>
+          </span>
         </span>
-      </div>
-    </div>
+      </span>
+    </button>
   );
 }
 
@@ -247,56 +313,58 @@ function ListView({ stages, leads, onOpen, onMove }: {
   onOpen: (id: string) => void;
   onMove: (id: string, stageId: string) => void;
 }) {
+  const columns: Column<Lead>[] = [
+    {
+      key: "name",
+      header: "Name",
+      primary: true,
+      cell: (l) => (
+        <span className="block max-w-64">
+          <span className="block truncate font-medium" title={l.name}>{l.name}</span>
+          {l.company && <span className="block truncate text-xs font-normal text-fg-subtle" title={l.company}>{l.company}</span>}
+        </span>
+      ),
+    },
+    { key: "score", header: "Score", align: "right", cell: (l) => (l.score != null ? <ScorePill score={l.score} /> : "—") },
+    { key: "value", header: "Value", align: "right", cell: (l) => money(l.value_minor, l.currency) },
+    { key: "source", header: "Source", cell: (l) => <span className="text-fg-muted">{l.source}</span> },
+    {
+      key: "contact",
+      header: "Contact",
+      cell: (l) => (
+        <span className="block text-xs text-fg-muted">
+          {l.phone && <span className="block">{l.phone}</span>}
+          {l.email && <span className="block truncate text-fg-subtle" title={l.email}>{l.email}</span>}
+          {!l.phone && !l.email && "—"}
+        </span>
+      ),
+    },
+    { key: "age", header: "Age", align: "right", cell: (l) => <span className="text-xs text-fg-subtle">{age(l.created_at)}</span> },
+  ];
+
   return (
-    <div className="overflow-hidden rounded-xl border border-line bg-surface">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-line text-left text-xs text-fg-subtle">
-            <th className="p-3">Name</th>
-            <th className="p-3">Stage</th>
-            <th className="p-3 text-right">Score</th>
-            <th className="p-3 text-right">Value</th>
-            <th className="p-3">Source</th>
-            <th className="p-3">Contact</th>
-            <th className="p-3 text-right">Age</th>
-          </tr>
-        </thead>
-        <tbody>
-          {leads.map((l) => (
-            <tr
-              key={l.id}
-              className="cursor-pointer border-b border-line/60 transition-colors hover:bg-elevated/40"
-              onClick={() => onOpen(l.id)}
-            >
-              <td className="p-3">
-                <p className="font-medium">{l.name}</p>
-                {l.company && <p className="text-xs text-fg-subtle">{l.company}</p>}
-              </td>
-              <td className="p-3" onClick={(e) => e.stopPropagation()}>
-                {/* Stage changes without opening anything — the list view is
-                    the fast lane, so the fastest action lives in it. */}
-                <Select
-                  value={l.stage_id}
-                  onChange={(e) => onMove(l.id, e.target.value)}
-                  className="w-36 py-1 text-xs"
-                  aria-label={`Stage for ${l.name}`}
-                >
-                  {stages.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </Select>
-              </td>
-              <td className="p-3 text-right">{l.score != null ? <ScorePill score={l.score} /> : "—"}</td>
-              <td className="p-3 text-right tabular-nums">{money(l.value_minor, l.currency)}</td>
-              <td className="p-3 text-fg-muted">{l.source}</td>
-              <td className="p-3 text-xs text-fg-muted">
-                {l.phone && <p>{l.phone}</p>}
-                {l.email && <p className="text-fg-subtle">{l.email}</p>}
-              </td>
-              <td className="p-3 text-right text-xs tabular-nums text-fg-subtle">{age(l.created_at)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <DataTable
+      columns={columns}
+      rows={leads}
+      rowKey={(l) => l.id}
+      onRowClick={(l) => onOpen(l.id)}
+      rowLabel={(l) => `Open ${l.name}`}
+      caption="Leads"
+      empty={<EmptyState title="Nothing matches these filters" />}
+      // Stage changes without opening anything — the list view is the fast
+      // lane, so the fastest action lives in it. It's an action, not a cell,
+      // because on a phone the card body is a button and can't hold a select.
+      actions={(l) => (
+        <Select
+          value={l.stage_id}
+          onChange={(e) => onMove(l.id, e.target.value)}
+          className="w-40 py-1 text-xs"
+          aria-label={`Stage for ${l.name}`}
+        >
+          {stages.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </Select>
+      )}
+    />
   );
 }
 
@@ -312,13 +380,4 @@ function kindColor(kind: string) {
   if (kind === "won") return "text-success";
   if (kind === "lost") return "text-danger";
   return "text-fg";
-}
-
-function ScorePill({ score }: { score: number }) {
-  const cls = score >= 70 ? "bg-success/15 text-success" : score >= 40 ? "bg-warning/15 text-warning" : "bg-elevated text-fg-muted";
-  return (
-    <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${cls}`} title="Lead score">
-      {score}
-    </span>
-  );
 }

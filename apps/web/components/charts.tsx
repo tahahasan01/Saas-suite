@@ -1,22 +1,27 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useLayoutEffect, useRef, useState } from "react";
 import type { StageSlice, TrendPoint } from "@business-os/types";
 
-/* Charts are plain SVG on a fixed viewBox scaled by CSS — no chart library.
-   Single-series by design: the card title names the series, so no legend is
-   needed and the mark carries no identity beyond "this metric". */
+/* Charts are plain SVG — no chart library. Single-series by design: the card
+   title names the series, so no legend is needed and the mark carries no
+   identity beyond "this metric".
 
-const W = 720;
-const H = 200;
-const PAD = { top: 12, right: 4, bottom: 22, left: 4 };
+   The SVG only draws shapes. It stretches to its box (preserveAspectRatio
+   "none") at a fixed CSS height, and strokes don't scale with it. Every piece
+   of text — axis days, the peak value, the tooltip — is HTML laid over it, so
+   it stays 11–12px whether the card is 288px or 2500px wide. With a fixed
+   viewBox the text scaled with the width: about 4px on a phone, 24px on an
+   ultrawide. */
+
+const VW = 1000;
+const VH = 100;
+const HEADROOM = 0.9; // the peak sits a little under the top edge
 
 function scale(data: TrendPoint[]) {
   const max = Math.max(1, ...data.map((d) => d.value));
-  const innerW = W - PAD.left - PAD.right;
-  const innerH = H - PAD.top - PAD.bottom;
-  const x = (i: number) => PAD.left + (data.length < 2 ? innerW / 2 : (i / (data.length - 1)) * innerW);
-  const y = (v: number) => PAD.top + innerH - (v / max) * innerH;
+  const x = (i: number) => (data.length < 2 ? VW / 2 : (i / (data.length - 1)) * VW);
+  const y = (v: number) => VH - (v / max) * VH * HEADROOM;
   return { x, y, max };
 }
 
@@ -37,83 +42,137 @@ export function AreaChart({
 }) {
   const gid = useId();
   const [hover, setHover] = useState<number | null>(null);
+  const [tipLeft, setTipLeft] = useState(0);
+  const plotRef = useRef<HTMLDivElement>(null);
+  const tipRef = useRef<HTMLDivElement>(null);
   const { x, y, max } = scale(data);
+
+  // Keep the tooltip inside the card: centred on the point, but pushed in at
+  // the first and last days instead of hanging off the edge. Measured before
+  // paint, so it never flashes in the wrong place.
+  useLayoutEffect(() => {
+    const plot = plotRef.current;
+    const tip = tipRef.current;
+    if (hover === null || !plot || !tip) return;
+    const w = plot.clientWidth;
+    const tw = tip.offsetWidth;
+    const cx = (x(hover) / VW) * w;
+    setTipLeft(Math.max(0, Math.min(w - tw, cx - tw / 2)));
+  }, [hover, data.length]); // x() depends only on the point count
 
   if (data.length === 0) return null;
 
-  const line = data.map((d, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(d.value).toFixed(1)}`).join(" ");
-  const area = `${line} L${x(data.length - 1).toFixed(1)},${H - PAD.bottom} L${x(0).toFixed(1)},${H - PAD.bottom} Z`;
+  const line = data.map((d, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(d.value).toFixed(2)}`).join(" ");
+  const area = `${line} L${x(data.length - 1).toFixed(1)},${VH} L${x(0).toFixed(1)},${VH} Z`;
   const active = hover === null ? null : data[hover];
 
-  function onMove(e: React.MouseEvent<SVGSVGElement>) {
+  // Pointer events cover mouse, pen and touch alike: a tap or a sideways drag
+  // on a phone shows the tooltip, while `touch-pan-y` leaves vertical swipes
+  // to the page (touch-none used to trap the scroll on the chart).
+  function pick(e: React.PointerEvent<HTMLDivElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
     const frac = (e.clientX - rect.left) / rect.width;
     const i = Math.round(frac * (data.length - 1));
     setHover(Math.min(data.length - 1, Math.max(0, i)));
   }
 
+  const pct = (v: number, of: number) => `${(v / of) * 100}%`;
+
   return (
-    <div className="relative">
-      <div className="mb-3 flex items-baseline justify-between">
+    <div>
+      <div className="mb-3 flex items-baseline justify-between gap-3">
         <h2 className="text-sm font-semibold">{title}</h2>
         {hint && <span className="text-xs text-fg-subtle">{hint}</span>}
       </div>
 
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        className="h-auto w-full touch-none"
+      <div
+        ref={plotRef}
+        className="relative h-40 touch-pan-y select-none sm:h-52"
         role="img"
-        aria-label={`${title}. Peak ${format(max)}.`}
-        onMouseMove={onMove}
-        onMouseLeave={() => setHover(null)}
+        aria-label={`${title}, ${shortDay(data[0].day)} to ${shortDay(data[data.length - 1].day)}. Peak ${format(max)}.`}
+        onPointerDown={pick}
+        onPointerMove={pick}
+        // A finger lifting fires pointerleave too; keep its tooltip until the
+        // next tap. A mouse leaving the chart clears it.
+        onPointerLeave={(e) => { if (e.pointerType === "mouse") setHover(null); }}
       >
-        <defs>
-          <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--color-chart-1)" stopOpacity="0.22" />
-            <stop offset="100%" stopColor="var(--color-chart-1)" stopOpacity="0" />
-          </linearGradient>
-        </defs>
+        <svg viewBox={`0 0 ${VW} ${VH}`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full overflow-visible" aria-hidden>
+          <defs>
+            <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--color-chart-1)" stopOpacity="0.22" />
+              <stop offset="100%" stopColor="var(--color-chart-1)" stopOpacity="0" />
+            </linearGradient>
+          </defs>
 
-        {/* Recessive grid — reference, never the subject. */}
-        {[0, 0.5, 1].map((f) => (
-          <line
-            key={f}
-            x1={PAD.left}
-            x2={W - PAD.right}
-            y1={y(max * f)}
-            y2={y(max * f)}
-            stroke="var(--color-chart-grid)"
-            strokeWidth="1"
+          {/* Recessive grid — reference, never the subject. */}
+          {[0, 0.5, 1].map((f) => (
+            <line
+              key={f}
+              x1={0}
+              x2={VW}
+              y1={y(max * f)}
+              y2={y(max * f)}
+              stroke="var(--color-chart-grid)"
+              strokeWidth="1"
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
+
+          <path d={area} fill={`url(#${gid})`} />
+          <path
+            d={line}
+            fill="none"
+            stroke="var(--color-chart-1)"
+            strokeWidth="2"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
           />
-        ))}
 
-        <path d={area} fill={`url(#${gid})`} />
-        <path d={line} fill="none" stroke="var(--color-chart-1)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+          {hover !== null && (
+            <line
+              x1={x(hover)} x2={x(hover)} y1={0} y2={VH}
+              stroke="var(--color-line-strong)" strokeWidth="1" vectorEffect="non-scaling-stroke"
+            />
+          )}
+        </svg>
 
-        {/* First / last day only — a label on every tick is noise at 14 points. */}
-        <text x={PAD.left} y={H - 6} className="fill-[var(--color-fg-subtle)] text-[11px]">{shortDay(data[0].day)}</text>
-        <text x={W - PAD.right} y={H - 6} textAnchor="end" className="fill-[var(--color-fg-subtle)] text-[11px]">
-          {shortDay(data[data.length - 1].day)}
-        </text>
+        {/* Peak label on the top gridline, so the height of the line means something. */}
+        <span
+          className="pointer-events-none absolute right-0 -translate-y-full pb-0.5 text-[11px] tabular-nums text-fg-subtle"
+          style={{ top: pct(y(max), VH) }}
+          aria-hidden
+        >
+          {format(max)}
+        </span>
 
         {hover !== null && active && (
           <>
-            <line x1={x(hover)} x2={x(hover)} y1={PAD.top} y2={H - PAD.bottom} stroke="var(--color-line-strong)" strokeWidth="1" />
-            {/* 2px surface ring keeps the marker legible where it overlaps the line. */}
-            <circle cx={x(hover)} cy={y(active.value)} r="5" fill="var(--color-chart-1)" stroke="var(--color-surface)" strokeWidth="2" />
+            {/* HTML, not an SVG circle: the stretched viewBox would make it an oval.
+                2px surface ring keeps the marker legible where it overlaps the line. */}
+            <span
+              className="pointer-events-none absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-surface bg-[var(--color-chart-1)] box-content"
+              style={{ left: pct(x(hover), VW), top: pct(y(active.value), VH) }}
+              aria-hidden
+            />
+            <div
+              ref={tipRef}
+              className="pointer-events-none absolute top-0 whitespace-nowrap rounded-lg border border-line bg-elevated px-2.5 py-1.5 text-xs shadow-lg"
+              style={{ left: tipLeft }}
+              aria-hidden
+            >
+              <p className="font-semibold tabular-nums">{format(active.value)}</p>
+              <p className="text-fg-subtle">{shortDay(active.day)}</p>
+            </div>
           </>
         )}
-      </svg>
+      </div>
 
-      {hover !== null && active && (
-        <div
-          className="pointer-events-none absolute -translate-x-1/2 rounded-lg border border-line bg-elevated px-2.5 py-1.5 text-xs shadow-lg"
-          style={{ left: `${(x(hover) / W) * 100}%`, top: 0 }}
-        >
-          <p className="font-semibold">{format(active.value)}</p>
-          <p className="text-fg-subtle">{shortDay(active.day)}</p>
-        </div>
-      )}
+      {/* First / last day only — a label on every tick is noise at 14 points. */}
+      <div className="mt-1.5 flex justify-between text-[11px] text-fg-subtle" aria-hidden>
+        <span>{shortDay(data[0].day)}</span>
+        {data.length > 1 && <span>{shortDay(data[data.length - 1].day)}</span>}
+      </div>
     </div>
   );
 }
