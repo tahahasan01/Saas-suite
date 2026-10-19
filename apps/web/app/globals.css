@@ -142,6 +142,13 @@ body {
 }
 
 /* Focus ring for keyboard users */
+/* ─── Stacking order ────────────────────────────────────────────────────────
+   One scale for the whole app; an overlay below the sticky top bar was how the
+   CRM drawer's close button ended up unreachable on phones.
+     z-30  sticky top bar / headers        z-[60] dialogs, sheets, drawers
+     z-40  popovers & menus                z-[70] toasts
+     z-[80] command palette                (z-[1] sticky table cells) */
+
 :where(button, a, input, select, textarea):focus-visible {
   outline: 2px solid var(--color-brand);
   outline-offset: 1px;
@@ -173,6 +180,11 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-up, .animate-fade-in, .animate-float, .animate-marquee { animation: none; }
+  /* Everything else too: pulses, slides, rotating words, smooth scroll. */
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important; animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important; scroll-behavior: auto !important;
+  }
 }
 
 /* Marketing runs near-black rather than the app's navy: colour bleeds only read
@@ -335,20 +347,61 @@ body {
   background-image: radial-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px);
 }
 
-/* Print only the tagged receipt (thermal-friendly) */
+/* Print only the tagged receipt, on an 80mm roll (P12). Everything that is
+   neither the receipt, inside it, nor one of its ancestors is display:none —
+   visibility:hidden kept the page's full height and fed out blank paper. The
+   receipt's ancestors (the dialog) lose their fixed position, transforms and
+   scroll caps so the whole receipt flows onto paper. Scoped with :has() so
+   printing any other page is untouched. The page length is set at print time
+   by components/pos/Receipt.tsx (80mm x the receipt's height): "80mm auto" is
+   not valid CSS, and a bare 80mm makes square pages that cut long receipts. */
 @media print {
-  body * {
-    visibility: hidden;
+  body:has(.receipt-print) {
+    background: #fff !important;
+  }
+  body:has(.receipt-print) *:not(:has(.receipt-print)):not(.receipt-print):not(.receipt-print *) {
+    display: none !important;
+  }
+  body:has(.receipt-print) *:has(.receipt-print) {
+    display: block !important;
+    position: static !important;
+    inset: auto !important;
+    transform: none !important;
+    animation: none !important;
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+  }
+  /* Tailwind v4 centres the dialog with the separate `translate` property.
+     In its own rule: next to `transform`, the CSS build folds it into that
+     and the dialog keeps its -50% offset on paper. */
+  body:has(.receipt-print) [role="dialog"] {
+    translate: none !important;
+  }
+  .receipt-print {
+    width: 72mm;
+    margin: 0 auto;
+    padding: 3mm 0;
+    background: #fff;
   }
   .receipt-print,
   .receipt-print * {
-    visibility: visible;
     color: #000 !important;
+    border-color: #000 !important;
+    overflow-wrap: anywhere;
   }
-  .receipt-print {
-    position: absolute;
-    inset: 0;
-    background: #fff;
+  .receipt-print .truncate {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
   }
   .no-print {
     display: none !important;

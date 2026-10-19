@@ -58,3 +58,8 @@ claude/
 # internal markdown docs (plans, roadmap, strategy) — keep local, off GitHub
 *.md
 !README.md
+
+# playwright
+apps/web/e2e/.auth/
+apps/web/test-results/
+apps/web/playwright-report/

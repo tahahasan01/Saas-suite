@@ -1,13 +1,17 @@
 /** Whole rupees when the amount is whole; paisa only when there are some —
  *  hiding them made Rs 94.40 look like Rs 94 at the till. */
+// Building an Intl.NumberFormat is slow; the till formats every tile and line
+// on every keystroke, so keep one per (currency, digits).
+const moneyFmt = new Map<string, Intl.NumberFormat>();
 export function money(minor: number, currency = "PKR") {
   const digits = Math.round(minor) % 100 === 0 ? 0 : 2;
-  return new Intl.NumberFormat("en-PK", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  }).format(minor / 100);
+  const key = `${currency}:${digits}`;
+  let f = moneyFmt.get(key);
+  if (!f) {
+    f = new Intl.NumberFormat("en-PK", { style: "currency", currency, minimumFractionDigits: digits, maximumFractionDigits: digits });
+    moneyFmt.set(key, f);
+  }
+  return f.format(minor / 100);
 }
 
 /** Axis/tile-friendly money: ₨1.2M instead of ₨1,234,567. */

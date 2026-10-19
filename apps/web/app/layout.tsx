@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, IBM_Plex_Sans } from "next/font/google";
 import { SessionProvider } from "@/lib/session";
+import { ToastProvider } from "@/components/Toast";
 import { THEME_INIT } from "@/components/ThemeToggle";
 import "./globals.css";
 
@@ -16,6 +17,15 @@ export const metadata: Metadata = {
   description: "All-in-one AI-powered business platform",
 };
 
+// viewport-fit=cover lets the app use the whole screen on notched phones; the
+// shell pads the sticky bar, sheets and toasts with env(safe-area-inset-*).
+// Zoom is deliberately not blocked (no maximum-scale): people need it.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${plex.variable} ${bricolage.variable}`} suppressHydrationWarning>
@@ -23,7 +33,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
       </head>
       <body>
-        <SessionProvider>{children}</SessionProvider>
+        <SessionProvider>
+          <ToastProvider>{children}</ToastProvider>
+        </SessionProvider>
       </body>
     </html>
   );
