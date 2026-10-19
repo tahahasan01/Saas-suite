@@ -12,35 +12,8 @@ import asyncpg
 import pytest
 import pytest_asyncio
 
-from app import fbr, fbr_submit
+from app import fbr_submit
 from app.config import settings
-
-
-class FakeFbr:
-    """Stands in for PRAL. `outcomes` is consumed in order; when it runs out,
-    every call succeeds with a fresh invoice number."""
-
-    def __init__(self):
-        self.payloads: list[dict] = []
-        self.outcomes: list = []
-        self._n = 0
-
-    async def __call__(self, cfg, payload):
-        self.payloads.append(payload)
-        outcome = self.outcomes.pop(0) if self.outcomes else "ok"
-        if isinstance(outcome, Exception):
-            raise outcome
-        if outcome == "fail":
-            return fbr.FbrResult(ok=False, error_code="0401", error="Seller not registered")
-        self._n += 1
-        return fbr.FbrResult(ok=True, invoice_number=f"FBR-{self._n}")
-
-
-@pytest.fixture
-def fake_fbr(monkeypatch):
-    fake = FakeFbr()
-    monkeypatch.setattr(fbr, "post_invoice", fake)
-    return fake
 
 
 @pytest_asyncio.fixture
@@ -134,3 +107,43 @@ async def test_a_return_made_before_its_sale_is_filed_waits_then_follows_the_sal
     assert [p["invoiceType"] for p in fake_fbr.payloads] == ["Sale Invoice", "Debit Note"]
     assert fake_fbr.payloads[1]["invoiceRefNo"] == "FBR-1"
     assert {row["status"] for row in await _fbr_rows(sale["id"])} == {"submitted"}
+
+
+async def test_two_retry_runs_cannot_file_the_same_sale_twice(client, fbr_shop, fake_fbr):
+    """Security review of 9474053: rows were read, then transmitted, with no
+    claim — overlapping runs (or a run overlapping the post-sale attempt)
+    filed the same sale twice. Here the first run is frozen mid-transmission."""
+    import asyncio
+
+    fake_fbr.outcomes = ["fail"]
+    sale = (await _sell(client, fbr_shop["product_id"])).json()
+    fake_fbr.payloads.clear()
+    fake_fbr.hold = asyncio.Event()
+    first = asyncio.create_task(fbr_submit.retry_pending())
+    await asyncio.sleep(0.3)            # first run is now inside the transmission
+    second = asyncio.create_task(fbr_submit.retry_pending())
+    await asyncio.sleep(0.3)
+    fake_fbr.hold.set()
+    await asyncio.gather(first, second)
+    assert len(fake_fbr.payloads) == 1
+    assert (await _fbr_rows(sale["id"]))[0]["status"] == "submitted"
+
+
+async def test_a_return_whose_sale_failed_is_blocked_not_retried_forever(client, fbr_shop, fake_fbr):
+    """Security review of 9474053: such a return was skipped without counting
+    an attempt, so it stayed pending forever and occupied the retry batch."""
+    fake_fbr.outcomes = ["fail"]
+    sale = (await _sell(client, fbr_shop["product_id"], qty=2)).json()
+    item = (await client.get(f"/pos/sales/{sale['id']}")).json()["returnable"][0]
+    await client.post(f"/pos/sales/{sale['id']}/returns", json={
+        "items": [{"sale_item_id": item["sale_item_id"], "qty": 1}]})
+    owner = await asyncpg.connect(settings.database_url)
+    try:
+        await owner.execute(
+            "update pos_fbr_invoices set status='failed' where sale_id=$1 and return_id is null",
+            uuid.UUID(sale["id"]))
+    finally:
+        await owner.close()
+    await fbr_submit.retry_pending()
+    statuses = {(row["return_id"] is None): row["status"] for row in await _fbr_rows(sale["id"])}
+    assert statuses[False] == "failed"

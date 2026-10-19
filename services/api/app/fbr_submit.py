@@ -50,18 +50,37 @@ async def _post(settings, payload: dict) -> fbr.FbrResult:
         return fbr.FbrResult(ok=False, error_code="transport", error=str(e)[:500])
 
 
+STALE_CLAIM = "5 minutes"     # a 'sending' row older than this was abandoned mid-flight
+WAITING_BACKOFF = "10 minutes"  # a debit note waiting on its sale steps out of the batch
+
+_BUSY = fbr.FbrResult(ok=False, error_code="busy", error="Already being filed")
+
+
+async def _claim(conn, row_id) -> bool:
+    """Take the row for this worker. Must commit before transmitting, so any
+    concurrent worker sees the claim and skips the row."""
+    return await conn.fetchval(
+        f"""update pos_fbr_invoices
+               set status = 'sending', claimed_at = now()
+             where id = $1
+               and (status = 'pending'
+                    or (status = 'sending' and claimed_at < now() - interval '{STALE_CLAIM}'))
+         returning true""", row_id) is not None
+
+
 async def _record_attempt(conn, row_id, result: fbr.FbrResult) -> None:
     """The one place an attempt is written: status, number, error, attempt count,
-    and the move to `failed` once the attempts are used up."""
+    and the move to `failed` once the attempts are used up. Only applies to a
+    row this worker holds, so it can never overwrite a filed document."""
     await conn.execute(
         """update pos_fbr_invoices
               set status = case when $2 then 'submitted'
                                 when attempts + 1 >= $6 then 'failed'
                                 else 'pending' end,
                   fbr_invoice_number = coalesce($3, fbr_invoice_number),
-                  error_code = $4, error = $5,
+                  error_code = $4, error = $5, claimed_at = null,
                   attempts = attempts + 1, last_attempt_at = now()
-            where id = $1""",
+            where id = $1 and status = 'sending'""",
         row_id, result.ok, result.invoice_number, result.error_code, result.error, MAX_ATTEMPTS)
 
 
@@ -86,10 +105,14 @@ async def enqueue_return(conn, tenant_id: str, sale_id: str, return_id: str) -> 
 async def submit_sale(tenant_id: str, sale_id: str, settings, lines) -> fbr.FbrResult:
     """Transmit one freshly committed sale. Never raises."""
     payload = fbr.build_payload(settings, _items(lines), invoice_date=date.today())
-    result = await _post(settings, payload)
     async with db.tenant_conn(tenant_id) as conn:
         row_id = await conn.fetchval(
             "select id from pos_fbr_invoices where sale_id=$1 and return_id is null", sale_id)
+        claimed = await _claim(conn, row_id)
+    if not claimed:
+        return _BUSY
+    result = await _post(settings, payload)
+    async with db.tenant_conn(tenant_id) as conn:
         await _record_attempt(conn, row_id, result)
     if not result.ok:
         log.warning("FBR sale %s not filed (%s): %s", sale_id, result.error_code, result.error)
@@ -108,9 +131,14 @@ async def submit_return(tenant_id: str, return_id: str, settings, lines,
         "tax_rate": row["tax_rate"],
         "line_total_minor": line_refund,
     } for row, qty, line_refund in lines]
-    result = await _post(settings, _debit_note(settings, items, original_invoice_number, date.today()))
+    payload = _debit_note(settings, items, original_invoice_number, date.today())
     async with db.tenant_conn(tenant_id) as conn:
         row_id = await conn.fetchval("select id from pos_fbr_invoices where return_id=$1", return_id)
+        claimed = await _claim(conn, row_id)
+    if not claimed:
+        return _BUSY
+    result = await _post(settings, payload)
+    async with db.tenant_conn(tenant_id) as conn:
         await _record_attempt(conn, row_id, result)
     if not result.ok:
         log.warning("FBR debit note for return %s not filed (%s): %s",
@@ -118,7 +146,7 @@ async def submit_return(tenant_id: str, return_id: str, settings, lines,
     return result
 
 
-async def _retry_sale(conn, cfg, row) -> fbr.FbrResult:
+async def _sale_payload(conn, cfg, row) -> dict:
     lines = await conn.fetch(
         """select i.name, i.qty, i.line_total_minor,
                   coalesce(p.hs_code, '') as hs_code,
@@ -128,21 +156,14 @@ async def _retry_sale(conn, cfg, row) -> fbr.FbrResult:
              left join pos_products p on p.id = i.product_id
             where i.sale_id = $1""", row["sale_id"])
     sale_date = await conn.fetchval("select created_at::date from pos_sales where id=$1", row["sale_id"])
-    payload = fbr.build_payload(
+    return fbr.build_payload(
         cfg, [{"name": l["name"], "quantity": float(l["qty"]), "hs_code": l["hs_code"],
                "fbr_uom": l["fbr_uom"], "tax_rate": l["tax_rate"],
                "line_total_minor": l["line_total_minor"]} for l in lines],
         invoice_date=sale_date or date.today())
-    return await _post(cfg, payload)
 
 
-async def _retry_return(conn, cfg, row) -> fbr.FbrResult | None:
-    """None means "not yet": the sale this note references has no FBR number."""
-    original = await conn.fetchval(
-        """select fbr_invoice_number from pos_fbr_invoices
-            where sale_id=$1 and return_id is null and status='submitted'""", row["sale_id"])
-    if not original:
-        return None
+async def _return_payload(conn, cfg, row, original: str) -> dict:
     lines = await conn.fetch(
         """select ri.name, ri.qty, ri.line_refund_minor,
                   coalesce(p.hs_code, '') as hs_code,
@@ -155,21 +176,56 @@ async def _retry_return(conn, cfg, row) -> fbr.FbrResult | None:
     items = [{"name": l["name"], "quantity": float(l["qty"]), "hs_code": l["hs_code"],
               "fbr_uom": l["fbr_uom"], "tax_rate": l["tax_rate"],
               "line_total_minor": l["line_refund_minor"]} for l in lines]
-    return await _post(cfg, _debit_note(cfg, items, original, return_date or date.today()))
+    return _debit_note(cfg, items, original, return_date or date.today())
+
+
+async def _prepare(conn, cfg, row) -> dict | None:
+    """Claim the row and build what to send, or None to skip it this run.
+
+    A debit note needs its sale's FBR number: if the sale was given up on, the
+    note can never be filed and is failed now; if the sale simply isn't filed
+    yet, the note steps out of the batch for a while instead of occupying it.
+    """
+    if row["return_id"] is not None:
+        sale = await conn.fetchrow(
+            """select status, fbr_invoice_number from pos_fbr_invoices
+                where sale_id=$1 and return_id is null""", row["sale_id"])
+        if sale is None or sale["status"] == "failed":
+            await conn.execute(
+                """update pos_fbr_invoices
+                      set status = 'failed', error_code = 'blocked',
+                          error = 'The sale this return refers to was never filed with FBR'
+                    where id = $1 and status = 'pending'""", row["id"])
+            return None
+        if sale["status"] != "submitted" or not sale["fbr_invoice_number"]:
+            await conn.execute(
+                f"""update pos_fbr_invoices set next_attempt_at = now() + interval '{WAITING_BACKOFF}'
+                     where id = $1 and status = 'pending'""", row["id"])
+            return None
+    if not await _claim(conn, row["id"]):
+        return None  # another worker holds it
+    if row["return_id"] is None:
+        return await _sale_payload(conn, cfg, row)
+    return await _return_payload(conn, cfg, row, sale["fbr_invoice_number"])
 
 
 async def retry_pending() -> int:
     """Re-send documents FBR never accepted. Runs on the scheduler.
 
-    Sales go before returns so that a debit note queued behind its own sale can
-    be filed in the same pass. Crosses tenants, so it reads through the owner
-    pool and then does the work tenant-by-tenant under RLS.
+    Each row is claimed in a short committed transaction, transmitted with no
+    transaction open, then recorded — so overlapping runs, or a run overlapping
+    the post-sale attempt, never file the same document twice. Sales go before
+    returns so a debit note queued behind its own sale is filed in the same
+    pass. Crosses tenants, so it reads through the owner pool and then does the
+    work tenant-by-tenant under RLS.
     """
     async with db.owner_conn() as conn:
         due = await conn.fetch(
-            """select f.id, f.tenant_id, f.sale_id, f.return_id
+            f"""select f.id, f.tenant_id, f.sale_id, f.return_id
                  from pos_fbr_invoices f
-                where f.status = 'pending' and f.attempts < $1
+                where f.attempts < $1
+                  and ((f.status = 'pending' and f.next_attempt_at <= now())
+                       or (f.status = 'sending' and f.claimed_at < now() - interval '{STALE_CLAIM}'))
                 order by (f.return_id is not null), f.created_at
                 limit 100""", MAX_ATTEMPTS)
     sent = 0
@@ -179,12 +235,11 @@ async def retry_pending() -> int:
             cfg = await conn.fetchrow("select * from fbr_settings where tenant_id=$1", tenant_id)
             if not cfg or not cfg["enabled"]:
                 continue
-            if row["return_id"] is None:
-                result = await _retry_sale(conn, cfg, row)
-            else:
-                result = await _retry_return(conn, cfg, row)
-                if result is None:
-                    continue  # its sale isn't filed yet; not an attempt
+            payload = await _prepare(conn, cfg, row)
+        if payload is None:
+            continue
+        result = await _post(cfg, payload)
+        async with db.tenant_conn(tenant_id) as conn:
             await _record_attempt(conn, row["id"], result)
         if result.ok:
             sent += 1
