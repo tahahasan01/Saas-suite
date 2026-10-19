@@ -183,6 +183,10 @@ export interface Sale {
   created_at: string;
   items: SaleItem[];
   tax_minor: number;
+  /** Cash rounding: amount_due_minor - total_minor (0 for card/wallet). */
+  rounding_minor: number;
+  /** What the customer paid against: the total, rounded for cash. */
+  amount_due_minor: number;
   /** Issued by FBR; null while a submission is queued for retry. */
   fbr_invoice_number: string | null;
   /** 'submitted' | 'pending', or null when FBR invoicing is off. */

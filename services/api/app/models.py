@@ -338,13 +338,16 @@ class SaleCreate(BaseModel):
 class SaleQuoteRequest(BaseModel):
     items: list[SaleLine] = Field(min_length=1)
     discount_minor: int = Field(default=0, ge=0)
+    payment_method: Literal["cash", "card", "jazzcash", "easypaisa", "bank"] = "cash"
 
 
 class SaleQuote(BaseModel):
     subtotal_minor: int
     discount_minor: int
     tax_minor: int
-    total_minor: int
+    total_minor: int          # the exact invoice value (what FBR is told)
+    rounding_minor: int = 0   # cash rounding; due - total
+    amount_due_minor: int = 0 # what the customer pays
 
 
 class SaleItemOut(BaseModel):
@@ -366,6 +369,8 @@ class SaleOut(BaseModel):
     created_at: datetime
     items: list[SaleItemOut] = Field(default_factory=list)
     tax_minor: int = 0
+    rounding_minor: int = 0         # cash rounding; amount_due - total
+    amount_due_minor: int = 0       # what the customer paid against
     # Present once FBR has issued a number; None while a submission is queued.
     fbr_invoice_number: str | None = None
     fbr_status: str | None = None       # 'submitted' | 'pending' | None (FBR off)

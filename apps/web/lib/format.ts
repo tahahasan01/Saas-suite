@@ -1,8 +1,12 @@
+/** Whole rupees when the amount is whole; paisa only when there are some —
+ *  hiding them made Rs 94.40 look like Rs 94 at the till. */
 export function money(minor: number, currency = "PKR") {
+  const digits = Math.round(minor) % 100 === 0 ? 0 : 2;
   return new Intl.NumberFormat("en-PK", {
     style: "currency",
     currency,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
   }).format(minor / 100);
 }
 

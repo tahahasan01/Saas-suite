@@ -170,3 +170,74 @@ async def test_a_quote_prices_the_cart_without_recording_anything(client, exclus
     assert q["tax_minor"] == 3_240                # 18% of the Rs 180 after discount
     assert q["total_minor"] == 21_240
     assert (await client.get("/pos/summary")).json()["sales_today_count"] == before
+
+
+# ── Cash rounding (tenants.cash_rounding_minor, default Rs 1) ────────────────
+async def test_cash_is_rounded_to_the_rupee_and_fbr_still_sees_the_exact_amount(
+        client, exclusive_shop, fake_fbr):
+    a, _ = exclusive_shop  # Rs 100 + 18% = Rs 118.00 exactly — use Rs 80 lines for paisa
+    owner = await asyncpg.connect(settings.database_url)
+    try:
+        await owner.execute("update pos_products set price_minor = 8_000 where id = $1", uuid.UUID(a))
+    finally:
+        await owner.close()
+    r = await client.post("/pos/sales", json={"items": [{"product_id": a, "qty": 1}],
+                                              "paid_minor": 9_400, "payment_method": "cash"})
+    assert r.status_code == 201                    # Rs 94.40 due, Rs 94 tendered in cash
+    sale = r.json()
+    assert (sale["total_minor"], sale["rounding_minor"], sale["amount_due_minor"]) == (9_440, -40, 9_400)
+    assert sale["change_minor"] == 0
+    assert sum(_cents(l["totalValues"]) for l in fake_fbr.payloads[-1]["items"]) == 9_440
+
+
+async def test_half_a_rupee_rounds_up(client, exclusive_shop):
+    a, _ = exclusive_shop
+    owner = await asyncpg.connect(settings.database_url)
+    try:  # Rs 80.93 + 18% GST (Rs 14.57) = Rs 95.50 exactly
+        await owner.execute("update pos_products set price_minor = 8_093 where id = $1", uuid.UUID(a))
+    finally:
+        await owner.close()
+    q = (await client.post("/pos/sales/quote", json={
+        "items": [{"product_id": a, "qty": 1}], "payment_method": "cash"})).json()
+    assert (q["total_minor"], q["amount_due_minor"], q["rounding_minor"]) == (9_550, 9_600, 50)
+
+
+async def test_card_payments_are_never_rounded(client, exclusive_shop):
+    a, _ = exclusive_shop
+    owner = await asyncpg.connect(settings.database_url)
+    try:
+        await owner.execute("update pos_products set price_minor = 8_000 where id = $1", uuid.UUID(a))
+    finally:
+        await owner.close()
+    q = (await client.post("/pos/sales/quote", json={
+        "items": [{"product_id": a, "qty": 1}], "payment_method": "card"})).json()
+    assert (q["amount_due_minor"], q["rounding_minor"]) == (9_440, 0)
+
+
+async def test_rounding_can_be_switched_off(client, exclusive_shop, pos_tenant):
+    a, _ = exclusive_shop
+    owner = await asyncpg.connect(settings.database_url)
+    try:
+        await owner.execute("update pos_products set price_minor = 8_000 where id = $1", uuid.UUID(a))
+        await owner.execute("update tenants set cash_rounding_minor = 0 where id = $1",
+                            uuid.UUID(pos_tenant.tenant_id))
+    finally:
+        await owner.close()
+    q = (await client.post("/pos/sales/quote", json={
+        "items": [{"product_id": a, "qty": 1}], "payment_method": "cash"})).json()
+    assert (q["amount_due_minor"], q["rounding_minor"]) == (9_440, 0)
+
+
+async def test_refunds_never_exceed_the_rounded_cash_actually_paid(client, exclusive_shop):
+    a, _ = exclusive_shop
+    owner = await asyncpg.connect(settings.database_url)
+    try:
+        await owner.execute("update pos_products set price_minor = 8_000 where id = $1", uuid.UUID(a))
+    finally:
+        await owner.close()
+    sale = (await client.post("/pos/sales", json={"items": [{"product_id": a, "qty": 1}],
+                                                  "paid_minor": 9_400, "payment_method": "cash"})).json()
+    item = (await client.get(f"/pos/sales/{sale['id']}")).json()["returnable"][0]
+    r = await client.post(f"/pos/sales/{sale['id']}/returns", json={
+        "items": [{"sale_item_id": item["sale_item_id"], "qty": 1}]})
+    assert r.json()["refund_minor"] == 9_400  # what was paid, not the Rs 94.40 invoice value

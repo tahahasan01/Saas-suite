@@ -158,7 +158,8 @@ async def _replay_sale(tenant_id: str, client_uuid, fingerprint: str) -> SaleOut
         payment_method=sale["payment_method"], item_count=sale["item_count"], created_at=sale["created_at"],
         items=[SaleItemOut(name=r["name"], qty=float(r["qty"]), price_minor=r["price_minor"],
                            line_total_minor=r["line_total_minor"]) for r in rows],
-        tax_minor=sale["tax_minor"],
+        tax_minor=sale["tax_minor"], rounding_minor=sale["rounding_minor"],
+        amount_due_minor=sale["total_minor"] + sale["rounding_minor"],
         fbr_invoice_number=fbr_row["fbr_invoice_number"] if fbr_row else None,
         fbr_status=fbr_row["status"] if fbr_row else None)
 
@@ -204,37 +205,49 @@ async def _price_cart(conn, tenant_id: str, items, discount_minor: int):
     return [(p, qty, pl) for (p, qty), pl in zip(products, priced.lines)], fbr_cfg, priced
 
 
+async def _amount_due(conn, total_minor: int, payment_method: str) -> tuple[int, int]:
+    """Cash is rounded to the tenant's unit; every other method pays exactly."""
+    if payment_method != "cash":
+        return total_minor, 0
+    unit = await conn.fetchval(
+        "select cash_rounding_minor from tenants where id = current_setting('app.tenant_id')::uuid")
+    return pricing.cash_due(total_minor, unit or 0)
+
+
 @router.post("/sales/quote", response_model=SaleQuote)
 async def quote_sale(body: SaleQuoteRequest, auth: AuthContext = Depends(require("pos", "write"))):
     """Price a cart exactly as a sale would be priced, without recording it, so
     the till shows the server's own total (tax-exclusive prices included)."""
     async with db.tenant_conn(auth.tenant_id) as conn:
         _, _, priced = await _price_cart(conn, auth.tenant_id, body.items, body.discount_minor)
+        due, rounding = await _amount_due(conn, priced.total_minor, body.payment_method)
     return SaleQuote(subtotal_minor=priced.subtotal_minor, discount_minor=priced.discount_minor,
-                     tax_minor=priced.tax_minor, total_minor=priced.total_minor)
+                     tax_minor=priced.tax_minor, total_minor=priced.total_minor,
+                     rounding_minor=rounding, amount_due_minor=due)
 
 
 async def _record_sale(body: SaleCreate, auth: AuthContext, fingerprint: str) -> SaleOut:
     async with db.tenant_conn(auth.tenant_id) as conn:
         lines, fbr_cfg, priced = await _price_cart(conn, auth.tenant_id, body.items, body.discount_minor)
         total = priced.total_minor
+        due, rounding = await _amount_due(conn, total, body.payment_method)
         # 0 means the exact amount was tendered (card, wallet, bank). Anything
-        # less than the total is a short payment, never a silent zero change.
-        paid = body.paid_minor or total
-        if paid < total:
+        # less than what's due is a short payment, never a silent zero change.
+        paid = body.paid_minor or due
+        if paid < due:
             raise HTTPException(
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
-                f"Payment is short by Rs {(total - paid) / 100:,.2f} (total Rs {total / 100:,.2f}).")
-        change = paid - total
+                f"Payment is short by Rs {(due - paid) / 100:,.2f} (due Rs {due / 100:,.2f}).")
+        change = paid - due
 
         sale_id = await conn.fetchval(
             """insert into pos_sales (tenant_id, cashier_id, subtotal_minor, discount_minor, total_minor,
                                       paid_minor, change_minor, payment_method, item_count, tax_minor,
-                                      client_uuid, payload_sha256)
-               values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) returning id""",
+                                      client_uuid, payload_sha256, rounding_minor)
+               values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) returning id""",
             auth.tenant_id, auth.user_id, priced.subtotal_minor, priced.discount_minor, total,
             paid, change, body.payment_method, len(lines), priced.tax_minor,
-            body.client_uuid, fingerprint)
+            body.client_uuid, fingerprint, rounding)
         items = []
         for p, qty, pl in lines:
             await conn.execute(
@@ -264,7 +277,8 @@ async def _record_sale(body: SaleCreate, auth: AuthContext, fingerprint: str) ->
         id=str(sale["id"]), subtotal_minor=sale["subtotal_minor"], discount_minor=sale["discount_minor"],
         total_minor=sale["total_minor"], paid_minor=sale["paid_minor"], change_minor=sale["change_minor"],
         payment_method=sale["payment_method"], item_count=sale["item_count"], created_at=sale["created_at"],
-        items=items, tax_minor=sale["tax_minor"], fbr_invoice_number=fbr_number, fbr_status=fbr_status)
+        items=items, tax_minor=sale["tax_minor"], rounding_minor=sale["rounding_minor"],
+        amount_due_minor=sale["total_minor"] + sale["rounding_minor"], fbr_invoice_number=fbr_number, fbr_status=fbr_status)
 
 
 # ── Suppliers & purchase orders ──────────────────────────────────────────────
@@ -580,7 +594,8 @@ async def get_sale(sale_id: str, auth: AuthContext = Depends(require("pos", "rea
         id=str(sale["id"]), subtotal_minor=sale["subtotal_minor"], discount_minor=sale["discount_minor"],
         total_minor=sale["total_minor"], paid_minor=sale["paid_minor"], change_minor=sale["change_minor"],
         payment_method=sale["payment_method"], item_count=sale["item_count"], created_at=sale["created_at"],
-        tax_minor=sale["tax_minor"],
+        tax_minor=sale["tax_minor"], rounding_minor=sale["rounding_minor"],
+        amount_due_minor=sale["total_minor"] + sale["rounding_minor"],
         fbr_invoice_number=fbr_row["fbr_invoice_number"] if fbr_row else None,
         fbr_status=fbr_row["status"] if fbr_row else None,
         items=[SaleItemOut(name=r["name"], qty=float(r["qty_sold"]), price_minor=r["price_minor"],
@@ -595,7 +610,9 @@ async def create_return(sale_id: str, body: ReturnCreate,
     async with db.tenant_conn(auth.tenant_id) as conn:
         # Lock the sale: two returns of its last unit must be checked one after
         # the other, or both see it as still returnable.
-        if await conn.fetchval("select 1 from pos_sales where id=$1 for update", sale_id) is None:
+        sale = await conn.fetchrow(
+            "select total_minor, rounding_minor from pos_sales where id=$1 for update", sale_id)
+        if sale is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Sale not found")
         available = {str(r["sale_item_id"]): r for r in await conn.fetch(_RETURNABLE, sale_id)}
 
@@ -617,6 +634,17 @@ async def create_return(sale_id: str, body: ReturnCreate,
                 float(row["qty_returned"]), want.qty)
             refund += line_refund
             lines.append((row, want.qty, line_refund))
+
+        # Line shares come from the invoice value; with cash rounding the
+        # customer may have paid a little less. Never refund more, in total,
+        # than was actually paid for the sale.
+        already = await conn.fetchval(
+            "select coalesce(sum(refund_minor), 0) from pos_returns where sale_id=$1", sale_id)
+        excess = refund - (sale["total_minor"] + sale["rounding_minor"] - already)
+        if excess > 0:
+            row, qty, last = lines[-1]
+            lines[-1] = (row, qty, last - excess)
+            refund -= excess
 
         fbr_cfg = await conn.fetchrow("select * from fbr_settings where tenant_id=$1", auth.tenant_id)
         if fbr_cfg and fbr_cfg["enabled"]:

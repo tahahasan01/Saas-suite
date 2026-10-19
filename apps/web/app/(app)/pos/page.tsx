@@ -24,6 +24,8 @@ interface Quote {
   discount_minor: number;
   tax_minor: number;
   total_minor: number;
+  rounding_minor: number;    // cash rounding (due - total)
+  amount_due_minor: number;  // what the customer pays
 }
 
 /** One id per cart (D-81): resending the same cart returns the original sale,
@@ -135,16 +137,18 @@ export default function PosBilling() {
         body: JSON.stringify({
           items: cart.map((l) => ({ product_id: l.product.id, qty: l.qty })),
           discount_minor: discountMinor,
+          payment_method: method, // cash is rounded to the rupee, card isn't
         }),
       })
         .then((q) => { if (seq === quoteSeq.current) setQuote(q); })
         .catch(() => { if (seq === quoteSeq.current) setQuote(null); });
     }, 150);
     return () => clearTimeout(id);
-  }, [cart, discountMinor]);
+  }, [cart, discountMinor, method]);
 
   const subtotal = quote?.subtotal_minor ?? localSubtotal;
-  const total = quote?.total_minor ?? Math.max(0, localSubtotal - discountMinor);
+  // What the customer pays: the server's total, rounded for cash.
+  const total = quote?.amount_due_minor ?? Math.max(0, localSubtotal - discountMinor);
   const paidMinor = Math.round(Number(paid || 0) * 100);
 
   function clearCart() {
@@ -309,7 +313,13 @@ export default function PosBilling() {
             <Input type="number" min={0} value={discount} onChange={(e) => setDiscount(e.target.value)} disabled={locked} className="w-24 py-1 text-right" />
           </div>
           {quote && quote.tax_minor > 0 && <Row label="Sales tax" value={money(quote.tax_minor)} />}
-          <Row label="Total" value={money(total)} bold />
+          {quote && quote.rounding_minor !== 0 && (
+            <>
+              <Row label="Total" value={money(quote.total_minor)} />
+              <Row label="Cash rounding" value={money(quote.rounding_minor)} />
+            </>
+          )}
+          <Row label={quote && quote.rounding_minor !== 0 ? "Amount due" : "Total"} value={money(total)} bold />
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-2">
@@ -379,7 +389,9 @@ function Receipt({ sale, onClose }: { sale: Sale; onClose: () => void }) {
             ))}
           </div>
           <div className="border-t border-line pt-2">
-            <Row label="Total" value={money(sale.total_minor)} bold />
+            {sale.rounding_minor !== 0 && <Row label="Total" value={money(sale.total_minor)} />}
+            {sale.rounding_minor !== 0 && <Row label="Cash rounding" value={money(sale.rounding_minor)} />}
+            <Row label={sale.rounding_minor !== 0 ? "Amount due" : "Total"} value={money(sale.amount_due_minor || sale.total_minor)} bold />
             {sale.tax_minor > 0 && <Row label="incl. sales tax" value={money(sale.tax_minor)} />}
             <Row label="Paid" value={money(sale.paid_minor)} />
             <Row label="Change" value={money(sale.change_minor)} />

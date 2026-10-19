@@ -82,3 +82,13 @@ def refund_for(line_total_minor: int, qty_sold: float, refunded_minor: int,
     if qty_returned + qty >= qty_sold:
         return line_total_minor - refunded_minor
     return round(line_total_minor * Decimal(str(qty)) / Decimal(str(qty_sold)))
+
+
+def cash_due(total_minor: int, rounding_minor: int) -> tuple[int, int]:
+    """What a cash customer pays: the total rounded half-up to the tenant's
+    cash unit (100 = Rs 1), and the rounding (due - total). A unit of 0 means
+    no rounding. The invoice total itself is never changed."""
+    if rounding_minor <= 0:
+        return total_minor, 0
+    due = (total_minor + rounding_minor // 2) // rounding_minor * rounding_minor
+    return due, due - total_minor
