@@ -53,3 +53,16 @@ async def test_different_carts_are_different_sales(client, shop):
     b = await client.post("/pos/sales", json=_sale(shop, str(uuid.uuid4())))
     assert a.json()["id"] != b.json()["id"]
     assert await _stock(client, shop) == 46
+
+
+async def test_reusing_a_cart_id_for_a_different_cart_is_refused(client, shop):
+    """Security review of 25a74b4: if the first attempt was recorded but the
+    till never heard back, and the cashier then changed the cart, a replay
+    would hand back the old sale and the new items would go uncharged."""
+    key = str(uuid.uuid4())
+    first = await client.post("/pos/sales", json=_sale(shop, key))
+    changed = {**_sale(shop, key), "items": [{"product_id": shop, "qty": 3}], "paid_minor": 30_000}
+    r = await client.post("/pos/sales", json=changed)
+    assert first.status_code == 201
+    assert r.status_code == 409
+    assert await _stock(client, shop) == 48  # the changed cart was not recorded

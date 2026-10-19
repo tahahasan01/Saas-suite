@@ -1,6 +1,8 @@
 """POS — products, checkout (sales), inventory. Guarded by the 'pos' section."""
 from __future__ import annotations
 
+import hashlib
+import json
 import math
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -119,12 +121,29 @@ async def update_product(product_id: str, body: ProductUpdate, auth: AuthContext
     return _product(row)
 
 
-async def _replay_sale(tenant_id: str, client_uuid) -> SaleOut | None:
-    """The sale already recorded for this cart, exactly as it was stored."""
+def _fingerprint(body: SaleCreate) -> str:
+    """What the cart *was*: a replay of the same client_uuid must match it."""
+    canonical = {
+        "items": sorted([str(i.product_id), float(i.qty)] for i in body.items),
+        "discount_minor": body.discount_minor,
+        "paid_minor": body.paid_minor,
+        "payment_method": body.payment_method,
+    }
+    return hashlib.sha256(json.dumps(canonical, sort_keys=True).encode()).hexdigest()
+
+
+async def _replay_sale(tenant_id: str, client_uuid, fingerprint: str) -> SaleOut | None:
+    """The sale already recorded for this cart, exactly as it was stored — or a
+    409 if this client_uuid was recorded for a different cart."""
     async with db.tenant_conn(tenant_id) as conn:
         sale = await conn.fetchrow("select * from pos_sales where client_uuid=$1", client_uuid)
         if sale is None:
             return None
+        if sale["payload_sha256"] and sale["payload_sha256"] != fingerprint:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "A sale with this cart id was already recorded with different items or amounts. "
+                "Check today's sales before charging again.")
         rows = await conn.fetch(
             """select name, qty, price_minor, line_total_minor from pos_sale_items
                 where sale_id=$1 order by name""", sale["id"])
@@ -145,24 +164,25 @@ async def _replay_sale(tenant_id: str, client_uuid) -> SaleOut | None:
 @router.post("/sales", response_model=SaleOut, status_code=status.HTTP_201_CREATED)
 async def checkout(body: SaleCreate, response: Response,
                    auth: AuthContext = Depends(require("pos", "write"))):
+    fingerprint = _fingerprint(body)
     if body.client_uuid is not None:
-        replay = await _replay_sale(auth.tenant_id, body.client_uuid)
+        replay = await _replay_sale(auth.tenant_id, body.client_uuid, fingerprint)
         if replay is not None:
             response.status_code = status.HTTP_200_OK
             return replay
     try:
-        return await _record_sale(body, auth)
+        return await _record_sale(body, auth, fingerprint)
     except asyncpg.UniqueViolationError:
         # A copy of this cart committed between our check and our insert; the
         # unique index refused the second sale, so answer with the first.
-        replay = await _replay_sale(auth.tenant_id, body.client_uuid)
+        replay = await _replay_sale(auth.tenant_id, body.client_uuid, fingerprint)
         if replay is None:
             raise
         response.status_code = status.HTTP_200_OK
         return replay
 
 
-async def _record_sale(body: SaleCreate, auth: AuthContext) -> SaleOut:
+async def _record_sale(body: SaleCreate, auth: AuthContext, fingerprint: str) -> SaleOut:
     async with db.tenant_conn(auth.tenant_id) as conn:
         products = []
         for it in body.items:
@@ -185,11 +205,11 @@ async def _record_sale(body: SaleCreate, auth: AuthContext) -> SaleOut:
         sale_id = await conn.fetchval(
             """insert into pos_sales (tenant_id, cashier_id, subtotal_minor, discount_minor, total_minor,
                                       paid_minor, change_minor, payment_method, item_count, tax_minor,
-                                      client_uuid)
-               values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning id""",
+                                      client_uuid, payload_sha256)
+               values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) returning id""",
             auth.tenant_id, auth.user_id, priced.subtotal_minor, priced.discount_minor, total,
             body.paid_minor, change, body.payment_method, len(lines), priced.tax_minor,
-            body.client_uuid)
+            body.client_uuid, fingerprint)
         items = []
         for p, qty, pl in lines:
             await conn.execute(

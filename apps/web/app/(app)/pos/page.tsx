@@ -77,7 +77,14 @@ export default function PosBilling() {
     () => (category && !q ? results.filter((p) => p.category === category) : results),
     [results, category, q]);
 
+  // After a charge that wasn't confirmed, the sale may already be recorded on
+  // the server. Until it is retried as-is (same cart id) or cleared on purpose,
+  // the cart can't change — otherwise a retry could replay the old sale and
+  // leave the new items uncharged.
+  const locked = chargeError !== null;
+
   function addToCart(p: Product) {
+    if (locked) return;
     setCart((c) => {
       const i = c.findIndex((l) => l.product.id === p.id);
       if (i >= 0) return c.map((l, j) => (j === i ? { ...l, qty: l.qty + 1 } : l));
@@ -86,6 +93,7 @@ export default function PosBilling() {
   }
 
   function setQty(id: string, qty: number) {
+    if (locked) return;
     setCart((c) => (qty <= 0 ? c.filter((l) => l.product.id !== id) : c.map((l) => (l.product.id === id ? { ...l, qty } : l))));
   }
 
@@ -245,9 +253,9 @@ export default function PosBilling() {
                 <p className="text-xs text-fg-subtle">{money(l.product.price_minor)}</p>
               </div>
               <div className="flex items-center gap-1">
-                <button onClick={() => setQty(l.product.id, l.qty - 1)} className="h-6 w-6 rounded bg-elevated">−</button>
+                <button onClick={() => setQty(l.product.id, l.qty - 1)} disabled={locked} className="h-6 w-6 rounded bg-elevated disabled:opacity-40">−</button>
                 <span className="w-7 text-center">{l.qty}</span>
-                <button onClick={() => setQty(l.product.id, l.qty + 1)} className="h-6 w-6 rounded bg-elevated">+</button>
+                <button onClick={() => setQty(l.product.id, l.qty + 1)} disabled={locked} className="h-6 w-6 rounded bg-elevated disabled:opacity-40">+</button>
               </div>
               <span className="w-16 text-right">{money(l.product.price_minor * l.qty)}</span>
             </div>
@@ -258,22 +266,24 @@ export default function PosBilling() {
           <Row label="Subtotal" value={money(subtotal)} />
           <div className="flex items-center justify-between">
             <span className="text-fg-muted">Discount (PKR)</span>
-            <Input type="number" min={0} value={discount} onChange={(e) => setDiscount(e.target.value)} className="w-24 py-1 text-right" />
+            <Input type="number" min={0} value={discount} onChange={(e) => setDiscount(e.target.value)} disabled={locked} className="w-24 py-1 text-right" />
           </div>
           <Row label="Total" value={money(total)} bold />
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <Select value={method} onChange={(e) => setMethod(e.target.value)}>
+          <Select value={method} onChange={(e) => setMethod(e.target.value)} disabled={locked}>
             {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
           </Select>
-          <Input ref={paidRef} type="number" min={0} value={paid} onChange={(e) => setPaid(e.target.value)} placeholder="Amount paid" />
+          <Input ref={paidRef} type="number" min={0} value={paid} onChange={(e) => setPaid(e.target.value)} disabled={locked} placeholder="Amount paid" />
         </div>
         {paidMinor > 0 && paidMinor >= total && (
           <p className="mt-2 text-right text-sm text-success">Change: {money(paidMinor - total)}</p>
         )}
         {chargeError && (
-          <p role="alert" className="mt-2 text-sm text-danger">{chargeError}</p>
+          <p role="alert" className="mt-2 text-sm text-danger">
+            {chargeError} The cart is locked until you retry it or clear it (<kbd>F1</kbd>).
+          </p>
         )}
         <Button onClick={charge} disabled={cart.length === 0 || charging} className="mt-3 w-full">
           {charging ? "Recording sale…" : `Charge ${money(total)}`}
