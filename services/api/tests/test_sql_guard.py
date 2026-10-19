@@ -42,6 +42,9 @@ UNSAFE = [
     "select * from ai_v_leads where name in (with s as (select 1) select * from s)",  # nested WITH
     "select * from (with auth_tokens as (select 1 as x) select * from ai_v_leads) a, auth_tokens",
     "with recursive x as (select * from ai_v_leads) select * from x",     # recursion not needed
+    # Identifier folding: quoted "Users" is a different name from unquoted users.
+    'with "Users" as (select * from ai_v_leads) select * from users, ai_v_leads',
+    "select * from otherdb.public.ai_v_leads",                            # catalog-qualified
 ]
 
 

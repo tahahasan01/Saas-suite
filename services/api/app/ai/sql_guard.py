@@ -67,11 +67,20 @@ def _check_functions(tree: exp.Expression) -> None:
             raise UnsafeQuery(f"function '{fn.sql_name()}' is not allowed")
 
 
+def _pg_name(identifier: exp.Expression | None) -> str:
+    """The name Postgres resolves: unquoted identifiers fold to lower case,
+    quoted ones are kept exactly ("Users" and users are different relations)."""
+    if not isinstance(identifier, exp.Identifier):
+        return ""
+    return identifier.this if identifier.quoted else identifier.this.lower()
+
+
 def _check_table(table: exp.Table, allowed: set[str], visible_ctes: set[str]) -> None:
-    name = table.name.lower()
-    if table.db and table.db.lower() != "public":
+    name = _pg_name(table.this)
+    schema = _pg_name(table.args.get("db"))
+    if table.args.get("catalog") is not None or (schema and schema != "public"):
         raise UnsafeQuery(f"table '{table.sql()}' is not queryable")
-    if name in visible_ctes and not table.db:
+    if name in visible_ctes and not schema:
         return
     if name not in allowed:
         raise UnsafeQuery(f"table '{table.sql()}' is not queryable")
@@ -95,7 +104,8 @@ def _check_tables(tree: exp.Expression, allowed: set[str]) -> None:
     for cte in ctes:
         for table in cte.this.find_all(exp.Table):
             _check_table(table, allowed, seen)
-        seen.add(cte.alias_or_name.lower())
+        alias = cte.args.get("alias")
+        seen.add(_pg_name(alias.this if alias is not None else None))
 
     tables = list(tree.find_all(exp.Table))
     if not tables:
@@ -103,7 +113,7 @@ def _check_tables(tree: exp.Expression, allowed: set[str]) -> None:
     for table in tables:
         if table.find_ancestor(exp.CTE) is None:
             _check_table(table, allowed, seen)
-    if not any(t.name.lower() in allowed for t in tables):
+    if not any(_pg_name(t.this) in allowed for t in tables):
         raise UnsafeQuery("query references no allowed view")
 
 
