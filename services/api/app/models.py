@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 # FBR's reference UoM list; this is the value for discrete countable goods.
 FBR_DEFAULT_UOM = "Numbers, pieces, units"
@@ -376,6 +376,16 @@ class ReturnCreate(BaseModel):
     items: list[ReturnLine] = Field(min_length=1)
     reason: str = ""
     restock: bool = True   # damaged goods come back to the shop but not the shelf
+
+    @field_validator("items")
+    @classmethod
+    def _each_line_once(cls, items: list[ReturnLine]) -> list[ReturnLine]:
+        # Every line is checked against what was returned *before* this
+        # request, so the same line twice would slip past that check.
+        ids = [i.sale_item_id for i in items]
+        if len(ids) != len(set(ids)):
+            raise ValueError("List each item once, with the total quantity being returned")
+        return items
 
 
 class ReturnItemOut(BaseModel):

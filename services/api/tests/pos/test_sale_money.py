@@ -126,3 +126,17 @@ async def test_fbr_cannot_be_switched_on_while_products_lack_hs_codes(client, po
     r = await client.put("/fbr/settings", json={**SELLER, "enabled": True})
     assert r.status_code == 422
     assert "hs code" in r.json()["detail"].lower()
+
+
+async def test_listing_one_line_twice_cannot_return_more_than_was_bought(client, inclusive_shop):
+    """Security review of 5b70ba2: each entry was checked against the quantity
+    returned *before* the request, so the same line twice slipped past it."""
+    a, _ = inclusive_shop
+    sale = (await client.post("/pos/sales", json={
+        "items": [{"product_id": a, "qty": 1}], "paid_minor": 10_000, "payment_method": "cash"})).json()
+    item = (await client.get(f"/pos/sales/{sale['id']}")).json()["returnable"][0]
+    line = {"sale_item_id": item["sale_item_id"], "qty": 1}
+    r = await client.post(f"/pos/sales/{sale['id']}/returns", json={"items": [line, line]})
+    assert r.status_code == 422
+    detail = (await client.get(f"/pos/sales/{sale['id']}")).json()["returnable"][0]
+    assert detail["qty_returned"] == 0
