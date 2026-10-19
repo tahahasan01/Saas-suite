@@ -2,6 +2,8 @@
 Guarded by the 'hrms' section. Mobile face-match/biometric plug into attendance later."""
 from __future__ import annotations
 
+import calendar
+
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from datetime import date, timedelta
@@ -504,7 +506,7 @@ async def delete_holiday(holiday_id: str, response: Response,
     return response
 
 
-def _payslip(r, month_days: int) -> Payslip:
+def _payslip(r, month_days: int, pay_date: date) -> Payslip:
     gross = r["salary_minor"]
     unpaid = r["unpaid_leave_days"]
     wfh = r["wfh_days"]
@@ -515,7 +517,7 @@ def _payslip(r, month_days: int) -> Payslip:
     absent = max(0, r["elapsed_days"] - accounted)
     per_day = gross / month_days if month_days else 0
     deduction = round((absent + unpaid) * per_day)
-    tax = payroll.monthly_tax_minor(gross)
+    tax = payroll.monthly_tax_minor(gross, pay_date)
     return Payslip(
         employee_id=str(r["id"]), name=r["name"], gross_minor=gross,
         present_days=r["present_days"], paid_leave_days=r["paid_leave_days"],
@@ -534,8 +536,12 @@ async def _compute_payroll(conn, tenant_id: str, month: str) -> PayrollOut:
     off_days = await conn.fetchval("select weekly_off_days from tenants where id=$1", tenant_id)
     rows = await conn.fetch(_PAYROLL, first, list(off_days or [0]))
     month_days = rows[0]["month_days"] if rows else 0
+    # Salaries are paid for the month, so its last day decides the tax year.
+    pay_date = first.replace(day=calendar.monthrange(first.year, first.month)[1])
+    ty = payroll.tax_year_for(pay_date)
     return PayrollOut(month=month, working_days=month_days,
-                      payslips=[_payslip(r, month_days) for r in rows])
+                      payslips=[_payslip(r, month_days, pay_date) for r in rows],
+                      tax_year=ty.label, tax_rates_verified=ty.verified)
 
 
 @router.get("/payroll", response_model=PayrollOut)

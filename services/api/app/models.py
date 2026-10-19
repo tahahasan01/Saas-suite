@@ -590,6 +590,8 @@ class PayrollOut(BaseModel):
     month: str
     working_days: int
     payslips: list[Payslip]
+    tax_year: str = ""                 # e.g. "TY2027" — chosen by the pay date
+    tax_rates_verified: bool = True    # False → show "rates pending verification"
 
 
 class HolidayOut(BaseModel):
