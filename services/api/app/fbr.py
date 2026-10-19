@@ -75,12 +75,21 @@ def split_tax(total_minor: int, rate_pct: Decimal, inclusive: bool) -> tuple[int
 def build_payload(settings, items: list[dict], *, invoice_date: date,
                   buyer_ntn_cnic: str = "", buyer_name: str = "",
                   buyer_province: str = "", buyer_address: str = "") -> dict:
-    """`items` carry name, qty, hs_code, fbr_uom, tax_rate and line totals in minor units."""
+    """`items` carry name, qty, hs_code, fbr_uom, tax_rate and line totals in minor units.
+
+    An item may carry the amounts app/pricing.py already settled for it
+    (`excl_minor`, `tax_minor`, `discount_minor`, with `line_total_minor` =
+    what the customer paid). Those are sent as-is, so FBR is told exactly
+    what was charged; otherwise the line total is split here.
+    """
     inclusive = settings["prices_include_tax"]
     lines = []
     for it in items:
         rate = Decimal(str(it["tax_rate"] or 0))
-        excl_minor, tax_minor = split_tax(it["line_total_minor"], rate, inclusive)
+        if "excl_minor" in it:
+            excl_minor, tax_minor = it["excl_minor"], it["tax_minor"]
+        else:
+            excl_minor, tax_minor = split_tax(it["line_total_minor"], rate, inclusive)
         lines.append({
             "hsCode": it["hs_code"],
             "productDescription": it["name"],
@@ -96,7 +105,7 @@ def build_payload(settings, items: list[dict], *, invoice_date: date,
             "furtherTax": 0.00,
             "sroScheduleNo": "",
             "fedPayable": 0.00,
-            "discount": 0.00,
+            "discount": _rupees(it.get("discount_minor", 0)),
             "saleType": STANDARD_SALE_TYPE,
             "sroItemSerialNo": "",
         })

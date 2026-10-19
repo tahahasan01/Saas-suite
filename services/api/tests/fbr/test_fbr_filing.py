@@ -18,6 +18,8 @@ from app.config import settings
 
 @pytest_asyncio.fixture
 async def fbr_shop(client, pos_tenant, fake_fbr):
+    for p in (await client.get("/pos/products")).json():  # FBR refuses lines without one
+        await client.patch(f"/pos/products/{p['id']}", json={"hs_code": "0101.2100"})
     r = await client.put("/fbr/settings", json={
         "seller_ntn_cnic": "1234567", "seller_business_name": "Fixture Traders",
         "seller_province": "Punjab", "seller_address": "1 Mall Road, Lahore",

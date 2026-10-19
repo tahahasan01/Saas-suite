@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 from datetime import date
+from decimal import Decimal
 
 from . import db, fbr
 
@@ -23,15 +24,27 @@ MAX_ATTEMPTS = 8
 
 
 def _items(lines) -> list[dict]:
-    """(product_row, qty, line_total_minor) tuples -> the shape fbr.build_payload wants."""
+    """(product_row, qty, PricedLine) tuples -> the shape fbr.build_payload wants,
+    carrying the amounts pricing settled so FBR sees exactly what was charged."""
     return [{
         "name": p["name"],
         "quantity": qty,
         "hs_code": p["hs_code"],
         "fbr_uom": p["fbr_uom"],
         "tax_rate": p["tax_rate"],
-        "line_total_minor": line_total,
-    } for p, qty, line_total in lines]
+        "line_total_minor": pl.total_minor,
+        "excl_minor": pl.total_minor - pl.tax_minor,
+        "tax_minor": pl.tax_minor,
+        "discount_minor": pl.discount_minor,
+    } for p, qty, pl in lines]
+
+
+def _refund_item(name, qty, hs_code, fbr_uom, tax_rate, refund_minor) -> dict:
+    """A refund is money the customer paid, so its tax is always inside it."""
+    excl, tax = fbr.split_tax(refund_minor, Decimal(str(tax_rate or 0)), True)
+    return {"name": name, "quantity": qty, "hs_code": hs_code, "fbr_uom": fbr_uom,
+            "tax_rate": tax_rate, "line_total_minor": refund_minor,
+            "excl_minor": excl, "tax_minor": tax}
 
 
 def _debit_note(settings, items: list[dict], original_invoice_number: str, on: date) -> dict:
@@ -123,14 +136,8 @@ async def submit_return(tenant_id: str, return_id: str, settings, lines,
                         original_invoice_number: str) -> fbr.FbrResult:
     """File a just-committed return as a Debit Note. Only called once the
     original sale was accepted. `lines` are (sale_item_row, qty, line_refund_minor)."""
-    items = [{
-        "name": row["name"],
-        "quantity": qty,
-        "hs_code": row["hs_code"],
-        "fbr_uom": row["fbr_uom"],
-        "tax_rate": row["tax_rate"],
-        "line_total_minor": line_refund,
-    } for row, qty, line_refund in lines]
+    items = [_refund_item(row["name"], qty, row["hs_code"], row["fbr_uom"], row["tax_rate"], line_refund)
+             for row, qty, line_refund in lines]
     payload = _debit_note(settings, items, original_invoice_number, date.today())
     async with db.tenant_conn(tenant_id) as conn:
         row_id = await conn.fetchval("select id from pos_fbr_invoices where return_id=$1", return_id)
@@ -148,7 +155,7 @@ async def submit_return(tenant_id: str, return_id: str, settings, lines,
 
 async def _sale_payload(conn, cfg, row) -> dict:
     lines = await conn.fetch(
-        """select i.name, i.qty, i.line_total_minor,
+        """select i.name, i.qty, i.total_minor, i.tax_minor, i.discount_minor,
                   coalesce(p.hs_code, '') as hs_code,
                   coalesce(p.tax_rate, 0) as tax_rate,
                   coalesce(p.fbr_uom, 'Numbers, pieces, units') as fbr_uom
@@ -159,7 +166,8 @@ async def _sale_payload(conn, cfg, row) -> dict:
     return fbr.build_payload(
         cfg, [{"name": l["name"], "quantity": float(l["qty"]), "hs_code": l["hs_code"],
                "fbr_uom": l["fbr_uom"], "tax_rate": l["tax_rate"],
-               "line_total_minor": l["line_total_minor"]} for l in lines],
+               "line_total_minor": l["total_minor"], "excl_minor": l["total_minor"] - l["tax_minor"],
+               "tax_minor": l["tax_minor"], "discount_minor": l["discount_minor"]} for l in lines],
         invoice_date=sale_date or date.today())
 
 
@@ -173,9 +181,8 @@ async def _return_payload(conn, cfg, row, original: str) -> dict:
              left join pos_products p on p.id = ri.product_id
             where ri.return_id = $1""", row["return_id"])
     return_date = await conn.fetchval("select created_at::date from pos_returns where id=$1", row["return_id"])
-    items = [{"name": l["name"], "quantity": float(l["qty"]), "hs_code": l["hs_code"],
-              "fbr_uom": l["fbr_uom"], "tax_rate": l["tax_rate"],
-              "line_total_minor": l["line_refund_minor"]} for l in lines]
+    items = [_refund_item(l["name"], float(l["qty"]), l["hs_code"], l["fbr_uom"], l["tax_rate"],
+                          l["line_refund_minor"]) for l in lines]
     return _debit_note(cfg, items, original, return_date or date.today())
 
 

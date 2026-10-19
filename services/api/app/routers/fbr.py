@@ -63,6 +63,14 @@ async def update_settings(body: FbrSettingsUpdate,
                 raise HTTPException(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
                     "Add your NTN, business name, province, address and FBR token before turning this on.")
+            # FBR rejects every line without an HS code (error 0052), so each
+            # sale would sit in the retry queue until it failed for good.
+            no_hs = await conn.fetchval(
+                "select count(*) from pos_products where active and coalesce(trim(hs_code), '') = ''")
+            if no_hs:
+                raise HTTPException(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    f"{no_hs} active product(s) have no HS code. Add one to each before turning FBR on.")
 
         cols = ", ".join(f"{k}=${i + 2}" for i, k in enumerate(fields))
         row = await conn.fetchrow(

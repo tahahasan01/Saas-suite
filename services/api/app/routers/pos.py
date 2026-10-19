@@ -8,7 +8,7 @@ from decimal import Decimal
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
-from .. import csv_io, db, fbr, fbr_submit
+from .. import csv_io, db, fbr, fbr_submit, pricing
 from ..deps import AuthContext
 from ..models import (
     DrawerClose,
@@ -122,41 +122,41 @@ async def update_product(product_id: str, body: ProductUpdate, auth: AuthContext
 @router.post("/sales", response_model=SaleOut, status_code=status.HTTP_201_CREATED)
 async def checkout(body: SaleCreate, auth: AuthContext = Depends(require("pos", "write"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
-        subtotal = tax_total = 0
-        lines = []
+        products = []
         for it in body.items:
             p = await conn.fetchrow(
                 """select id, name, price_minor, hs_code, tax_rate, fbr_uom
                      from pos_products where id=$1 and active""", it.product_id)
             if p is None:
                 raise HTTPException(status.HTTP_404_NOT_FOUND, f"Product {it.product_id} not found")
-            line_total = round(p["price_minor"] * it.qty)
-            subtotal += line_total
-            lines.append((p, it.qty, line_total))
-        total = max(0, subtotal - body.discount_minor)
-        change = max(0, body.paid_minor - total)
+            products.append((p, it.qty))
 
         fbr_cfg = await conn.fetchrow("select * from fbr_settings where tenant_id=$1", auth.tenant_id)
-        if fbr_cfg and fbr_cfg["enabled"]:
-            for p, _qty, line_total in lines:
-                _, line_tax = fbr.split_tax(line_total, Decimal(str(p["tax_rate"] or 0)),
-                                            fbr_cfg["prices_include_tax"])
-                tax_total += line_tax
+        fbr_on = bool(fbr_cfg and fbr_cfg["enabled"])
+        priced = pricing.price_sale(
+            [(p["price_minor"], qty, Decimal(str(p["tax_rate"] or 0))) for p, qty in products],
+            body.discount_minor, tax_on=fbr_on, inclusive=bool(fbr_on and fbr_cfg["prices_include_tax"]))
+        lines = [(p, qty, pl) for (p, qty), pl in zip(products, priced.lines)]
+        total = priced.total_minor
+        change = max(0, body.paid_minor - total)
 
         sale_id = await conn.fetchval(
             """insert into pos_sales (tenant_id, cashier_id, subtotal_minor, discount_minor, total_minor,
                                       paid_minor, change_minor, payment_method, item_count, tax_minor)
                values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning id""",
-            auth.tenant_id, auth.user_id, subtotal, body.discount_minor, total,
-            body.paid_minor, change, body.payment_method, len(lines), tax_total)
+            auth.tenant_id, auth.user_id, priced.subtotal_minor, priced.discount_minor, total,
+            body.paid_minor, change, body.payment_method, len(lines), priced.tax_minor)
         items = []
-        for p, qty, line_total in lines:
+        for p, qty, pl in lines:
             await conn.execute(
-                """insert into pos_sale_items (tenant_id, sale_id, product_id, name, qty, price_minor, line_total_minor)
-                   values ($1,$2,$3,$4,$5,$6,$7)""",
-                auth.tenant_id, sale_id, p["id"], p["name"], qty, p["price_minor"], line_total)
+                """insert into pos_sale_items (tenant_id, sale_id, product_id, name, qty, price_minor,
+                                               line_total_minor, discount_minor, tax_minor, total_minor)
+                   values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)""",
+                auth.tenant_id, sale_id, p["id"], p["name"], qty, p["price_minor"],
+                pl.gross_minor, pl.discount_minor, pl.tax_minor, pl.total_minor)
             await conn.execute("update pos_products set stock_qty = stock_qty - $1 where id=$2", qty, p["id"])
-            items.append(SaleItemOut(name=p["name"], qty=qty, price_minor=p["price_minor"], line_total_minor=line_total))
+            items.append(SaleItemOut(name=p["name"], qty=qty, price_minor=p["price_minor"],
+                                     line_total_minor=pl.gross_minor))
         sale = await conn.fetchrow("select * from pos_sales where id=$1", sale_id)
         if fbr_cfg and fbr_cfg["enabled"]:
             # Outbox row in the sale's own transaction: if the process dies
@@ -454,7 +454,10 @@ async def export_products(auth: AuthContext = Depends(require("pos", "read"))) -
 # the guard against refunding three of two items across separate visits.
 _RETURNABLE = """
 select i.id as sale_item_id, i.product_id, i.name, i.qty as qty_sold, i.price_minor,
+       i.total_minor,
        coalesce((select sum(r.qty) from pos_return_items r where r.sale_item_id = i.id), 0) as qty_returned,
+       coalesce((select sum(r.line_refund_minor) from pos_return_items r
+                  where r.sale_item_id = i.id), 0) as refunded_minor,
        -- Carried through for the FBR debit note: a note without an HS code is
        -- rejected with error 0052.
        coalesce(p.hs_code, '') as hs_code,
@@ -500,7 +503,9 @@ async def get_sale(sale_id: str, auth: AuthContext = Depends(require("pos", "rea
 async def create_return(sale_id: str, body: ReturnCreate,
                         auth: AuthContext = Depends(require("pos", "write"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
-        if await conn.fetchval("select 1 from pos_sales where id=$1", sale_id) is None:
+        # Lock the sale: two returns of its last unit must be checked one after
+        # the other, or both see it as still returnable.
+        if await conn.fetchval("select 1 from pos_sales where id=$1 for update", sale_id) is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Sale not found")
         available = {str(r["sale_item_id"]): r for r in await conn.fetch(_RETURNABLE, sale_id)}
 
@@ -515,7 +520,11 @@ async def create_return(sale_id: str, body: ReturnCreate,
                 raise HTTPException(
                     status.HTTP_409_CONFLICT,
                     f"Only {left:g} of {row['name']} can be returned — {row['qty_returned']:g} already came back.")
-            line_refund = round(row["price_minor"] * want.qty)
+            # The customer's share of what they paid for the line (after discount,
+            # with tax) — never the list price.
+            line_refund = pricing.refund_for(
+                row["total_minor"], float(row["qty_sold"]), row["refunded_minor"],
+                float(row["qty_returned"]), want.qty)
             refund += line_refund
             lines.append((row, want.qty, line_refund))
 
@@ -524,7 +533,8 @@ async def create_return(sale_id: str, body: ReturnCreate,
             for row, qty, line_refund in lines:
                 rate = await conn.fetchval(
                     "select coalesce(tax_rate, 0) from pos_products where id=$1", row["product_id"]) or 0
-                _, line_tax = fbr.split_tax(line_refund, Decimal(str(rate)), fbr_cfg["prices_include_tax"])
+                # A refund is an amount the customer paid, so tax is inside it.
+                _, line_tax = fbr.split_tax(line_refund, Decimal(str(rate)), True)
                 tax_total += line_tax
 
         return_id = await conn.fetchval(
