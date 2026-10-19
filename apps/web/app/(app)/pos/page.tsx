@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { PAYMENT_METHODS, type PosSummary, type Product, type Sale } from "@business-os/types";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { money, moneyCompact } from "@/lib/format";
 import { useSession } from "@/lib/session";
 import { Button, Card, Input, Select } from "@/components/ui";
@@ -16,6 +16,20 @@ interface Line {
 
 interface DrawerLite {
   expected_minor: number;
+}
+
+/** One id per cart (D-81): resending the same cart returns the original sale,
+ *  so a retry after a timeout or a double F7 can never charge twice. */
+function newCartKey(): string {
+  // randomUUID is missing outside secure contexts (plain-http LAN tills), so
+  // fall back to building a v4 UUID from getRandomValues.
+  const c = globalThis.crypto as Crypto & { randomUUID?: () => string };
+  if (typeof c.randomUUID === "function") return c.randomUUID();
+  const b = c.getRandomValues(new Uint8Array(16));
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  const h = [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
 }
 
 export default function PosBilling() {
@@ -32,6 +46,10 @@ export default function PosBilling() {
   const [drawer, setDrawer] = useState<DrawerLite | null | undefined>(undefined); // undefined = loading
   const searchRef = useRef<HTMLInputElement>(null);
   const paidRef = useRef<HTMLInputElement>(null);
+  const cartKey = useRef<string>(newCartKey());
+  const inFlight = useRef(false); // a ref, so a second F7 in the same tick sees it
+  const [charging, setCharging] = useState(false);
+  const [chargeError, setChargeError] = useState<string | null>(null);
 
   const search = useCallback((text: string) => {
     api<Product[]>(`/pos/products${text ? `?q=${encodeURIComponent(text)}` : ""}`)
@@ -86,31 +104,50 @@ export default function PosBilling() {
   const total = Math.max(0, subtotal - discountMinor);
   const paidMinor = Math.round(Number(paid || 0) * 100);
 
-  async function charge() {
-    if (cart.length === 0) return;
-    const sale = await api<Sale>("/pos/sales", {
-      method: "POST",
-      body: JSON.stringify({
-        items: cart.map((l) => ({ product_id: l.product.id, qty: l.qty })),
-        discount_minor: discountMinor,
-        paid_minor: paidMinor || total,
-        payment_method: method,
-      }),
-    });
-    setReceipt(sale);
+  function clearCart() {
     setCart([]);
-    setDiscount("0");
-    setPaid("");
-    search(q);
-    loadStatus(); // today's figures and the drawer expectation just changed
-    searchRef.current?.focus();
+    setChargeError(null);
+    cartKey.current = newCartKey(); // a new cart is a new sale
+  }
+
+  async function charge() {
+    if (cart.length === 0 || inFlight.current) return;
+    inFlight.current = true;
+    setCharging(true);
+    setChargeError(null);
+    try {
+      const sale = await api<Sale>("/pos/sales", {
+        method: "POST",
+        body: JSON.stringify({
+          client_uuid: cartKey.current, // reused if this attempt fails and is retried
+          items: cart.map((l) => ({ product_id: l.product.id, qty: l.qty })),
+          discount_minor: discountMinor,
+          paid_minor: paidMinor || total,
+          payment_method: method,
+        }),
+      });
+      setReceipt(sale);
+      clearCart();
+      setDiscount("0");
+      setPaid("");
+      search(q);
+      loadStatus(); // today's figures and the drawer expectation just changed
+      searchRef.current?.focus();
+    } catch (e) {
+      setChargeError(e instanceof ApiError && e.status < 500
+        ? e.message
+        : "The sale wasn't confirmed. Check the connection and press Charge again — it won't be charged twice.");
+    } finally {
+      inFlight.current = false;
+      setCharging(false);
+    }
   }
 
   // Keyboard-first checkout (cashier never touches the mouse).
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "F2") { e.preventDefault(); searchRef.current?.focus(); }
-      else if (e.key === "F1") { e.preventDefault(); setCart([]); }
+      else if (e.key === "F1") { e.preventDefault(); clearCart(); }
       else if (e.key === "F6") { e.preventDefault(); paidRef.current?.focus(); }
       else if (e.key === "F7") { e.preventDefault(); void charge(); }
     }
@@ -235,8 +272,11 @@ export default function PosBilling() {
         {paidMinor > 0 && paidMinor >= total && (
           <p className="mt-2 text-right text-sm text-success">Change: {money(paidMinor - total)}</p>
         )}
-        <Button onClick={charge} disabled={cart.length === 0} className="mt-3 w-full">
-          Charge {money(total)}
+        {chargeError && (
+          <p role="alert" className="mt-2 text-sm text-danger">{chargeError}</p>
+        )}
+        <Button onClick={charge} disabled={cart.length === 0 || charging} className="mt-3 w-full">
+          {charging ? "Recording sale…" : `Charge ${money(total)}`}
         </Button>
         <p className="mt-2 text-center text-[11px] text-fg-subtle">
           <kbd>F2</kbd> search · <kbd>F6</kbd> pay · <kbd>F7</kbd> charge · <kbd>F1</kbd> clear
