@@ -158,6 +158,10 @@ async def checkout(body: SaleCreate, auth: AuthContext = Depends(require("pos", 
             await conn.execute("update pos_products set stock_qty = stock_qty - $1 where id=$2", qty, p["id"])
             items.append(SaleItemOut(name=p["name"], qty=qty, price_minor=p["price_minor"], line_total_minor=line_total))
         sale = await conn.fetchrow("select * from pos_sales where id=$1", sale_id)
+        if fbr_cfg and fbr_cfg["enabled"]:
+            # Outbox row in the sale's own transaction: if the process dies
+            # before transmission, the retry job still finds this sale (P0-4).
+            await fbr_submit.enqueue_sale(conn, auth.tenant_id, str(sale_id))
 
     fbr_number = fbr_status = None
     if fbr_cfg and fbr_cfg["enabled"]:
@@ -544,6 +548,10 @@ async def create_return(sale_id: str, body: ReturnCreate,
         original = await conn.fetchrow(
             """select fbr_invoice_number from pos_fbr_invoices
                 where sale_id=$1 and return_id is null and status='submitted'""", sale_id)
+        if fbr_cfg and fbr_cfg["enabled"]:
+            # Queued even when the sale isn't filed yet: the retry job files the
+            # debit note once the sale has an FBR number to reference.
+            await fbr_submit.enqueue_return(conn, auth.tenant_id, sale_id, str(return_id))
         created_at = await conn.fetchval("select created_at from pos_returns where id=$1", return_id)
 
     fbr_number = fbr_status = None
