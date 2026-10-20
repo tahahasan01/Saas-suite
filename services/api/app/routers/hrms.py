@@ -11,7 +11,6 @@ from datetime import date, datetime, timedelta
 from .. import db, email, payroll, refs, tokens
 from ..deps import AuthContext, current_auth, current_employee
 from ..models import (
-    REQUEST_TYPES,
     AttendanceOut,
     CheckInRequest,
     EmployeeCreate,
@@ -27,6 +26,7 @@ from ..models import (
     LeavePolicyUpdate,
     PayrollOut,
     Payslip,
+    RequestType,
     WeekOut,
     WeekRow,
 )
@@ -347,7 +347,7 @@ def _leave(r) -> LeaveOut:
 
 
 @router.get("/leave", response_model=list[LeaveOut])
-async def list_leave(request_type: str | None = None,
+async def list_leave(request_type: RequestType | None = None,
                      auth: AuthContext = Depends(require("hrms", "read"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
         rows = await conn.fetch(
@@ -358,9 +358,6 @@ async def list_leave(request_type: str | None = None,
 
 @router.post("/leave", response_model=LeaveOut, status_code=status.HTTP_201_CREATED)
 async def create_leave(body: LeaveCreate, auth: AuthContext = Depends(require("hrms", "write"))):
-    if body.request_type not in REQUEST_TYPES:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
-                            f"request_type must be one of {REQUEST_TYPES}")
     if body.to_date < body.from_date:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "to_date cannot be before from_date")
     # A WFH day is worked, so it carries no leave subtype — storing one would
