@@ -64,7 +64,15 @@ export default function ReturnsPage() {
     setDone({ refund: r.refund_minor, restocked: restock });
     setQty({});
     setReason("");
-    setSale(await lookup(sale.id).catch(() => null)); // reflect what's left
+    // Reflect what's left. The return itself is saved; if the refresh fails,
+    // clear the sale (a stale "returnable" count invites a second return) and
+    // say why, rather than leaving the old numbers up.
+    try {
+      setSale(await lookup(sale.id));
+    } catch {
+      setSale(null);
+      setFindError({ text: "Return saved, but the sale couldn't be reloaded. Look it up again to see what's left.", retry: true });
+    }
     return r;
   }, { failure: "Couldn't process that return" });
 

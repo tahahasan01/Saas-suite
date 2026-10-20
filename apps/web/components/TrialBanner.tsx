@@ -15,7 +15,9 @@ export function TrialBanner() {
 
   useEffect(() => {
     if (isEmployee) return;
-    api<Billing>("/billing").then(setBilling).catch(() => {});
+    // Intentionally quiet: the banner is a nudge on every page; a failure just
+    // means no nudge. Settings → Billing loads the same data and shows its errors.
+    api<Billing>("/billing").then(setBilling).catch(() => setBilling(null));
   }, [isEmployee]);
 
   if (isEmployee || !billing || billing.status !== "trialing") return null;

@@ -27,7 +27,8 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Live preview of how the UI re-skins for the chosen industry.
+  // Live preview of how the UI re-skins for the chosen industry. Intentionally
+  // quiet on failure: it's a decorative hint, and signing up works without it.
   useEffect(() => {
     api<TerminologyResponse>(`/terminology/preview/${industry}`)
       .then((r) => setPreview(r.labels))

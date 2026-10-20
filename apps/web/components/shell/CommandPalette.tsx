@@ -105,6 +105,9 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
           </div>
           <ul ref={listRef} id={listId} role="listbox" aria-label="Screens" className="max-h-[min(50dvh,24rem)] overflow-y-auto overscroll-contain p-2">
             {results.map((r, i) => (
+              // Keyboard lives on the combobox input (arrows + Enter, aria-activedescendant);
+              // the click is the pointer path to the same option.
+              // eslint-disable-next-line jsx-a11y/click-events-have-key-events
               <li
                 key={r.href}
                 id={optionId(i)}

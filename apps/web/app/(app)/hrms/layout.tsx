@@ -15,9 +15,18 @@ export default function HrmsLayout({ children }: { children: React.ReactNode }) 
 
 function Tiles() {
   const pathname = usePathname();
-  const { summary: s } = useHrmsSummary();
+  const { summary: s, error, refresh } = useHrmsSummary();
   // Payroll lives under /hrms but is its own module; staff tiles don't belong there.
-  if (!s || pathname.startsWith("/hrms/payroll")) return null;
+  if (pathname.startsWith("/hrms/payroll")) return null;
+  if (!s && error) {
+    return (
+      <p role="status" className="mb-6 text-sm text-fg-muted">
+        {error}{" "}
+        <button type="button" onClick={refresh} className="text-brand hover:underline">Try again</button>
+      </p>
+    );
+  }
+  if (!s) return null;
   return (
     <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
       <Tile label="Headcount" value={s.headcount} />

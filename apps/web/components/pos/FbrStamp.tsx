@@ -44,7 +44,7 @@ export function FbrStamp({
       <p className="text-[10px] font-semibold">FBR Digital Invoice</p>
       <p className="font-mono text-[10px] tracking-tight">{invoiceNumber}</p>
       {qr && (
-        // eslint-disable-next-line @next/next/no-img-element -- data URI, no loader needed
+        // A plain <img>: it's a data URI, so next/image's loader would add nothing.
         <img
           src={qr}
           alt={`FBR invoice ${invoiceNumber}`}

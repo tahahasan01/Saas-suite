@@ -42,9 +42,13 @@ export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const phone = useMediaQuery("(max-width: 639px)");
 
+  // A failed poll keeps the last feed and the next tick tries again — but the
+  // panel says the list may be out of date instead of "You're all caught up".
+  const [stale, setStale] = useState(false);
   const load = useCallback(() => {
-    // A failed poll keeps the last feed; the next tick tries again.
-    api<Feed>("/notifications").then(setFeed).catch(() => {});
+    api<Feed>("/notifications")
+      .then((f) => { setFeed(f); setStale(false); })
+      .catch(() => setStale(true));
   }, []);
 
   // Light polling, paused while the tab is hidden: a till left open all day in
@@ -88,8 +92,13 @@ export function NotificationBell() {
           )}
         </div>
       </div>
+      {stale && (
+        <p role="status" className="border-b border-line px-4 py-2 text-xs text-warning">
+          Couldn&apos;t refresh notifications. This list may be out of date.
+        </p>
+      )}
       <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        {feed.items.length === 0 && <li className="px-4 py-6 text-center text-sm text-fg-subtle">You&apos;re all caught up.</li>}
+        {feed.items.length === 0 && !stale && <li className="px-4 py-6 text-center text-sm text-fg-subtle">You&apos;re all caught up.</li>}
         {feed.items.map((n) => {
           const body = (
             <>

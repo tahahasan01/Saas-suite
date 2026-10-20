@@ -5,14 +5,14 @@ import Link from "next/link";
 import type { Attendance, Employee } from "@business-os/types";
 import { api } from "@/lib/api";
 import { isTodayPKT } from "@/lib/dates";
+import { formatTime } from "@/lib/format";
 import { useSession } from "@/lib/session";
-import { useAction } from "@/lib/useAction";
+import { errorText, useAction } from "@/lib/useAction";
 import { Badge, Button, Card, LoadingRows } from "@/components/ui";
 
 interface Balance { leave_type: string; quota: number; used: number; remaining: number }
 
-const timeOf = (iso: string | null) =>
-  iso ? new Date(iso).toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" }) : "—";
+const timeOf = (iso: string | null) => (iso ? formatTime(iso) : "—");
 
 export default function MySpace() {
   const { me } = useSession();
@@ -21,15 +21,23 @@ export default function MySpace() {
   // flashing before the answer arrived read as a lost check-in.
   const [today, setToday] = useState<Attendance | null | undefined>(undefined);
   const [balances, setBalances] = useState<Balance[]>([]);
+  // Each part fails on its own and says so; "Not clocked in" when the answer
+  // simply never came would send people to clock in twice.
+  const [todayError, setTodayError] = useState<string | null>(null);
+  const [balancesError, setBalancesError] = useState<string | null>(null);
 
   const load = useCallback(() => {
-    api<Employee>("/me/profile").then(setProfile).catch(() => {});
+    setTodayError(null);
+    setBalancesError(null);
+    // The line under the greeting is decoration; without it the page is whole.
+    api<Employee>("/me/profile").then(setProfile).catch(() => setProfile(null));
     api<Attendance[]>("/me/attendance")
       // Today is Pakistan's day: in UTC it was yesterday until 5am, so staff
       // who had clocked in saw "Not clocked in" again after midnight.
       .then((rows) => setToday(rows.find((r) => isTodayPKT(r.work_date)) ?? null))
-      .catch(() => setToday(null));
-    api<Balance[]>("/me/leave/balances").then(setBalances).catch(() => {});
+      .catch((e) => { setToday(undefined); setTodayError(errorText(e, "Couldn't load today's attendance.")); });
+    api<Balance[]>("/me/leave/balances").then(setBalances)
+      .catch((e) => setBalancesError(errorText(e, "Couldn't load your leave balances.")));
   }, []);
   useEffect(load, [load]);
 
@@ -61,7 +69,12 @@ export default function MySpace() {
       <Card className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-sm font-medium">Today</p>
-          {today === undefined ? (
+          {todayError ? (
+            <p role="status" className="mt-1 text-sm text-warning">
+              {todayError}{" "}
+              <button type="button" onClick={load} className="text-brand hover:underline">Try again</button>
+            </p>
+          ) : today === undefined ? (
             <div className="mt-1 w-48"><LoadingRows rows={1} label="Loading today" /></div>
           ) : today ? (
             <p className="mt-1 flex items-center gap-2 text-sm text-fg-muted">
@@ -81,6 +94,7 @@ export default function MySpace() {
         )}
       </Card>
 
+      {balancesError && <p role="status" className="text-sm text-warning">{balancesError}</p>}
       <section className="grid gap-3 sm:grid-cols-3">
         {balances.map((b) => (
           <Card key={b.leave_type}>
