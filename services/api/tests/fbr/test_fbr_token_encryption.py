@@ -154,3 +154,37 @@ async def test_rollback_restores_the_plaintext_column(client, pos_tenant, owner)
         assert row["token"] == SECRET and row["token_enc"] is None
     finally:
         await tx.rollback()
+
+
+# ── The script fails closed on the public dev key (coordinator security review)
+
+@pytest.fixture
+def no_keys(monkeypatch):
+    monkeypatch.setattr(settings, "bos_data_keys", "")
+    monkeypatch.setattr(settings, "bos_data_key_active", "")
+    monkeypatch.setattr(crypto, "_ring", None)
+
+
+async def test_the_script_refuses_the_dev_key_without_an_explicit_flag(no_keys, capsys):
+    with pytest.raises(SystemExit) as e:
+        await encrypt_credentials.main([])
+    assert e.value.code != 0
+    assert "--allow-dev-key" in capsys.readouterr().err
+
+
+async def test_the_script_refuses_the_dev_key_in_production_even_with_the_flag(no_keys, monkeypatch):
+    monkeypatch.setattr(settings, "node_env", "production")
+    # Strong-looking URLs, so the only problem left is the key — and nothing connects.
+    monkeypatch.setattr(settings, "database_url", "postgres://o:q8Zr2mXv7LpN4tWs9KcY@nowhere:1/x")
+    monkeypatch.setattr(settings, "app_database_url",
+                        "postgres://app_user:q8Zr2mXv7LpN4tWs9KcYx@nowhere:1/x")
+    with pytest.raises(SystemExit) as e:
+        await encrypt_credentials.main(["--allow-dev-key"])
+    assert e.value.code != 0
+
+
+async def test_the_script_names_the_key_it_uses_before_writing(no_keys, capsys):
+    assert await encrypt_credentials.main(["--allow-dev-key", "--verify"]) == 0
+    out = capsys.readouterr().out
+    assert "using data key 'dev'" in out
+    assert out.index("using data key") < out.index("fbr_settings.token")

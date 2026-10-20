@@ -81,3 +81,22 @@ def test_bad_key_configuration_is_refused(keys, active):
 def test_the_dev_key_is_flagged_so_production_can_refuse_it():
     assert crypto.KeyRing.parse("", "").is_dev
     assert not RING.is_dev
+
+
+# ── Fail closed in production (coordinator security review) ────────────────
+
+@pytest.fixture
+def production_without_keys(monkeypatch):
+    from app.config import settings
+    monkeypatch.setattr(settings, "node_env", "production")
+    monkeypatch.setattr(settings, "bos_data_keys", "")
+    monkeypatch.setattr(settings, "bos_data_key_active", "")
+    monkeypatch.setattr(crypto, "_ring", None)  # re-read; restored after the test
+
+
+def test_production_never_falls_back_to_the_dev_key(production_without_keys):
+    with pytest.raises(crypto.KeyConfigError):
+        crypto.encrypt("t", AAD)
+    blob = crypto.encrypt("t", AAD, ring=crypto.KeyRing.parse("", ""))  # a dev-key blob
+    with pytest.raises(crypto.KeyConfigError):
+        crypto.decrypt(blob, AAD)

@@ -8,16 +8,22 @@
 Runs as the owner (DATABASE_URL): it touches every tenant's row. Backfill is
 idempotent, verifies each value by decrypting it before blanking the
 plaintext, and only then validates the 0046 constraint — so the database
-proves no plaintext token is left. Values are never printed.
+proves no plaintext token is left. Values and keys are never printed; the
+key id is, before anything is written.
+
+Fails closed: in production it runs the API's startup guard first (no dev key,
+no default DB password), and anywhere else it refuses the public dev key
+unless --allow-dev-key says that is intended (local dev and tests only).
 """
 from __future__ import annotations
 
 import argparse
 import asyncio
+import sys
 
 import asyncpg
 
-from app import crypto
+from app import crypto, startup_guard
 from app.config import settings
 from app.fbr import token_aad
 
@@ -93,25 +99,40 @@ async def rollback(conn: asyncpg.Connection, *, ring: crypto.KeyRing | None = No
     return moved
 
 
-async def main() -> int:
+def resolve_ring(allow_dev_key: bool) -> crypto.KeyRing:
+    startup_guard.enforce(settings)  # production: exits on the dev key or default passwords
+    ring = crypto.default_ring()
+    if ring.is_dev and not allow_dev_key:
+        print("refusing: BOS_DATA_KEYS is not set, so the public dev key would be used. "
+              "Set BOS_DATA_KEYS/BOS_DATA_KEY_ACTIVE, or pass --allow-dev-key for local dev.",
+              file=sys.stderr)
+        raise SystemExit(2)
+    return ring
+
+
+async def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     mode = ap.add_mutually_exclusive_group()
     mode.add_argument("--verify", action="store_true")
     mode.add_argument("--rekey", action="store_true")
     mode.add_argument("--rollback", action="store_true")
-    args = ap.parse_args()
+    ap.add_argument("--allow-dev-key", action="store_true",
+                    help="permit the public dev key (never honoured in production)")
+    args = ap.parse_args(argv)
+    ring = resolve_ring(args.allow_dev_key)
+    print(f"using data key {ring.active!r} (of {len(ring.keys)} configured)")
     conn = await asyncpg.connect(settings.database_url)
     try:
         if args.verify:
-            report = await verify(conn)
+            report = await verify(conn, ring=ring)
             print(f"fbr_settings.token: {report}")
             return 1 if report["failed"] or report["plaintext"] else 0
         if args.rekey:
-            print(f"re-encrypted {await rekey(conn)} value(s) under key {crypto.default_ring().active!r}")
+            print(f"re-encrypted {await rekey(conn, ring=ring)} value(s) under key {ring.active!r}")
         elif args.rollback:
-            print(f"decrypted {await rollback(conn)} value(s) back to plaintext (constraint dropped)")
+            print(f"decrypted {await rollback(conn, ring=ring)} value(s) back to plaintext (constraint dropped)")
         else:
-            print(f"encrypted {await backfill(conn)} plaintext value(s); constraint validated")
+            print(f"encrypted {await backfill(conn, ring=ring)} plaintext value(s); constraint validated")
         return 0
     finally:
         await conn.close()

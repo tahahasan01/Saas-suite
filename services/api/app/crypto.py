@@ -42,6 +42,10 @@ class DecryptError(Exception):
     """Wrong key, wrong row/tenant (AAD), unknown key id, or a tampered blob."""
 
 
+class KeyConfigError(RuntimeError):
+    """No usable master key: production never falls back to the dev key."""
+
+
 @dataclass(frozen=True)
 class KeyRing:
     keys: dict[str, bytes]
@@ -83,11 +87,19 @@ _ring: KeyRing | None = None
 
 
 def default_ring() -> KeyRing:
-    """The process key ring, from settings (parsed once)."""
+    """The process key ring, from settings (parsed once).
+
+    Fails closed: in production a missing BOS_DATA_KEYS raises instead of
+    quietly using the public dev key — "encrypting" with a published key would
+    be plaintext with extra steps. The startup guard refuses to boot first;
+    this covers any path that runs without it (scripts, a future worker)."""
     global _ring
     if _ring is None:
         from .config import settings
-        _ring = KeyRing.parse(settings.bos_data_keys, settings.bos_data_key_active)
+        ring = KeyRing.parse(settings.bos_data_keys, settings.bos_data_key_active)
+        if ring.is_dev and settings.is_prod:
+            raise KeyConfigError("BOS_DATA_KEYS is not set; refusing to use the dev key in production")
+        _ring = ring
     return _ring
 
 
