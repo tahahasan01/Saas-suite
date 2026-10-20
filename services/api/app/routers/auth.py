@@ -106,6 +106,12 @@ async def signup(body: SignupRequest, response: Response) -> MeResponse:
                    values ($1, 'growth', 'trialing', now() + interval '14 days')""",
                 tenant_id,
             )
+            # Leave policy with default quotas, so leave endpoints never have to
+            # create it on first use (concurrent first uses raced on the pkey).
+            await conn.execute(
+                "insert into hrms_leave_policies (tenant_id) values ($1) on conflict (tenant_id) do nothing",
+                tenant_id,
+            )
             token = await _create_session(conn, user_id, tenant_id)
 
             tenant_row = await conn.fetchrow("select id,name,industry_type,status from tenants where id=$1", tenant_id)

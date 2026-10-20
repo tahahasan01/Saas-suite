@@ -45,6 +45,9 @@ app.add_middleware(
     allow_credentials=True,  # required so the session cookie is sent
     allow_methods=["*"],
     allow_headers=["*"],
+    # Paged lists report their full size here; cross-origin fetch() can only
+    # read response headers that are listed.
+    expose_headers=["X-Total-Count"],
 )
 
 app.include_router(auth.router)

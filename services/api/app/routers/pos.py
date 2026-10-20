@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 
 from .. import csv_io, db, fbr, fbr_submit, pricing, refs
 from ..deps import AuthContext
@@ -71,21 +71,40 @@ def _product(r: asyncpg.Record) -> ProductOut:
         hs_code=r["hs_code"], tax_rate=float(r["tax_rate"]), fbr_uom=r["fbr_uom"])
 
 
+# Search: name/SKU/barcode/HS code fragments. The barcode equality keeps the
+# exact-scan case on its index even though the ilike also covers it.
+_PRODUCT_WHERE = """(active or $1)
+   and ($2::text is null
+        or name ilike '%'||$2||'%' or sku ilike '%'||$2||'%'
+        or barcode = $2 or barcode ilike '%'||$2||'%' or hs_code ilike '%'||$2||'%')"""
+
+
 @router.get("/products", response_model=list[ProductOut])
-async def list_products(q: str | None = None, include_archived: bool = False,
+async def list_products(response: Response, q: str | None = None, include_archived: bool = False,
+                        limit: int | None = Query(None, ge=1, le=500),
+                        offset: int = Query(0, ge=0),
                         auth: AuthContext = Depends(require("pos", "read"))):
-    """Archived products stay listable behind a flag — otherwise archiving is a
-    one-way trip and the catalog can never be un-done."""
+    """One page of the catalog; `X-Total-Count` is how many match in all.
+
+    Archived products stay listable behind a flag — otherwise archiving is a
+    one-way trip and the catalog can never be un-done. The default page size
+    (50 for a search, 200 otherwise) is what the till and pickers have always
+    received; the Products page pages with limit/offset so nothing past the
+    first page is unreachable. Ties on name are broken by id so pages never
+    overlap or skip a row.
+    """
+    q = q.strip() if q else None
+    q = q or None
+    if limit is None:
+        limit = 50 if q else 200
     async with db.tenant_conn(auth.tenant_id) as conn:
-        if q:
-            rows = await conn.fetch(
-                """select * from pos_products where (active or $2)
-                   and (name ilike '%'||$1||'%' or sku ilike '%'||$1||'%' or barcode = $1)
-                   order by active desc, name limit 50""", q, include_archived)
-        else:
-            rows = await conn.fetch(
-                "select * from pos_products where (active or $1) order by active desc, name limit 200",
-                include_archived)
+        total = await conn.fetchval(
+            f"select count(*) from pos_products where {_PRODUCT_WHERE}", include_archived, q)
+        rows = await conn.fetch(
+            f"""select * from pos_products where {_PRODUCT_WHERE}
+                order by active desc, name, id limit $3 offset $4""",
+            include_archived, q, limit, offset)
+    response.headers["X-Total-Count"] = str(total)
     return [_product(r) for r in rows]
 
 

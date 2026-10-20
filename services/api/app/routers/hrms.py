@@ -377,11 +377,25 @@ select l.leave_type, coalesce(sum(wd.n), 0)::int as used
 """
 
 
+_POLICY_SELECT = "select * from hrms_leave_policies where tenant_id=$1"
+
+
 async def _policy(conn, tenant_id: str):
-    row = await conn.fetchrow("select * from hrms_leave_policies where tenant_id=$1", tenant_id)
+    """The tenant's leave policy, created with defaults on first use.
+
+    Signup creates the row; this covers tenants from before that. Concurrent
+    first uses race, so the insert is `on conflict do nothing` — a select-then-
+    insert lets two requests both see "missing" and the loser 500s on the pkey.
+    The re-select sees the winner's row: under READ COMMITTED a conflicting
+    insert waits for the other transaction and each statement takes a fresh
+    snapshot.
+    """
+    row = await conn.fetchrow(_POLICY_SELECT, tenant_id)
     if row is None:
-        row = await conn.fetchrow(
-            "insert into hrms_leave_policies (tenant_id) values ($1) returning *", tenant_id)
+        await conn.execute(
+            "insert into hrms_leave_policies (tenant_id) values ($1) on conflict (tenant_id) do nothing",
+            tenant_id)
+        row = await conn.fetchrow(_POLICY_SELECT, tenant_id)
     return row
 
 

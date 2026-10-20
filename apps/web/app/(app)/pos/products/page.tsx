@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Product } from "@business-os/types";
-import { api } from "@/lib/api";
+import { api, apiPage } from "@/lib/api";
 import { money } from "@/lib/format";
 import { useSession } from "@/lib/session";
 import { useAction } from "@/lib/useAction";
@@ -18,28 +18,71 @@ const blank = { name: "", price: "", stock: "", barcode: "", low: "", hs_code: "
 /** Minor units in the API, rupees in the input — convert at the boundary only. */
 const toMinor = (rupees: string) => Math.round(Number(rupees || 0) * 100);
 
+/** Rows per request. The API's own unfiltered default, so a small catalog is one request. */
+const PAGE = 200;
+
 /** Shared by every number field here: the wheel doesn't change amounts. */
 const num = { type: "number", inputMode: "decimal", min: 0, onWheel: blurOnWheel } as const;
 
 export default function ProductsPage() {
   const { t } = useSession();
   const [items, setItems] = useState<Product[] | null>(null); // null = loading
+  const [total, setTotal] = useState(0); // how many match, loaded or not
   const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState(blank);
   const [editing, setEditing] = useState<Product | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [filter, setFilter] = useState("");
+  // What's been asked of the server: the search box, settled.
+  const [query, setQuery] = useState("");
   const confirm = useConfirm();
   const word = t("products");
   const one = t("product");
 
+  useEffect(() => {
+    const id = setTimeout(() => setQuery(filter.trim()), 250);
+    return () => clearTimeout(id);
+  }, [filter]);
+
+  // Search and paging happen on the server: the list used to be the first 200
+  // products filtered in the browser, so the 201st onwards could never be
+  // found, edited or archived here. Only the newest request may write.
+  const seq = useRef(0);
+  const loaded = useRef(0);
+  loaded.current = items?.length ?? 0;
+  const url = useCallback((offset: number, limit: number) => {
+    const p = new URLSearchParams({ include_archived: String(showArchived), limit: String(limit), offset: String(offset) });
+    if (query) p.set("q", query);
+    return `/pos/products?${p}`;
+  }, [showArchived, query]);
+
+  // Reloads from the top, keeping as many rows as were showing — saving an
+  // edit on row 350 shouldn't snap the list back to 200.
   const load = useCallback(() => {
+    const n = ++seq.current;
     setLoadError(null);
-    api<Product[]>(`/pos/products?include_archived=${showArchived}`)
-      .then(setItems)
-      .catch(() => setLoadError(`Couldn't load ${word.toLowerCase()}.`));
-  }, [showArchived, word]);
-  useEffect(load, [load]);
+    apiPage<Product>(url(0, Math.min(500, Math.max(PAGE, loaded.current))))
+      .then((r) => { if (n === seq.current) { setItems(r.items); setTotal(r.total); } })
+      .catch(() => { if (n === seq.current) setLoadError(`Couldn't load ${word.toLowerCase()}.`); });
+  }, [url, word]);
+  // A new search or the archived toggle starts again from the first page (the
+  // old rows stay up until the new ones arrive, rather than flashing a skeleton).
+  useEffect(() => { loaded.current = 0; load(); }, [load]);
+
+  const loadMore = useAction(
+    async () => {
+      const n = seq.current;
+      const r = await apiPage<Product>(url(loaded.current, PAGE));
+      if (n !== seq.current) return true; // a newer search replaced the list
+      setItems((prev) => {
+        const have = new Set((prev ?? []).map((p) => p.id));
+        return [...(prev ?? []), ...r.items.filter((p) => !have.has(p.id))];
+      });
+      setTotal(r.total);
+      return true;
+    },
+    { failure: `Couldn't load more ${word.toLowerCase()}` },
+  );
 
   // Every write says when it fails — a failed save used to look like a good one (I2).
   const create = useAction(
@@ -85,12 +128,6 @@ export default function ProductsPage() {
     });
     if (done) load();
   }
-
-  const shown = useMemo(() => {
-    const f = filter.trim().toLowerCase();
-    if (!items || !f) return items ?? [];
-    return items.filter((p) => [p.name, p.barcode, p.sku, p.hs_code].some((v) => v?.toLowerCase().includes(f)));
-  }, [items, filter]);
 
   const columns: Column<Product>[] = [
     {
@@ -162,15 +199,19 @@ export default function ProductsPage() {
             <ErrorState message={loadError} onRetry={load} />
           ) : (
             <>
-              {items && <p className="text-xs text-fg-subtle">{shown.length} {word.toLowerCase()}</p>}
+              {items && (
+                <p className="text-xs text-fg-subtle" aria-live="polite">
+                  {items.length < total ? `Showing ${items.length} of ${total}` : total} {word.toLowerCase()}
+                </p>
+              )}
               <DataTable
                 columns={columns}
-                rows={shown}
+                rows={items ?? []}
                 rowKey={(p) => p.id}
                 loading={items === null}
                 caption={word}
-                empty={<EmptyState title={filter ? `Nothing matches "${filter}".` : `No ${word.toLowerCase()} yet.`}
-                                   hint={filter ? undefined : `Add your first ${one.toLowerCase()} or import a CSV.`} />}
+                empty={<EmptyState title={query ? `Nothing matches "${query}".` : `No ${word.toLowerCase()} yet.`}
+                                   hint={query ? undefined : `Add your first ${one.toLowerCase()} or import a CSV.`} />}
                 actions={(p) => (
                   <>
                     <Button size="sm" variant="ghost" onClick={() => setEditing(p)} aria-label={`Edit ${p.name}`}>Edit</Button>
@@ -184,6 +225,13 @@ export default function ProductsPage() {
                   </>
                 )}
               />
+              {items && items.length < total && (
+                <div className="flex justify-center pt-1">
+                  <Button variant="subtle" disabled={loadMore.busy} onClick={() => void loadMore.run()}>
+                    {loadMore.busy ? "Loading…" : `Load ${Math.min(PAGE, total - items.length)} more`}
+                  </Button>
+                </div>
+              )}
             </>
           )}
         </div>
