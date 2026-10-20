@@ -2,6 +2,7 @@
 
 | Workflow | When | What fails it |
 |---|---|---|
+| `ci.yml` → **workflows** | every PR | a `uses:` not pinned to a 40-hex commit SHA (`.github/scripts/check-action-pins.sh`; local `./` actions excepted), or an actionlint finding |
 | `ci.yml` → **backend** | every PR, push to `main` | `ruff check`, `mypy` (strict on new modules — `services/api/pyproject.toml`; `tests/core/test_mypy_strict.py` fails if a new module isn't listed), `pytest` on Postgres 16 + pgvector (after `scripts.migrate`) with Redis |
 | `ci.yml` → **contract** | every PR | `packages/api-client` differs from what `npm run api-client:generate` produces from the FastAPI schema |
 | `ci.yml` → **web** | every PR | ESLint errors, `tsc`, Vitest, `next build` |
@@ -9,6 +10,14 @@
 | `security.yml` | every PR, push to `main`, Mondays 03:17 UTC | `pip-audit` on `requirements.txt`, `npm audit --audit-level=high`, `gitleaks` over the full history (`.gitleaks.toml`) |
 | `docker.yml` | every PR | the API / web image doesn't build, or Trivy finds a fixable HIGH/CRITICAL. Skips with a warning while a Dockerfile doesn't exist yet |
 | `deploy.yml` | tag `vX.Y.Z` → staging; manual run → production | see below |
+
+**Supply chain.** Every third-party action is pinned to a full commit SHA with the
+version as a comment (`uses: docker/login-action@<sha> # v3.7.0`), container images
+run from workflows are pinned by digest, and `.github/dependabot.yml` opens weekly
+update PRs for actions, npm, pip and Docker. Workflows default to
+`permissions: contents: read`; only deploy's image job gets `packages: write`.
+To bump a pin by hand: `git ls-remote https://github.com/<owner>/<repo> refs/tags/<tag>`
+(the `^{}` line for an annotated tag).
 
 Lint warnings don't fail CI (yet): the logical-CSS rule is at `warn` until the
 existing physical classes (`ml-`, `pr-`, `left-`, `text-left`…) are migrated, then

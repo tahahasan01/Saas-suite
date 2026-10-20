@@ -29,17 +29,17 @@ jobs:
             dockerfile: apps/web/Dockerfile
             context: .
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Dockerfile present?
         id: present
         run: |
           if [ -f "${{ matrix.dockerfile }}" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"
           else echo "::warning::${{ matrix.dockerfile }} not found yet; skipping the ${{ matrix.name }} image"; echo "ok=false" >> "$GITHUB_OUTPUT"; fi
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
         if: steps.present.outputs.ok == 'true'
       - name: Build
         if: steps.present.outputs.ok == 'true'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
@@ -53,11 +53,10 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.name }}
       - name: Trivy (HIGH/CRITICAL with a fix available fail the build)
         if: steps.present.outputs.ok == 'true'
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: business-os-${{ matrix.name }}:ci
           format: table
           exit-code: "1"
           ignore-unfixed: true
-          vuln-type: os,library
           severity: HIGH,CRITICAL
