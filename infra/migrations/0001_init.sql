@@ -12,10 +12,13 @@ create extension if not exists "pgcrypto";  -- gen_random_uuid()
 create extension if not exists vector;       -- pgvector (RAG, dedup, matching)
 
 -- ── Runtime application role (non-owner → RLS applies to it) ────────────────
+-- Created without a password: scripts/migrate.py sets it from the password in
+-- APP_DATABASE_URL after every run, so the secret lives only in the
+-- environment (P0-6, S10; rotation: infra/README.md "Secrets").
 do $$
 begin
   if not exists (select 1 from pg_roles where rolname = 'app_user') then
-    create role app_user login password 'app_user_pw';
+    create role app_user login;
   end if;
 end$$;
 
