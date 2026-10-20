@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { API } from "./helpers";
+import { API, ready } from "./helpers";
 
 type Payslip = { employee_id: string; name: string; net_minor: number };
 type Payroll = { month: string; working_days: number; payslips: Payslip[] };
@@ -82,6 +82,77 @@ test.describe("payroll on a tablet", () => {
   });
 });
 
+test.describe("payroll on a laptop", () => {
+  test.use({ viewport: { width: 1366, height: 768 } });
+
+  test("net pay is visible without scrolling the table, and no tax reads as —", async ({ page }) => {
+    // Long names and big amounts (the large-data tenant) widen every column;
+    // net pay, the last one, used to sit past the table's scroll edge.
+    await page.route(apiPath("/hrms/payroll"), async (route) => {
+      const res = await route.fetch();
+      const run = await res.json();
+      for (const p of run.payslips) {
+        for (const k of ["gross_minor", "net_minor"]) p[k] = p[k] * 100 + 45;
+        p.absence_deduction_minor = 12_345_645;
+        p.tax_minor = 0;
+        p.paid_leave_days = 3;
+        p.unpaid_leave_days = 2;
+        p.name = `Chaudhry Muhammad Usman Ghani Warraich ${p.name}`;
+      }
+      await route.fulfill({ response: res, json: run });
+    });
+    await page.goto("/hrms/payroll");
+    const table = page.getByRole("table", { name: /payroll/i });
+    await expect(table).toBeVisible();
+    const net = table.getByRole("columnheader", { name: "Net pay" });
+    await expect(net).toBeInViewport({ ratio: 1 });
+    await expect(table.getByText(/^−\s*Rs\s*0$/)).toHaveCount(0);
+  });
+});
+
+test.describe("payroll and leave on a 320 phone", () => {
+  test.use({ viewport: { width: 320, height: 568 } });
+
+  test("summary tiles keep each amount on one line, inside the tile", async ({ page }) => {
+    // A shop-sized payroll: the sample amounts are too small to wrap. Scale
+    // them so the totals reach 8 digits (Rs 12,345,678).
+    await page.route(apiPath("/hrms/payroll"), async (route) => {
+      const res = await route.fetch();
+      const run = await res.json();
+      for (const p of run.payslips) {
+        for (const k of Object.keys(p)) if (k.endsWith("_minor")) p[k] = p[k] * 1000 + 45;
+      }
+      await route.fulfill({ response: res, json: run });
+    });
+    await page.goto("/hrms/payroll");
+    await ready(page);
+    for (const label of ["Employees", "Gross", "Deductions & tax", "Net to pay"]) {
+      const v = page.getByText(label, { exact: true }).locator("xpath=following-sibling::p[1]");
+      await expect(v).toBeVisible();
+      const fits = await v.evaluate((el) => {
+        const lh = parseFloat(getComputedStyle(el).lineHeight);
+        return { oneLine: el.getBoundingClientRect().height < lh * 1.5, inside: el.scrollWidth <= el.clientWidth + 1 };
+      });
+      expect(fits, label).toEqual({ oneLine: true, inside: true });
+    }
+  });
+
+  test("a leave card shows the end date in full", async ({ page, request }) => {
+    const [emp] = await (await request.get(`${API}/hrms/employees`)).json();
+    // Far future and random, so reruns on the same tenant never overlap.
+    const y = 2100 + Math.floor(Math.random() * 800);
+    const res = await request.post(`${API}/hrms/leave`, {
+      data: { employee_id: emp.id, request_type: "leave", leave_type: "unpaid", from_date: `${y}-03-02`, to_date: `${y}-03-13` },
+    });
+    expect(res.ok(), await res.text()).toBeTruthy();
+    await page.goto("/hrms/leave");
+    await ready(page);
+    const dates = page.getByRole("listitem").locator("dd").filter({ hasText: `${y}-03-13` });
+    await expect(dates).toBeVisible();
+    expect(await dates.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+  });
+});
+
 test.describe("attendance on a phone", () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
 
@@ -122,6 +193,7 @@ test.describe("attendance on a phone", () => {
 test.describe("leave", () => {
   test("filters say which one is on", async ({ page }) => {
     await page.goto("/hrms/leave");
+    await ready(page); // a click while the list is still loading was lost once on Firefox under load
     await expect(page.getByRole("button", { name: "All", pressed: true })).toBeVisible();
     await page.getByRole("button", { name: "Work from home" }).click();
     await expect(page.getByRole("button", { name: "Work from home", pressed: true })).toBeVisible();

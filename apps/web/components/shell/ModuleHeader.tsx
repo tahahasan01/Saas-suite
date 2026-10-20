@@ -56,25 +56,37 @@ function Tabs({ module: m, label, tabs, pathname }: { module: Module; label: str
     setEdges((e) => (e.left === left && e.right === right ? e : { left, right }));
   }, []);
 
-  useEffect(() => {
-    const el = navRef.current;
-    if (!el) return;
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [measure]);
-
-  // Centre the active tab without scrolling the page itself (scrollIntoView would).
-  useEffect(() => {
+  // Centre the active tab without scrolling the page itself (scrollIntoView
+  // would). Only when it isn't already fully in view, so it never fights a
+  // strip the user has scrolled with the tab still showing.
+  const centreActive = useCallback(() => {
     const el = navRef.current;
     const active = el?.querySelector<HTMLElement>("[aria-current=page]");
     if (!el || !active) return;
-    if (active.offsetLeft < el.scrollLeft || active.offsetLeft + active.offsetWidth > el.scrollLeft + el.clientWidth) {
-      el.scrollLeft = active.offsetLeft - (el.clientWidth - active.offsetWidth) / 2;
+    const strip = el.getBoundingClientRect();
+    const tab = active.getBoundingClientRect();
+    if (tab.left < strip.left - 0.5 || tab.right > strip.right + 0.5) {
+      el.scrollLeft += tab.left - strip.left - (strip.width - tab.width) / 2;
     }
     measure();
-  }, [pathname, measure]);
+  }, [measure]);
+
+  // Tab widths change after first paint: web fonts swap in (Firefox lays out
+  // with the fallback font first, so a tab centred then ended up half
+  // off-screen), and the strip resizes with the window. Re-centre on both —
+  // the observer watches each link as well as the strip, since a font swap
+  // widens the links without resizing the strip.
+  useEffect(() => {
+    const el = navRef.current;
+    if (!el) return;
+    let live = true;
+    centreActive();
+    const ro = new ResizeObserver(() => centreActive());
+    ro.observe(el);
+    el.querySelectorAll("a").forEach((a) => ro.observe(a));
+    document.fonts?.ready.then(() => { if (live) centreActive(); });
+    return () => { live = false; ro.disconnect(); };
+  }, [pathname, tabs.length, centreActive]);
 
   function nudge(dir: 1 | -1) {
     const el = navRef.current;

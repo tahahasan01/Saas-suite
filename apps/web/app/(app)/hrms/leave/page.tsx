@@ -108,7 +108,18 @@ export default function LeavePage() {
         ? <Badge tone="brand">Work from home</Badge>
         : <span className="capitalize text-fg-muted">{l.leave_type}</span>,
     },
-    { key: "dates", header: "Dates", cell: (l) => <span className="whitespace-nowrap tabular-nums text-fg-muted">{l.from_date} → {l.to_date}</span> },
+    {
+      // wrap: a 320px card is too narrow for both dates on one line, and the
+      // truncated cell hid the end date. Each date stays whole; the line breaks
+      // at the arrow. One line in the table.
+      key: "dates", header: "Dates", wrap: true,
+      cell: (l) => (
+        <span className="tabular-nums text-fg-muted sm:whitespace-nowrap">
+          <span className="whitespace-nowrap">{l.from_date}</span>
+          {l.to_date !== l.from_date && <> → <span className="whitespace-nowrap">{l.to_date}</span></>}
+        </span>
+      ),
+    },
     { key: "status", header: "Status", cell: (l) => <Badge tone={tone[l.status]}>{l.status}</Badge> },
   ];
 

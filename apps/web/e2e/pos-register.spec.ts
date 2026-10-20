@@ -16,7 +16,9 @@ test.describe("POS register: scanning", () => {
     await expect(cart(page)).not.toContainText(lays.name);
   });
 
-  test("tapping a product then scanning adds the scanned product too", async ({ page, request }) => {
+  test("tapping a product then scanning adds the scanned product too", async ({ page, request, browserName }) => {
+    // WebKit runs the till noticeably slower under a parallel run; same steps, more time.
+    test.slow(browserName === "webkit");
     const all = await products(request);
     const first = all[0];
     const target = all.find((p, i) => i > 0 && p.barcode)!;
@@ -35,7 +37,8 @@ test.describe("POS register: scanning", () => {
     await expect(page.getByRole("heading", { name: "Cart (0)" })).toBeVisible();
   });
 
-  test("after a sale, New sale puts the cursor back in the scan field, and Escape also closes the receipt", async ({ page, request }) => {
+  test("after a sale, New sale puts the cursor back in the scan field, and Escape also closes the receipt", async ({ page, request, browserName }) => {
+    test.slow(browserName === "webkit");
     const [first] = await products(request);
     await page.goto("/pos");
     await page.getByRole("button", { name: new RegExp(first.name) }).first().click();

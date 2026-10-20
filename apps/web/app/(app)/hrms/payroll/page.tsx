@@ -69,6 +69,13 @@ export default function PayrollPage() {
         </span>
       ),
     },
+    // Second, not last: with six-digit amounts at 1366 the last column sat
+    // past the table's scroll edge, and net pay is what people open this for.
+    // (The Employee column stays pinned while the rest scroll.)
+    {
+      key: "net", header: "Net pay", align: "right", hideOnCard: true,
+      cell: (p) => <span className="font-semibold">{money(p.net_minor)}</span>,
+    },
     { key: "gross", header: "Gross", align: "right", cell: (p) => money(p.gross_minor) },
     { key: "present", header: "Present", align: "right", cell: (p) => `${p.present_days}/${data?.working_days ?? 0}` },
     {
@@ -87,11 +94,8 @@ export default function PayrollPage() {
       key: "deduction", header: "Deduction", align: "right",
       cell: (p) => (p.absence_deduction_minor ? `−${money(p.absence_deduction_minor)}` : "—"),
     },
-    { key: "tax", header: "FBR tax", align: "right", cell: (p) => `−${money(p.tax_minor)}` },
-    {
-      key: "net", header: "Net pay", align: "right", hideOnCard: true,
-      cell: (p) => <span className="font-semibold">{money(p.net_minor)}</span>,
-    },
+    // No tax is "—" like every other empty cell, not "−Rs 0".
+    { key: "tax", header: "FBR tax", align: "right", cell: (p) => (p.tax_minor ? `−${money(p.tax_minor)}` : "—") },
   ];
 
   return (
@@ -132,10 +136,12 @@ export default function PayrollPage() {
       ) : (
         <>
           {data && slips.length > 0 && (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            // One tile a row on the smallest phones, two from 400px, four only
+            // once the content area is wide enough for an 8-digit total.
+            <div className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2 lg:grid-cols-4">
               <Total label="Employees" value={String(slips.length)} />
               <Total label="Gross" value={money(totals.gross)} />
-              <Total label="Deductions & tax" value={`−${money(totals.deductions)}`} />
+              <Total label="Deductions & tax" value={totals.deductions ? `−${money(totals.deductions)}` : "—"} />
               <Total label="Net to pay" value={money(totals.net)} accent />
             </div>
           )}
@@ -157,7 +163,9 @@ function Total({ label, value, accent = false }: { label: string; value: string;
   return (
     <Card className="p-4">
       <p className="text-xs text-fg-subtle">{label}</p>
-      <p className={`mt-1 break-words text-lg font-semibold tabular-nums ${accent ? "text-brand" : ""}`}>{value}</p>
+      {/* Never broken mid-number ("Rs 1,234,5 / 67"): the grid gives each
+          tile enough width instead. */}
+      <p className={`mt-1 whitespace-nowrap text-base font-semibold tabular-nums sm:text-lg ${accent ? "text-brand" : ""}`}>{value}</p>
     </Card>
   );
 }

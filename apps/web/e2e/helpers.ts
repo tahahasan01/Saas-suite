@@ -2,6 +2,27 @@ import { expect, type APIRequestContext, type Page } from "@playwright/test";
 
 export const API = process.env.API_URL ?? "http://localhost:4000";
 
+/** Waits until a page shows its real content, so layout checks measure it.
+ *
+ *  networkidle alone isn't enough: it can fire while the app shell still says
+ *  "Loading…" (no session yet) or a page still shows skeletons, and an
+ *  overflow check then measures an empty screen and passes. App pages are
+ *  ready once the shell's #main is up and no `.animate-pulse` skeleton is left.
+ *  Public pages (/, /pricing) have no shell (and the landing page no <main>):
+ *  pass `{ shell: false }` and they're ready once their heading is up. */
+export async function ready(page: Page, { shell = true }: { shell?: boolean } = {}) {
+  if (shell) await expect(page.locator("#main")).toBeVisible({ timeout: 20_000 });
+  else await expect(page.locator("h1").first()).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator(".animate-pulse")).toHaveCount(0, { timeout: 20_000 });
+  // Web fonts change text widths, so measure with the final ones.
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  // Late chunks and images, best-effort only: under a parallel run Firefox
+  // counts the dev server's HMR websocket upgrade as an open request until it
+  // completes (seen taking 25s+), so networkidle can outlast the test. The
+  // checks above are what make the page measurable.
+  await page.waitForLoadState("networkidle", { timeout: 5_000 }).catch(() => {});
+}
+
 export type Product = { id: string; name: string; barcode: string | null; price_minor: number };
 
 export async function products(request: APIRequestContext): Promise<Product[]> {

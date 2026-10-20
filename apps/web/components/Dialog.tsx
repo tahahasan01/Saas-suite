@@ -4,6 +4,7 @@ import * as R from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { useRef } from "react";
 import { cx } from "@/components/ui";
+import { openerElement } from "@/components/shell/useFocusReturn";
 
 /* Every overlay in the app goes through these two, so each one gets the same
  * guarantees: it sits above the sticky top bar (see the z-scale in
@@ -41,8 +42,10 @@ function useOpenerFocus(onOpen?: (e: Event) => void, onClose?: (e: Event) => voi
   const opener = useRef<HTMLElement | null>(null);
   return {
     onOpenAutoFocus: (e: Event) => {
-      // Runs before Radix moves focus inside, so this is still the opener.
-      opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      // Runs before Radix moves focus inside, so this is still the opener —
+      // or, after a mouse/touch press in Safari (which leaves focus on
+      // <body>), the control that was pressed.
+      opener.current = openerElement();
       onOpen?.(e);
     },
     onCloseAutoFocus: (e: Event) => {

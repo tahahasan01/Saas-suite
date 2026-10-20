@@ -37,15 +37,31 @@ test.describe("sidebar on a desktop", () => {
 test.describe("keyboard", () => {
   test.use({ viewport: { width: 1366, height: 768 } });
 
-  test("the first Tab stop skips to the content", async ({ page }) => {
+  test("the first Tab stop skips to the content", async ({ page, browserName }) => {
     await page.goto("/dashboard");
     await expect(page.locator("main#main")).toBeVisible();
-    await page.keyboard.press("Tab");
-    // In dev the Next.js overlay button can take the first stop; skip past it.
-    if (await page.evaluate(() => document.activeElement?.tagName.toLowerCase() === "nextjs-portal")) {
-      await page.keyboard.press("Tab");
-    }
     const skip = page.getByRole("link", { name: "Skip to content" });
+    if (browserName === "webkit") {
+      // Safari's Tab skips links unless "Press Tab to highlight each item" is
+      // on (Option+Tab includes them on a Mac, but Playwright's WebKit on
+      // Windows/Linux treats Alt+Tab as plain Tab, so no key reaches a link).
+      // Prove the same two things another way: the link comes first in tab
+      // order, and focusing it shows it.
+      const first = await page.evaluate(() => {
+        const all = document.querySelectorAll<HTMLElement>("a[href], button, input, select, textarea, [tabindex]");
+        const el = [...all].find((e) => e.tabIndex >= 0 && !(e as HTMLButtonElement).disabled && !e.closest("nextjs-portal"));
+        return el?.textContent?.trim();
+      });
+      expect(first).toBe("Skip to content");
+      await skip.focus();
+      expect((await skip.boundingBox())!.width).toBeGreaterThan(40); // not sr-only any more
+    } else {
+      await page.keyboard.press("Tab");
+      // In dev the Next.js overlay button can take the first stop; skip past it.
+      if (await page.evaluate(() => document.activeElement?.tagName.toLowerCase() === "nextjs-portal")) {
+        await page.keyboard.press("Tab");
+      }
+    }
     await expect(skip).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(page.locator("main#main")).toBeFocused();
