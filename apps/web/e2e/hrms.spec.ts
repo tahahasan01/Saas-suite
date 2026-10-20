@@ -16,6 +16,13 @@ const digits = (s: string) => s.replace(/\D/g, "");
 const moneyDigits = (minor: number) => String(Math.round(minor) % 100 === 0 ? Math.round(minor) / 100 : Math.round(minor));
 const overflow = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 
+// Dev mode (React StrictMode) loads payroll twice; a test can finish on the
+// first response while a route handler is still reading the second. Drop the
+// handlers first so that late read can't fail a test that already passed.
+test.afterEach(async ({ page }) => {
+  await page.unrouteAll({ behavior: "ignoreErrors" });
+});
+
 test.describe("payroll on a phone", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
