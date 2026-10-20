@@ -50,7 +50,8 @@ async def test_every_relation_has_a_matrix_entry():
     try:
         rels = {r["relname"] for r in await conn.fetch(
             """select c.relname from pg_class c
-                where c.relnamespace = 'public'::regnamespace and c.relkind in ('r','p','v','m')""")}
+                where c.relnamespace = 'public'::regnamespace and c.relkind in ('r','p','v','m')
+                  and not c.relispartition""")}  # partitions: test_partitions_carry_no_grants
     finally:
         await conn.close()
     assert rels - set(grant_matrix.APP_USER) == set(), "add these to tests/core/grant_matrix.py"
@@ -58,10 +59,32 @@ async def test_every_relation_has_a_matrix_entry():
 
 
 @pytest.mark.asyncio
+async def test_partitions_carry_no_grants_and_have_rls():
+    """A partition is reachable only through its parent, whose grants and
+    policies apply; queried directly it must refuse every runtime role."""
+    conn = await _owner()
+    try:
+        rows = await conn.fetch(
+            """select c.relname, c.relrowsecurity,
+                      exists (select 1 from information_schema.role_table_grants g
+                               where g.table_name = c.relname and g.table_schema = 'public'
+                                 and g.grantee in ('app_user','ai_reader','ai_view_owner','audit_writer'))
+                        as granted
+                 from pg_class c
+                where c.relnamespace = 'public'::regnamespace and c.relispartition
+                  and c.relkind in ('r','p')""")
+    finally:
+        await conn.close()
+    assert rows, "audit_log is partitioned (0044)"
+    assert [r["relname"] for r in rows if r["granted"] or not r["relrowsecurity"]] == []
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("role,matrix", [
     ("app_user", grant_matrix.APP_USER),
     ("ai_reader", grant_matrix.AI_READER),
     ("ai_view_owner", grant_matrix.AI_VIEW_OWNER),
+    ("audit_writer", grant_matrix.AUDIT_WRITER),
 ])
 async def test_role_privileges_equal_the_matrix(role, matrix):
     conn = await _owner()
@@ -94,7 +117,8 @@ async def test_no_default_privileges_for_runtime_roles():
         acls = await conn.fetch(
             """select d.defaclobjtype, a.grantee::regrole::text as grantee, a.privilege_type
                  from pg_default_acl d, aclexplode(d.defaclacl) a
-                where a.grantee <> 0 and a.grantee::regrole::text in ('app_user','ai_reader','ai_view_owner')""")
+                where a.grantee <> 0
+                  and a.grantee::regrole::text in ('app_user','ai_reader','ai_view_owner','audit_writer')""")
     finally:
         await conn.close()
     assert [dict(r) for r in acls] == []

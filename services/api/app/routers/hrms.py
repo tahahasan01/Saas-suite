@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from datetime import date, datetime, timedelta
 
-from .. import db, email, payroll, refs, tokens
+from .. import audit, db, email, payroll, refs, tokens
 from ..deps import AuthContext, current_auth, current_employee
 from ..models import (
     AttendanceOut,
@@ -519,6 +519,10 @@ async def decide_leave(leave_id: str, decision: str,
         await conn.execute(
             "update hrms_leave_requests set status=$1, decided_by=$2 where id=$3",
             new_status, auth.user_id, leave_id)
+        # The row diff is audited by trigger; the decision is a semantic event
+        # and an entry on the request's timeline.
+        await audit.track(conn, entity_type="leave_request", entity_id=leave_id, kind=new_status,
+                          event=f"hrms.leave.{decision}")
         rec = await conn.fetchrow(_LEAVE_SELECT + " where l.id=$1", leave_id)
     return _leave(rec)
 

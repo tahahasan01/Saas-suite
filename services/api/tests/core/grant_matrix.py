@@ -26,7 +26,11 @@ APP_USER: dict[str, set[str]] = {
     "payment_requests":     {S, I, U},
     "notifications":        {S, I, U},
     "workflows":            {S, I, U, D},
-    "audit_log":            {S, I},             # append-only
+    # append-only: rows are added only through the audit_row() trigger and
+    # audit_event(), security definer as audit_writer (0044); partitions are
+    # reached through the parent and are left out of this matrix.
+    "audit_log":            {S},
+    "timeline_events":      {S, I},             # append-only
     "ai_interactions":      {S, I},             # append-only
     "terminology":          {S},                # global reference data
     "occasion_calendar":    {S},                # global reference data
@@ -73,6 +77,9 @@ APP_USER: dict[str, set[str]] = {
 }
 
 AI_VIEWS = {name for name in APP_USER if name.startswith("ai_v_")}
+
+# audit_writer owns the audit definer functions; this is all they may do.
+AUDIT_WRITER: dict[str, set[str]] = {name: ({I} if name == "audit_log" else set()) for name in APP_USER}
 
 # ai_reader runs the model's SQL: the curated views, read-only, nothing else.
 AI_READER: dict[str, set[str]] = {name: ({S} if name in AI_VIEWS else set()) for name in APP_USER}

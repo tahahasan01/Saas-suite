@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
-from .. import csv_io, db, fulfillment, refs, scoring
+from .. import audit, csv_io, db, fulfillment, refs, scoring
 from ..deps import AuthContext
 from ..workflow import engine as wf
 from ..models import (
@@ -141,6 +141,7 @@ async def export_leads(auth: AuthContext = Depends(require("crm", "read"))) -> R
                       (l.value_minor / 100.0) as value, s.name as stage, l.created_at
                  from crm_leads l join crm_stages s on s.id = l.stage_id
                 order by l.created_at""")
+        await audit.event(conn, "export.leads", "crm_leads", data={"rows": len(rows)})
     body = csv_io.to_csv(
         ["name", "company", "phone", "email", "source", "value", "stage", "created_at"],
         [dict(r) for r in rows])

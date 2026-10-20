@@ -31,6 +31,8 @@ _TENANT_TABLES_SQL = """
            case when c.relname = 'tenants' then 'id' else 'tenant_id' end as key
       from pg_class c
      where c.relnamespace = 'public'::regnamespace and c.relkind in ('r','p')
+       -- a partition is probed through its parent (audit_log, 0044)
+       and not c.relispartition
        and (c.relname = 'tenants' or exists (
              select 1 from pg_attribute a
               where a.attrelid = c.oid and a.attname = 'tenant_id' and not a.attisdropped))
@@ -67,7 +69,7 @@ async def test_every_table_is_tenant_scoped_or_declared_global():
         rows = await conn.fetch(
             """select c.relname from pg_class c
                 where c.relnamespace = 'public'::regnamespace and c.relkind in ('r','p')
-                  and c.relname <> 'tenants'
+                  and c.relname <> 'tenants' and not c.relispartition
                   and not exists (select 1 from pg_attribute a where a.attrelid = c.oid
                                   and a.attname = 'tenant_id' and not a.attisdropped)""")
     finally:

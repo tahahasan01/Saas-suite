@@ -10,7 +10,7 @@ from decimal import Decimal
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 
-from .. import csv_io, db, fbr, fbr_submit, pricing, refs
+from .. import audit, csv_io, db, fbr, fbr_submit, pricing, refs
 from ..deps import AuthContext
 from ..models import (
     DrawerClose,
@@ -580,6 +580,7 @@ async def export_products(auth: AuthContext = Depends(require("pos", "read"))) -
             """select name, sku, barcode, category, (price_minor / 100.0) as price,
                       (cost_minor / 100.0) as cost, stock_qty as stock, hs_code, tax_rate
                  from pos_products where active order by name""")
+        await audit.event(conn, "export.products", "pos_products", data={"rows": len(rows)})
     body = csv_io.to_csv(
         ["name", "sku", "barcode", "category", "price", "cost", "stock", "hs_code", "tax_rate"],
         [dict(r) for r in rows])

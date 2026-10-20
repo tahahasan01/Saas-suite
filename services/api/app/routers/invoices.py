@@ -8,7 +8,7 @@ import io
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 
-from .. import db, invoices_pdf, notifications
+from .. import audit, db, invoices_pdf, notifications
 from ..deps import AuthContext
 from ..models import InvoiceCreate, InvoiceOut
 from ..rbac import perm, require
@@ -74,6 +74,8 @@ async def _decide(invoice_id: str, auth: AuthContext, new_status: str) -> Invoic
         await conn.execute(
             "update crm_invoice_requests set status=$1, decided_by=$2, decided_at=now() where id=$3",
             new_status, auth.user_id, invoice_id)
+        await audit.track(conn, entity_type="invoice_request", entity_id=invoice_id, kind=new_status,
+                          event="invoicing.invoice." + ("approve" if new_status == "approved" else "reject"))
         if cur["requested_by"]:
             await notifications.create(conn, user_id=str(cur["requested_by"]),
                                        kind="success" if new_status == "approved" else "info",

@@ -27,17 +27,16 @@ async def toggle_section(section: str, body: EntitlementUpdate,
     if section not in SECTIONS:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"Unknown section: {section}")
     async with db.tenant_conn(auth.tenant_id) as conn:
-        if body.enabled:
-            already = await conn.fetchval(
-                "select enabled from entitlements where tenant_id=$1 and section_key=$2", auth.tenant_id, section)
-            if not already:
-                await billing.check_section_limit(conn)
+        already = bool(await conn.fetchval(
+            "select enabled from entitlements where tenant_id=$1 and section_key=$2", auth.tenant_id, section))
+        if body.enabled and not already:
+            await billing.check_section_limit(conn)
         row = await conn.fetchrow(
             """insert into entitlements (tenant_id, section_key, enabled) values ($1,$2,$3)
                on conflict (tenant_id, section_key) do update set enabled = excluded.enabled
                returning section_key, enabled, limits""",
             auth.tenant_id, section, body.enabled,
         )
-        await audit.record(conn, actor_id=auth.user_id, action="entitlement.update",
-                           entity="entitlement", entity_id=section, after={"enabled": body.enabled})
+        await audit.event(conn, "module.enable" if body.enabled else "module.disable",
+                          "entitlement", section, changes={"enabled": [already, body.enabled]})
     return EntitlementOut(section_key=row["section_key"], enabled=row["enabled"], limits=row["limits"])
