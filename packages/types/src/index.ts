@@ -339,7 +339,12 @@ export interface FbrSettings {
 }
 
 export interface FbrInvoice {
+  /** Filing record id; POST /fbr/invoices/{id}/resolve settles an `unknown` one. */
+  id: string | null;
   sale_id: string;
+  /** Set for a return's Debit Note. */
+  return_id: string | null;
+  /** pending | submitted | unknown (sent, no answer: check IRIS) | failed */
   status: string;
   fbr_invoice_number: string | null;
   error_code: string;

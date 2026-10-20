@@ -10,7 +10,12 @@ from __future__ import annotations
 import asyncio
 import uuid
 
+import asyncpg
+import pytest
 import pytest_asyncio
+
+from app import fbr_submit
+from app.config import settings
 
 
 @pytest_asyncio.fixture
@@ -66,3 +71,70 @@ async def test_reusing_a_cart_id_for_a_different_cart_is_refused(client, shop):
     assert first.status_code == 201
     assert r.status_code == 409
     assert await _stock(client, shop) == 48  # the changed cart was not recorded
+
+
+# ── With FBR on: one sale and one outbox row however the till repeats (1E, QA-P03) ──
+@pytest_asyncio.fixture
+async def fbr_shop(client, pos_tenant, fake_fbr):
+    for p in (await client.get("/pos/products")).json():
+        await client.patch(f"/pos/products/{p['id']}", json={"hs_code": "0101.2100"})
+    (await client.put("/fbr/settings", json={
+        "seller_ntn_cnic": "1234567", "seller_business_name": "Fixture Traders",
+        "seller_province": "Punjab", "seller_address": "1 Mall Road, Lahore",
+        "token": "sandbox-token", "enabled": True})).raise_for_status()
+    p = (await client.get("/pos/products")).json()[0]
+    await client.patch(f"/pos/products/{p['id']}", json={"price_minor": 10_000, "stock_qty": 50})
+    return {"tenant_id": pos_tenant.tenant_id, "product_id": p["id"]}
+
+
+async def _counts(tenant_id: str) -> tuple[int, int]:
+    """(sales, FBR outbox rows) for the tenant."""
+    owner = await asyncpg.connect(settings.database_url)
+    try:
+        tid = uuid.UUID(tenant_id)
+        return (await owner.fetchval("select count(*) from pos_sales where tenant_id=$1", tid),
+                await owner.fetchval(
+                    "select count(*) from outbox where tenant_id=$1 and kind='fbr.submit_sale'", tid))
+    finally:
+        await owner.close()
+
+
+async def test_pressing_charge_twice_files_one_sale(client, fbr_shop, fake_fbr):
+    """Double F7: the second press arrives after the first was answered."""
+    key = str(uuid.uuid4())
+    first = await client.post("/pos/sales", json=_sale(fbr_shop["product_id"], key))
+    again = await client.post("/pos/sales", json=_sale(fbr_shop["product_id"], key))
+    assert (first.status_code, again.status_code) == (201, 200)
+    assert again.json()["fbr_invoice_number"] == first.json()["fbr_invoice_number"] == "FBR-1"
+    assert await _counts(fbr_shop["tenant_id"]) == (1, 1)
+    assert len(fake_fbr.payloads) == 1
+
+
+async def test_a_double_click_files_one_sale(client, fbr_shop, fake_fbr):
+    """Double click: the copies arrive together."""
+    key = str(uuid.uuid4())
+    responses = await asyncio.gather(
+        *(client.post("/pos/sales", json=_sale(fbr_shop["product_id"], key)) for _ in range(4)))
+    assert sorted(r.status_code for r in responses) == [200, 200, 200, 201]
+    assert await _counts(fbr_shop["tenant_id"]) == (1, 1)
+    assert len(fake_fbr.payloads) == 1
+
+
+async def test_a_retry_after_a_lost_response_files_one_sale(client, fbr_shop, fake_fbr, monkeypatch):
+    """Network retry: the sale committed but the till never got the answer
+    (here the request blows up after commit), so it sends the cart again."""
+    async def boom(outbox_id):
+        raise RuntimeError("connection dropped before the response")
+    real = fbr_submit.deliver_now
+    monkeypatch.setattr(fbr_submit, "deliver_now", boom)
+    key = str(uuid.uuid4())
+    with pytest.raises(RuntimeError):
+        await client.post("/pos/sales", json=_sale(fbr_shop["product_id"], key))
+    # Not monkeypatch.undo(): that would also unpatch the fake FBR.
+    monkeypatch.setattr(fbr_submit, "deliver_now", real)
+
+    retry = await client.post("/pos/sales", json=_sale(fbr_shop["product_id"], key))
+    assert retry.status_code == 200
+    assert await _counts(fbr_shop["tenant_id"]) == (1, 1)
+    await fbr_submit.process_outbox()           # the worker files the queued sale, once
+    assert len(fake_fbr.payloads) == 1

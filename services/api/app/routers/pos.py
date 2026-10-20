@@ -250,30 +250,41 @@ async def _record_sale(body: SaleCreate, auth: AuthContext, fingerprint: str) ->
             auth.tenant_id, auth.user_id, priced.subtotal_minor, priced.discount_minor, total,
             paid, change, body.payment_method, len(lines), priced.tax_minor,
             body.client_uuid, fingerprint, rounding)
+        fbr_on = bool(fbr_cfg and fbr_cfg["enabled"])
+        inclusive = bool(fbr_on and fbr_cfg["prices_include_tax"])
         items = []
         for p, qty, pl in lines:
+            # The line snapshots what FBR needs as it is right now (0034): a retry,
+            # a debit note or a refund later reads these, never the product.
             await conn.execute(
                 """insert into pos_sale_items (tenant_id, sale_id, product_id, name, qty, price_minor,
-                                               line_total_minor, discount_minor, tax_minor, total_minor)
-                   values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)""",
+                                               line_total_minor, discount_minor, tax_minor, total_minor,
+                                               excl_minor, hs_code, fbr_uom, tax_rate, tax_inclusive,
+                                               snapshot_source)
+                   values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'sale')""",
                 auth.tenant_id, sale_id, p["id"], p["name"], qty, p["price_minor"],
-                pl.gross_minor, pl.discount_minor, pl.tax_minor, pl.total_minor)
+                pl.gross_minor, pl.discount_minor, pl.tax_minor, pl.total_minor,
+                pl.excl_minor, p["hs_code"] or "", p["fbr_uom"],
+                # The rate that applied: none while tax is off, whatever the product says.
+                (p["tax_rate"] or 0) if fbr_on else 0, inclusive)
             await conn.execute("update pos_products set stock_qty = stock_qty - $1 where id=$2", qty, p["id"])
             items.append(SaleItemOut(name=p["name"], qty=qty, price_minor=p["price_minor"],
                                      line_total_minor=pl.gross_minor))
         sale = await conn.fetchrow("select * from pos_sales where id=$1", sale_id)
-        if fbr_cfg and fbr_cfg["enabled"]:
-            # Outbox row in the sale's own transaction: if the process dies
-            # before transmission, the retry job still finds this sale (P0-4).
-            await fbr_submit.enqueue_sale(conn, auth.tenant_id, str(sale_id))
+        outbox_id = None
+        if fbr_on:
+            # Outbox row, with the frozen FBR document, in the sale's own
+            # transaction: if the process dies before transmission, the worker
+            # still finds this sale (P0-4, D-09).
+            outbox_id = await fbr_submit.enqueue_sale(conn, auth.tenant_id, str(sale_id), fbr_cfg)
 
     fbr_number = fbr_status = None
-    if fbr_cfg and fbr_cfg["enabled"]:
+    if outbox_id is not None:
         # The sale is already committed. FBR transmission happens after, and its
         # failure is recorded rather than raised: a government outage must never
-        # stop a shop from selling. Anything not submitted is retried by jobs.py.
-        result = await fbr_submit.submit_sale(auth.tenant_id, str(sale_id), fbr_cfg, lines)
-        fbr_number, fbr_status = result.invoice_number, ("submitted" if result.ok else "pending")
+        # stop a shop from selling. Anything not filed is retried by jobs.py.
+        result = await fbr_submit.deliver_now(outbox_id)
+        fbr_number, fbr_status = result.invoice_number, fbr_submit.status_after(result)
 
     return SaleOut(
         id=str(sale["id"]), subtotal_minor=sale["subtotal_minor"], discount_minor=sale["discount_minor"],
@@ -566,13 +577,10 @@ select i.id as sale_item_id, i.product_id, i.name, i.qty as qty_sold, i.price_mi
        coalesce((select sum(r.qty) from pos_return_items r where r.sale_item_id = i.id), 0) as qty_returned,
        coalesce((select sum(r.line_refund_minor) from pos_return_items r
                   where r.sale_item_id = i.id), 0) as refunded_minor,
-       -- Carried through for the FBR debit note: a note without an HS code is
-       -- rejected with error 0052.
-       coalesce(p.hs_code, '') as hs_code,
-       coalesce(p.tax_rate, 0) as tax_rate,
-       coalesce(p.fbr_uom, 'Numbers, pieces, units') as fbr_uom
+       -- The line's sale-time snapshot (0034), carried through for the debit
+       -- note and the refund's tax — never the product as edited since.
+       i.hs_code, i.tax_rate, i.fbr_uom
   from pos_sale_items i
-  left join pos_products p on p.id = i.product_id
  where i.sale_id = $1
  order by i.name
 """
@@ -666,10 +674,9 @@ async def create_return(sale_id: str, body: ReturnCreate,
         fbr_cfg = await conn.fetchrow("select * from fbr_settings where tenant_id=$1", auth.tenant_id)
         if fbr_cfg and fbr_cfg["enabled"]:
             for row, qty, line_refund in lines:
-                rate = await conn.fetchval(
-                    "select coalesce(tax_rate, 0) from pos_products where id=$1", row["product_id"]) or 0
-                # A refund is an amount the customer paid, so tax is inside it.
-                _, line_tax = fbr.split_tax(line_refund, Decimal(str(rate)), True)
+                # A refund is an amount the customer paid, so tax is inside it —
+                # at the rate the sale charged, not the product's rate today.
+                _, line_tax = fbr.split_tax(line_refund, Decimal(str(row["tax_rate"])), True)
                 tax_total += line_tax
 
         return_id = await conn.fetchval(
@@ -690,23 +697,21 @@ async def create_return(sale_id: str, body: ReturnCreate,
                                    qty, row["product_id"])
             items.append(ReturnItemOut(name=row["name"], qty=qty, line_refund_minor=line_refund))
 
-        original = await conn.fetchrow(
-            """select fbr_invoice_number from pos_fbr_invoices
-                where sale_id=$1 and return_id is null and status='submitted'""", sale_id)
+        outbox_id = None
         if fbr_cfg and fbr_cfg["enabled"]:
-            # Queued even when the sale isn't filed yet: the retry job files the
-            # debit note once the sale has an FBR number to reference.
-            await fbr_submit.enqueue_return(conn, auth.tenant_id, sale_id, str(return_id))
+            # Queued even when the sale isn't filed yet: the outbox row depends
+            # on the sale's, and the worker files the debit note once the sale
+            # has an FBR number to reference.
+            outbox_id = await fbr_submit.enqueue_return(
+                conn, auth.tenant_id, sale_id, str(return_id), fbr_cfg)
         created_at = await conn.fetchval("select created_at from pos_returns where id=$1", return_id)
 
     fbr_number = fbr_status = None
-    if fbr_cfg and fbr_cfg["enabled"] and original and original["fbr_invoice_number"]:
-        # FBR models a return as a Debit Note against the original invoice. Only
-        # possible once the sale itself was filed — a return cannot reference an
-        # invoice number FBR never issued.
-        result = await fbr_submit.submit_return(
-            auth.tenant_id, str(return_id), fbr_cfg, lines, original["fbr_invoice_number"])
-        fbr_number, fbr_status = result.invoice_number, ("submitted" if result.ok else "pending")
+    if outbox_id is not None:
+        # FBR models a return as a Debit Note against the original invoice; the
+        # fast path only takes the row if the sale is already filed.
+        result = await fbr_submit.deliver_now(outbox_id)
+        fbr_number, fbr_status = result.invoice_number, fbr_submit.status_after(result)
 
     return ReturnOut(id=str(return_id), sale_id=sale_id, reason=body.reason, refund_minor=refund,
                      tax_minor=tax_total, created_at=created_at, items=items,

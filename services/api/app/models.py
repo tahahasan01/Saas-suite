@@ -507,12 +507,27 @@ class FbrSettingsUpdate(BaseModel):
 
 class FbrInvoiceOut(BaseModel):
     sale_id: str
-    status: str
+    status: str   # pending | submitted | unknown | failed
     fbr_invoice_number: str | None
     error_code: str
     error: str
     attempts: int
     created_at: datetime
+    id: str | None = None
+    return_id: str | None = None   # set for a return's Debit Note
+
+
+class FbrResolve(BaseModel):
+    """An owner's answer for a filing in `unknown`, after checking IRIS."""
+    model_config = ConfigDict(extra="forbid")
+
+    filed: bool                                  # true: FBR has it; false: send it again
+    fbr_invoice_number: str | None = Field(default=None, max_length=100)
+
+    @field_validator("fbr_invoice_number")
+    @classmethod
+    def _strip(cls, v: str | None) -> str | None:
+        return (v or "").strip() or None
 
 
 class PosSummary(BaseModel):
