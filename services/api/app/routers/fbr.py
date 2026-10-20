@@ -4,12 +4,14 @@ Guarded by the 'pos' section: FBR invoicing only exists because of the till.
 """
 from __future__ import annotations
 
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from .. import db
+from .. import db, fbr_submit
 from ..audit import record
 from ..deps import AuthContext
-from ..models import FbrInvoiceOut, FbrSettingsOut, FbrSettingsUpdate
+from ..models import FbrInvoiceOut, FbrResolve, FbrSettingsOut, FbrSettingsUpdate
 from ..rbac import require
 
 router = APIRouter(prefix="/fbr", tags=["fbr"])
@@ -90,11 +92,46 @@ async def list_invoices(pending_only: bool = False,
     """Submission log — the retailer's evidence of what was filed and what was not."""
     async with db.tenant_conn(auth.tenant_id) as conn:
         rows = await conn.fetch(
-            """select sale_id, status, fbr_invoice_number, error_code, error, attempts, created_at
-                 from pos_fbr_invoices
+            f"""select {_INVOICE_COLS} from pos_fbr_invoices
                 where ($1 = false or status <> 'submitted')
                 order by created_at desc limit 100""", pending_only)
-    return [FbrInvoiceOut(sale_id=str(r["sale_id"]), status=r["status"],
-                          fbr_invoice_number=r["fbr_invoice_number"], error_code=r["error_code"],
-                          error=r["error"], attempts=r["attempts"], created_at=r["created_at"])
-            for r in rows]
+    return [_invoice_out(r) for r in rows]
+
+
+_INVOICE_COLS = ("id, sale_id, return_id, status, fbr_invoice_number, error_code, error, "
+                 "attempts, created_at")
+
+
+def _invoice_out(r) -> FbrInvoiceOut:
+    return FbrInvoiceOut(id=str(r["id"]), sale_id=str(r["sale_id"]),
+                         return_id=str(r["return_id"]) if r["return_id"] else None,
+                         status=r["status"], fbr_invoice_number=r["fbr_invoice_number"],
+                         error_code=r["error_code"], error=r["error"], attempts=r["attempts"],
+                         created_at=r["created_at"])
+
+
+@router.post("/invoices/{invoice_id}/resolve", response_model=FbrInvoiceOut)
+async def resolve_invoice(invoice_id: UUID, body: FbrResolve,
+                          auth: AuthContext = Depends(require("pos", "admin"))) -> FbrInvoiceOut:
+    """Settle a filing whose outcome is unknown (the connection dropped after
+    it was sent). FBR offers no lookup, so a person checks IRIS: filed (record
+    FBR's number, never resend) or not filed (send it once more)."""
+    if body.filed and not body.fbr_invoice_number:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            "Enter the FBR invoice number shown in IRIS.")
+    # Another tenant's filing (or a made-up id) is "not found" — answering 409
+    # would confirm that it exists.
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        if not await conn.fetchval("select 1 from pos_fbr_invoices where id=$1", invoice_id):
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Filing not found")
+    settled = await fbr_submit.resolve_unknown(
+        auth.tenant_id, str(invoice_id), filed=body.filed, invoice_number=body.fbr_invoice_number)
+    if not settled:
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            "Only a filing whose outcome is unknown can be settled by hand.")
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        row = await conn.fetchrow(f"select {_INVOICE_COLS} from pos_fbr_invoices where id=$1", invoice_id)
+        await record(conn, actor_id=auth.user_id, action="fbr.invoice.resolve", entity="pos_fbr_invoices",
+                     entity_id=str(invoice_id),
+                     after={"filed": body.filed, "fbr_invoice_number": body.fbr_invoice_number})
+    return _invoice_out(row)

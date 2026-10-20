@@ -9,6 +9,7 @@ import { monthPKT } from "@/lib/dates";
 import { money } from "@/lib/format";
 import { errorText } from "@/lib/useAction";
 import { DataTable, type Column } from "@/components/DataTable";
+import { RatesPendingBanner } from "@/components/RatesPending";
 import { Button, Card, EmptyState, ErrorState, Field, Input } from "@/components/ui";
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -135,6 +136,7 @@ export default function PayrollPage() {
         <ErrorState message={error} onRetry={() => load(month)} />
       ) : (
         <>
+          {data && !data.tax_rates_verified && <RatesPendingBanner taxYear={data.tax_year} />}
           {data && slips.length > 0 && (
             // One tile a row on the smallest phones, two from 400px, four only
             // once the content area is wide enough for an 8-digit total.

@@ -1,0 +1,357 @@
+{
+  "spec": "packages/pos-core/vectors/README.md",
+  "version": 1,
+  "units": "All amounts are integer minor units (paisa). qty and tax_rate_pct are decimals.",
+  "change_control": "Changing or removing a vector needs the engineering lead and the money-correctness owner, plus a release note (docs/14-checklists.md 6.1).",
+  "vectors": [
+    {
+      "id": "PV-01",
+      "case": "Tax-exclusive total (the P0-5 regression)",
+      "kind": "sale",
+      "input": {
+        "tax_on": true, "tax_inclusive": false, "order_discount_minor": 0,
+        "tender": "card", "cash_rounding_minor": 100,
+        "lines": [{"unit_price_minor": 100000, "qty": 1, "tax_rate_pct": 18}]
+      },
+      "expected": {
+        "lines": [{"gross_minor": 100000, "line_discount_minor": 0, "line_net_minor": 100000,
+                   "discount_share_minor": 0, "net_minor": 100000,
+                   "excl_minor": 100000, "tax_minor": 18000, "incl_minor": 118000}],
+        "subtotal_minor": 100000, "line_discount_minor": 0, "order_discount_minor": 0,
+        "tax_minor": 18000, "total_minor": 118000, "rounding_minor": 0, "amount_due_minor": 118000
+      }
+    },
+    {
+      "id": "PV-02",
+      "case": "Tax-inclusive",
+      "kind": "sale",
+      "input": {
+        "tax_on": true, "tax_inclusive": true, "order_discount_minor": 0,
+        "tender": "card", "cash_rounding_minor": 100,
+        "lines": [{"unit_price_minor": 118000, "qty": 1, "tax_rate_pct": 18}]
+      },
+      "expected": {
+        "lines": [{"gross_minor": 118000, "line_discount_minor": 0, "line_net_minor": 118000,
+                   "discount_share_minor": 0, "net_minor": 118000,
+                   "excl_minor": 100000, "tax_minor": 18000, "incl_minor": 118000}],
+        "subtotal_minor": 118000, "line_discount_minor": 0, "order_discount_minor": 0,
+        "tax_minor": 18000, "total_minor": 118000, "rounding_minor": 0, "amount_due_minor": 118000
+      }
+    },
+    {
+      "id": "PV-03",
+      "case": "Order discount pro rata before tax (FBR line discounts 3000 / 1000)",
+      "kind": "sale",
+      "input": {
+        "tax_on": true, "tax_inclusive": false, "order_discount_minor": 4000,
+        "tender": "card", "cash_rounding_minor": 100,
+        "lines": [{"unit_price_minor": 30000, "qty": 1, "tax_rate_pct": 18},
+                  {"unit_price_minor": 10000, "qty": 1, "tax_rate_pct": 18}]
+      },
+      "expected": {
+        "lines": [{"gross_minor": 30000, "line_discount_minor": 0, "line_net_minor": 30000,
+                   "discount_share_minor": 3000, "net_minor": 27000,
+                   "excl_minor": 27000, "tax_minor": 4860, "incl_minor": 31860},
+                  {"gross_minor": 10000, "line_discount_minor": 0, "line_net_minor": 10000,
+                   "discount_share_minor": 1000, "net_minor": 9000,
+                   "excl_minor": 9000, "tax_minor": 1620, "incl_minor": 10620}],
+        "subtotal_minor": 40000, "line_discount_minor": 0, "order_discount_minor": 4000,
+        "tax_minor": 6480, "total_minor": 42480, "rounding_minor": 0, "amount_due_minor": 42480
+      }
+    },
+    {
+      "id": "PV-04",
+      "case": "Largest-remainder tie-break: equal remainders, the lowest line index takes the paisa",
+      "kind": "sale",
+      "input": {
+        "tax_on": true, "tax_inclusive": false, "order_discount_minor": 1000,
+        "tender": "card", "cash_rounding_minor": 100,
+        "lines": [{"unit_price_minor": 10000, "qty": 1, "tax_rate_pct": 0},
+                  {"unit_price_minor": 10000, "qty": 1, "tax_rate_pct": 0},
+                  {"unit_price_minor": 10000, "qty": 1, "tax_rate_pct": 0}]
+      },
+      "expected": {
+        "lines": [{"gross_minor": 10000, "line_discount_minor": 0, "line_net_minor": 10000,
+                   "discount_share_minor": 334, "net_minor": 9666,
+                   "excl_minor": 9666, "tax_minor": 0, "incl_minor": 9666},
+                  {"gross_minor": 10000, "line_discount_minor": 0, "line_net_minor": 10000,
+                   "discount_share_minor": 333, "net_minor": 9667,
+                   "excl_minor": 9667, "tax_minor": 0, "incl_minor": 9667},
+                  {"gross_minor": 10000, "line_discount_minor": 0, "line_net_minor": 10000,
+                   "discount_share_minor": 333, "net_minor": 9667,
+                   "excl_minor": 9667, "tax_minor": 0, "incl_minor": 9667}],
+        "subtotal_minor": 30000, "line_discount_minor": 0, "order_discount_minor": 1000,
+        "tax_minor": 0, "total_minor": 29000, "rounding_minor": 0, "amount_due_minor": 29000
+      }
+    },
+    {
+      "id": "PV-05",
+      "case": "Line discount capped at gross; nothing goes negative",
+      "kind": "sale",
+      "input": {
+        "tax_on": true, "tax_inclusive": false, "order_discount_minor": 0,
+        "tender": "card", "cash_rounding_minor": 100,
+        "lines": [{"unit_price_minor": 5000, "qty": 1, "tax_rate_pct": 18, "line_discount_minor": 6000}]
+      },
+      "expected": {
+        "lines": [{"gross_minor": 5000, "line_discount_minor": 5000, "line_net_minor": 0,
+                   "discount_share_minor": 0, "net_minor": 0,
+                   "excl_minor": 0, "tax_minor": 0, "incl_minor": 0}],
+        "subtotal_minor": 5000, "line_discount_minor": 5000, "order_discount_minor": 0,
+        "tax_minor": 0, "total_minor": 0, "rounding_minor": 0, "amount_due_minor": 0
+      }
+    },
+    {
+      "id": "PV-06",
+      "case": "Cash rounding on a cash tender (total 11850 -> due 11900, rounding +50, half-up)",
+      "kind": "sale",
+      "input": {
+        "tax_on": true, "tax_inclusive": false, "order_discount_minor": 0,
+        "tender": "cash", "cash_rounding_minor": 100,
+        "lines": [{"unit_price_minor": 10042, "qty": 1, "tax_rate_pct": 18}]
+      },
+      "expected": {
+        "lines": [{"gross_minor": 10042, "line_discount_minor": 0, "line_net_minor": 10042,
+                   "discount_share_minor": 0, "net_minor": 10042,
+                   "excl_minor": 10042, "tax_minor": 1808, "incl_minor": 11850}],
+        "subtotal_minor": 10042, "line_discount_minor": 0, "order_discount_minor": 0,
+        "tax_minor": 1808, "total_minor": 11850, "rounding_minor": 50, "amount_due_minor": 11900
+      }
+    },
+    {
+      "id": "PV-07",
+      "case": "Cash rounding skipped for card (same cart as PV-06)",
+      "kind": "sale",
+      "input": {
+        "tax_on": true, "tax_inclusive": false, "order_discount_minor": 0,
+        "tender": "card", "cash_rounding_minor": 100,
+        "lines": [{"unit_price_minor": 10042, "qty": 1, "tax_rate_pct": 18}]
+      },
+      "expected": {
+        "lines": [{"gross_minor": 10042, "line_discount_minor": 0, "line_net_minor": 10042,
+                   "discount_share_minor": 0, "net_minor": 10042,
+                   "excl_minor": 10042, "tax_minor": 1808, "incl_minor": 11850}],
+        "subtotal_minor": 10042, "line_discount_minor": 0, "order_discount_minor": 0,
+        "tax_minor": 1808, "total_minor": 11850, "rounding_minor": 0, "amount_due_minor": 11850
+      }
+    },
+    {
+      "id": "PV-08",
+      "case": "Partial refunds of a 3-unit line never exceed what was paid (cumulative rounding)",
+      "kind": "refund",
+      "input": {"line_incl_minor": 10001, "qty_sold": 3, "returns": [1, 1, 1]},
+      "expected": {"refunds": [3334, 3333, 3334]}
+    },
+    {
+      "id": "PV-09",
+      "case": "A refund honours the order discount: line 1 of PV-03 refunds its incl, not list price x 1.18",
+      "kind": "refund",
+      "input": {"from_vector": "PV-03", "line_index": 0, "qty_sold": 1, "returns": [1]},
+      "expected": {"refunds": [31860]}
+    },
+    {
+      "id": "PV-10",
+      "case": "Mixed rates: discount spread by net; the exempt line has no tax",
+      "kind": "sale",
+      "input": {
+        "tax_on": true, "tax_inclusive": false, "order_discount_minor": 3000,
+        "tender": "card", "cash_rounding_minor": 100,
+        "lines": [{"unit_price_minor": 20000, "qty": 1, "tax_rate_pct": 18},
+                  {"unit_price_minor": 10000, "qty": 1, "tax_rate_pct": 0}]
+      },
+      "expected": {
+        "lines": [{"gross_minor": 20000, "line_discount_minor": 0, "line_net_minor": 20000,
+                   "discount_share_minor": 2000, "net_minor": 18000,
+                   "excl_minor": 18000, "tax_minor": 3240, "incl_minor": 21240},
+                  {"gross_minor": 10000, "line_discount_minor": 0, "line_net_minor": 10000,
+                   "discount_share_minor": 1000, "net_minor": 9000,
+                   "excl_minor": 9000, "tax_minor": 0, "incl_minor": 9000}],
+        "subtotal_minor": 30000, "line_discount_minor": 0, "order_discount_minor": 3000,
+        "tax_minor": 3240, "total_minor": 30240, "rounding_minor": 0, "amount_due_minor": 30240
+      }
+    },
+    {
+      "id": "PV-11",
+      "case": "Half-up rounding of tax (excl 2503 at 18% = 450.54 -> 451)",
+      "kind": "sale",
+      "input": {
+        "tax_on": true, "tax_inclusive": false, "order_discount_minor": 0,
+        "tender": "card", "cash_rounding_minor": 100,
+        "lines": [{"unit_price_minor": 2503, "qty": 1, "tax_rate_pct": 18}]
+      },
+      "expected": {
+        "lines": [{"gross_minor": 2503, "line_discount_minor": 0, "line_net_minor": 2503,
+                   "discount_share_minor": 0, "net_minor": 2503,
+                   "excl_minor": 2503, "tax_minor": 451, "incl_minor": 2954}],
+        "subtotal_minor": 2503, "line_discount_minor": 0, "order_discount_minor": 0,
+        "tax_minor": 451, "total_minor": 2954, "rounding_minor": 0, "amount_due_minor": 2954
+      }
+    },
+    {
+      "id": "PV-12",
+      "case": "Tie-break across lines of different value: all three remainders are exactly 1/3, so line 1 (index 0) takes the paisa even though line 2 is smaller",
+      "kind": "sale",
+      "input": {
+        "tax_on": true, "tax_inclusive": false, "order_discount_minor": 30000,
+        "tender": "card", "cash_rounding_minor": 100,
+        "lines": [{"unit_price_minor": 40000, "qty": 1, "tax_rate_pct": 0},
+                  {"unit_price_minor": 10000, "qty": 1, "tax_rate_pct": 0},
+                  {"unit_price_minor": 40000, "qty": 1, "tax_rate_pct": 0}]
+      },
+      "expected": {
+        "lines": [{"gross_minor": 40000, "line_discount_minor": 0, "line_net_minor": 40000,
+                   "discount_share_minor": 13334, "net_minor": 26666,
+                   "excl_minor": 26666, "tax_minor": 0, "incl_minor": 26666},
+                  {"gross_minor": 10000, "line_discount_minor": 0, "line_net_minor": 10000,
+                   "discount_share_minor": 3333, "net_minor": 6667,
+                   "excl_minor": 6667, "tax_minor": 0, "incl_minor": 6667},
+                  {"gross_minor": 40000, "line_discount_minor": 0, "line_net_minor": 40000,
+                   "discount_share_minor": 13333, "net_minor": 26667,
+                   "excl_minor": 26667, "tax_minor": 0, "incl_minor": 26667}],
+        "subtotal_minor": 90000, "line_discount_minor": 0, "order_discount_minor": 30000,
+        "tax_minor": 0, "total_minor": 60000, "rounding_minor": 0, "amount_due_minor": 60000
+      }
+    },
+    {
+      "id": "PV-13",
+      "case": "Tax-inclusive with an order discount: tax is split out of what is paid after the discount",
+      "kind": "sale",
+      "input": {
+        "tax_on": true, "tax_inclusive": true, "order_discount_minor": 2000,
+        "tender": "card", "cash_rounding_minor": 100,
+        "lines": [{"unit_price_minor": 10000, "qty": 1, "tax_rate_pct": 18},
+                  {"unit_price_minor": 5000, "qty": 2, "tax_rate_pct": 18}]
+      },
+      "expected": {
+        "lines": [{"gross_minor": 10000, "line_discount_minor": 0, "line_net_minor": 10000,
+                   "discount_share_minor": 1000, "net_minor": 9000,
+                   "excl_minor": 7627, "tax_minor": 1373, "incl_minor": 9000},
+                  {"gross_minor": 10000, "line_discount_minor": 0, "line_net_minor": 10000,
+                   "discount_share_minor": 1000, "net_minor": 9000,
+                   "excl_minor": 7627, "tax_minor": 1373, "incl_minor": 9000}],
+        "subtotal_minor": 20000, "line_discount_minor": 0, "order_discount_minor": 2000,
+        "tax_minor": 2746, "total_minor": 18000, "rounding_minor": 0, "amount_due_minor": 18000
+      }
+    },
+    {
+      "id": "PV-14",
+      "case": "Line gross rounds half-up on a fractional quantity (1001 x 0.5 = 500.5 -> 501)",
+      "kind": "sale",
+      "input": {
+        "tax_on": true, "tax_inclusive": false, "order_discount_minor": 0,
+        "tender": "card", "cash_rounding_minor": 100,
+        "lines": [{"unit_price_minor": 1001, "qty": 0.5, "tax_rate_pct": 0}]
+      },
+      "expected": {
+        "lines": [{"gross_minor": 501, "line_discount_minor": 0, "line_net_minor": 501,
+                   "discount_share_minor": 0, "net_minor": 501,
+                   "excl_minor": 501, "tax_minor": 0, "incl_minor": 501}],
+        "subtotal_minor": 501, "line_discount_minor": 0, "order_discount_minor": 0,
+        "tax_minor": 0, "total_minor": 501, "rounding_minor": 0, "amount_due_minor": 501
+      }
+    },
+    {
+      "id": "PV-15",
+      "case": "Order discount larger than the cart is capped at the cart",
+      "kind": "sale",
+      "input": {
+        "tax_on": true, "tax_inclusive": false, "order_discount_minor": 9000,
+        "tender": "card", "cash_rounding_minor": 100,
+        "lines": [{"unit_price_minor": 5000, "qty": 1, "tax_rate_pct": 18}]
+      },
+      "expected": {
+        "lines": [{"gross_minor": 5000, "line_discount_minor": 0, "line_net_minor": 5000,
+                   "discount_share_minor": 5000, "net_minor": 0,
+                   "excl_minor": 0, "tax_minor": 0, "incl_minor": 0}],
+        "subtotal_minor": 5000, "line_discount_minor": 0, "order_discount_minor": 5000,
+        "tax_minor": 0, "total_minor": 0, "rounding_minor": 0, "amount_due_minor": 0
+      }
+    },
+    {
+      "id": "PV-16",
+      "case": "Tax off (FBR not enabled): a product's rate is not charged",
+      "kind": "sale",
+      "input": {
+        "tax_on": false, "tax_inclusive": false, "order_discount_minor": 0,
+        "tender": "card", "cash_rounding_minor": 100,
+        "lines": [{"unit_price_minor": 10000, "qty": 1, "tax_rate_pct": 18}]
+      },
+      "expected": {
+        "lines": [{"gross_minor": 10000, "line_discount_minor": 0, "line_net_minor": 10000,
+                   "discount_share_minor": 0, "net_minor": 10000,
+                   "excl_minor": 10000, "tax_minor": 0, "incl_minor": 10000}],
+        "subtotal_minor": 10000, "line_discount_minor": 0, "order_discount_minor": 0,
+        "tax_minor": 0, "total_minor": 10000, "rounding_minor": 0, "amount_due_minor": 10000
+      }
+    },
+    {
+      "id": "PV-17",
+      "case": "Cumulative refund rounding: 8 single-unit returns of a 5-paisa line refund exactly 5 and never run ahead",
+      "kind": "refund",
+      "input": {"line_incl_minor": 5, "qty_sold": 8, "returns": [1, 1, 1, 1, 1, 1, 1, 1]},
+      "expected": {"refunds": [1, 0, 1, 1, 0, 1, 0, 1]}
+    },
+    {
+      "id": "PV-18",
+      "case": "Refund in uneven parts: 2 then 1 of 3",
+      "kind": "refund",
+      "input": {"line_incl_minor": 29000, "qty_sold": 3, "returns": [2, 1]},
+      "expected": {"refunds": [19333, 9667]}
+    },
+    {
+      "id": "PV-19",
+      "case": "Cash rounding can go down (11849 -> 11800, rounding -49)",
+      "kind": "sale",
+      "input": {
+        "tax_on": true, "tax_inclusive": false, "order_discount_minor": 0,
+        "tender": "cash", "cash_rounding_minor": 100,
+        "lines": [{"unit_price_minor": 11849, "qty": 1, "tax_rate_pct": 0}]
+      },
+      "expected": {
+        "lines": [{"gross_minor": 11849, "line_discount_minor": 0, "line_net_minor": 11849,
+                   "discount_share_minor": 0, "net_minor": 11849,
+                   "excl_minor": 11849, "tax_minor": 0, "incl_minor": 11849}],
+        "subtotal_minor": 11849, "line_discount_minor": 0, "order_discount_minor": 0,
+        "tax_minor": 0, "total_minor": 11849, "rounding_minor": -49, "amount_due_minor": 11800
+      }
+    },
+    {
+      "id": "PV-20",
+      "case": "Cash rounding switched off (unit 0)",
+      "kind": "sale",
+      "input": {
+        "tax_on": true, "tax_inclusive": false, "order_discount_minor": 0,
+        "tender": "cash", "cash_rounding_minor": 0,
+        "lines": [{"unit_price_minor": 11849, "qty": 1, "tax_rate_pct": 0}]
+      },
+      "expected": {
+        "lines": [{"gross_minor": 11849, "line_discount_minor": 0, "line_net_minor": 11849,
+                   "discount_share_minor": 0, "net_minor": 11849,
+                   "excl_minor": 11849, "tax_minor": 0, "incl_minor": 11849}],
+        "subtotal_minor": 11849, "line_discount_minor": 0, "order_discount_minor": 0,
+        "tax_minor": 0, "total_minor": 11849, "rounding_minor": 0, "amount_due_minor": 11849
+      }
+    },
+    {
+      "id": "PV-21",
+      "case": "Line discount first, then the order discount pro rata to what is left of each line",
+      "kind": "sale",
+      "input": {
+        "tax_on": true, "tax_inclusive": false, "order_discount_minor": 1900,
+        "tender": "card", "cash_rounding_minor": 100,
+        "lines": [{"unit_price_minor": 10000, "qty": 1, "tax_rate_pct": 18, "line_discount_minor": 1000},
+                  {"unit_price_minor": 10000, "qty": 1, "tax_rate_pct": 18}]
+      },
+      "expected": {
+        "lines": [{"gross_minor": 10000, "line_discount_minor": 1000, "line_net_minor": 9000,
+                   "discount_share_minor": 900, "net_minor": 8100,
+                   "excl_minor": 8100, "tax_minor": 1458, "incl_minor": 9558},
+                  {"gross_minor": 10000, "line_discount_minor": 0, "line_net_minor": 10000,
+                   "discount_share_minor": 1000, "net_minor": 9000,
+                   "excl_minor": 9000, "tax_minor": 1620, "incl_minor": 10620}],
+        "subtotal_minor": 20000, "line_discount_minor": 1000, "order_discount_minor": 1900,
+        "tax_minor": 3078, "total_minor": 20178, "rounding_minor": 0, "amount_due_minor": 20178
+      }
+    }
+  ]
+}

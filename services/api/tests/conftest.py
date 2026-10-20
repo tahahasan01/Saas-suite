@@ -123,8 +123,9 @@ async def crm_tenant(client):
 
 # ── FBR (PRAL) stand-in ─────────────────────────────────────────────────────
 class FakeFbr:
-    """Stands in for PRAL. `outcomes` is consumed in order; when it runs out,
-    every call succeeds with a fresh invoice number."""
+    """Stands in for PRAL. `outcomes` is consumed in order ("ok", "fail",
+    "timeout" or an exception to raise); when it runs out, every call succeeds
+    with a fresh invoice number."""
 
     def __init__(self):
         self.payloads: list[dict] = []
@@ -141,6 +142,9 @@ class FakeFbr:
             raise outcome
         if outcome == "fail":
             return fbr.FbrResult(ok=False, error_code="0401", error="Seller not registered")
+        if outcome == "timeout":  # the request went out; no answer came back
+            return fbr.FbrResult(ok=False, error_code="timeout", error="FBR did not respond in time",
+                                 maybe_delivered=True)
         self._n += 1
         return fbr.FbrResult(ok=True, invoice_number=f"FBR-{self._n}")
 

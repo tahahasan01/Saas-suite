@@ -274,8 +274,8 @@ async def update_lead(lead_id: str, body: LeadUpdate, auth: AuthContext = Depend
         stage_kind: str | None = None
         if "stage_id" in fields:
             stage = await conn.fetchrow("select pipeline_id, kind from crm_stages where id=$1", fields["stage_id"])
-            if not stage:
-                raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unknown stage")
+            if not stage:  # missing, or another tenant's (hidden by RLS): same answer as refs
+                raise HTTPException(status.HTTP_404_NOT_FOUND, "Stage not found")
             fields["pipeline_id"] = str(stage["pipeline_id"])
             stage_kind = stage["kind"]
         cols = ", ".join(f"{k}=${i+2}" for i, k in enumerate(fields))

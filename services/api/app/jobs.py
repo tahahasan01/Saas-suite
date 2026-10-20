@@ -82,9 +82,11 @@ def start() -> None:
     _scheduler = AsyncIOScheduler()
     _scheduler.add_job(run_followup_reminders, "interval", minutes=5, id="followups")
     _scheduler.add_job(run_restock_alerts, "interval", hours=24, id="restock")
-    # FBR filings that did not land at the till. Frequent, because an unfiled
-    # invoice is a compliance liability until it is filed.
-    _scheduler.add_job(fbr_submit.retry_pending, "interval", minutes=2, id="fbr_retry")
+    # The FBR outbox: filings that did not land at the till, abandoned sends,
+    # unknown rows to reconcile. Frequent, because an unfiled invoice is a
+    # compliance liability until it is filed; back-off is per row.
+    _scheduler.add_job(fbr_submit.process_outbox, "interval", minutes=1, id="fbr_outbox",
+                       max_instances=1, coalesce=True)
     _scheduler.start()
     log.info("proactive scheduler started")
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from typing import Literal
+from typing import Literal, get_args
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
@@ -85,10 +85,22 @@ class EntitlementOut(BaseModel):
     limits: dict = Field(default_factory=dict)
 
 
+class LocaleOut(BaseModel):
+    """How to render for this caller (12-trd §5.2 `locale`)."""
+    locale: Literal["en", "ur"]
+    dir: Literal["ltr", "rtl"]
+    timezone: str
+    currency: str
+
+
 class MeResponse(BaseModel):
     user: UserOut
     tenant: TenantOut
     entitlements: list[EntitlementOut]
+    # Permission key -> scope (D-04). The web gates controls on these keys;
+    # the API re-checks every request regardless.
+    permissions: dict[str, Literal["own", "team", "branch", "all"]]
+    locale: LocaleOut
     # True when this login belongs to an employee: the app shows self-service.
     employee_portal: bool = False
 
@@ -115,9 +127,19 @@ class UserCreate(BaseModel):
     role_id: str
 
 
+UserStatus = Literal["active", "disabled"]
+USER_STATUSES = list(get_args(UserStatus))
+
+
+class PasswordChange(BaseModel):
+    current_password: str = Field(min_length=1, max_length=200)
+    new_password: str = Field(min_length=8, max_length=200)
+
+
 class UserUpdate(BaseModel):
+    # Omitted = unchanged; an explicit null removes the user's role.
     role_id: str | None = None
-    status: str | None = Field(default=None, pattern="^(active|disabled)$")
+    status: UserStatus | None = None
 
 
 class RoleOut(BaseModel):
@@ -137,9 +159,17 @@ class EntitlementUpdate(BaseModel):
 
 
 # ── CRM ─────────────────────────────────────────────────────────────────────
+# Enum-like values: each Literal is the API's 422 and, through the list derived
+# from it, the database's check constraint (0042; tests/core/test_enum_checks).
+# Lead source stays free text: CSV imports carry the source the file names.
 LEAD_SOURCES = ["manual", "whatsapp", "facebook", "google", "referral"]
-INTERACTION_CHANNELS = ["call", "whatsapp", "email", "note", "bot"]
-INTERACTION_OUTCOMES = ["interested", "not_interested", "callback", "busy"]
+InteractionChannel = Literal["call", "whatsapp", "email", "note", "bot"]
+InteractionOutcome = Literal["interested", "not_interested", "callback", "busy"]
+INTERACTION_CHANNELS = list(get_args(InteractionChannel))
+INTERACTION_OUTCOMES = list(get_args(InteractionOutcome))
+STAGE_KINDS = ["active", "won", "lost"]
+InvoiceStatus = Literal["pending", "approved", "rejected"]
+INVOICE_STATUSES = list(get_args(InvoiceStatus))
 
 
 class StageOut(BaseModel):
@@ -213,8 +243,8 @@ class InteractionOut(BaseModel):
 
 
 class InteractionCreate(BaseModel):
-    channel: str = "note"
-    outcome: str | None = None
+    channel: InteractionChannel = "note"
+    outcome: InteractionOutcome | None = None
     note: str = ""
     next_follow_up_at: datetime | None = None
 
@@ -261,7 +291,14 @@ class InvoiceOut(BaseModel):
 
 
 # ── POS ─────────────────────────────────────────────────────────────────────
-PAYMENT_METHODS = ["cash", "card", "jazzcash", "easypaisa", "bank"]
+# Matches PAYMENT_METHODS in packages/types.
+PaymentMethod = Literal["cash", "card", "jazzcash", "easypaisa", "bank"]
+PAYMENT_METHODS = list(get_args(PaymentMethod))
+DRAWER_STATUSES = ["open", "closed"]
+PO_STATUSES = ["ordered", "received", "cancelled"]
+FBR_STATUSES = ["pending", "sending", "submitted", "failed", "unknown"]   # 0026; unknown from 0035
+FbrEnvironment = Literal["sandbox", "production"]
+FBR_ENVIRONMENTS = list(get_args(FbrEnvironment))
 
 
 class ProductOut(BaseModel):
@@ -331,14 +368,13 @@ class SaleCreate(BaseModel):
     items: list[SaleLine] = Field(min_length=1)
     discount_minor: int = Field(default=0, ge=0)
     paid_minor: int = Field(default=0, ge=0)
-    # Matches PAYMENT_METHODS in packages/types.
-    payment_method: Literal["cash", "card", "jazzcash", "easypaisa", "bank"] = "cash"
+    payment_method: PaymentMethod = "cash"
 
 
 class SaleQuoteRequest(BaseModel):
     items: list[SaleLine] = Field(min_length=1)
     discount_minor: int = Field(default=0, ge=0)
-    payment_method: Literal["cash", "card", "jazzcash", "easypaisa", "bank"] = "cash"
+    payment_method: PaymentMethod = "cash"
 
 
 class SaleQuote(BaseModel):
@@ -460,7 +496,7 @@ class FbrSettingsOut(BaseModel):
 
 class FbrSettingsUpdate(BaseModel):
     enabled: bool | None = None
-    environment: str | None = None
+    environment: FbrEnvironment | None = None
     seller_ntn_cnic: str | None = None
     seller_business_name: str | None = None
     seller_province: str | None = None
@@ -471,12 +507,27 @@ class FbrSettingsUpdate(BaseModel):
 
 class FbrInvoiceOut(BaseModel):
     sale_id: str
-    status: str
+    status: str   # pending | submitted | unknown | failed
     fbr_invoice_number: str | None
     error_code: str
     error: str
     attempts: int
     created_at: datetime
+    id: str | None = None
+    return_id: str | None = None   # set for a return's Debit Note
+
+
+class FbrResolve(BaseModel):
+    """An owner's answer for a filing in `unknown`, after checking IRIS."""
+    model_config = ConfigDict(extra="forbid")
+
+    filed: bool                                  # true: FBR has it; false: send it again
+    fbr_invoice_number: str | None = Field(default=None, max_length=100)
+
+    @field_validator("fbr_invoice_number")
+    @classmethod
+    def _strip(cls, v: str | None) -> str | None:
+        return (v or "").strip() or None
 
 
 class PosSummary(BaseModel):
@@ -518,8 +569,21 @@ class ForecastOut(BaseModel):
 
 
 # ── HRMS ────────────────────────────────────────────────────────────────────
-LEAVE_TYPES = ["annual", "sick", "casual", "unpaid"]
-REQUEST_TYPES = ["leave", "wfh"]
+# Exactly the types balances know (annual/sick/casual have quotas, unpaid has
+# none). An unknown type used to be stored, then crash the approval.
+LeaveType = Literal["annual", "sick", "casual", "unpaid"]
+# 'wfh' is not leave — the employee is working, so it is never deducted.
+RequestType = Literal["leave", "wfh"]
+LEAVE_TYPES = list(get_args(LeaveType))
+REQUEST_TYPES = list(get_args(RequestType))
+LEAVE_STATUSES = ["pending", "approved", "rejected"]
+EmployeeStatus = Literal["active", "inactive"]
+EMPLOYEE_STATUSES = list(get_args(EmployeeStatus))
+ATTENDANCE_STATUSES = ["present", "late", "absent", "leave"]
+# What a caller may claim; 'self' is written only by the employee's own portal punch.
+CheckInMethod = Literal["web", "mobile", "biometric", "qr"]
+ATTENDANCE_METHODS = [*get_args(CheckInMethod), "self"]
+FRAUD_FLAGS = ["", "mock_gps", "vpn", "face_mismatch"]
 
 
 class EmployeeOut(BaseModel):
@@ -527,14 +591,15 @@ class EmployeeOut(BaseModel):
     name: str
     email: str
     phone: str
-    cnic: str
+    cnic: str                 # masked unless the caller holds payroll.salary.read
     designation: str
     department: str
     join_date: date | None
-    salary_minor: int
+    salary_minor: int | None  # None unless the caller holds payroll.salary.read (D-42)
     status: str
     present_today: bool = False
     has_login: bool = False   # linked to a self-service portal user
+    pay_masked: bool = False  # True when salary and CNIC were withheld from this caller
 
 
 class EmployeeCreate(BaseModel):
@@ -554,12 +619,12 @@ class EmployeeUpdate(BaseModel):
     designation: str | None = None
     department: str | None = None
     salary_minor: int | None = Field(default=None, ge=0)
-    status: str | None = None
+    status: EmployeeStatus | None = None
 
 
 class CheckInRequest(BaseModel):
     employee_id: str
-    method: str = "web"
+    method: CheckInMethod = "web"
     lat: float | None = None
     lng: float | None = None
     mock_gps: bool = False
@@ -579,11 +644,8 @@ class AttendanceOut(BaseModel):
 
 class LeaveCreate(BaseModel):
     employee_id: str
-    # 'wfh' is not leave — the employee is working, so it is never deducted.
-    request_type: Literal["leave", "wfh"] = "leave"
-    # Exactly the types balances know (annual/sick/casual have quotas, unpaid
-    # has none). An unknown type used to be stored, then crash the approval.
-    leave_type: Literal["annual", "sick", "casual", "unpaid"] = "annual"
+    request_type: RequestType = "leave"
+    leave_type: LeaveType = "annual"
     from_date: date
     to_date: date
     reason: str = ""
@@ -620,6 +682,10 @@ class Payslip(BaseModel):
     absence_deduction_minor: int
     tax_minor: int
     net_minor: int
+    # Each slip names the tax table it was computed under, so /me/payslips can
+    # show the "rates pending verification" banner too (St03 §7).
+    tax_year: str = ""
+    tax_rates_verified: bool = True
 
 
 class PayrollOut(BaseModel):
@@ -703,7 +769,8 @@ class NotificationList(BaseModel):
 
 
 # ── Workflows (ECA automations) ─────────────────────────────────────────────
-WORKFLOW_TRIGGERS = ["lead.created", "lead.stage_changed", "interaction.logged"]
+WorkflowTrigger = Literal["lead.created", "lead.stage_changed", "interaction.logged"]
+WORKFLOW_TRIGGERS = list(get_args(WorkflowTrigger))
 
 
 class WorkflowOut(BaseModel):
@@ -718,7 +785,7 @@ class WorkflowOut(BaseModel):
 
 class WorkflowCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
-    trigger: str
+    trigger: WorkflowTrigger
     conditions: list[dict] = Field(default_factory=list)
     actions: list[dict] = Field(default_factory=list)
 

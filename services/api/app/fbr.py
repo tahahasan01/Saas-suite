@@ -45,6 +45,16 @@ class FbrResult:
     invoice_number: str | None = None
     error_code: str = ""
     error: str = ""
+    # The request may have reached FBR, but no answer came back (read timeout,
+    # connection dropped after sending, gateway timeout). FBR has no
+    # idempotency key, so such a filing must be reconciled, never blindly resent.
+    maybe_delivered: bool = False
+
+
+@dataclass
+class LookupResult:
+    status: str                      # found | not_found | unsupported
+    invoice_number: str | None = None
 
 
 def _rupees(minor: int) -> float:
@@ -153,11 +163,32 @@ async def post_invoice(settings, payload: dict) -> FbrResult:
             r = await client.post(url, json=payload, headers=headers)
         if r.status_code == 401:
             return FbrResult(ok=False, error_code="401", error="FBR rejected the token — check it in Settings.")
+        if r.status_code == 504:
+            # The gateway gave up waiting on PRAL, which may still have filed it.
+            return FbrResult(ok=False, error_code="504", error="FBR's gateway timed out",
+                             maybe_delivered=True)
         if r.status_code != 200:
             return FbrResult(ok=False, error_code=str(r.status_code), error=f"FBR returned HTTP {r.status_code}")
         return _parse(r.json())
-    except httpx.TimeoutException:
-        return FbrResult(ok=False, error_code="timeout", error="FBR did not respond in time")
-    except Exception as e:  # network down, DNS, malformed body …
+    except (httpx.ConnectError, httpx.ConnectTimeout, httpx.PoolTimeout) as e:
+        # Never left this machine: safe to send again.
+        log.warning("FBR unreachable: %s", e)
+        return FbrResult(ok=False, error_code="network", error="Could not reach FBR")
+    except (httpx.TimeoutException, httpx.ReadError, httpx.WriteError, httpx.RemoteProtocolError) as e:
+        # The request was (or may have been) sent and no answer came back.
+        log.warning("FBR did not answer: %r", e)
+        return FbrResult(ok=False, error_code="timeout", error="FBR did not respond in time",
+                         maybe_delivered=True)
+    except Exception as e:  # DNS, malformed body …
         log.warning("FBR submission failed: %s", e)
         return FbrResult(ok=False, error_code="network", error="Could not reach FBR")
+
+
+async def lookup_invoice(settings, document: dict) -> LookupResult:
+    """Ask FBR whether a document whose filing ended without an answer was
+    received. PRAL's DI API (v1.12) documents no lookup or idempotency key
+    (studies/01 §8.1), so this answers 'unsupported' and the filing waits for
+    an owner to check IRIS and settle it (POST /fbr/invoices/{id}/resolve).
+    The outbox calls this before any resend; plug a real lookup in here if
+    PRAL ever offers one."""
+    return LookupResult(status="unsupported")

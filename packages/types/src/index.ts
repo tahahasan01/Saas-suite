@@ -52,10 +52,102 @@ export interface EntitlementOut {
   limits: Record<string, unknown>;
 }
 
+/**
+ * Permission keys (D-04, `module.resource.action`), mirroring the registry in
+ * services/api/app/rbac.py. tests/core/test_permission_keys_in_sync.py fails
+ * when the two lists differ, so a key added there must be added here.
+ */
+export const PERMISSION_KEYS = [
+  // settings
+  "settings.team.read",
+  "settings.team.manage",
+  "settings.roles.manage",
+  "settings.modules.manage",
+  "settings.billing.manage",
+  "settings.workflows.read",
+  "settings.workflows.manage",
+  // crm
+  "crm.lead.read",
+  "crm.lead.create",
+  "crm.lead.update",
+  "crm.lead.import",
+  "crm.lead.export",
+  "crm.activity.manage",
+  // invoicing
+  "invoicing.invoice.read",
+  "invoicing.invoice.create",
+  "invoicing.invoice.approve",
+  // pos
+  "pos.sale.read",
+  "pos.sale.create",
+  "pos.sale.refund",
+  "pos.session.read",
+  "pos.session.open",
+  "pos.session.close",
+  "pos.report.sales",
+  // products
+  "products.product.read",
+  "products.product.create",
+  "products.product.update",
+  "products.product.import",
+  "products.product.export",
+  // purchasing
+  "purchasing.po.read",
+  "purchasing.po.create",
+  "purchasing.po.receive",
+  "purchasing.po.cancel",
+  "purchasing.supplier.read",
+  "purchasing.supplier.manage",
+  // fbr
+  "fbr.settings.read",
+  "fbr.settings.manage",
+  "fbr.document.read",
+  // hrms
+  "hrms.employee.read",
+  "hrms.employee.create",
+  "hrms.employee.update",
+  "hrms.employee.invite",
+  "hrms.attendance.read",
+  "hrms.attendance.write",
+  "hrms.leave.read",
+  "hrms.leave.request",
+  "hrms.leave.approve",
+  "hrms.holiday.manage",
+  "hrms.settings.manage",
+  // payroll
+  "payroll.run.read",
+  "payroll.run.create",
+  "payroll.run.calculate",
+  "payroll.run.approve",
+  "payroll.run.pay",
+  "payroll.run.lock",
+  "payroll.run.cancel",
+  "payroll.run.reopen",
+  "payroll.salary.read",
+  "payroll.salary.update",
+  "payroll.report.export",
+  "payroll.settings.manage",
+] as const;
+export type PermissionKey = (typeof PERMISSION_KEYS)[number];
+
+/** Widest-first: a grant at `all` covers `branch`, `team` and `own`. */
+export type PermissionScope = "own" | "team" | "branch" | "all";
+
+export interface LocaleOut {
+  locale: "en" | "ur";
+  dir: "ltr" | "rtl";
+  /** IANA zone the tenant's business day runs in, e.g. "Asia/Karachi". */
+  timezone: string;
+  currency: string;
+}
+
 export interface MeResponse {
   user: UserOut;
   tenant: TenantOut;
   entitlements: EntitlementOut[];
+  /** Keys the caller holds -> scope. A missing key is not held. */
+  permissions: Partial<Record<PermissionKey, PermissionScope>>;
+  locale: LocaleOut;
   /** True when this login is an employee self-service account. */
   employee_portal: boolean;
 }
@@ -247,7 +339,12 @@ export interface FbrSettings {
 }
 
 export interface FbrInvoice {
+  /** Filing record id; POST /fbr/invoices/{id}/resolve settles an `unknown` one. */
+  id: string | null;
   sale_id: string;
+  /** Set for a return's Debit Note. */
+  return_id: string | null;
+  /** pending | submitted | unknown (sent, no answer: check IRIS) | failed */
   status: string;
   fbr_invoice_number: string | null;
   error_code: string;
@@ -302,10 +399,12 @@ export interface Employee {
   designation: string;
   department: string;
   join_date: string | null;
-  salary_minor: number;
+  /** null when the caller lacks payroll access (D-42); CNIC is masked then too. */
+  salary_minor: number | null;
   status: string;
   present_today: boolean;
   has_login: boolean;
+  pay_masked: boolean;
 }
 
 export interface Attendance {
@@ -356,6 +455,10 @@ export interface Payslip {
   absence_deduction_minor: number;
   tax_minor: number;
   net_minor: number;
+  /** The tax table this slip was computed under, e.g. "TY2027". */
+  tax_year: string;
+  /** false -> show "Tax rates pending verification". */
+  tax_rates_verified: boolean;
 }
 
 export interface Holiday {
@@ -368,6 +471,9 @@ export interface Payroll {
   month: string;
   working_days: number;
   payslips: Payslip[];
+  tax_year: string;
+  /** false -> show "Tax rates pending verification". */
+  tax_rates_verified: boolean;
 }
 
 // ── Billing ──────────────────────────────────────────────────────────────

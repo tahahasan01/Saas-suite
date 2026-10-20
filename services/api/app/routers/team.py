@@ -50,15 +50,18 @@ async def update_user(user_id: str, body: UserUpdate, auth: AuthContext = Depend
         if current is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
         await refs.ensure_visible(conn, "roles", body.role_id)
-        role_id = body.role_id or current["role_id"]
+        role_id = body.role_id if "role_id" in body.model_fields_set else current["role_id"]
         new_status = body.status or current["status"]
+        # A role or status change bumps the user's auth_epoch (users trigger,
+        # 0033), so the sessions they hold get 401 on their next request.
         await conn.execute("update users set role_id=$1, status=$2, updated_at=now() where id=$3",
                            role_id, new_status, user_id)
         row = await conn.fetchrow(
             """select u.id,u.email,u.name,u.status,r.name as role
                from users u left join roles r on r.id=u.role_id where u.id=$1""", user_id)
         await audit.record(conn, actor_id=auth.user_id, action="user.update", entity="user",
-                           entity_id=user_id, after={"role_id": str(role_id), "status": new_status})
+                           entity_id=user_id,
+                           after={"role_id": str(role_id) if role_id else None, "status": new_status})
     return TeamUser(id=str(row["id"]), email=row["email"], name=row["name"], role=row["role"], status=row["status"])
 
 

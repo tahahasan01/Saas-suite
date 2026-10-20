@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Invoice } from "@business-os/types";
 import { api } from "@/lib/api";
+import { Can } from "@/lib/can";
 import { money, relativeDate } from "@/lib/format";
-import { useSession } from "@/lib/session";
 import { errorText, useAction } from "@/lib/useAction";
 import { Badge, Button, EmptyState, ErrorState } from "@/components/ui";
 import { DataTable, type Column } from "@/components/DataTable";
@@ -14,12 +14,10 @@ const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const tone = { pending: "warning", approved: "success", rejected: "danger" } as const;
 
 export default function InvoicesPage() {
-  const { me } = useSession();
   // null = loading; "No invoice requests yet" while loading read as "they're gone".
   const [items, setItems] = useState<Invoice[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const confirm = useConfirm();
-  const canApprove = me?.user.role === "Owner"; // accounts approver
 
   const load = useCallback(() => {
     setLoadError(null);
@@ -88,13 +86,14 @@ export default function InvoicesPage() {
           empty={<EmptyState title="No invoice requests yet" hint="Sales request invoices from a lead's details on the CRM board." />}
           actions={(inv) => (
             <>
-              {inv.status === "pending" && canApprove && (
-                <>
+              {inv.status === "pending" && (
+                // Whoever holds the approval key, not whoever is called "Owner" (P1-13).
+                <Can perm="invoicing.invoice.approve">
                   <Button size="sm" disabled={deciding} onClick={() => onApprove(inv)}>Approve</Button>
                   <Button size="sm" variant="subtle" disabled={deciding} onClick={() => doReject(inv)}>
                     {reject.busy ? "Rejecting…" : "Reject"}
                   </Button>
-                </>
+                </Can>
               )}
               {inv.status === "approved" && (
                 <a href={`${API}/crm/invoices/${inv.id}/pdf`} target="_blank" rel="noreferrer"

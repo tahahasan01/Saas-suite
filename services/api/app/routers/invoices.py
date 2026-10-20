@@ -1,5 +1,6 @@
 """Invoice requests — sales requests, accounts approves, PDF on approval.
-Separation of duties: creation needs crm:write; approval needs accounts:admin."""
+Separation of duties: creation needs crm:write; approval needs the
+invoicing.invoice.approve key (legacy accounts:admin), never a role name."""
 from __future__ import annotations
 
 import io
@@ -10,7 +11,7 @@ from fastapi.responses import StreamingResponse
 from .. import db, invoices_pdf, notifications
 from ..deps import AuthContext
 from ..models import InvoiceCreate, InvoiceOut
-from ..rbac import require
+from ..rbac import perm, require
 
 router = APIRouter(prefix="/crm/invoices", tags=["invoices"])
 
@@ -82,12 +83,12 @@ async def _decide(invoice_id: str, auth: AuthContext, new_status: str) -> Invoic
 
 
 @router.post("/{invoice_id}/approve", response_model=InvoiceOut)
-async def approve(invoice_id: str, auth: AuthContext = Depends(require("accounts", "admin"))):
+async def approve(invoice_id: str, auth: AuthContext = Depends(perm("invoicing.invoice.approve"))):
     return await _decide(invoice_id, auth, "approved")
 
 
 @router.post("/{invoice_id}/reject", response_model=InvoiceOut)
-async def reject(invoice_id: str, auth: AuthContext = Depends(require("accounts", "admin"))):
+async def reject(invoice_id: str, auth: AuthContext = Depends(perm("invoicing.invoice.approve"))):
     return await _decide(invoice_id, auth, "rejected")
 
 

@@ -1,8 +1,10 @@
 """NL->SQL safety gate. The LLM may only produce a single read-only query that
-touches allowlisted views. This is layer 1 of defense; execution also runs in a
-READ ONLY transaction under RLS (see gateway.run_query), so a bypass still can't
-write. The database grants (migration 0025) are the layer that keeps secret
-platform tables out of reach even if this gate is wrong.
+touches allowlisted views. This is layer 1 of defense; execution then runs as
+the `ai_reader` role in a READ ONLY transaction (gateway.run_query, migration
+0032), which can read the ai_v_* views and nothing else and cannot call
+set_config(). That database layer is what keeps secret tables and other
+tenants out of reach even if this gate is wrong — tests/ai/test_sql_guard.py
+proves every bypass fails at both layers.
 
 The gate parses the SQL (sqlglot, Postgres dialect) instead of pattern-matching
 it: a regex only saw identifiers after FROM/JOIN, so comma joins, quoted names
@@ -43,6 +45,17 @@ _ALLOWED_FUNCS: tuple[type[exp.Expression], ...] = (
 )
 _ALLOWED_ANONYMOUS = {"age", "date_part", "split_part", "initcap", "string_agg"}
 
+# Casts are allow-listed too: `'auth_tokens'::regclass` and friends are catalog
+# lookups that need no table privilege. Reporting only needs these.
+_T = exp.DataType.Type
+_ALLOWED_CAST_TYPES = {
+    getattr(_T, name) for name in (
+        "TEXT", "VARCHAR", "CHAR", "NCHAR", "NVARCHAR", "BPCHAR",
+        "SMALLINT", "INT", "BIGINT", "DECIMAL", "DOUBLE", "FLOAT", "MONEY",
+        "BOOLEAN", "DATE", "TIME", "TIMETZ", "TIMESTAMP", "TIMESTAMPTZ", "INTERVAL",
+    ) if hasattr(_T, name)
+}
+
 # Statement shapes that may never appear anywhere in the tree.
 _FORBIDDEN_NODES: tuple[type[exp.Expression], ...] = (
     exp.Insert, exp.Update, exp.Delete, exp.Merge, exp.Create, exp.Drop,
@@ -65,6 +78,27 @@ def _check_functions(tree: exp.Expression) -> None:
                 raise UnsafeQuery(f"function '{fn.name}' is not allowed")
         elif not isinstance(fn, _ALLOWED_FUNCS):
             raise UnsafeQuery(f"function '{fn.sql_name()}' is not allowed")
+
+
+def _check_casts(tree: exp.Expression) -> None:
+    for cast in tree.find_all(exp.Cast):
+        to = cast.to
+        if type(to) is not exp.DataType or to.this not in _ALLOWED_CAST_TYPES:
+            raise UnsafeQuery(f"cast to '{to.sql(dialect='postgres')}' is not allowed")
+
+
+def _literal_limit(tree: exp.Expression) -> int | None:
+    """The row count a LIMIT / FETCH FIRST asks for, if it is a plain number."""
+    node = tree.args.get("limit")
+    if isinstance(node, exp.Limit):
+        node = node.expression
+    elif isinstance(node, exp.Fetch):
+        node = node.args.get("count")
+    else:
+        return None
+    if isinstance(node, exp.Literal) and not node.is_string and node.this.isdigit():
+        return int(node.this)
+    return None
 
 
 def _pg_name(identifier: exp.Expression | None) -> str:
@@ -145,7 +179,11 @@ def sanitize(sql: str, max_limit: int = 200, allowed: set[str] | None = None) ->
 
     _check_tables(tree, allowed)
     _check_functions(tree)
+    _check_casts(tree)
 
-    if not tree.args.get("limit"):
+    # A bigger, ALL or computed limit is replaced, not trusted. (The gateway
+    # also caps rows at the database, so this is about intent, not safety.)
+    n = _literal_limit(tree)
+    if n is None or n > max_limit:
         tree = tree.limit(max_limit)
     return tree.sql(dialect="postgres")

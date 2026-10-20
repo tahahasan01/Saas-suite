@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
-from .. import db, email, sampledata, tokens
+from .. import db, email, rbac, sampledata, tokens
 from ..config import settings
 from ..deps import AuthContext, current_auth
 from ..models import (
@@ -19,8 +19,10 @@ from ..models import (
     AcceptInviteRequest,
     EntitlementOut,
     ForgotRequest,
+    LocaleOut,
     LoginRequest,
     MeResponse,
+    PasswordChange,
     ResetRequest,
     SignupRequest,
     TenantOut,
@@ -52,11 +54,13 @@ def _set_session_cookie(response: Response, token: str) -> None:
 
 
 async def _create_session(conn, user_id: str, tenant_id: str) -> str:
-    """Returns the raw token for the cookie; only its hash is persisted."""
+    """Returns the raw token for the cookie; only its hash is persisted.
+    The session copies the user's current auth_epoch (D-05)."""
     token = new_session_token()
     expires = datetime.now(timezone.utc) + timedelta(days=settings.session_ttl_days)
     await conn.execute(
-        "insert into sessions (id, user_id, tenant_id, expires_at) values ($1,$2,$3,$4)",
+        """insert into sessions (id, user_id, tenant_id, expires_at, auth_epoch)
+           select $1, $2, $3, $4, auth_epoch from users where id = $2""",
         hash_session_token(token), user_id, tenant_id, expires,
     )
     return token
@@ -83,8 +87,9 @@ async def signup(body: SignupRequest, response: Response) -> MeResponse:
                 "insert into roles (tenant_id, name, is_system) values ($1,'Owner',true) returning id",
                 tenant_id,
             )
-            # Owner gets admin on every section (incl. settings + accounts approvals).
-            for section in SECTIONS + ["settings", "accounts"]:
+            # Owner gets admin on every section (incl. settings + accounts approvals,
+            # and payroll, which hrms:admin deliberately doesn't carry — D-42).
+            for section in SECTIONS + ["settings", "accounts", "payroll"]:
                 await conn.execute(
                     "insert into permissions (tenant_id, role_id, section, action) values ($1,$2,$3,'admin')",
                     tenant_id, role_id, section,
@@ -114,12 +119,6 @@ async def signup(body: SignupRequest, response: Response) -> MeResponse:
             )
             token = await _create_session(conn, user_id, tenant_id)
 
-            tenant_row = await conn.fetchrow("select id,name,industry_type,status from tenants where id=$1", tenant_id)
-            ent_rows = await conn.fetch(
-                "select section_key, enabled, limits from entitlements where tenant_id=$1 order by section_key",
-                tenant_id,
-            )
-
     # Seed a live demo workspace so the new tenant never lands in an empty app.
     if body.sample_data:
         try:
@@ -135,13 +134,9 @@ async def signup(body: SignupRequest, response: Response) -> MeResponse:
         pass
 
     _set_session_cookie(response, token)
-    return MeResponse(
-        user=UserOut(id=str(user_id), email=body.email, name=body.name, role="Owner"),
-        tenant=TenantOut(id=str(tenant_row["id"]), name=tenant_row["name"],
-                         industry_type=tenant_row["industry_type"], status=tenant_row["status"]),
-        entitlements=[EntitlementOut(section_key=r["section_key"], enabled=r["enabled"], limits=r["limits"])
-                      for r in ent_rows],
-    )
+    async with db.tenant_conn(str(tenant_id)) as conn:
+        return await _bootstrap(conn, UserOut(id=str(user_id), email=body.email, name=body.name, role="Owner"),
+                                str(tenant_id), str(role_id))
 
 
 @router.post("/login", response_model=UserOut, dependencies=[Depends(rate_limit(10, 60))])
@@ -182,8 +177,28 @@ async def reset(body: ResetRequest, response: Response) -> Response:
         await conn.execute("update users set password_hash=$1, updated_at=now() where id=$2",
                            hash_password(body.password), row["user_id"])
         # A reset is how a user recovers from a stolen session, so every
-        # session that existed before it must die with the old password.
+        # session that existed before it must die with the old password. The
+        # new hash already bumped auth_epoch; deleting is belt and braces.
         await conn.execute("delete from sessions where user_id=$1", row["user_id"])
+    response.status_code = status.HTTP_204_NO_CONTENT
+    return response
+
+
+@router.post("/password", status_code=status.HTTP_204_NO_CONTENT,
+             dependencies=[Depends(rate_limit(5, 60))])
+async def change_password(body: PasswordChange, response: Response,
+                          auth: AuthContext = Depends(current_auth)) -> Response:
+    """Change the password and sign out every other device. The caller keeps
+    working on a re-issued session: its old one died with the epoch bump."""
+    async with db.owner_conn() as conn, conn.transaction():
+        current = await conn.fetchval("select password_hash from users where id=$1", auth.user_id)
+        if not verify_password(current, body.current_password):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Current password is incorrect")
+        await conn.execute("update users set password_hash=$1, updated_at=now() where id=$2",
+                           hash_password(body.new_password), auth.user_id)
+        await conn.execute("delete from sessions where user_id=$1", auth.user_id)
+        token = await _create_session(conn, auth.user_id, auth.tenant_id)
+    _set_session_cookie(response, token)
     response.status_code = status.HTTP_204_NO_CONTENT
     return response
 
@@ -232,24 +247,40 @@ async def logout(response: Response, auth: AuthContext = Depends(current_auth)) 
     return response
 
 
-@router.get("/me", response_model=MeResponse)
-async def me(auth: AuthContext = Depends(current_auth)) -> MeResponse:
-    # Tenant-scoped reads via the app pool → exercises RLS end-to-end.
-    async with db.tenant_conn(auth.tenant_id) as conn:
-        tenant_row = await conn.fetchrow("select id,name,industry_type,status from tenants where id=$1", auth.tenant_id)
-        ent_rows = await conn.fetch(
-            "select section_key, enabled, limits from entitlements where tenant_id=$1 order by section_key",
-            auth.tenant_id,
-        )
-        # This login is the employee portal iff it is linked to a staff record.
-        # The frontend renders the self-service nav instead of the admin app.
-        is_employee = bool(await conn.fetchval(
-            "select 1 from hrms_employees where user_id=$1", auth.user_id))
+async def _bootstrap(conn, user: UserOut, tenant_id: str, role_id: str | None) -> MeResponse:
+    """The one bootstrap the web loads: who, which tenant, which sections, which
+    permission keys, and how to render. Signup and /auth/me share it so the
+    two can't drift."""
+    tenant_row = await conn.fetchrow(
+        "select id,name,industry_type,status,timezone from tenants where id=$1", tenant_id)
+    ent_rows = await conn.fetch(
+        "select section_key, enabled, limits from entitlements where tenant_id=$1 order by section_key",
+        tenant_id,
+    )
+    # This login is the employee portal iff it is linked to a staff record.
+    # The frontend renders the self-service nav instead of the admin app.
+    is_employee = bool(await conn.fetchval(
+        "select 1 from hrms_employees where user_id=$1", user.id))
+    # The user's choice, else English; a tenant default joins here when the
+    # typed tenant settings land (12-trd §4.2).
+    locale = await conn.fetchval("select locale from users where id=$1", user.id) or "en"
     return MeResponse(
-        user=UserOut(id=auth.user_id, email=auth.email, name=auth.name, role=auth.role),
+        user=user,
         tenant=TenantOut(id=str(tenant_row["id"]), name=tenant_row["name"],
                          industry_type=tenant_row["industry_type"], status=tenant_row["status"]),
         entitlements=[EntitlementOut(section_key=r["section_key"], enabled=r["enabled"], limits=r["limits"])
                       for r in ent_rows],
+        permissions=await rbac.effective_permissions(conn, tenant_id, role_id),
+        locale=LocaleOut(locale=locale, dir="rtl" if locale == "ur" else "ltr",
+                         timezone=tenant_row["timezone"], currency="PKR"),
         employee_portal=is_employee,
     )
+
+
+@router.get("/me", response_model=MeResponse)
+async def me(auth: AuthContext = Depends(current_auth)) -> MeResponse:
+    # Tenant-scoped reads via the app pool → exercises RLS end-to-end.
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        return await _bootstrap(
+            conn, UserOut(id=auth.user_id, email=auth.email, name=auth.name, role=auth.role),
+            auth.tenant_id, auth.role_id)
