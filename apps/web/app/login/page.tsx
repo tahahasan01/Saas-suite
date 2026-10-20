@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { safeNext } from "@/lib/redirect";
 import { useSession } from "@/lib/session";
 import { Button, Card, Field, Input, PasswordInput } from "@/components/ui";
 import { AuthShell } from "@/components/AuthShell";
@@ -23,7 +24,8 @@ export default function LoginPage() {
     try {
       await api("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
       await refresh();
-      router.replace("/dashboard");
+      // Back to where an expired session or the middleware sent us from.
+      router.replace(safeNext(new URLSearchParams(window.location.search).get("next")));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {

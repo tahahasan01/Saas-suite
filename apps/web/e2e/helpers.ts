@@ -1,6 +1,12 @@
 import { expect, type APIRequestContext, type Page } from "@playwright/test";
 
+/** The API itself, for test setup through `request` (not what the page calls). */
 export const API = process.env.API_URL ?? "http://localhost:4000";
+
+/** A page.route() matcher for one API path, however the page reaches it: the
+ *  same-origin `/api` rewrite (current) or the API's own origin (older builds). */
+export const apiPath = (path: string) => (url: URL) =>
+  url.pathname === `/api${path}` || (url.origin === new URL(API).origin && url.pathname === path);
 
 /** Waits until a page shows its real content, so layout checks measure it.
  *

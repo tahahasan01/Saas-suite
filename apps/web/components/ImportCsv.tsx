@@ -2,11 +2,10 @@
 
 import { useRef, useState } from "react";
 import { X } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, apiUrl } from "@/lib/api";
 import { useAction } from "@/lib/useAction";
 import { Button } from "@/components/ui";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 interface Result {
   created: number;
@@ -64,7 +63,7 @@ export function ImportCsv({ path, onDone }: { path: string; onDone: () => void }
         <Button variant="subtle" size="sm" disabled={importer.busy} onClick={() => fileRef.current?.click()}>
           {importer.busy ? "Importing…" : "Import CSV"}
         </Button>
-        <a href={`${API}${path}/export`} className="inline-flex items-center text-xs text-brand hover:underline pointer-coarse:min-h-11">
+        <a href={apiUrl(`${path}/export`)} className="inline-flex items-center text-xs text-brand hover:underline pointer-coarse:min-h-11">
           Export CSV
         </a>
       </div>

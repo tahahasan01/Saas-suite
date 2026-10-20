@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { Invoice } from "@business-os/types";
-import { api } from "@/lib/api";
+import { api, apiUrl } from "@/lib/api";
 import { Can } from "@/lib/can";
 import { money, relativeDate } from "@/lib/format";
 import { errorText, useAction } from "@/lib/useAction";
@@ -10,7 +10,6 @@ import { Badge, Button, EmptyState, ErrorState } from "@/components/ui";
 import { DataTable, type Column } from "@/components/DataTable";
 import { useConfirm } from "@/components/Confirm";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const tone = { pending: "warning", approved: "success", rejected: "danger" } as const;
 
 export default function InvoicesPage() {
@@ -96,7 +95,7 @@ export default function InvoicesPage() {
                 </Can>
               )}
               {inv.status === "approved" && (
-                <a href={`${API}/crm/invoices/${inv.id}/pdf`} target="_blank" rel="noreferrer"
+                <a href={apiUrl(`/crm/invoices/${inv.id}/pdf`)} target="_blank" rel="noreferrer"
                    className="relative inline-flex items-center text-xs text-brand hover:underline pointer-coarse:min-h-11">
                   Download PDF<span className="sr-only"> for {inv.lead_name}</span>
                 </a>

@@ -1,19 +1,12 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { ApiError } from "@/lib/api";
+import { normalizeError } from "@/lib/api";
 import { useToast } from "@/components/Toast";
 
 /** The reason a request failed, in words a person can act on. */
 export function errorText(e: unknown, fallback = "Something went wrong. Check your connection and try again."): string {
-  if (e instanceof ApiError) {
-    if (typeof e.detail === "string") return e.detail;
-    const d = e.detail as { message?: unknown } | null;
-    if (d && typeof d.message === "string") return d.message;
-    return fallback;
-  }
-  if (e instanceof TypeError) return "Can't reach the server. Check your connection and try again.";
-  return fallback;
+  return normalizeError(e, fallback).message;
 }
 
 /** A body-less success (204) reads as `true`, never as the `undefined` of a failure. */
@@ -60,10 +53,11 @@ export function useAction<A extends unknown[], R>(fn: (...args: A) => Promise<R>
       if (s) toast.success(typeof s === "function" ? s(result) : s);
       return (result === undefined ? true : result) as Done<R>;
     } catch (e) {
-      const text = errorText(e);
+      const err = normalizeError(e);
       const prefix = optsRef.current.failure;
-      setError(text);
-      toast.error(prefix ? `${prefix}: ${text}` : text);
+      setError(err.message);
+      // The API handler chain already toasted a 403/5xx/offline (or sent a 401 to login).
+      if (!err.handled) toast.error(prefix ? `${prefix}: ${err.message}` : err.message);
       return undefined;
     } finally {
       inFlight.current = false;

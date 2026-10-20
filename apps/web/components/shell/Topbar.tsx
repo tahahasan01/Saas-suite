@@ -88,7 +88,7 @@ function UserMenu() {
           </div>
           <button
             role="menuitem"
-            onClick={() => logout().then(() => router.replace("/login"))}
+            onClick={() => logout().then((ok) => { if (ok) router.replace("/login"); })}
             className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-fg-muted hover:bg-elevated hover:text-fg"
           >
             <LogOut size={16} aria-hidden /> Sign out

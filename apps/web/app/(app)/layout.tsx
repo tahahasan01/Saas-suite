@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "@/lib/session";
+import { useHotkey } from "@/lib/useHotkey";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { Topbar } from "@/components/shell/Topbar";
 import { ModuleHeader } from "@/components/shell/ModuleHeader";
@@ -42,7 +43,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (loading) return;
-    if (!me) { router.replace("/login"); return; }
+    if (!me) { router.replace(`/login?next=${encodeURIComponent(pathname)}`); return; }
     // Keep the two worlds apart: an employee login only ever sees /me/*, and an
     // admin has no self-service pages to land on. The backend enforces this too;
     // this just avoids showing a screen that would only 403.
@@ -60,13 +61,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     else { store(NARROW_EXPAND_KEY, !narrowExpanded); setNarrowExpanded(!narrowExpanded); }
   }
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setPaletteOpen(true); }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  useHotkey("mod+k", () => setPaletteOpen(true));
 
   if (loading || !me) return <main className="grid min-h-dvh place-items-center text-fg-subtle">Loading…</main>;
 

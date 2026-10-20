@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
-import { API, ready } from "./helpers";
+// apiPath matches the API call only — a bare regex also caught the page
+// navigation of the same path.
+import { API, apiPath, ready } from "./helpers";
 
 type Payslip = { employee_id: string; name: string; net_minor: number };
 type Payroll = { month: string; working_days: number; payslips: Payslip[] };
@@ -12,9 +14,6 @@ const yearPKT = () => monthPKT().slice(0, 4);
 // the test doesn't depend on the currency symbol or grouping.
 const digits = (s: string) => s.replace(/\D/g, "");
 const moneyDigits = (minor: number) => String(Math.round(minor) % 100 === 0 ? Math.round(minor) / 100 : Math.round(minor));
-// Matches the API call only — a bare regex also caught the page navigation of
-// the same path on :3000.
-const apiPath = (path: string) => (url: URL) => url.origin === new URL(API).origin && url.pathname === path;
 const overflow = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 
 test.describe("payroll on a phone", () => {
