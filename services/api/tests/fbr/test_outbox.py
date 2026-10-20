@@ -64,7 +64,9 @@ async def _return_one(client, sale):
 
 
 async def _outbox(shop):
-    return await _q("select * from outbox where tenant_id=$1 order by id", uuid.UUID(shop["tenant_id"]))
+    # FBR rows only: the same outbox also carries the tenant's email (signup's verification mail).
+    return await _q("select * from outbox where tenant_id=$1 and kind like 'fbr.%' order by id",
+                    uuid.UUID(shop["tenant_id"]))
 
 
 async def _filings(shop):
@@ -349,6 +351,6 @@ async def test_outbox_rows_are_invisible_to_other_tenants(client, shop):
         await app.execute("select set_config('app.tenant_id', $1, false)", str(uuid.uuid4()))
         assert await app.fetchval("select count(*) from outbox") == 0
         await app.execute("select set_config('app.tenant_id', $1, false)", shop["tenant_id"])
-        assert await app.fetchval("select count(*) from outbox") == 1
+        assert await app.fetchval("select count(*) from outbox where kind like 'fbr.%'") == 1
     finally:
         await app.close()

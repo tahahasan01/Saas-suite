@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import calendar
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
 
 from datetime import date, datetime, timedelta
 
-from .. import db, email, payroll, refs, tokens
+from .. import db, email, payroll, refs
 from ..deps import AuthContext, current_auth, current_employee
 from ..models import (
     AttendanceOut,
@@ -167,7 +167,7 @@ async def _employee_role(conn, tenant_id: str) -> str:
 
 
 @router.post("/employees/{employee_id}/invite", status_code=status.HTTP_204_NO_CONTENT)
-async def invite_employee(employee_id: str, response: Response,
+async def invite_employee(employee_id: str, response: Response, background: BackgroundTasks,
                           auth: AuthContext = Depends(require("hrms", "admin"))) -> Response:
     """Give an employee their own self-service login. Sends an invite they accept
     to set a password — the same flow as team invites, on the Employee role."""
@@ -185,10 +185,10 @@ async def invite_employee(employee_id: str, response: Response,
             raise HTTPException(status.HTTP_409_CONFLICT, "That email already has an account.")
         role_id = await _employee_role(conn, auth.tenant_id)
         tenant_name = await conn.fetchval("select name from tenants where id=$1", auth.tenant_id)
-
-    token = await tokens.create("invite", email=emp["email"], tenant_id=auth.tenant_id,
-                                role_id=role_id, employee_id=employee_id, ttl_hours=72)
-    await email.send_invite(emp["email"], tenant_name, token)
+        # Queued with the request, sent after commit (the outbox): a mail outage can't fail it.
+        mail = await email.queue_invite(conn, auth.tenant_id, emp["email"], tenant_name, role_id,
+                                        employee_id=employee_id)
+    background.add_task(email.deliver_now, mail)
     response.status_code = status.HTTP_204_NO_CONTENT
     return response
 
