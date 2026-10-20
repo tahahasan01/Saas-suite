@@ -1,7 +1,7 @@
 """Billing — subscription state, plans, and the manual upgrade flow."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 

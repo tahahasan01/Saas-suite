@@ -8,7 +8,6 @@ import asyncio
 import uuid
 
 import asyncpg
-import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app import tokens

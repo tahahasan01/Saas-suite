@@ -46,7 +46,7 @@ async def test_pages_cover_every_product_exactly_once(client, pos_tenant):
     assert len(seen) == total
     assert len(set(seen)) == total  # stable order: no row twice, none skipped
     # The last bulk product sorts after the sample catalog and past row 200.
-    names = [p["name"] for p in (await client.get(f"/pos/products?limit=500")).json()]
+    names = [p["name"] for p in (await client.get("/pos/products?limit=500")).json()]
     assert "Zz Bulk 230" in names
     assert names.index("Zz Bulk 230") >= 200
 

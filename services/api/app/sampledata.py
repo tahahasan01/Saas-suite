@@ -55,7 +55,8 @@ async def seed(conn: asyncpg.Connection, tenant_id: str, user_id: str, sections:
               "message": "Deal won: {name}", "body": "{company}", "link": "/crm"}])
         for name, company, phone, email, source, si, value, score in _LEADS:
             await conn.execute(
-                """insert into crm_leads (tenant_id, pipeline_id, stage_id, owner_id, name, company, phone, email, source, value_minor, score)
+                """insert into crm_leads (tenant_id, pipeline_id, stage_id, owner_id, name, company,
+                                       phone, email, source, value_minor, score)
                    values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)""",
                 tenant_id, pid, stage_ids[si], user_id, name, company, phone, email, source, value, score)
 

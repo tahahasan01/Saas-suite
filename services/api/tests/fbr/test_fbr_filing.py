@@ -10,7 +10,6 @@ from __future__ import annotations
 import uuid
 
 import asyncpg
-import pytest
 import pytest_asyncio
 
 from app import fbr_submit
