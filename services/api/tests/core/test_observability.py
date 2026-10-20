@@ -347,7 +347,10 @@ async def test_email_failed_alert_carries_no_smtp_text(client, crm_tenant, webho
     finally:
         await owner.close()
     await email.process_outbox()
-    [sent] = [p for p in webhook if p["alert"]["event"] == "email.failed"]
+    # process_outbox drains every tenant's due mail, and _send fails for all of
+    # them here: other tests' leftover rows can alert too. This tenant's is one.
+    [sent] = [p for p in webhook if p["alert"]["event"] == "email.failed"
+              and p["alert"]["tenant_id"] == crm_tenant.tenant_id]
     assert sent["alert"]["error_type"] == "RuntimeError"
     assert "550" not in json.dumps(sent)              # the provider's text stays in the (redacted) log
     _assert_clean(webhook)

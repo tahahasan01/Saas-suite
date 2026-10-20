@@ -49,7 +49,8 @@ async def test_the_token_is_stored_encrypted_never_in_plaintext(client, pos_tena
     assert crypto.decrypt(row["token_enc"], _aad(pos_tenant.tenant_id)) == SECRET
     # Nowhere else either: the audit trail records only that it changed.
     leaked = await owner.fetchval(
-        "select count(*) from audit_log where tenant_id=$1 and after::text like '%' || $2 || '%'",
+        """select count(*) from audit_log where tenant_id=$1
+             and (coalesce(changes::text, '') || coalesce(data::text, '')) like '%' || $2 || '%'""",
         uuid.UUID(pos_tenant.tenant_id), SECRET)
     assert leaked == 0
 

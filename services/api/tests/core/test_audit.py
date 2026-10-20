@@ -326,9 +326,19 @@ async def test_the_fbr_token_never_reaches_the_trail(client, pos_tenant):
     r = await client.put("/fbr/settings", json={"token": "tok-SECRET-123", "seller_business_name": "Shop"})
     assert r.status_code == 200, r.text
     rows = await _rows(pos_tenant.tenant_id, "fbr_settings")
-    assert rows[-1]["changes"]["token"] == ["***", "***"]
+    # Since 0046 the token lives encrypted in token_enc: its change is still
+    # recorded, masked, and neither the plaintext nor the ciphertext is kept.
+    assert rows[-1]["changes"]["token_enc"] == ["***", "***"]
+    assert "token_enc" in rows[-1]["guarded"]
     assert rows[-1]["changes"]["seller_business_name"][1] == "Shop"
     assert all("SECRET" not in str(r["changes"]) for r in rows)
+    conn = await _owner()
+    try:
+        enc = await conn.fetchval("select token_enc from fbr_settings where tenant_id=$1",
+                                  uuid.UUID(pos_tenant.tenant_id))
+    finally:
+        await conn.close()
+    assert enc and all(bytes(enc).hex()[:32] not in str(r["changes"]) for r in rows)
 
 
 async def test_a_name_on_the_guard_list_is_masked_even_if_not_flagged():
