@@ -23,22 +23,6 @@ log = logging.getLogger("fbr")
 MAX_ATTEMPTS = 8
 
 
-def _items(lines) -> list[dict]:
-    """(product_row, qty, PricedLine) tuples -> the shape fbr.build_payload wants,
-    carrying the amounts pricing settled so FBR sees exactly what was charged."""
-    return [{
-        "name": p["name"],
-        "quantity": qty,
-        "hs_code": p["hs_code"],
-        "fbr_uom": p["fbr_uom"],
-        "tax_rate": p["tax_rate"],
-        "line_total_minor": pl.total_minor,
-        "excl_minor": pl.total_minor - pl.tax_minor,
-        "tax_minor": pl.tax_minor,
-        "discount_minor": pl.discount_minor,
-    } for p, qty, pl in lines]
-
-
 def _refund_item(name, qty, hs_code, fbr_uom, tax_rate, refund_minor) -> dict:
     """A refund is money the customer paid, so its tax is always inside it."""
     excl, tax = fbr.split_tax(refund_minor, Decimal(str(tax_rate or 0)), True)
@@ -115,14 +99,14 @@ async def enqueue_return(conn, tenant_id: str, sale_id: str, return_id: str) -> 
         tenant_id, sale_id, return_id)
 
 
-async def submit_sale(tenant_id: str, sale_id: str, settings, lines) -> fbr.FbrResult:
+async def submit_sale(tenant_id: str, sale_id: str, settings) -> fbr.FbrResult:
     """Transmit one freshly committed sale. Never raises."""
     async with db.tenant_conn(tenant_id) as conn:
-        row_id = await conn.fetchval(
-            "select id from pos_fbr_invoices where sale_id=$1 and return_id is null", sale_id)
-        claimed = await _claim(conn, row_id)
-        today = await conn.fetchval("select current_date")  # the tenant's local day
-    payload = fbr.build_payload(settings, _items(lines), invoice_date=today)
+        row = await conn.fetchrow(
+            "select id, sale_id from pos_fbr_invoices where sale_id=$1 and return_id is null", sale_id)
+        claimed = await _claim(conn, row["id"])
+        payload = await _sale_payload(conn, settings, row)
+    row_id = row["id"]
     if not claimed:
         return _BUSY
     result = await _post(settings, payload)
@@ -133,17 +117,16 @@ async def submit_sale(tenant_id: str, sale_id: str, settings, lines) -> fbr.FbrR
     return result
 
 
-async def submit_return(tenant_id: str, return_id: str, settings, lines,
+async def submit_return(tenant_id: str, return_id: str, settings,
                         original_invoice_number: str) -> fbr.FbrResult:
     """File a just-committed return as a Debit Note. Only called once the
-    original sale was accepted. `lines` are (sale_item_row, qty, line_refund_minor)."""
-    items = [_refund_item(row["name"], qty, row["hs_code"], row["fbr_uom"], row["tax_rate"], line_refund)
-             for row, qty, line_refund in lines]
+    original sale was accepted."""
     async with db.tenant_conn(tenant_id) as conn:
-        row_id = await conn.fetchval("select id from pos_fbr_invoices where return_id=$1", return_id)
-        claimed = await _claim(conn, row_id)
-        today = await conn.fetchval("select current_date")  # the tenant's local day
-    payload = _debit_note(settings, items, original_invoice_number, today)
+        row = await conn.fetchrow(
+            "select id, return_id from pos_fbr_invoices where return_id=$1", return_id)
+        claimed = await _claim(conn, row["id"])
+        payload = await _return_payload(conn, settings, row, original_invoice_number)
+    row_id = row["id"]
     if not claimed:
         return _BUSY
     result = await _post(settings, payload)
@@ -156,32 +139,29 @@ async def submit_return(tenant_id: str, return_id: str, settings, lines,
 
 
 async def _sale_payload(conn, cfg, row) -> dict:
+    """The Sale Invoice, from the lines' sale-time snapshots (0034) — never
+    the product as it is now, so editing a product cannot change a filing."""
     lines = await conn.fetch(
-        """select i.name, i.qty, i.total_minor, i.tax_minor, i.discount_minor,
-                  coalesce(p.hs_code, '') as hs_code,
-                  coalesce(p.tax_rate, 0) as tax_rate,
-                  coalesce(p.fbr_uom, 'Numbers, pieces, units') as fbr_uom
-             from pos_sale_items i
-             left join pos_products p on p.id = i.product_id
-            where i.sale_id = $1""", row["sale_id"])
+        """select name, qty, total_minor, tax_minor, discount_minor, excl_minor,
+                  hs_code, tax_rate, fbr_uom
+             from pos_sale_items where sale_id = $1 order by id""", row["sale_id"])
+    # created_at::date is the sale's local day: tenant_conn runs in the tenant's zone.
     sale_date = await conn.fetchval("select created_at::date from pos_sales where id=$1", row["sale_id"])
     return fbr.build_payload(
         cfg, [{"name": l["name"], "quantity": float(l["qty"]), "hs_code": l["hs_code"],
                "fbr_uom": l["fbr_uom"], "tax_rate": l["tax_rate"],
-               "line_total_minor": l["total_minor"], "excl_minor": l["total_minor"] - l["tax_minor"],
+               "line_total_minor": l["total_minor"], "excl_minor": l["excl_minor"],
                "tax_minor": l["tax_minor"], "discount_minor": l["discount_minor"]} for l in lines],
         invoice_date=sale_date or date.today())
 
 
 async def _return_payload(conn, cfg, row, original: str) -> dict:
+    """The Debit Note, classified from the sold line's snapshot."""
     lines = await conn.fetch(
-        """select ri.name, ri.qty, ri.line_refund_minor,
-                  coalesce(p.hs_code, '') as hs_code,
-                  coalesce(p.tax_rate, 0) as tax_rate,
-                  coalesce(p.fbr_uom, 'Numbers, pieces, units') as fbr_uom
+        """select ri.name, ri.qty, ri.line_refund_minor, si.hs_code, si.tax_rate, si.fbr_uom
              from pos_return_items ri
-             left join pos_products p on p.id = ri.product_id
-            where ri.return_id = $1""", row["return_id"])
+             join pos_sale_items si on si.id = ri.sale_item_id
+            where ri.return_id = $1 order by ri.id""", row["return_id"])
     return_date = await conn.fetchval("select created_at::date from pos_returns where id=$1", row["return_id"])
     items = [_refund_item(l["name"], float(l["qty"]), l["hs_code"], l["fbr_uom"], l["tax_rate"],
                           l["line_refund_minor"]) for l in lines]
