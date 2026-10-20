@@ -68,6 +68,17 @@ async def test_missing_owner_credentials_are_an_error(client):
         await seed_staging.seed({}, client)
 
 
+def test_reads_the_deploy_env_file(tmp_path):
+    # The deploy writes the staging secrets to a file mounted into the container;
+    # values have spaces and commas (an address), so it is parsed, not sourced.
+    f = tmp_path / "seed.env"
+    f.write_text("# from GitHub secrets\nSTAGING_OWNER_EMAIL=demo@example.com\n\n"
+                 "FBR_SANDBOX_ADDRESS=1 Test Road, Lahore\nFBR_SANDBOX_TOKEN=a=b=c\n", encoding="utf-8")
+    env = seed_staging.read_env_file(f)
+    assert env == {"STAGING_OWNER_EMAIL": "demo@example.com",
+                   "FBR_SANDBOX_ADDRESS": "1 Test Road, Lahore", "FBR_SANDBOX_TOKEN": "a=b=c"}
+
+
 def test_refuses_to_run_in_production(monkeypatch):
     monkeypatch.setattr(settings, "node_env", "production")
     with pytest.raises(SystemExit, match="production"):

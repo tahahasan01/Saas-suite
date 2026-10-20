@@ -10,6 +10,8 @@
  * page, a dropped connection is retried with backoff, and a refused or broken
  * write always says so — no page has to remember to (D-51, F8). */
 
+import type { paths, ResponseOf } from "@business-os/api-client";
+
 export const API_BASE = "/api";
 
 /** A link the browser follows itself (PDF, CSV export): the cookie rides along. */
@@ -239,6 +241,16 @@ async function request(path: string, opts: RequestOptions = {}): Promise<Respons
 export async function api<T>(path: string, init?: RequestOptions): Promise<T> {
   const res = await request(path, init);
   return res.status === 204 ? (undefined as T) : res.json();
+}
+
+/** Paths that answer GET, straight from the generated OpenAPI schema. */
+type GetPath = { [P in keyof paths]: paths[P] extends { get: object } ? P : never }[keyof paths];
+
+/** A GET whose result type comes from the server's own schema
+ *  (packages/api-client), so a backend change breaks the build, not the page.
+ *  Static paths only for now; `api<T>()` with a hand-written T is the rest. */
+export function apiGet<P extends GetPath>(path: P, init?: RequestOptions): Promise<ResponseOf<P, "get">> {
+  return api<ResponseOf<P, "get">>(path, init);
 }
 
 /** One page of a list endpoint that reports its full size in `X-Total-Count`.

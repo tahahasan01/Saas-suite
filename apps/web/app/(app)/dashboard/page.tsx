@@ -19,6 +19,8 @@ import { MODULES, moduleFor, tileStyle } from "@/lib/modules";
 function useDashboardOverview() {
   return useQuery({
     queryKey: qk.dashboard.overview(),
+    // Still the hand-written type: the schema says `kind: string` where the
+    // page relies on "money" | "count" (the models need Literals first).
     queryFn: ({ signal }) => api<DashboardOverview>("/dashboard/overview", { signal }),
   });
 }

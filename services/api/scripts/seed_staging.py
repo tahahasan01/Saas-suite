@@ -1,7 +1,7 @@
 """Seed a staging environment: a demo tenant wired to the FBR/PRAL sandbox (07 I9).
 
 Run on the staging host after migrations (the deploy workflow does this):
-    python -m scripts.seed_staging          (from services/api)
+    python -m scripts.seed_staging [--env-file PATH]     (from services/api)
 
 Idempotent: it logs in as the demo owner, and signs the tenant up (with sample
 data) only when that fails. It goes through the API's own endpoints, in-process,
@@ -20,8 +20,10 @@ from __future__ import annotations
 
 import asyncio
 import os
+import sys
 from collections.abc import Mapping
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Literal
 
 import httpx
@@ -96,21 +98,38 @@ async def seed(env: Mapping[str, str], client: httpx.AsyncClient) -> SeedResult:
     return SeedResult(tenant_id=tenant_id, created=created, fbr=await _wire_fbr(env, client))
 
 
-async def _run() -> None:
+async def _run(env: Mapping[str, str]) -> None:
     await db.connect()
     try:
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://staging-seed") as client:
-            result = await seed(os.environ, client)
+            result = await seed(env, client)
     finally:
         await db.disconnect()
     print(f"[seed_staging] tenant {result.tenant_id} ({'created' if result.created else 'existing'}), FBR: {result.fbr}")
 
 
-def main() -> None:
+def read_env_file(path: Path) -> dict[str, str]:
+    """KEY=VALUE lines, as the deploy writes them from GitHub secrets. Parsed,
+    not shell-sourced: an address has spaces and commas, a token may hold '='."""
+    env: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        env[key.strip()] = value.strip()
+    return env
+
+
+def main(argv: list[str] | None = None) -> None:
     if settings.is_prod:
         raise SystemExit("seed_staging refuses to run in production (NODE_ENV=production)")
-    asyncio.run(_run())
+    args = sys.argv[1:] if argv is None else argv
+    env: dict[str, str] = dict(os.environ)
+    if len(args) == 2 and args[0] == "--env-file":
+        env.update(read_env_file(Path(args[1])))
+    asyncio.run(_run(env))
 
 
 if __name__ == "__main__":
