@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Attendance } from "@business-os/types";
 import { api } from "@/lib/api";
+import { attendanceBadge } from "@/lib/format";
 import { errorText } from "@/lib/useAction";
 import { DataTable, type Column } from "@/components/DataTable";
 import { Badge, EmptyState, ErrorState } from "@/components/ui";
@@ -15,7 +16,7 @@ const dateOf = (d: string) =>
 
 const columns: Column<Attendance>[] = [
   { key: "date", header: "Date", primary: true, cell: (r) => <span className="font-medium">{dateOf(r.work_date)}</span> },
-  { key: "status", header: "Status", cell: (r) => <Badge tone={r.status === "late" ? "warning" : "success"}>{r.status}</Badge> },
+  { key: "status", header: "Status", cell: (r) => <Badge tone={attendanceBadge(r.status).tone}>{attendanceBadge(r.status).label}</Badge> },
   { key: "in", header: "In", cell: (r) => <span className="tabular-nums text-fg-muted">{timeOf(r.check_in)}</span> },
   { key: "out", header: "Out", cell: (r) => <span className="tabular-nums text-fg-muted">{timeOf(r.check_out)}</span> },
 ];
