@@ -151,7 +151,9 @@ test.describe("catalog beyond 200 products", () => {
     const edit = page.getByRole("button", { name: `Edit ${last.name}`, exact: true }).locator("visible=true");
 
     // "Showing 200 of 230 products", or "230 products" once all are loaded.
-    const count = page.getByText(/^(Showing \d+ of \d+|\d+) [a-z ]+$/i);
+    // The page's own count line (it's announced politely as it changes);
+    // a loose text match also caught stock figures like "120 pcs".
+    const count = page.locator("p[aria-live=polite]").filter({ hasText: /^(Showing \d+ of \d+|\d+) [a-z ]+$/i });
     await page.goto("/pos/products");
     await ready(page);
     await expect(count).toHaveText(new RegExp(`^Showing 200 of ${total} `, "i"));
