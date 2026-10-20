@@ -29,8 +29,8 @@ The images are built from the repo root: `services/api/Dockerfile`,
   `requirements-dev.txt` and are not in the image. The image sets
   `ENV=production`, so the startup guard is armed by default.
 - **Web** (`apps/web/Dockerfile`). Next `output: "standalone"` on
-  `node:20-slim`, running as the `node` user. `NEXT_PUBLIC_*` values are
-  inlined into the bundle at build time, so they are build args.
+  `node:20-slim`, running as the `node` user. `API_ORIGIN` (the `/api`
+  rewrite's upstream) is baked in at build time, so it is a build arg.
 - **Postgres** (`infra/backup/Dockerfile`). The same pgvector image as dev,
   pinned by digest, plus `age`, `rclone` and `curl`.
 - **Caddy** (`infra/caddy/Dockerfile`). Caddy 2.10.2 with `caddy-dns/cloudflare`.
@@ -209,8 +209,10 @@ an offline copy (see `deploy/README.md`).
 | `REDIS_PASSWORD` | redis, api | Redis `requirepass` | `<hex24>` |
 | `FORWARDED_ALLOW_IPS` | api | Proxies trusted for X-Forwarded-For (compose sets the subnet) | `172.30.0.0/24` |
 | `COMPOSE_SUBNET` | compose | Fixed internal network | `172.30.0.0/24` |
-| `NEXT_PUBLIC_API_URL` | web (build) | API base the browser calls (becomes `/api` with D-51) | `https://api.example.com` |
-| `API_INTERNAL_URL` | web | Upstream for the `/api` rewrite | `http://api:4000` |
+| `API_ORIGIN` | web (build) | Upstream of Next's `/api` rewrite, baked in at build time (Caddy routes `/api/*` to the API first) | `http://api:4000` |
+| `GIT_SHA` | api, worker, web (build) | Release tag for Sentry and logs (defaults to `IMAGE_TAG`) | `v0.3.0` |
+| `TRUSTED_PROXY_CIDRS` | api | Proxies whose X-Forwarded-For the rate limiter believes (compose sets `COMPOSE_SUBNET`) | `172.30.0.0/24` |
+| `IMAGE_PREFIX` | compose | Registry prefix of the four release images (lowercase) | `ghcr.io/owner/repo` |
 | `BACKUP_S3_ENDPOINT` | postgres, backup | S3 endpoint (R2 default) | `https://<account_id>.r2.cloudflarestorage.com` |
 | `BACKUP_S3_BUCKET` | postgres, backup | Bucket | `business-os-backups` |
 | `BACKUP_S3_ACCESS_KEY_ID` / `BACKUP_S3_SECRET_ACCESS_KEY` | postgres, backup | Bucket-scoped token | `replace-me` |

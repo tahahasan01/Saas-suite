@@ -77,8 +77,19 @@
 		X-Frame-Options "DENY"
 		Referrer-Policy "strict-origin-when-cross-origin"
 	}
-	reverse_proxy web:3000 {
-		header_up X-Forwarded-For {client_ip}
-		header_up X-Real-IP {client_ip}
+	# The browser only calls its own origin (D-51): /api/* goes straight to the
+	# API with the prefix stripped (/api/auth/me -> /auth/me), no hop through
+	# Next. The API's own middleware adds its no-content CSP to these.
+	handle_path /api/* {
+		reverse_proxy api:4000 {
+			header_up X-Forwarded-For {client_ip}
+			header_up X-Real-IP {client_ip}
+		}
+	}
+	handle {
+		reverse_proxy web:3000 {
+			header_up X-Forwarded-For {client_ip}
+			header_up X-Real-IP {client_ip}
+		}
 	}
 }

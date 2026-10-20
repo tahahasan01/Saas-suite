@@ -4,6 +4,10 @@
 #
 #   docker compose -f infra/docker/docker-compose.prod.yml --env-file /opt/business-os/prod.env up -d --build
 #
+# Images are ${IMAGE_PREFIX}-{api,web,caddy,postgres}:${IMAGE_TAG}: the deploy
+# workflow pushes them to GHCR (IMAGE_PREFIX=ghcr.io/<owner>/<repo>, lowercase)
+# and the host pulls them; `--build` builds the same tags locally instead.
+#
 # Every setting comes from that env file (template: infra/docker/prod.env.example,
 # runbook: infra/deploy/README.md). Only Caddy publishes ports (80/443).
 # Postgres and Redis are reachable on the internal network only.
@@ -30,7 +34,8 @@ x-api-env: &api-env
   SMTP_USER: ${SMTP_USER:-}
   SMTP_PASSWORD: ${SMTP_PASSWORD:-}
   # The release tag on Sentry events and logs (CI passes the commit).
-  GIT_SHA: ${GIT_SHA:-}
+  # (defaults to the image tag, which the deploy sets to the release).
+  GIT_SHA: ${GIT_SHA:-${IMAGE_TAG:-}}
   # Rate limits and lockouts key on the client IP: X-Forwarded-For is believed
   # only from inside this network (Caddy), never from the internet.
   TRUSTED_PROXY_CIDRS: ${COMPOSE_SUBNET:-172.30.0.0/24}
@@ -50,7 +55,7 @@ x-backup-env: &backup-env
 services:
   caddy:
     build: { context: ../.., dockerfile: infra/caddy/Dockerfile }
-    image: business-os-caddy:${IMAGE_TAG:-latest}
+    image: ${IMAGE_PREFIX:-business-os}-caddy:${IMAGE_TAG:-latest}
     restart: unless-stopped
     ports:
       - "${CADDY_HTTP_PORT:-80}:80"
@@ -81,21 +86,20 @@ services:
       context: ../..
       dockerfile: apps/web/Dockerfile
       args:
-        # Inlined into the browser bundle at build time. Becomes /api once the
-        # same-origin rewrite (D-51) lands; API_INTERNAL_URL is its upstream.
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://${API_DOMAIN}}
-        API_INTERNAL_URL: http://api:4000
-    image: business-os-web:${IMAGE_TAG:-latest}
+        # The browser only calls its own origin (/api, D-51). Caddy sends
+        # /api/* straight to the API; Next's rewrite to API_ORIGIN (baked in
+        # at build time) is the fallback for requests that reach the web app.
+        API_ORIGIN: http://api:4000
+        GIT_SHA: ${GIT_SHA:-}
+    image: ${IMAGE_PREFIX:-business-os}-web:${IMAGE_TAG:-latest}
     restart: unless-stopped
-    environment:
-      API_INTERNAL_URL: http://api:4000
     deploy: { resources: { limits: { memory: 512m } } }
     logging: *logging
 
   # One-shot, before the API starts: migrations, the app_user password from
   # APP_DB_PASSWORD, and the credential-encryption backfill (idempotent).
   migrate:
-    image: business-os-api:${IMAGE_TAG:-latest}
+    image: ${IMAGE_PREFIX:-business-os}-api:${IMAGE_TAG:-latest}
     command: ["sh", "-c", "python -m scripts.migrate && python -m scripts.encrypt_credentials"]
     environment: *api-env
     depends_on:
@@ -104,8 +108,12 @@ services:
     logging: *logging
 
   api:
-    build: { context: ../.., dockerfile: services/api/Dockerfile }
-    image: business-os-api:${IMAGE_TAG:-latest}
+    build:
+      context: ../..
+      dockerfile: services/api/Dockerfile
+      args:
+        GIT_SHA: ${GIT_SHA:-}
+    image: ${IMAGE_PREFIX:-business-os}-api:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
       <<: *api-env
@@ -129,7 +137,7 @@ services:
   # outboxes. The API runs no scheduler, so this service always runs. Claims
   # are DB-locked, so a second replica would be safe (and idle-ish).
   worker:
-    image: business-os-api:${IMAGE_TAG:-latest}
+    image: ${IMAGE_PREFIX:-business-os}-api:${IMAGE_TAG:-latest}
     command: ["python", "-m", "app.worker"]
     restart: unless-stopped
     environment:
@@ -150,7 +158,7 @@ services:
 
   postgres:
     build: { context: ../.., dockerfile: infra/backup/Dockerfile }
-    image: business-os-postgres:${IMAGE_TAG:-latest}
+    image: ${IMAGE_PREFIX:-business-os}-postgres:${IMAGE_TAG:-latest}
     restart: unless-stopped
     shm_size: 256m
     environment:
@@ -227,7 +235,7 @@ services:
 
   # Nightly encrypted pg_dump + weekly base backup + retention (infra/backup).
   backup:
-    image: business-os-postgres:${IMAGE_TAG:-latest}
+    image: ${IMAGE_PREFIX:-business-os}-postgres:${IMAGE_TAG:-latest}
     restart: unless-stopped
     user: postgres
     command: ["/usr/local/bin/bos-backup-scheduler"]

@@ -20,11 +20,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Paths agreed with the containers work (2A). The web image builds from
-          # the repo root because it needs the npm workspaces (packages/*).
+          # Both build from the repo root: the API image carries infra/migrations
+          # (scripts.migrate and /ready read them), the web image needs the npm
+          # workspaces (packages/*). .dockerignore keeps the context small.
           - name: api
             dockerfile: services/api/Dockerfile
-            context: services/api
+            context: .
           - name: web
             dockerfile: apps/web/Dockerfile
             context: .

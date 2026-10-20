@@ -26,7 +26,7 @@ it becomes `error`.
 ## Releasing
 
 1. `git tag v0.3.0 && git push origin v0.3.0` → images are built, Trivy-gated, pushed to
-   GHCR as `ghcr.io/<owner>/<repo>-api:v0.3.0` / `-web:v0.3.0`, and deployed to **staging**:
+   GHCR as `ghcr.io/<owner>/<repo>-{api,web,caddy,postgres}:v0.3.0` (lowercased), and deployed to **staging**:
    pull → `scripts.migrate` → `up -d` → `scripts.seed_staging` (demo tenant wired to the
    FBR/PRAL **sandbox**) → `/api/health` smoke.
 2. Check staging (14 §10). Then **Actions → Deploy → Run workflow**, enter the tag. The
@@ -71,15 +71,16 @@ environment to `sandbox`, whatever the token, and refuses to run with `NODE_ENV=
 Once per server, by hand (the workflow never writes app secrets):
 
 - Docker + compose plugin; the deploy user in the `docker` group.
-- `/opt/business-os/.env` with the stack's runtime secrets (`DATABASE_URL`,
-  `APP_DATABASE_URL`, `SESSION_SECRET`, SMTP, `SENTRY_DSN`, `ANTHROPIC_API_KEY`, …,
-  see `.env.example`), mode 600.
-- The deploy copies `infra/docker/docker-compose.prod.yml` there each release. That file
-  must name its images `ghcr.io/<owner>/<repo>-{api,web}:${IMAGE_TAG}` and have a service
-  called `api` that can run `python -m scripts.migrate` / `scripts.seed_staging`.
+- `/opt/business-os/.env` with the stack's settings and secrets (template:
+  `infra/docker/prod.env.example`; runbook: `infra/deploy/README.md`), mode 600. It sets
+  `IMAGE_PREFIX=ghcr.io/<owner>/<repo>` (lowercase), which the compose file uses.
+- The deploy copies `infra/docker/docker-compose.prod.yml` there each release. Its images
+  are `${IMAGE_PREFIX}-{api,web,caddy,postgres}:${IMAGE_TAG}`, and its `api` service runs
+  `python -m scripts.migrate` / `scripts.seed_staging`. The `worker` service (same image,
+  `python -m app.worker`) runs every scheduled job; the API runs none.
 - The web image needs `API_ORIGIN` as a **build** arg (it's baked into the `/api`
-  rewrite); the workflows pass `http://api:4000`. Better still, the edge proxy routes
-  `/api/*` straight to the API container with the prefix stripped (Caddy:
-  `handle_path /api/* { reverse_proxy api:4000 }`), and the rewrite is only a fallback.
-  Either way the API sees the proxy as the client, so its rate limiter must trust
-  `X-Forwarded-For` from the proxy only (2B).
+  rewrite); the workflows pass `http://api:4000`. Caddy routes `/api/*` on the app host
+  straight to the API container with the prefix stripped (`handle_path /api/*` in
+  `infra/caddy/Caddyfile`), so the rewrite is only a fallback. The API believes
+  `X-Forwarded-For` only from the compose subnet (`TRUSTED_PROXY_CIDRS` =
+  `COMPOSE_SUBNET`, and uvicorn's `FORWARDED_ALLOW_IPS`).

@@ -28,7 +28,9 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_PREFIX: ghcr.io/${{ github.repository }}
+  # Image refs must be lowercase; github.repository keeps its case
+  # (tahahasan01/Saas-suite), so each job lowercases it into IMAGE_PREFIX.
+  REPO: ${{ github.repository }}
 
 jobs:
   images:
@@ -42,10 +44,17 @@ jobs:
     strategy:
       matrix:
         include:
-          - { name: api, dockerfile: services/api/Dockerfile, context: services/api }
+          # All from the repo root (the API image carries infra/migrations). The
+          # compose stack runs all four, so the host can pull every one.
+          - { name: api, dockerfile: services/api/Dockerfile, context: . }
           - { name: web, dockerfile: apps/web/Dockerfile, context: . }
+          - { name: caddy, dockerfile: infra/caddy/Dockerfile, context: . }
+          - { name: postgres, dockerfile: infra/backup/Dockerfile, context: . }
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Image prefix (lowercase)
+        shell: bash
+        run: echo "IMAGE_PREFIX=ghcr.io/${REPO,,}" >> "$GITHUB_ENV"
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
       - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
@@ -127,6 +136,9 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ inputs.tag }}
+      - name: Image prefix (lowercase)
+        shell: bash
+        run: echo "IMAGE_PREFIX=ghcr.io/${REPO,,}" >> "$GITHUB_ENV"
       - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ${{ env.REGISTRY }}
@@ -134,8 +146,9 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: The tag must exist and have images (it went through staging)
         run: |
-          docker manifest inspect "${{ env.IMAGE_PREFIX }}-api:${{ inputs.tag }}" > /dev/null
-          docker manifest inspect "${{ env.IMAGE_PREFIX }}-web:${{ inputs.tag }}" > /dev/null
+          for image in api web caddy postgres; do
+            docker manifest inspect "${{ env.IMAGE_PREFIX }}-$image:${{ inputs.tag }}" > /dev/null
+          done
       - name: Deploy over SSH
         uses: ./.github/actions/ssh-deploy
         with:

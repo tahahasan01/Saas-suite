@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1
-# Business OS API image (gate I1). Build from the REPO ROOT — it needs
-# infra/migrations as well as services/api:
+# Business OS API image (gate I1). Build from the REPO ROOT (context `.`, as
+# .github/workflows/docker.yml and deploy.yml do) — it needs infra/migrations
+# as well as services/api:
 #   docker build -f services/api/Dockerfile -t business-os-api .
 #
 # - Dependencies come only from requirements.lock: exact versions, sha256
@@ -19,6 +20,9 @@ COPY services/api/requirements.lock /tmp/requirements.lock
 RUN /opt/venv/bin/pip install --require-hashes --no-deps -r /tmp/requirements.lock
 
 FROM ${PYTHON_IMAGE}
+# The release tag on Sentry events and logs (CI passes the commit SHA).
+ARG GIT_SHA=""
+ENV GIT_SHA=${GIT_SHA}
 ENV PATH=/opt/venv/bin:$PATH \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
