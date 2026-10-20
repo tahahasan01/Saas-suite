@@ -10,9 +10,10 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from . import db, jobs
+from . import db, jobs, startup_guard
 from .bodylimit import BodyLimitMiddleware
 from .config import settings
+from .secheaders import SecurityHeadersMiddleware
 from .routers import (
     ai, auth, billing, crm, dashboard, entitlements, fbr, hrms, invoices, notifications, pos, team,
     terminology, workflows,
@@ -20,6 +21,9 @@ from .routers import (
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 log = logging.getLogger("api")
+
+# Production exits here on default/known secrets (S10) — before anything listens.
+startup_guard.enforce(settings)
 
 if settings.sentry_dsn:
     import sentry_sdk
@@ -38,10 +42,14 @@ async def lifespan(app: FastAPI):
     await db.disconnect()
 
 
-app = FastAPI(title="Business OS API", version="0.1.0", lifespan=lifespan)
+# The schema and Swagger UI are a map of every endpoint: dev only (S11).
+_docs = {"docs_url": None, "redoc_url": None, "openapi_url": None} if settings.is_prod else {}
+app = FastAPI(title="Business OS API", version="0.1.0", lifespan=lifespan, **_docs)
 
 # Added before CORS so CORS stays outermost and a 413 still carries its headers.
 app.add_middleware(BodyLimitMiddleware)
+# Outside the body limit so a 413 carries the headers too; inside CORS (S9).
+app.add_middleware(SecurityHeadersMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
