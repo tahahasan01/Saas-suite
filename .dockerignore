@@ -1,0 +1,25 @@
+# Build context is the repo root (both images need shared files). Keep it
+# small, and keep secrets out of every layer: .env must never be COPY-able.
+**/.env
+**/.env.*
+!.env.example
+**/node_modules
+**/.next
+**/.turbo
+**/.venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.hypothesis
+.git
+.github
+.claude
+claude
+docs
+**/*.md
+!**/README.md
+apps/web/e2e
+apps/web/test-results
+apps/web/playwright-report
+infra/docker/.data
+infra/backup/.drill
