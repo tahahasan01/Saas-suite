@@ -83,8 +83,9 @@ async def signup(body: SignupRequest, response: Response) -> MeResponse:
                 "insert into roles (tenant_id, name, is_system) values ($1,'Owner',true) returning id",
                 tenant_id,
             )
-            # Owner gets admin on every section (incl. settings + accounts approvals).
-            for section in SECTIONS + ["settings", "accounts"]:
+            # Owner gets admin on every section (incl. settings + accounts approvals,
+            # and payroll, which hrms:admin deliberately doesn't carry — D-42).
+            for section in SECTIONS + ["settings", "accounts", "payroll"]:
                 await conn.execute(
                     "insert into permissions (tenant_id, role_id, section, action) values ($1,$2,$3,'admin')",
                     tenant_id, role_id, section,

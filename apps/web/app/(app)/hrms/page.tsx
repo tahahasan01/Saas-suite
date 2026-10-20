@@ -45,12 +45,14 @@ export default function EmployeesPage() {
     return [...by.entries()].sort(([a], [b]) => a.localeCompare(b));
   }, [items, q]);
 
+  const payMasked = !!items?.some((e) => e.pay_masked);
+
   const create = useAction(
     () => api("/hrms/employees", {
       method: "POST",
       body: JSON.stringify({
         name: form.name, designation: form.designation, department: form.department,
-        cnic: form.cnic, salary_minor: toMinor(form.salary),
+        cnic: form.cnic, salary_minor: payMasked ? 0 : toMinor(form.salary),
         join_date: form.join_date || null,
       }),
     }),
@@ -96,7 +98,10 @@ export default function EmployeesPage() {
             <Field label="Designation"><Input value={form.designation} onChange={(e) => setForm({ ...form, designation: e.target.value })} /></Field>
             <Field label="Department"><Input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} /></Field>
             <Field label="CNIC"><Input value={form.cnic} onChange={(e) => setForm({ ...form, cnic: e.target.value })} placeholder="35201-XXXXXXX-X" /></Field>
-            <Field label="Salary (PKR)"><Input type="number" inputMode="decimal" min={0} value={form.salary} onChange={(e) => setForm({ ...form, salary: e.target.value })} /></Field>
+            {/* Pay is set by payroll; a list that came back masked means this login can't. */}
+            {!payMasked && (
+              <Field label="Salary (PKR)"><Input type="number" inputMode="decimal" min={0} value={form.salary} onChange={(e) => setForm({ ...form, salary: e.target.value })} /></Field>
+            )}
             <Field label="Join date"><Input type="date" value={form.join_date} onChange={(e) => setForm({ ...form, join_date: e.target.value })} /></Field>
             <div className="sm:col-span-3">
               <Button type="submit" disabled={create.busy}>{create.busy ? "Saving…" : "Save employee"}</Button>
@@ -165,7 +170,8 @@ function Row({ e, onChanged, onEdit }: { e: Employee; onChanged: () => void; onE
           <p className="text-sm tabular-nums">{tenure(e.join_date)}</p>
         </div>
         <p className="text-sm tabular-nums sm:w-28 sm:text-right">
-          <span className="sr-only">Salary </span>{money(e.salary_minor)}
+          <span className="sr-only">Salary </span>
+          {e.salary_minor === null ? <span className="text-fg-subtle">Hidden</span> : money(e.salary_minor)}
         </p>
         {e.present_today ? <Badge tone="success">In today</Badge> : <Badge>Out</Badge>}
         <div className="ml-auto flex items-center gap-1.5 sm:ml-0">
@@ -187,12 +193,17 @@ function Row({ e, onChanged, onEdit }: { e: Employee; onChanged: () => void; onE
 
 function EditEmployee({ e, onClose, onSaved }: { e: Employee; onClose: () => void; onSaved: () => void }) {
   const [f, setF] = useState({
-    name: e.name, designation: e.designation, department: e.department, salary: String(e.salary_minor / 100),
+    name: e.name, designation: e.designation, department: e.department,
+    salary: e.salary_minor === null ? "" : String(e.salary_minor / 100),
   });
   const save = useAction(
     () => api(`/hrms/employees/${e.id}`, {
       method: "PATCH",
-      body: JSON.stringify({ name: f.name, designation: f.designation, department: f.department, salary_minor: toMinor(f.salary) }),
+      body: JSON.stringify({
+        name: f.name, designation: f.designation, department: f.department,
+        // Without payroll access the salary is hidden, so it is never sent back.
+        ...(e.pay_masked ? {} : { salary_minor: toMinor(f.salary) }),
+      }),
     }),
     { success: "Saved", failure: "Couldn't save changes" },
   );
@@ -209,7 +220,7 @@ function EditEmployee({ e, onClose, onSaved }: { e: Employee; onClose: () => voi
       open
       onOpenChange={(o) => !o && onClose()}
       title={`Edit ${e.name}`}
-      description="Salary changes apply to this month's payroll."
+      description={e.pay_masked ? undefined : "Salary changes apply to this month's payroll."}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
@@ -221,7 +232,9 @@ function EditEmployee({ e, onClose, onSaved }: { e: Employee; onClose: () => voi
         <Field label="Name"><Input value={f.name} required onChange={(ev) => setF({ ...f, name: ev.target.value })} /></Field>
         <Field label="Designation"><Input value={f.designation} onChange={(ev) => setF({ ...f, designation: ev.target.value })} /></Field>
         <Field label="Department"><Input value={f.department} onChange={(ev) => setF({ ...f, department: ev.target.value })} /></Field>
-        <Field label="Salary (PKR)"><Input type="number" inputMode="decimal" min={0} value={f.salary} onChange={(ev) => setF({ ...f, salary: ev.target.value })} /></Field>
+        {!e.pay_masked && (
+          <Field label="Salary (PKR)"><Input type="number" inputMode="decimal" min={0} value={f.salary} onChange={(ev) => setF({ ...f, salary: ev.target.value })} /></Field>
+        )}
       </form>
     </Dialog>
   );
