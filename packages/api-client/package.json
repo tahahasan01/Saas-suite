@@ -1,0 +1,17 @@
+{
+  "name": "@business-os/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Types generated from the FastAPI OpenAPI schema. Regenerate with `npm run api-client:generate` from the repo root; CI fails when the committed output is stale.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "generate": "node ./scripts/generate.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.13.0",
+    "typescript": "^5.7.2"
+  }
+}
