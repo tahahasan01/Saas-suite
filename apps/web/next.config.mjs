@@ -1,6 +1,6 @@
 import path from "path";
 import { fileURLToPath } from "url";
-import { PHASE_DEVELOPMENT_SERVER } from "next/constants.js";
+import { PHASE_DEVELOPMENT_SERVER, PHASE_PRODUCTION_BUILD } from "next/constants.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -25,9 +25,14 @@ export default function nextConfig(phase) {
   // production build must be told; it never guesses localhost. In production
   // the edge proxy should route /api/* to the API itself (no extra hop through
   // Next); this rewrite is then only the fallback.
-  const apiOrigin = process.env.API_ORIGIN ?? (phase === PHASE_DEVELOPMENT_SERVER ? "http://localhost:4000" : "");
+  let apiOrigin = process.env.API_ORIGIN ?? (phase === PHASE_DEVELOPMENT_SERVER ? "http://localhost:4000" : "");
   if (!apiOrigin) {
-    throw new Error("API_ORIGIN must be set for a production build (e.g. http://api:4000 inside compose).");
+    if (phase === PHASE_PRODUCTION_BUILD) {
+      throw new Error("API_ORIGIN must be set for a production build (e.g. http://api:4000 inside compose).");
+    }
+    // `next start` serves the rewrites recorded at build time (routes-manifest);
+    // this value is never used for routing, it only keeps the config loadable.
+    apiOrigin = "http://api-origin-was-set-at-build.invalid";
   }
 
   return {
