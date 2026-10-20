@@ -1,8 +1,9 @@
 """FBR filing must be exactly-once and never lose a sale (audit P0-3, P0-4).
 
 FBR itself is faked: `fbr.post_invoice` is replaced by a recorder whose
-outcomes each test scripts. Everything else — the sale, the return, the retry
-job, the database — is the real code path.
+outcomes each test scripts. Everything else — the sale, the return, the
+outbox worker, the database — is the real code path. More outbox behaviour
+(back-off, unknown, alerts, backfill) is in test_outbox.py.
 """
 from __future__ import annotations
 
@@ -37,6 +38,15 @@ async def _sell(client, product_id, qty=1):
         "paid_minor": 10_000 * qty, "discount_minor": 0, "payment_method": "cash"})
 
 
+async def _due_now(sale_id: str) -> None:
+    """Skip the back-off wait after a failed attempt, as if time had passed."""
+    owner = await asyncpg.connect(settings.database_url)
+    try:
+        await owner.execute("update outbox set run_after = now() where payload->>'sale_id' = $1", sale_id)
+    finally:
+        await owner.close()
+
+
 async def _fbr_rows(sale_id: str) -> list[asyncpg.Record]:
     owner = await asyncpg.connect(settings.database_url)
     try:
@@ -68,7 +78,8 @@ async def test_retrying_a_pending_return_files_a_debit_note_not_another_sale(cli
     assert r.status_code == 201
 
     fake_fbr.payloads.clear()
-    await fbr_submit.retry_pending()
+    await _due_now(sale["id"])
+    await fbr_submit.process_outbox()
 
     kinds = [p["invoiceType"] for p in fake_fbr.payloads]
     assert kinds == ["Debit Note"]
@@ -82,12 +93,12 @@ async def test_a_filing_that_keeps_failing_ends_in_failed(client, fbr_shop, fake
     sale = (await _sell(client, fbr_shop["product_id"])).json()
     owner = await asyncpg.connect(settings.database_url)
     try:
-        await owner.execute("update pos_fbr_invoices set attempts=$1 where sale_id=$2",
-                            fbr_submit.MAX_ATTEMPTS - 1, uuid.UUID(sale["id"]))
+        await owner.execute("update outbox set attempts = max_attempts - 1 where dedup_key=$1", sale["id"])
     finally:
         await owner.close()
     fake_fbr.outcomes = ["fail"]
-    await fbr_submit.retry_pending()
+    await _due_now(sale["id"])
+    await fbr_submit.process_outbox()
     rows = await _fbr_rows(sale["id"])
     assert rows[0]["status"] == "failed"
 
@@ -104,7 +115,8 @@ async def test_a_return_made_before_its_sale_is_filed_waits_then_follows_the_sal
     assert r.status_code == 201
 
     fake_fbr.payloads.clear()
-    await fbr_submit.retry_pending()  # FBR is back
+    await _due_now(sale["id"])
+    await fbr_submit.process_outbox()  # FBR is back
 
     assert [p["invoiceType"] for p in fake_fbr.payloads] == ["Sale Invoice", "Debit Note"]
     assert fake_fbr.payloads[1]["invoiceRefNo"] == "FBR-1"
@@ -120,10 +132,11 @@ async def test_two_retry_runs_cannot_file_the_same_sale_twice(client, fbr_shop, 
     fake_fbr.outcomes = ["fail"]
     sale = (await _sell(client, fbr_shop["product_id"])).json()
     fake_fbr.payloads.clear()
+    await _due_now(sale["id"])
     fake_fbr.hold = asyncio.Event()
-    first = asyncio.create_task(fbr_submit.retry_pending())
+    first = asyncio.create_task(fbr_submit.process_outbox())
     await asyncio.sleep(0.3)            # first run is now inside the transmission
-    second = asyncio.create_task(fbr_submit.retry_pending())
+    second = asyncio.create_task(fbr_submit.process_outbox())
     await asyncio.sleep(0.3)
     fake_fbr.hold.set()
     await asyncio.gather(first, second)
@@ -141,11 +154,15 @@ async def test_a_return_whose_sale_failed_is_blocked_not_retried_forever(client,
         "items": [{"sale_item_id": item["sale_item_id"], "qty": 1}]})
     owner = await asyncpg.connect(settings.database_url)
     try:
+        # The sale's filing gave up for good (attempts exhausted).
         await owner.execute(
             "update pos_fbr_invoices set status='failed' where sale_id=$1 and return_id is null",
             uuid.UUID(sale["id"]))
+        await owner.execute(
+            "update outbox set status='failed' where kind='fbr.submit_sale' and dedup_key=$1", sale["id"])
     finally:
         await owner.close()
-    await fbr_submit.retry_pending()
+    await _due_now(sale["id"])
+    await fbr_submit.process_outbox()
     statuses = {(row["return_id"] is None): row["status"] for row in await _fbr_rows(sale["id"])}
     assert statuses[False] == "failed"

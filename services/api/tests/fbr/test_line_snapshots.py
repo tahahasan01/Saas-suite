@@ -75,7 +75,8 @@ async def test_a_retry_files_what_was_sold_not_the_edited_product(client, shop, 
     await _edit_product(client, shop)
 
     fake_fbr.payloads.clear()
-    await fbr_submit.retry_pending()
+    await _owner_fetch("update outbox set run_after = now() where dedup_key=$1", sale["id"])  # skip back-off
+    await fbr_submit.process_outbox()
 
     [doc] = fake_fbr.payloads
     [item] = doc["items"]

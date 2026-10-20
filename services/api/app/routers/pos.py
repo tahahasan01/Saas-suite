@@ -271,18 +271,20 @@ async def _record_sale(body: SaleCreate, auth: AuthContext, fingerprint: str) ->
             items.append(SaleItemOut(name=p["name"], qty=qty, price_minor=p["price_minor"],
                                      line_total_minor=pl.gross_minor))
         sale = await conn.fetchrow("select * from pos_sales where id=$1", sale_id)
-        if fbr_cfg and fbr_cfg["enabled"]:
-            # Outbox row in the sale's own transaction: if the process dies
-            # before transmission, the retry job still finds this sale (P0-4).
-            await fbr_submit.enqueue_sale(conn, auth.tenant_id, str(sale_id))
+        outbox_id = None
+        if fbr_on:
+            # Outbox row, with the frozen FBR document, in the sale's own
+            # transaction: if the process dies before transmission, the worker
+            # still finds this sale (P0-4, D-09).
+            outbox_id = await fbr_submit.enqueue_sale(conn, auth.tenant_id, str(sale_id), fbr_cfg)
 
     fbr_number = fbr_status = None
-    if fbr_cfg and fbr_cfg["enabled"]:
+    if outbox_id is not None:
         # The sale is already committed. FBR transmission happens after, and its
         # failure is recorded rather than raised: a government outage must never
-        # stop a shop from selling. Anything not submitted is retried by jobs.py.
-        result = await fbr_submit.submit_sale(auth.tenant_id, str(sale_id), fbr_cfg)
-        fbr_number, fbr_status = result.invoice_number, ("submitted" if result.ok else "pending")
+        # stop a shop from selling. Anything not filed is retried by jobs.py.
+        result = await fbr_submit.deliver_now(outbox_id)
+        fbr_number, fbr_status = result.invoice_number, fbr_submit.status_after(result)
 
     return SaleOut(
         id=str(sale["id"]), subtotal_minor=sale["subtotal_minor"], discount_minor=sale["discount_minor"],
@@ -695,23 +697,21 @@ async def create_return(sale_id: str, body: ReturnCreate,
                                    qty, row["product_id"])
             items.append(ReturnItemOut(name=row["name"], qty=qty, line_refund_minor=line_refund))
 
-        original = await conn.fetchrow(
-            """select fbr_invoice_number from pos_fbr_invoices
-                where sale_id=$1 and return_id is null and status='submitted'""", sale_id)
+        outbox_id = None
         if fbr_cfg and fbr_cfg["enabled"]:
-            # Queued even when the sale isn't filed yet: the retry job files the
-            # debit note once the sale has an FBR number to reference.
-            await fbr_submit.enqueue_return(conn, auth.tenant_id, sale_id, str(return_id))
+            # Queued even when the sale isn't filed yet: the outbox row depends
+            # on the sale's, and the worker files the debit note once the sale
+            # has an FBR number to reference.
+            outbox_id = await fbr_submit.enqueue_return(
+                conn, auth.tenant_id, sale_id, str(return_id), fbr_cfg)
         created_at = await conn.fetchval("select created_at from pos_returns where id=$1", return_id)
 
     fbr_number = fbr_status = None
-    if fbr_cfg and fbr_cfg["enabled"] and original and original["fbr_invoice_number"]:
-        # FBR models a return as a Debit Note against the original invoice. Only
-        # possible once the sale itself was filed — a return cannot reference an
-        # invoice number FBR never issued.
-        result = await fbr_submit.submit_return(
-            auth.tenant_id, str(return_id), fbr_cfg, original["fbr_invoice_number"])
-        fbr_number, fbr_status = result.invoice_number, ("submitted" if result.ok else "pending")
+    if outbox_id is not None:
+        # FBR models a return as a Debit Note against the original invoice; the
+        # fast path only takes the row if the sale is already filed.
+        result = await fbr_submit.deliver_now(outbox_id)
+        fbr_number, fbr_status = result.invoice_number, fbr_submit.status_after(result)
 
     return ReturnOut(id=str(return_id), sale_id=sale_id, reason=body.reason, refund_minor=refund,
                      tax_minor=tax_total, created_at=created_at, items=items,
