@@ -6,7 +6,7 @@ import calendar
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from .. import db, email, payroll, refs, tokens
 from ..deps import AuthContext, current_auth, current_employee
@@ -214,22 +214,32 @@ _ATT_SELECT = """select a.*, e.name as employee_name from hrms_attendance a
                  join hrms_employees e on e.id = a.employee_id"""
 
 
-async def _do_checkin(conn, employee_id: str, *, method: str, lat=None, lng=None, flag: str = ""):
-    """The check-in write, shared by the admin action and an employee's own."""
+async def _do_checkin(conn, employee_id: str, *, method: str, lat=None, lng=None, flag: str = "",
+                      at: datetime | None = None):
+    """The check-in write, shared by the admin action and an employee's own.
+
+    `at` is the punch instant (now, unless a test freezes it). The work day and
+    lateness are its *local* date and time: casting a timestamptz to date or
+    time uses the session TimeZone, which tenant_conn set to the tenant's (D-11)."""
     tenant_id = await conn.fetchval("select tenant_id from hrms_employees where id=$1", employee_id)
     if tenant_id is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Employee not found")
     return await conn.fetchrow(
-        """insert into hrms_attendance (tenant_id, employee_id, check_in, status, method, lat, lng, fraud_flag)
-           values ($1,$2, now(),
-                   case when localtime >= (select late_after from tenants where id = $1) then 'late' else 'present' end, $3,$4,$5,$6)
+        """with p as (select coalesce($7::timestamptz, now()) as at)
+           insert into hrms_attendance (tenant_id, employee_id, work_date, check_in, status, method, lat, lng, fraud_flag)
+           select $1, $2, p.at::date, p.at,
+                  case when p.at::time >= (select late_after from tenants where id = $1) then 'late' else 'present' end,
+                  $3, $4, $5, $6
+             from p
            on conflict (employee_id, work_date) do update set
              check_in = coalesce(hrms_attendance.check_in, excluded.check_in),
              method = excluded.method, lat = excluded.lat, lng = excluded.lng,
              fraud_flag = excluded.fraud_flag,
-             status = case when localtime >= (select late_after from tenants where id = $1) then 'late' else 'present' end
+             -- Lateness belongs to the punch that is kept: the first one.
+             status = case when hrms_attendance.check_in is null then excluded.status
+                           else hrms_attendance.status end
            returning id""",
-        tenant_id, employee_id, method, lat, lng, flag)
+        tenant_id, employee_id, method, lat, lng, flag, at)
 
 
 async def _do_checkout(conn, employee_id: str):
