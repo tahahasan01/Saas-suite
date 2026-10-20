@@ -33,7 +33,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from . import db, jobs, obs
+from . import db, jobs, obs, startup_guard
 from .config import settings
 
 log = logging.getLogger("worker")
@@ -110,6 +110,8 @@ async def main(argv: list[str] | None = None) -> int:
             return 1
         return 0 if age < max(60.0, settings.worker_poll_s * 6) else 1
 
+    # Same credentials as the API, same refusal (S10): exits 78 before any I/O.
+    startup_guard.enforce(settings)
     obs.setup_logging("worker")
     obs.init_sentry("worker")
     await db.connect()

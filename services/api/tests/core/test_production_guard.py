@@ -108,3 +108,19 @@ async def test_api_docs_stay_available_in_development(client):
     # The test process itself runs as development.
     assert (await client.get("/docs")).status_code == 200
     assert (await client.get("/openapi.json")).status_code == 200
+
+
+def test_the_worker_refuses_to_start_with_default_secrets_in_production():
+    # The worker holds the same credentials as the API, so the same guard.
+    r = _run({**GOOD, "APP_DATABASE_URL": "postgres://app_user:app_user_pw@db:5432/businessos"},
+             "import asyncio\nfrom app import worker\nraise SystemExit(asyncio.run(worker.main(['--once'])))")
+    assert r.returncode != 0
+    assert "refusing to start" in r.stderr
+    assert "APP_DATABASE_URL" in r.stderr
+
+
+def test_the_worker_refuses_the_public_dev_data_key_in_production():
+    r = _run({**GOOD, "BOS_DATA_KEYS": "", "BOS_DATA_KEY_ACTIVE": ""},
+             "import asyncio\nfrom app import worker\nraise SystemExit(asyncio.run(worker.main([])))")
+    assert r.returncode != 0
+    assert "BOS_DATA_KEYS" in r.stderr

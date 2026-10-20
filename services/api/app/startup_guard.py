@@ -3,7 +3,7 @@
 The dev passwords live in this repository (.env.example, CI, old migrations),
 so they are public. A production process that finds one of them — or no key
 for the credentials encrypted in the DB — exits before serving a request.
-The API calls `enforce()` at import; the worker must call it too.
+The API calls `enforce()` at import; the worker at startup (app/worker.py).
 
 Messages name the setting, never its value: they end up in deploy logs.
 """
