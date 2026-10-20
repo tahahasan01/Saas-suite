@@ -14,7 +14,7 @@ from httpx import ASGITransport, AsyncClient
 from app import tokens
 from app.config import settings
 from app.main import app
-from app.security import SESSION_COOKIE
+from app.security import SESSION_COOKIE, hash_token
 
 PASSWORD = "Sup3rSecret!23"
 
@@ -82,7 +82,8 @@ async def test_a_single_use_token_is_consumed_exactly_once_under_concurrency(cli
     try:
         tx = blocker.transaction()
         await tx.start()
-        await blocker.execute("update auth_tokens set kind = kind where token = $1", token)
+        await blocker.execute("update auth_tokens set kind = kind where token_hash = $1",
+                              hash_token(token))
         racers = [asyncio.create_task(tokens.consume(token, "reset")) for _ in range(2)]
         await asyncio.sleep(0.5)  # both consumers reach the locked row
         await tx.commit()
