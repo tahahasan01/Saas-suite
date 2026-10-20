@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# Nightly logical backup + retention (gate I7). Run by bos-backup-scheduler in
+# the `backup` container, or by hand: docker compose exec backup bos-nightly
+#
+# Layout under $REMOTE (every object age-encrypted):
+#   daily/YYYY-MM-DD/<db>.dump.age      pg_dump -Fc   keep 7
+#   daily/YYYY-MM-DD/globals.sql.age    roles (pg_dumpall --globals-only)
+#   weekly/YYYY-MM-DD/…                 Sunday's daily, server-side copy   keep 4
+#   monthly/YYYY-MM-DD/…                the 1st's daily                    keep 12
+#   base/<stamp>/base.tar.gz.age        weekly physical base (Sunday)      ~5 weeks
+#   wal/<segment>.gz.age                continuous WAL archive             ~5 weeks
+. /usr/local/bin/bos-backup-lib.sh
+
+KEEP_DAILY="${BACKUP_KEEP_DAILY:-7}"
+KEEP_WEEKLY="${BACKUP_KEEP_WEEKLY:-4}"
+KEEP_MONTHLY="${BACKUP_KEEP_MONTHLY:-12}"
+# Point-in-time window: base backups and WAL older than this are removed.
+PITR_DAYS="${BACKUP_PITR_DAYS:-35}"
+DATABASES="${BACKUP_DATABASES:-$PGDATABASE}"
+
+trap 'log "FAILED"; ping_monitor /fail' ERR
+
+day="$(date -u +%F)"
+start=$(date +%s)
+for db in $DATABASES; do
+  log "dump $db -> daily/$day"
+  pg_dump -Fc -d "$db" | encrypt | rclone rcat "$REMOTE/daily/$day/$db.dump.age"
+done
+pg_dumpall --globals-only --no-role-passwords | encrypt | rclone rcat "$REMOTE/daily/$day/globals.sql.age"
+log "dumps done in $(( $(date +%s) - start ))s"
+
+if [ "$(date -u +%u)" = 7 ] || [ "${BACKUP_FORCE_WEEKLY:-}" = 1 ]; then
+  rclone copy "$REMOTE/daily/$day" "$REMOTE/weekly/$day"
+  /usr/local/bin/bos-basebackup
+fi
+if [ "$(date -u +%d)" = 01 ]; then
+  rclone copy "$REMOTE/daily/$day" "$REMOTE/monthly/$day"
+fi
+
+# Keep the newest N dated folders of a tier (names sort by date).
+prune() {
+  local tier="$1" keep="$2" dirs n
+  dirs="$(rclone lsf --dirs-only "$REMOTE/$tier" 2>/dev/null | sort)" || return 0
+  n=$(printf '%s\n' "$dirs" | grep -c . || true)
+  if [ "$n" -gt "$keep" ]; then
+    printf '%s\n' "$dirs" | head -n $(( n - keep )) | while read -r d; do
+      log "retention: removing $tier/$d"
+      rclone purge "$REMOTE/$tier/$d"
+    done
+  fi
+}
+prune daily "$KEEP_DAILY"
+prune weekly "$KEEP_WEEKLY"
+prune monthly "$KEEP_MONTHLY"
+rclone delete --min-age "${PITR_DAYS}d" "$REMOTE/base" 2>/dev/null || true
+rclone rmdirs --leave-root "$REMOTE/base" 2>/dev/null || true
+rclone delete --min-age "${PITR_DAYS}d" "$REMOTE/wal" 2>/dev/null || true
+
+log "nightly backup OK ($(( $(date +%s) - start ))s)"
+ping_monitor

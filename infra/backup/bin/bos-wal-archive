@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Postgres archive_command: bos-wal-archive %p %f
+# Compresses and age-encrypts one WAL segment and uploads it off-site.
+# Non-zero exit = Postgres keeps the segment and retries (never loses WAL).
+. /usr/local/bin/bos-backup-lib.sh
+src="$1"; name="$2"
+dest="$REMOTE/wal/$name.gz.age"
+# Already uploaded (a retry after a lost acknowledgement): the ciphertext
+# differs every time, so existence is the check. Segments are immutable.
+if rclone lsf "$dest" 2>/dev/null | grep -q .; then
+  exit 0
+fi
+gzip -1 -c "$src" | encrypt | rclone rcat "$dest"

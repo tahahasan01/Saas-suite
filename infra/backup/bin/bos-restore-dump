@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Restore a nightly dump into a NEW, empty database (restore host / drill).
+#   bos-restore-dump <tier/date | latest> <target_db> [source_db]
+#   e.g. bos-restore-dump latest businessos_restore
+#        bos-restore-dump weekly/2026-10-18 businessos_restore
+# Needs BACKUP_AGE_IDENTITY_FILE (the private key) — never present on prod.
+# Refuses to touch a database that already exists: a drill must never
+# restore over a live one.
+. /usr/local/bin/bos-backup-lib.sh
+which="${1:?usage: bos-restore-dump <tier/date|latest> <target_db> [source_db]}"
+target="${2:?target database name}"
+source_db="${3:-$PGDATABASE}"
+
+if [ "$which" = latest ]; then
+  which="daily/$(rclone lsf --dirs-only "$REMOTE/daily" | sort | tail -n 1 | tr -d /)"
+fi
+obj="$REMOTE/$which/$source_db.dump.age"
+work="$(mktemp -d)"; trap 'rm -rf "$work"' EXIT
+
+if [ "$(psql -d postgres -Atc "select 1 from pg_database where datname = '$target'")" = 1 ]; then
+  die "database $target already exists; pick a new name (never restore over a live db)"
+fi
+
+t0=$(date +%s)
+log "fetch $which/$source_db.dump.age"
+rclone copyto "$obj" "$work/db.dump.age"
+t1=$(date +%s)
+decrypt < "$work/db.dump.age" > "$work/db.dump"
+rm -f "$work/db.dump.age"
+t2=$(date +%s)
+createdb --maintenance-db=postgres "$target"
+# Ownership is kept on purpose: the ai_v_* views must stay owned by
+# ai_view_owner (0032) — owned by the table owner they would bypass RLS. On a
+# brand-new cluster restore globals.sql first so those roles exist.
+pg_restore --exit-on-error -d "$target" "$work/db.dump"
+# Per-database settings are not part of a plain pg_dump; re-apply 0006's.
+psql -q -d "$target" -c "alter database \"$target\" set statement_timeout = '30s'" \
+     -c "alter database \"$target\" set idle_in_transaction_session_timeout = '60s'"
+t3=$(date +%s)
+log "restored $which -> $target: fetch $((t1-t0))s, decrypt $((t2-t1))s, restore $((t3-t2))s, total $((t3-t0))s"
