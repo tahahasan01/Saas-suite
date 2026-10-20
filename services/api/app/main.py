@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 from . import db, obs
 from .bodylimit import BodyLimitMiddleware
 from .config import settings
+from .context import REQUEST_ID_HEADER, RequestContextMiddleware
 from .routers import (
     ai, auth, billing, crm, dashboard, entitlements, fbr, hrms, invoices, meta, notifications, pos,
     team, terminology, workflows,
@@ -36,6 +37,10 @@ app = FastAPI(title="Business OS API", version="0.1.0", lifespan=lifespan)
 
 # Added before CORS so CORS stays outermost and a 413 still carries its headers.
 app.add_middleware(BodyLimitMiddleware)
+# Access log, error-spike counting and log context, inside the request context.
+app.add_middleware(obs.AccessLogMiddleware)
+# A request id and actor context per request, for the audit trail (D-07).
+app.add_middleware(RequestContextMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -45,10 +50,8 @@ app.add_middleware(
     allow_headers=["*"],
     # Paged lists report their full size here; cross-origin fetch() can only
     # read response headers that are listed.
-    expose_headers=["X-Total-Count", "X-Request-ID"],
+    expose_headers=["X-Total-Count", REQUEST_ID_HEADER],
 )
-# Outermost: every response, CORS and 413 included, carries X-Request-ID.
-app.add_middleware(obs.RequestContextMiddleware)
 
 app.include_router(meta.router)
 app.include_router(auth.router)
