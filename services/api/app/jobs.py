@@ -26,7 +26,7 @@ import asyncio
 import logging
 from typing import Any, Awaitable, Callable
 
-from . import alerts, context, db, email, fbr_submit, monitor, notifications, obs
+from . import alerts, attendance, audit, context, db, email, fbr_submit, monitor, notifications, obs
 from .routers.pos import _VELOCITY_SQL
 
 log = logging.getLogger("jobs")
@@ -92,6 +92,55 @@ async def run_restock_alerts() -> int:
     return fired
 
 
+# ── Audit maintenance (0044; infra/audit/README.md) ─────────────────────────
+async def run_audit_partitions() -> list[str]:
+    """Daily: this month and the next 3 exist before rows arrive."""
+    async with db.owner_conn() as oc:
+        created = await audit.create_partitions(oc, months_ahead=3)
+    if created:
+        log.info("audit partitions created: %s", ", ".join(created))
+    return created
+
+
+async def run_audit_retention() -> int:
+    """Monthly: delete rows older than each tenant's plan keeps."""
+    async with db.owner_conn() as oc:
+        return await audit.apply_retention(oc)
+
+
+async def run_audit_detach() -> list[str]:
+    """Monthly: detach months older than every plan's window. The archive
+    bucket is not configured yet, so the detached tables stay in the database,
+    out of audit_log, and are named here for an operator to export and drop
+    (infra/audit/README.md). Nothing is dropped by the job."""
+    async with db.owner_conn() as oc:
+        detached = await audit.detach_expired_partitions(oc, keep_months=84)
+    for name in detached:
+        log.warning("audit partition %s detached: archive it, then drop it", name)
+    return detached
+
+
+# ── Attendance (0045, D-43) ─────────────────────────────────────────────────
+async def run_finalise_open_days() -> dict[str, int]:
+    """Hourly, per active tenant with HRMS on: judge days whose shift is over
+    and that nobody checked out of, so they never stay counted as present."""
+    async with db.owner_conn() as oc:
+        tenants = [str(r["id"]) for r in await oc.fetch(
+            """select t.id from tenants t
+                 join entitlements e on e.tenant_id = t.id and e.section_key = 'hrms' and e.enabled
+                where t.status = 'active'""")]
+    days = failed = 0
+    run_id = context.job_run_id()
+    for tid in tenants:
+        try:
+            async with db.job_conn(tid, "hrms.finalise_open_days", run_id=run_id) as conn:
+                days += await attendance.finalise_open_days(conn)
+        except Exception:  # noqa: BLE001 — one bad tenant must not stop the rest
+            failed += 1
+            log.exception("finalising open attendance days failed for tenant %s", tid)
+    return {"tenants": len(tenants), "days": days, "failed": failed}
+
+
 # code -> handler. Every row in scheduled_jobs has one here and vice versa
 # (tests/core/test_worker.py); a new job is a seed row in a migration plus a
 # line here.
@@ -102,6 +151,10 @@ HANDLERS: dict[str, Callable[[], Awaitable[Any]]] = {
     "pos.restock_alerts": run_restock_alerts,
     "ops.monitor": monitor.check,
     "ops.prune": monitor.prune,
+    "audit.partitions": run_audit_partitions,
+    "audit.retention": run_audit_retention,
+    "audit.detach": run_audit_detach,
+    "hrms.finalise_open_days": run_finalise_open_days,
 }
 
 

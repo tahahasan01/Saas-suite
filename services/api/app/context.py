@@ -71,6 +71,14 @@ def job(name: str, run_id: str | None = None) -> Iterator[ActorContext]:
         _current.reset(token)
 
 
+def job_run_id() -> str | None:
+    """The run id inside `job()` (from request_id 'job:<name>:<run_id>'), else None."""
+    ctx = _current.get()
+    if ctx is None or ctx.actor_kind != "job":
+        return None
+    return ctx.request_id.rsplit(":", 1)[-1]
+
+
 class RequestContextMiddleware:
     """Pure ASGI: gives each HTTP request a fresh context and a request id
     (the caller's X-Request-ID if it is safe, else a new one), echoed back on

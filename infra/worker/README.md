@@ -23,7 +23,7 @@ command `python -m app.worker`, healthcheck `python -m app.worker --healthcheck`
 no ports. Stopping gives running jobs 30 s, then hands them back (due again at
 once, no failure counted).
 
-Jobs (`scheduled_jobs`, migration 0043; handlers in `app/jobs.py`):
+Jobs (`scheduled_jobs`, migrations 0043 and 0048; handlers in `app/jobs.py`):
 
 | code | every | what |
 |---|---|---|
@@ -33,6 +33,10 @@ Jobs (`scheduled_jobs`, migration 0043; handlers in `app/jobs.py`):
 | `pos.restock_alerts` | 1 day | tell owners what is running out |
 | `ops.monitor` | 5 min | outbox-lag and stale-job alerts |
 | `ops.prune` | 1 day | drop `job_runs` older than 90 days |
+| `audit.partitions` | 1 day | create this month and the next 3 of `audit_log` |
+| `audit.retention` | 1 month | delete audit rows past each tenant's plan window |
+| `audit.detach` | 1 month | detach audit months past every window; logs the names (kept until archived by hand, see infra/audit/README.md) |
+| `hrms.finalise_open_days` | 1 hour | per HRMS tenant (`db.job_conn`): judge days nobody checked out of |
 
 A job that fails `max_failures` times in a row is switched off and raises
 `job.disabled`; fix the cause, then `--enable CODE`. A run is bounded by

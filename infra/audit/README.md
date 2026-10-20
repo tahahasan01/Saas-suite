@@ -92,13 +92,13 @@ with context.job("billing.expire_trials", run_id=str(run_id)):
         ...
 ```
 
-### Scheduled maintenance (owner connection; the worker schedules these)
+### Scheduled maintenance (owner connection; seeded by migration 0048, handlers in `app/jobs.py`)
 
 | Job | Call | Schedule | What it does |
 |-----|------|----------|--------------|
-| `platform.audit_partitions` | `await audit.create_partitions(conn, months_ahead=3)` | daily | Creates this month and the next 3 (`audit_log_yYYYYmMM`). Idempotent; returns the names it created. Rows that landed in `audit_log_default` while the job was down are moved into their month |
-| `platform.audit_retention` | `await audit.apply_retention(conn)` | monthly | Deletes rows older than each tenant's plan window (below). Returns the count |
-| `platform.audit_archive` | `names = await audit.detach_expired_partitions(conn, keep_months=84)` | monthly | Detaches months older than the longest window and returns their names. **The worker** exports each one as compressed JSONL to the append-only archive bucket, then runs `drop table <name>`. The SQL never drops data itself |
+| `audit.partitions` | `await audit.create_partitions(conn, months_ahead=3)` | daily | Creates this month and the next 3 (`audit_log_yYYYYmMM`). Idempotent; returns the names it created. Rows that landed in `audit_log_default` while the job was down are moved into their month |
+| `audit.retention` | `await audit.apply_retention(conn)` | monthly | Deletes rows older than each tenant's plan window (below). Returns the count |
+| `audit.detach` | `names = await audit.detach_expired_partitions(conn, keep_months=84)` | monthly | Detaches months older than the longest window and logs their names. The archive bucket isn't configured yet, so the detached tables **stay in the database** (out of `audit_log`) until an operator exports each one as compressed JSONL to the append-only archive bucket and runs `drop table <name>`. Neither the SQL nor the job drops data |
 
 The SQL functions behind them are `audit_log_create_partitions(int)`, `audit_log_create_partition(date)`,
 `audit_log_apply_retention(timestamptz)` and `audit_log_detach_expired(int, timestamptz)`. None of them
