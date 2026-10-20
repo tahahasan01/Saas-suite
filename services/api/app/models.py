@@ -651,6 +651,9 @@ class AttendanceOut(BaseModel):
     worked_min: int = 0
     shift_id: str | None = None
     locked: bool = False
+    # The day is over with a check-in still open: its open interval counted
+    # 0 minutes. HR should correct it.
+    missing_checkout: bool = False
 
 
 class ShiftCreate(BaseModel):

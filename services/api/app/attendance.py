@@ -7,8 +7,18 @@ punches and the employee's shift, recomputed on every punch:
   * late_min  — whole minutes (rounded up) past start + late grace;
   * early_min — minutes before end − early grace, once checked out;
   * status    — absent < absent_below_min worked ≤ half_day < half_day_below_min
-                ≤ late/present. The thresholds wait for the check-out: twenty
-                minutes into the day nobody is a half day yet.
+                ≤ late/present. The thresholds wait until the day is closed:
+                twenty minutes into the day nobody is a half day yet.
+
+A day is closed by a check-out with nothing left open, or by being over —
+the shift's end + early grace has passed (overnight: the next morning), the
+local day has ended (no shift), or a later work day has begun. A day that is
+over with a check-in still open is flagged `missing_checkout`, and the open
+interval counts 0 minutes: the conservative rule, so a check-in alone never
+earns a full day's pay (security review); HR corrects the day instead.
+finalise_open_days() re-derives days that ended without a punch to close
+them — payroll and the week matrix run it first, and the worker can run it
+on a schedule.
 
 No shift assigned keeps the tenant default from 0029: late from
 tenants.late_after on, never a half day.
@@ -64,15 +74,19 @@ class Day:
     worked_min: int
     first_in: datetime | None
     last_out: datetime | None
+    missing_checkout: bool = False
+    final: bool = False          # judged as over; finalise_open_days skips it
 
 
 def _minutes_up(delta: timedelta) -> int:
     return max(0, math.ceil(delta.total_seconds() / 60))
 
 
-def derive(punches: list[Punch], *, rule: Rule | None, late_after_at: datetime | None = None) -> Day:
+def derive(punches: list[Punch], *, rule: Rule | None, late_after_at: datetime | None = None,
+           day_over: bool = False) -> Day:
     """The day from its punches, in time order. `rule` is the shift for this
-    day; without one, `late_after_at` (tenants.late_after on that day) decides."""
+    day; without one, `late_after_at` (tenants.late_after on that day) decides.
+    `day_over`: nothing more is expected that day (see the module docstring)."""
     first_in = last_out = open_at = None
     last_pair: tuple[datetime, datetime] | None = None
     worked = timedelta()
@@ -89,22 +103,25 @@ def derive(punches: list[Punch], *, rule: Rule | None, late_after_at: datetime |
             last_pair = (last_pair[0], p.at)
             last_out = p.at
     worked_min = int(worked.total_seconds() // 60)
-    closed = last_out is not None and open_at is None
+    checked_out = last_out is not None and open_at is None
+    missing = day_over and open_at is not None
+    judged = checked_out or day_over   # worked_min holds closed pairs only
 
     if rule is None:
         late = first_in is not None and late_after_at is not None and first_in >= late_after_at
         late_min = _minutes_up(first_in - late_after_at) if late else 0
-        return Day("late" if late else "present", late_min, 0, worked_min, first_in, last_out)
+        return Day("late" if late else "present", late_min, 0, worked_min, first_in, last_out,
+                   missing, day_over)
 
     late_min = _minutes_up(first_in - (rule.start_at + timedelta(minutes=rule.grace_in_min))) if first_in else 0
-    early_min = _minutes_up(rule.end_at - timedelta(minutes=rule.grace_out_min) - last_out) if closed else 0
-    if closed and worked_min < rule.absent_below_min:
+    early_min = _minutes_up(rule.end_at - timedelta(minutes=rule.grace_out_min) - last_out) if checked_out else 0
+    if judged and worked_min < rule.absent_below_min:
         status = "absent"
-    elif closed and worked_min < rule.half_day_below_min:
+    elif judged and worked_min < rule.half_day_below_min:
         status = "half_day"
     else:
         status = "late" if late_min > 0 else "present"
-    return Day(status, late_min, early_min, worked_min, first_in, last_out)
+    return Day(status, late_min, early_min, worked_min, first_in, last_out, missing, day_over)
 
 
 def overnight_cutoff(start: time, end: time) -> time:
@@ -156,42 +173,60 @@ async def _rule(conn, day: date, shift: Shift) -> Rule:
                 absent_below_min=shift.absent_below_min)
 
 
-async def preview(conn, employee_id, day: date, shift: Shift | None = None) -> Day:
-    """Derive `day` from its punches without writing anything."""
+async def preview(conn, employee_id, day: date, shift: Shift | None = None, *,
+                  now: datetime | None = None) -> Day:
+    """Derive `day` from its punches without writing anything. `now` is the
+    clock the day is judged by (the database's, unless a test freezes it)."""
     punches = [Punch(r["at"], r["kind"]) for r in await conn.fetch(
         "select at, kind from hrms_punches where employee_id=$1 and work_date=$2 order by at", employee_id, day)]
     shift = shift or await shift_for(conn, employee_id, day)
+    clock = await conn.fetchrow(
+        """select coalesce($3::timestamptz, now()) as now,
+                  coalesce($3::timestamptz, now())::date as today,
+                  exists (select 1 from hrms_punches where employee_id=$1 and work_date > $2) as later""",
+        employee_id, day, now)
     if shift is not None:
-        return derive(punches, rule=await _rule(conn, day, shift))
+        rule = await _rule(conn, day, shift)
+        over = clock["later"] or clock["now"] >= rule.end_at + timedelta(minutes=rule.grace_out_min)
+        return derive(punches, rule=rule, day_over=over)
     late_after_at = await conn.fetchval(
         """select ($1::date + t.late_after)::timestamptz from tenants t
             where t.id = current_setting('app.tenant_id', true)::uuid""", day)
-    return derive(punches, rule=None, late_after_at=late_after_at)
+    return derive(punches, rule=None, late_after_at=late_after_at,
+                  day_over=clock["later"] or clock["today"] > day)
 
 
-async def rederive(conn, tenant_id, employee_id, day: date, shift: Shift | None) -> str:
+async def rederive(conn, tenant_id, employee_id, day: date, shift: Shift | None = None, *,
+                   now: datetime | None = None) -> str | None:
     """Write the derived row for (employee, day); returns its id. A locked
-    day (frozen by a payroll run) is left exactly as it is."""
-    d = await preview(conn, employee_id, day, shift)
+    day (frozen by a payroll run) is left exactly as it is, and so is a day
+    with no check-in punch (nothing to derive it from)."""
     # Method, geo and the fraud flag describe the latest check-in, as before.
     last_in = await conn.fetchrow(
         """select method, lat, lng, fraud_flag from hrms_punches
             where employee_id=$1 and work_date=$2 and kind='in' order by at desc limit 1""",
         employee_id, day)
+    if last_in is None:
+        return await conn.fetchval(
+            "select id from hrms_attendance where employee_id=$1 and work_date=$2", employee_id, day)
+    shift = shift or await shift_for(conn, employee_id, day)
+    d = await preview(conn, employee_id, day, shift, now=now)
     row_id = await conn.fetchval(
         """insert into hrms_attendance (tenant_id, employee_id, work_date, check_in, check_out, status,
-                                        method, lat, lng, fraud_flag, shift_id, late_min, early_min, worked_min)
-           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+                                        method, lat, lng, fraud_flag, shift_id, late_min, early_min, worked_min,
+                                        missing_checkout, final)
+           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
            on conflict (employee_id, work_date) do update set
              check_in = excluded.check_in, check_out = excluded.check_out, status = excluded.status,
              method = excluded.method, lat = excluded.lat, lng = excluded.lng,
              fraud_flag = excluded.fraud_flag, shift_id = excluded.shift_id,
-             late_min = excluded.late_min, early_min = excluded.early_min, worked_min = excluded.worked_min
+             late_min = excluded.late_min, early_min = excluded.early_min, worked_min = excluded.worked_min,
+             missing_checkout = excluded.missing_checkout, final = excluded.final
            where not hrms_attendance.locked
            returning id""",
         tenant_id, employee_id, day, d.first_in, d.last_out, d.status,
         last_in["method"], last_in["lat"], last_in["lng"], last_in["fraud_flag"],
-        shift.id if shift else None, d.late_min, d.early_min, d.worked_min)
+        shift.id if shift else None, d.late_min, d.early_min, d.worked_min, d.missing_checkout, d.final)
     if row_id is None:  # locked
         row_id = await conn.fetchval(
             "select id from hrms_attendance where employee_id=$1 and work_date=$2", employee_id, day)
@@ -217,4 +252,26 @@ async def punch(conn, employee_id, kind: str, *, method: str, at: datetime | Non
         """insert into hrms_punches (tenant_id, employee_id, at, kind, work_date, method, lat, lng, fraud_flag, created_by)
            values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)""",
         tenant_id, employee_id, at, kind, day, method, lat, lng, flag, by)
-    return await rederive(conn, tenant_id, employee_id, day, shift)
+    row_id = await rederive(conn, tenant_id, employee_id, day, shift)
+    # A new work day closes the earlier ones this employee left open.
+    await finalise_open_days(conn, employee_id, before=day)
+    return row_id
+
+
+async def finalise_open_days(conn, employee_id=None, *, before: date | None = None,
+                             now: datetime | None = None) -> int:
+    """Re-derive every unlocked day not yet judged as over, up to today (or
+    strictly before `before`), for one employee or the whole tenant; returns
+    how many rows were looked at. Idempotent, so payroll and the week matrix
+    call it before reading, and the worker can schedule it per tenant (inside
+    a tenant_conn) to close days nobody punched out of."""
+    rows = await conn.fetch(
+        """select tenant_id, employee_id, work_date from hrms_attendance
+            where not final and not locked
+              and ($1::uuid is null or employee_id = $1::uuid)
+              and work_date < coalesce($2::date, coalesce($3::timestamptz, now())::date + 1)
+            order by work_date""",
+        employee_id, before, now)
+    for r in rows:
+        await rederive(conn, r["tenant_id"], r["employee_id"], r["work_date"], now=now)
+    return len(rows)

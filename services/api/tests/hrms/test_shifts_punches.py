@@ -60,26 +60,26 @@ async def _punches(tenant, emp):
 
 
 def test_pkt_helper():
-    assert pkt(2026, 10, 20, 9, 16) == datetime(2026, 10, 20, 4, 16, tzinfo=timezone.utc)
-    assert pkt(2026, 10, 20, 0, 30) == datetime(2026, 10, 19, 19, 30, tzinfo=timezone.utc)
+    assert pkt(2030, 10, 22, 9, 16) == datetime(2030, 10, 22, 4, 16, tzinfo=timezone.utc)
+    assert pkt(2030, 10, 22, 0, 30) == datetime(2030, 10, 21, 19, 30, tzinfo=timezone.utc)
 
 
 # ── The punch log ───────────────────────────────────────────────────────────
 async def test_every_punch_is_kept_and_the_day_is_derived_from_them(client, tenant):
     emp = tenant.employee_id
-    await _in(tenant, emp, pkt(2026, 10, 20, 9, 0))
-    await _in(tenant, emp, pkt(2026, 10, 20, 9, 30))           # a double tap
-    await _out(tenant, emp, pkt(2026, 10, 20, 13, 0))
-    day = await _out(tenant, emp, pkt(2026, 10, 20, 18, 0))     # a second check-out
+    await _in(tenant, emp, pkt(2030, 10, 22, 9, 0))
+    await _in(tenant, emp, pkt(2030, 10, 22, 9, 30))           # a double tap
+    await _out(tenant, emp, pkt(2030, 10, 22, 13, 0))
+    day = await _out(tenant, emp, pkt(2030, 10, 22, 18, 0))     # a second check-out
     kinds = [p["kind"] for p in await _punches(tenant, emp)]
     assert kinds == ["in", "in", "out", "out"]                  # nothing overwritten
-    assert day["check_in"] == pkt(2026, 10, 20, 9, 0)           # the first in …
-    assert day["check_out"] == pkt(2026, 10, 20, 18, 0)         # … and the last out
+    assert day["check_in"] == pkt(2030, 10, 22, 9, 0)           # the first in …
+    assert day["check_out"] == pkt(2030, 10, 22, 18, 0)         # … and the last out
     assert day["worked_min"] == 9 * 60
 
 
 async def test_punches_are_append_only_for_the_app(client, tenant):
-    await _in(tenant, tenant.employee_id, pkt(2026, 10, 20, 9, 0))
+    await _in(tenant, tenant.employee_id, pkt(2030, 10, 22, 9, 0))
     for sql in ("update hrms_punches set at = now()", "delete from hrms_punches"):
         with pytest.raises(asyncpg.InsufficientPrivilegeError):
             async with db.tenant_conn(tenant.tenant_id) as conn:
@@ -100,7 +100,7 @@ async def test_the_api_check_in_and_out_write_punches(client, tenant):
 
 
 async def test_check_out_without_a_check_in_is_refused_and_leaves_no_punch(client, tenant):
-    assert await _out(tenant, tenant.employee_id, pkt(2026, 10, 20, 18, 0)) is None
+    assert await _out(tenant, tenant.employee_id, pkt(2030, 10, 22, 18, 0)) is None
     assert await _punches(tenant, tenant.employee_id) == []
     r = await client.post("/hrms/attendance/checkout", json={"employee_id": tenant.employee_id})
     assert r.status_code == 409
@@ -112,21 +112,21 @@ async def test_late_and_early_at_the_shift_boundaries(client, tenant):
     for e in (a, b, c):
         await _shift(client, e, start_time="09:00", end_time="18:00", grace_in_min=15, grace_out_min=10)
 
-    on_time = await _in(tenant, a, pkt(2026, 10, 20, 9, 15))
-    late = await _in(tenant, b, pkt(2026, 10, 20, 9, 16))
+    on_time = await _in(tenant, a, pkt(2030, 10, 22, 9, 15))
+    late = await _in(tenant, b, pkt(2030, 10, 22, 9, 16))
     assert (on_time["status"], on_time["late_min"]) == ("present", 0)
     assert (late["status"], late["late_min"]) == ("late", 1)
     assert late["shift_id"] is not None
 
-    left_ok = await _out(tenant, a, pkt(2026, 10, 20, 17, 50))
-    left_early = await _out(tenant, b, pkt(2026, 10, 20, 17, 49))
+    left_ok = await _out(tenant, a, pkt(2030, 10, 22, 17, 50))
+    left_early = await _out(tenant, b, pkt(2030, 10, 22, 17, 49))
     assert left_ok["early_min"] == 0
     assert left_early["early_min"] == 1
     assert left_early["status"] == "late"                      # early is a flag, not a status
 
     # Half day below 240 worked minutes, absent below 120 (the defaults).
-    await _in(tenant, c, pkt(2026, 10, 20, 9, 0))
-    assert (await _out(tenant, c, pkt(2026, 10, 20, 12, 59)))["status"] == "half_day"
+    await _in(tenant, c, pkt(2030, 10, 22, 9, 0))
+    assert (await _out(tenant, c, pkt(2030, 10, 22, 12, 59)))["status"] == "half_day"
 
 
 async def test_a_very_short_day_is_an_absence_and_payroll_agrees(client, tenant):
@@ -162,36 +162,36 @@ async def test_an_overnight_shift_keeps_the_night_on_its_start_date(client, tena
     await _shift(client, night, start_time="22:00", end_time="06:00", grace_in_min=15)
     await _shift(client, late_night, start_time="22:00", end_time="06:00", grace_in_min=15)
 
-    start = await _in(tenant, night, pkt(2026, 10, 19, 22, 20))
-    assert (start["work_date"], start["status"], start["late_min"]) == (date(2026, 10, 19), "late", 5)
-    # 06:00 on the 20th closes the 19th's shift — no 409 for "no check-in today".
-    end = await _out(tenant, night, pkt(2026, 10, 20, 6, 0))
+    start = await _in(tenant, night, pkt(2030, 10, 21, 22, 20))
+    assert (start["work_date"], start["status"], start["late_min"]) == (date(2030, 10, 21), "late", 5)
+    # 06:00 on the 22nd closes the 21st's shift — no 409 for "no check-in today".
+    end = await _out(tenant, night, pkt(2030, 10, 22, 6, 0))
     assert end is not None and end["id"] == start["id"]
-    assert (end["work_date"], end["worked_min"], end["early_min"]) == (date(2026, 10, 19), 460, 0)
-    assert {p["work_date"] for p in await _punches(tenant, night)} == {date(2026, 10, 19)}
+    assert (end["work_date"], end["worked_min"], end["early_min"]) == (date(2030, 10, 21), 460, 0)
+    assert {p["work_date"] for p in await _punches(tenant, night)} == {date(2030, 10, 21)}
 
-    # 00:30 PKT is the 19th in UTC and the 20th locally. On a night shift it
-    # is 2.5 hours late for the 19th's 22:00 start …
-    rec = await _in(tenant, late_night, pkt(2026, 10, 20, 0, 30))
-    assert (rec["work_date"], rec["late_min"]) == (date(2026, 10, 19), 135)
-    # … and with no shift it is simply the 20th, as before (test_tenant_clock).
-    rec = await _in(tenant, day_worker, pkt(2026, 10, 20, 0, 30))
-    assert (rec["work_date"], rec["status"]) == (date(2026, 10, 20), "present")
+    # 00:30 PKT is the 21st in UTC and the 22nd locally. On a night shift it
+    # is 2.5 hours late for the 21st's 22:00 start …
+    rec = await _in(tenant, late_night, pkt(2030, 10, 22, 0, 30))
+    assert (rec["work_date"], rec["late_min"]) == (date(2030, 10, 21), 135)
+    # … and with no shift it is simply the 22nd, as before (test_tenant_clock).
+    rec = await _in(tenant, day_worker, pkt(2030, 10, 22, 0, 30))
+    assert (rec["work_date"], rec["status"]) == (date(2030, 10, 22), "present")
 
 
 async def test_after_the_cutoff_a_night_worker_starts_the_new_night(client, tenant):
     emp = tenant.employee_id
     await _shift(client, emp, start_time="22:00", end_time="06:00")
-    # 21:50 on the 20th: early for the 20th's shift, not late for the 19th's.
-    rec = await _in(tenant, emp, pkt(2026, 10, 20, 21, 50))
-    assert (rec["work_date"], rec["status"]) == (date(2026, 10, 20), "present")
+    # 21:50 on the 22nd: early for the 22nd's shift, not late for the 21st's.
+    rec = await _in(tenant, emp, pkt(2030, 10, 22, 21, 50))
+    assert (rec["work_date"], rec["status"]) == (date(2030, 10, 22), "present")
 
 
 async def test_a_day_shift_punch_at_0030_belongs_to_the_new_day(client, tenant):
     emp = tenant.employee_id
     await _shift(client, emp, start_time="09:00", end_time="18:00")
-    rec = await _in(tenant, emp, pkt(2025, 10, 1, 0, 30))      # 30 Sep 19:30 UTC
-    assert rec["work_date"] == date(2025, 10, 1)
+    rec = await _in(tenant, emp, pkt(2030, 10, 1, 0, 30))      # 30 Sep 19:30 UTC
+    assert rec["work_date"] == date(2030, 10, 1)
     assert rec["status"] == "present"                          # before the start is never late
 
 
@@ -260,13 +260,13 @@ async def test_shift_rules_need_hrms_admin(client, tenant):
 # ── Locked days ─────────────────────────────────────────────────────────────
 async def test_a_locked_day_keeps_its_derivation(client, tenant):
     emp = tenant.employee_id
-    day = await _in(tenant, emp, pkt(2026, 10, 20, 9, 0))
+    day = await _in(tenant, emp, pkt(2030, 10, 22, 9, 0))
     owner = await asyncpg.connect(settings.database_url)
     try:
         await owner.execute("update hrms_attendance set locked = true where id=$1", day["id"])
     finally:
         await owner.close()
-    after = await _out(tenant, emp, pkt(2026, 10, 20, 18, 0))
+    after = await _out(tenant, emp, pkt(2030, 10, 22, 18, 0))
     assert after["id"] == day["id"]
     assert after["check_out"] is None                         # the punch is kept, the day is not moved
     assert [p["kind"] for p in await _punches(tenant, emp)] == ["in", "out"]
@@ -349,9 +349,99 @@ async def test_without_a_shift_late_after_still_decides(client, tenant):
     finally:
         await owner.close()
     a, b = (await _staff(client))[:2]
-    late = await _in(tenant, a, pkt(2026, 10, 20, 9, 16))
-    on_time = await _in(tenant, b, pkt(2026, 10, 20, 9, 10))
+    late = await _in(tenant, a, pkt(2030, 10, 22, 9, 16))
+    on_time = await _in(tenant, b, pkt(2030, 10, 22, 9, 10))
     assert (late["status"], late["late_min"], late["shift_id"]) == ("late", 1, None)
     assert (on_time["status"], on_time["late_min"]) == ("present", 0)
     # A short day without a shift is never a half day: there is no threshold.
-    assert (await _out(tenant, b, pkt(2026, 10, 20, 9, 30)))["status"] == "present"
+    assert (await _out(tenant, b, pkt(2030, 10, 22, 9, 30)))["status"] == "present"
+
+
+# ── Days nobody checked out of (security review: payroll must not fail open) ─
+async def _finalise(tenant, emp=None, now=None):
+    async with db.tenant_conn(tenant.tenant_id) as conn:
+        await attendance.finalise_open_days(conn, emp, now=now)
+        return {r["work_date"]: r for r in await conn.fetch(
+            "select * from hrms_attendance where ($1::uuid is null or employee_id=$1::uuid)", emp)}
+
+
+async def test_a_check_in_with_no_check_out_is_judged_once_the_shift_is_over(client, tenant):
+    emp = tenant.employee_id
+    await _shift(client, emp, start_time="09:00", end_time="18:00", grace_out_min=10)
+    day = await _in(tenant, emp, pkt(2025, 10, 7, 9, 0))
+    assert day["final"] is True                                # judged on the spot: the day is long over
+    assert (day["status"], day["worked_min"], day["missing_checkout"]) == ("absent", 0, True)
+    # Payroll does not pay a full day for a check-in alone.
+    slip = next(p for p in (await client.get("/hrms/payroll?month=2025-10")).json()["payslips"]
+                if p["employee_id"] == emp)
+    assert slip["present_days"] == 0
+
+
+async def test_before_the_shift_ends_an_open_day_is_in_progress(client, tenant):
+    emp = tenant.employee_id
+    await _shift(client, emp, start_time="09:00", end_time="18:00", grace_out_min=10)
+    day = await _in(tenant, emp, pkt(2030, 10, 22, 9, 0))      # a day that hasn't ended
+    assert (day["status"], day["missing_checkout"], day["final"]) == ("present", False, False)
+    # A worker re-deriving open days at 18:05 changes nothing; at 18:10 the day is over.
+    rows = await _finalise(tenant, emp, now=pkt(2030, 10, 22, 18, 5))
+    assert (rows[date(2030, 10, 22)]["status"], rows[date(2030, 10, 22)]["final"]) == ("present", False)
+    rows = await _finalise(tenant, emp, now=pkt(2030, 10, 22, 18, 10))
+    r = rows[date(2030, 10, 22)]
+    assert (r["status"], r["missing_checkout"], r["final"]) == ("absent", True, True)
+
+
+async def test_an_open_overnight_shift_ends_the_next_morning(client, tenant):
+    emp = tenant.employee_id
+    await _shift(client, emp, start_time="22:00", end_time="06:00", grace_out_min=10)
+    await _in(tenant, emp, pkt(2030, 10, 21, 22, 0))
+    rows = await _finalise(tenant, emp, now=pkt(2030, 10, 22, 6, 5))
+    assert rows[date(2030, 10, 21)]["final"] is False          # still on shift
+    rows = await _finalise(tenant, emp, now=pkt(2030, 10, 22, 6, 10))
+    r = rows[date(2030, 10, 21)]
+    assert (r["status"], r["missing_checkout"]) == ("absent", True)
+
+
+async def test_the_next_days_check_in_closes_the_previous_day(client, tenant):
+    a, b = (await _staff(client))[:2]
+    await _shift(client, a, start_time="09:00", end_time="18:00")
+    await _in(tenant, a, pkt(2030, 10, 22, 9, 0))
+    await _in(tenant, a, pkt(2030, 10, 23, 9, 0))
+    async with db.tenant_conn(tenant.tenant_id) as conn:
+        prev = await conn.fetchrow(
+            "select * from hrms_attendance where employee_id=$1 and work_date='2030-10-22'", uuid.UUID(a))
+    assert (prev["status"], prev["missing_checkout"], prev["final"]) == ("absent", True, True)
+
+    # Without a shift there is no threshold to judge, but the gap is flagged.
+    await _in(tenant, b, pkt(2030, 10, 22, 9, 0))
+    await _in(tenant, b, pkt(2030, 10, 23, 9, 0))
+    async with db.tenant_conn(tenant.tenant_id) as conn:
+        prev = await conn.fetchrow(
+            "select * from hrms_attendance where employee_id=$1 and work_date='2030-10-22'", uuid.UUID(b))
+    assert (prev["status"], prev["missing_checkout"]) == ("present", True)
+
+
+async def test_the_api_shows_the_missing_check_out(client, tenant):
+    emp = tenant.employee_id
+    await _in(tenant, emp, pkt(2025, 10, 7, 9, 0))
+    rows = (await client.get("/hrms/attendance?on=2025-10-07")).json()
+    assert [(r["employee_id"], r["missing_checkout"]) for r in rows] == [(emp, True)]
+
+
+async def test_payroll_finalises_stale_open_days_before_counting(client, tenant):
+    """A day derived while still open (at 09:00) and never revisited must not
+    count as presence just because nobody ran the worker: the payroll run
+    re-derives open past days first."""
+    emp = tenant.employee_id
+    await _shift(client, emp, start_time="09:00", end_time="18:00")
+    day = await _in(tenant, emp, pkt(2025, 10, 7, 9, 0))
+    owner = await asyncpg.connect(settings.database_url)
+    try:   # as if derived at 09:00 that day and left there
+        await owner.execute("""update hrms_attendance set status='present', missing_checkout=false,
+                                      final=false where id=$1""", day["id"])
+    finally:
+        await owner.close()
+    slip = next(p for p in (await client.get("/hrms/payroll?month=2025-10")).json()["payslips"]
+                if p["employee_id"] == emp)
+    assert slip["present_days"] == 0
+    week_cells = (await client.get("/hrms/attendance/week")).json()  # also finalises; must not error
+    assert week_cells["employees"]

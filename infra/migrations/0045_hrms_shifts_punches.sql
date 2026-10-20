@@ -13,8 +13,10 @@
 --    assignment means the tenant default: late after tenants.late_after.
 --  * hrms_attendance stays the one row per employee per work day, now derived
 --    from the punches (app/attendance.py) and carrying late_min, early_min,
---    worked_min, the shift it was judged against, and `locked` for the payroll
---    run that will freeze it (Phase 3). Kept rather than replaced: payroll,
+--    worked_min, the shift it was judged against, `final` / `missing_checkout`
+--    (a day that ended with a check-in still open is judged on closed pairs
+--    only, so a check-in alone never earns a full day), and `locked` for the
+--    payroll run that will freeze it (Phase 3). Kept rather than replaced: payroll,
 --    the week matrix, the dashboard, /me and the AI view all read it, and its
 --    unique (employee_id, work_date) is exactly the derived day's key.
 --
@@ -90,6 +92,13 @@ alter table hrms_attendance
   add column if not exists late_min   int not null default 0,
   add column if not exists early_min  int not null default 0,
   add column if not exists worked_min int not null default 0,
+  -- The day is over (shift end + grace passed, the local day ended without
+  -- a shift, or a later work day began) and was judged as such. Until then
+  -- attendance.finalise_open_days() re-derives it; payroll runs that first.
+  add column if not exists final      boolean not null default false,
+  -- Over with a check-in still open. The open interval counts 0 minutes, so
+  -- a forgotten (or skipped) check-out can't earn a full day; HR corrects it.
+  add column if not exists missing_checkout boolean not null default false,
   -- Set by a confirmed payroll run (Phase 3); a locked day is never re-derived.
   add column if not exists locked     boolean not null default false;
 
@@ -163,9 +172,13 @@ select hrms_backfill_punches();
 
 -- The minute columns for existing rows. Statuses stay as written: a legacy
 -- 'late' was judged against late_after, so late_min is measured from it, in
--- the tenant's own timezone (D-11).
+-- the tenant's own timezone (D-11). Past days are final; one left without a
+-- check-out is flagged (legacy rows have no shift, so no threshold applies).
 update hrms_attendance a
-   set worked_min = case when a.check_out > a.check_in
+   set final      = a.work_date < tenant_today(t.timezone),
+       missing_checkout = a.work_date < tenant_today(t.timezone) and a.check_in is not null
+                          and a.check_out is null,
+       worked_min = case when a.check_out > a.check_in
                          then floor(extract(epoch from a.check_out - a.check_in) / 60)::int else 0 end,
        late_min   = case when a.status = 'late' and a.check_in is not null
                          then greatest(0, ceil(extract(epoch from

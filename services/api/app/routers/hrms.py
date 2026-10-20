@@ -128,7 +128,8 @@ def _att(r) -> AttendanceOut:
         work_date=r["work_date"], check_in=r["check_in"], check_out=r["check_out"],
         status=r["status"], method=r["method"], fraud_flag=r["fraud_flag"],
         late_min=r["late_min"], early_min=r["early_min"], worked_min=r["worked_min"],
-        shift_id=str(r["shift_id"]) if r["shift_id"] else None, locked=r["locked"])
+        shift_id=str(r["shift_id"]) if r["shift_id"] else None, locked=r["locked"],
+        missing_checkout=r["missing_checkout"])
 
 
 # ── Employees ───────────────────────────────────────────────────────────────
@@ -273,8 +274,9 @@ async def check_out(body: CheckInRequest, auth: AuthContext = Depends(require("h
 
 
 @router.get("/attendance", response_model=list[AttendanceOut])
-async def list_attendance(on: str | None = None, auth: AuthContext = Depends(require("hrms", "read"))):
+async def list_attendance(on: date | None = None, auth: AuthContext = Depends(require("hrms", "read"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
+        await attendance.finalise_open_days(conn)  # days that ended with nobody punching out
         if on:
             rows = await conn.fetch(_ATT_SELECT + " where a.work_date=$1 order by e.name", on)
         else:
@@ -297,6 +299,8 @@ async def attendance_week(auth: AuthContext = Depends(require("hrms", "read"))):
         # employee created moments ago look absent yesterday.
         today = await conn.fetchval("select current_date")
         days = [today - timedelta(days=i) for i in range(6, -1, -1)]
+        # Judge days that ended without a check-out first, exactly as payroll does.
+        await attendance.finalise_open_days(conn)
         # `started` is floored at created_at exactly as payroll does — a
         # backdated join_date must not make someone "absent" for days before
         # the company was tracking them, or the grid and the payslip disagree.
@@ -705,6 +709,9 @@ async def _compute_payroll(conn, tenant_id: str, month: str) -> PayrollOut:
     except ValueError:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "month must be YYYY-MM")
     off_days = await conn.fetchval("select weekly_off_days from tenants where id=$1", tenant_id)
+    # A day derived while still open (a check-in, no check-out) must be judged
+    # as over before it is counted, or a check-in alone earns a full day.
+    await attendance.finalise_open_days(conn)
     rows = await conn.fetch(_PAYROLL, first, list(off_days or [0]))
     month_days = rows[0]["month_days"] if rows else 0
     # Salaries are paid for the month, so its last day decides the tax year.

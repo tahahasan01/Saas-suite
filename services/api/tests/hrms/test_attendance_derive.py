@@ -88,6 +88,35 @@ def test_without_a_shift_the_tenant_late_after_rule_applies():
     assert (d.status, d.late_min, d.early_min) == ("late", 5, 0)
 
 
+# ── A day nobody checked out of (security review: fail-open payroll) ────────
+def test_an_open_day_that_is_over_is_judged_on_closed_pairs_only():
+    """Checking in and never checking out must not earn a full day. Once the
+    day is over, an unmatched check-in counts 0 minutes (the conservative
+    rule: HR corrects it from the flag), so the thresholds apply."""
+    d = attendance.derive([Punch(at(0), "in")], rule=DAY, day_over=True)
+    assert (d.status, d.worked_min, d.missing_checkout, d.final) == ("absent", 0, True, True)
+    # Worked 3 h, came back from a break, never checked out: a half day.
+    d = attendance.derive([Punch(at(0), "in"), Punch(at(180), "out"), Punch(at(200), "in")],
+                          rule=DAY, day_over=True)
+    assert (d.status, d.worked_min, d.missing_checkout) == ("half_day", 180, True)
+
+
+def test_an_open_day_in_progress_is_not_judged_yet():
+    d = attendance.derive([Punch(at(0), "in")], rule=DAY, day_over=False)
+    assert (d.status, d.missing_checkout, d.final) == ("present", False, False)
+
+
+def test_a_checked_out_day_that_is_over_is_final_and_not_flagged():
+    d = attendance.derive([Punch(at(0), "in"), Punch(at(540), "out")], rule=DAY, day_over=True)
+    assert (d.status, d.missing_checkout, d.final) == ("present", False, True)
+
+
+def test_without_a_shift_a_missing_check_out_is_flagged_but_not_judged():
+    """No shift means no thresholds, as before — but HR still sees the gap."""
+    d = attendance.derive([Punch(at(0), "in")], rule=None, late_after_at=at(60), day_over=True)
+    assert (d.status, d.missing_checkout, d.final) == ("present", True, True)
+
+
 def test_overnight_cutoff_is_the_middle_of_the_off_duty_gap():
     # 22:00–06:00: off 06:00–22:00, so punches before 14:00 belong to the night before.
     assert attendance.overnight_cutoff(time(22), time(6)) == time(14)

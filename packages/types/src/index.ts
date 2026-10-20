@@ -429,6 +429,8 @@ export interface Attendance {
   shift_id: string | null;
   /** Frozen by a payroll run; never re-derived. */
   locked: boolean;
+  /** The day is over with a check-in still open (counted as 0 minutes). */
+  missing_checkout: boolean;
 }
 
 export interface Shift {
