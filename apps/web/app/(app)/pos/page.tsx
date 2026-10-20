@@ -96,10 +96,10 @@ export default function PosBilling() {
 
   const loadStatus = useCallback(() => {
     api<PosSummary>("/pos/summary").then(setSummary).catch(() => setSummary(null));
-    // 404 is the API's way of saying no drawer is open — an answer, not an error.
+    // null means no drawer is open; undefined means we couldn't tell.
     api<DrawerLite | null>("/pos/drawer/current")
       .then((d) => setDrawer(d ?? null))
-      .catch((e) => setDrawer(e instanceof ApiError && e.status === 404 ? null : undefined));
+      .catch(() => setDrawer(undefined));
   }, []);
 
   useEffect(loadStatus, [loadStatus]);

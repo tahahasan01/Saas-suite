@@ -9,7 +9,6 @@ from decimal import Decimal
 
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from pydantic import Field
 
 from .. import csv_io, db, fbr, fbr_submit, pricing, refs
 from ..deps import AuthContext
@@ -32,6 +31,7 @@ from ..models import (
     ProductOut,
     ProductUpdate,
     RestockItem,
+    RefundableLine,
     ReturnableLine,
     ReturnCreate,
     ReturnItemOut,
@@ -40,6 +40,7 @@ from ..models import (
     SaleQuote,
     SaleQuoteRequest,
     SaleDetail,
+    SaleLookup,
     SaleItemOut,
     SaleOut,
     SupplierCreate,
@@ -467,13 +468,13 @@ async def open_drawer(body: DrawerOpen, auth: AuthContext = Depends(require("pos
         return await _drawer_out(conn, row)
 
 
-@router.get("/drawer/current", response_model=DrawerOut)
+@router.get("/drawer/current", response_model=DrawerOut | None)
 async def current_drawer(auth: AuthContext = Depends(require("pos", "read"))):
+    # None when no shift is open: that's the till's normal state between
+    # shifts, not an error.
     async with db.tenant_conn(auth.tenant_id) as conn:
         row = await conn.fetchrow("select * from pos_drawers where status='open'")
-        if row is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "No drawer is open")
-        return await _drawer_out(conn, row)
+        return None if row is None else await _drawer_out(conn, row)
 
 
 @router.post("/drawer/close", response_model=DrawerOut)
@@ -575,21 +576,6 @@ select i.id as sale_item_id, i.product_id, i.name, i.qty as qty_sold, i.price_mi
  where i.sale_id = $1
  order by i.name
 """
-
-
-class RefundableLine(ReturnableLine):
-    """A returnable line plus the two figures a refund is computed from
-    (pricing.refund_for), so the Returns screen previews what will actually be
-    paid out rather than list price x qty (audit I8)."""
-    paid_minor: int        # what the customer paid for the line: after discount, with tax
-    refunded_minor: int    # already given back on earlier returns
-
-
-class SaleLookup(SaleDetail):
-    returnable: list[RefundableLine] = Field(default_factory=list)
-    # Never refund more than this in total: what was paid (cash-rounded) less
-    # earlier refunds. create_return caps at the same figure.
-    refundable_minor: int = 0
 
 
 @router.get("/sales/{sale_id}", response_model=SaleLookup)

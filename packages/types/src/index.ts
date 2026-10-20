@@ -207,6 +207,20 @@ export interface SaleDetail extends Sale {
   returnable: ReturnableLine[];
 }
 
+/** A returnable line with what a refund of it is worked out from (the server's
+ *  pricing.refund_for), so a Returns screen previews the real payout. */
+export interface RefundableLine extends ReturnableLine {
+  paid_minor: number;     // paid for the line: after discount, with tax
+  refunded_minor: number; // already given back on earlier returns
+}
+
+/** GET /pos/sales/{id}: the sale, its refundable lines, and the most any
+ *  further returns can pay out in total. */
+export interface SaleLookup extends Omit<SaleDetail, "returnable"> {
+  returnable: RefundableLine[];
+  refundable_minor: number;
+}
+
 export interface PosReturn {
   id: string;
   sale_id: string;

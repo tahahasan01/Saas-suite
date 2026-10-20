@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { ReturnableLine, SaleDetail } from "@business-os/types";
+import type { RefundableLine, SaleLookup } from "@business-os/types";
 import { api, ApiError } from "@/lib/api";
 import { money, relativeDate } from "@/lib/format";
 import { useAction } from "@/lib/useAction";
@@ -13,15 +13,10 @@ import { previewRefund } from "@/components/pos/refund";
 /* Returns are looked up by receipt: that is the only identifier a customer
    standing at the counter actually has. */
 
-/** The lookup also says what each line was paid (after discount, with tax),
- *  what it has refunded already, and what is left on the sale — the figures
- *  the server refunds from. Optional: an API from before I8 doesn't send them. */
-type Line = ReturnableLine & { paid_minor?: number; refunded_minor?: number };
-type Sale = Omit<SaleDetail, "returnable"> & { returnable: Line[]; refundable_minor?: number };
 
 export default function ReturnsPage() {
   const [q, setQ] = useState("");
-  const [sale, setSale] = useState<Sale | null>(null);
+  const [sale, setSale] = useState<SaleLookup | null>(null);
   const [qty, setQty] = useState<Record<string, number>>({});
   const [reason, setReason] = useState("");
   const [restock, setRestock] = useState(true);
@@ -29,7 +24,7 @@ export default function ReturnsPage() {
   const [finding, setFinding] = useState(false);
   const [done, setDone] = useState<{ refund: number; restocked: boolean } | null>(null);
 
-  const lookup = (id: string) => api<Sale>(`/pos/sales/${encodeURIComponent(id)}`);
+  const lookup = (id: string) => api<SaleLookup>(`/pos/sales/${encodeURIComponent(id)}`);
 
   async function find(e?: React.FormEvent) {
     e?.preventDefault();
@@ -73,16 +68,14 @@ export default function ReturnsPage() {
     return r;
   }, { failure: "Couldn't process that return" });
 
-  const columns: Column<Line>[] = [
+  const columns: Column<RefundableLine>[] = [
     {
       key: "item", header: "Item", primary: true,
       cell: (l) => (
         <div className="min-w-0">
           <p className="font-medium break-words">{l.name}</p>
           <p className="text-xs text-fg-subtle">
-            {l.paid_minor !== undefined
-              ? `${money(l.paid_minor)} paid for ${l.qty_sold}`
-              : `${money(l.price_minor)} each`}
+            {money(l.paid_minor)} paid for {l.qty_sold}
           </p>
         </div>
       ),
@@ -90,7 +83,7 @@ export default function ReturnsPage() {
     { key: "sold", header: "Sold", align: "right", cell: (l) => l.qty_sold },
     { key: "returned", header: "Returned", align: "right", cell: (l) => l.qty_returned || "—" },
     {
-      key: "now", header: "Return now", align: "right",
+      key: "now", header: "Return now", align: "right", wrap: true,
       cell: (l) => l.qty_returnable > 0 ? (
         <Input
           type="number" inputMode="decimal" min={0} max={l.qty_returnable} step="any" onWheel={blurOnWheel}
@@ -141,17 +134,12 @@ export default function ReturnsPage() {
               </div>
               {sale.fbr_invoice_number && <Badge tone="success">Filed with FBR</Badge>}
             </div>
-            <DataTable columns={columns} rows={sale.returnable} rowKey={(l) => l.sale_item_id} caption="Items on this sale"
-                       className="[&_dd]:overflow-visible" />
+            <DataTable columns={columns} rows={sale.returnable} rowKey={(l) => l.sale_item_id} caption="Items on this sale" />
           </div>
 
           <Card className="h-fit space-y-3">
             <h2 className="text-sm font-semibold">Refund</h2>
-            {refund === null ? (
-              <p className="text-sm text-fg-muted">The exact refund is worked out when you confirm.</p>
-            ) : (
-              <p className="text-2xl font-semibold tabular-nums">{money(refund)}</p>
-            )}
+            <p className="text-2xl font-semibold tabular-nums">{money(refund)}</p>
             {sale.refundable_minor === 0 && (
               <p className="text-xs text-fg-muted">Everything paid for this sale has been refunded.</p>
             )}
@@ -167,7 +155,7 @@ export default function ReturnsPage() {
             {over && <p role="alert" className="text-xs text-danger">Only {over.qty_returnable} of {over.name} can be returned.</p>}
             {submit.error && <p role="alert" className="text-xs text-danger">{submit.error}</p>}
             <Button onClick={() => void submit.run()} disabled={submit.busy || !chosen || !!over || refund === 0} className="w-full">
-              {submit.busy ? "Refunding…" : refund === null ? "Refund" : `Refund ${money(refund)}`}
+              {submit.busy ? "Refunding…" : `Refund ${money(refund)}`}
             </Button>
           </Card>
         </div>

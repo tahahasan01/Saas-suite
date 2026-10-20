@@ -391,6 +391,21 @@ class ReturnableLine(BaseModel):
     price_minor: int
 
 
+class RefundableLine(ReturnableLine):
+    """A returnable line plus the two figures a refund is computed from
+    (pricing.refund_for), so the Returns screen previews what will actually be
+    paid out rather than list price x qty (audit I8)."""
+    paid_minor: int        # what the customer paid for the line: after discount, with tax
+    refunded_minor: int    # already given back on earlier returns
+
+
+class SaleLookup(SaleDetail):
+    returnable: list[RefundableLine] = Field(default_factory=list)
+    # Never refund more than this in total: what was paid (cash-rounded) less
+    # earlier refunds. create_return caps at the same figure.
+    refundable_minor: int = 0
+
+
 class ReturnLine(BaseModel):
     sale_item_id: str
     qty: float = Field(gt=0)

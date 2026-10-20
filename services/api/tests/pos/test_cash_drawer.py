@@ -91,5 +91,9 @@ async def test_closing_without_an_open_drawer_is_409(client, pos_tenant):
     assert r.status_code == 409
 
 
-async def test_no_open_drawer_is_a_404_not_an_error(client, pos_tenant):
-    assert (await client.get("/pos/drawer/current")).status_code == 404
+async def test_no_open_drawer_is_an_empty_answer_not_an_error(client, pos_tenant):
+    """Every till load asks this; "none open" is the normal answer, so it's a
+    200 with null — a 404 showed up as a red error in every browser console."""
+    r = await client.get("/pos/drawer/current")
+    assert r.status_code == 200
+    assert r.json() is None
