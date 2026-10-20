@@ -527,14 +527,15 @@ class EmployeeOut(BaseModel):
     name: str
     email: str
     phone: str
-    cnic: str
+    cnic: str                 # masked unless the caller holds payroll.salary.read
     designation: str
     department: str
     join_date: date | None
-    salary_minor: int
+    salary_minor: int | None  # None unless the caller holds payroll.salary.read (D-42)
     status: str
     present_today: bool = False
     has_login: bool = False   # linked to a self-service portal user
+    pay_masked: bool = False  # True when salary and CNIC were withheld from this caller
 
 
 class EmployeeCreate(BaseModel):
@@ -620,6 +621,10 @@ class Payslip(BaseModel):
     absence_deduction_minor: int
     tax_minor: int
     net_minor: int
+    # Each slip names the tax table it was computed under, so /me/payslips can
+    # show the "rates pending verification" banner too (St03 §7).
+    tax_year: str = ""
+    tax_rates_verified: bool = True
 
 
 class PayrollOut(BaseModel):

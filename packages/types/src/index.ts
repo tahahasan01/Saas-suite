@@ -302,10 +302,12 @@ export interface Employee {
   designation: string;
   department: string;
   join_date: string | null;
-  salary_minor: number;
+  /** null when the caller lacks payroll access (D-42); CNIC is masked then too. */
+  salary_minor: number | null;
   status: string;
   present_today: boolean;
   has_login: boolean;
+  pay_masked: boolean;
 }
 
 export interface Attendance {
@@ -356,6 +358,10 @@ export interface Payslip {
   absence_deduction_minor: number;
   tax_minor: number;
   net_minor: number;
+  /** The tax table this slip was computed under, e.g. "TY2027". */
+  tax_year: string;
+  /** false -> show "Tax rates pending verification". */
+  tax_rates_verified: boolean;
 }
 
 export interface Holiday {
@@ -368,6 +374,9 @@ export interface Payroll {
   month: string;
   working_days: number;
   payslips: Payslip[];
+  tax_year: string;
+  /** false -> show "Tax rates pending verification". */
+  tax_rates_verified: boolean;
 }
 
 // ── Billing ──────────────────────────────────────────────────────────────

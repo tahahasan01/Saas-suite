@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { monthPKT } from "@/lib/dates";
 import { money } from "@/lib/format";
 import { errorText } from "@/lib/useAction";
+import { RatesPendingBanner } from "@/components/RatesPending";
 import { Card, EmptyState, ErrorState, Field, Input, LoadingRows } from "@/components/ui";
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -56,6 +57,8 @@ export default function MyPayslips() {
       ) : !slip ? (
         <EmptyState title="No payslip for this month." />
       ) : (
+        <div className="space-y-3">
+        {!slip.tax_rates_verified && <RatesPendingBanner taxYear={slip.tax_year} />}
         <Card className="space-y-4">
           <div>
             <p className="text-sm font-semibold">{slip.name}</p>
@@ -80,6 +83,7 @@ export default function MyPayslips() {
             <span className="text-xl font-semibold tabular-nums text-brand">{money(slip.net_minor)}</span>
           </div>
         </Card>
+        </div>
       )}
     </div>
   );

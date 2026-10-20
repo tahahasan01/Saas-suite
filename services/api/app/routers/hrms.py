@@ -30,7 +30,7 @@ from ..models import (
     WeekOut,
     WeekRow,
 )
-from ..rbac import require
+from ..rbac import holds, require, require_key
 
 router = APIRouter(prefix="/hrms", tags=["hrms"])
 
@@ -89,11 +89,21 @@ select e.id, e.name, e.salary_minor,
 """
 
 
-def _emp(r) -> EmployeeOut:
+def _mask_cnic(cnic: str) -> str:
+    """Keep the shape and the last digit so HR can tell records apart
+    (35202-1234567-3 -> *****-*******-3) without reading the number."""
+    return "".join("*" if ch.isdigit() else ch for ch in cnic[:-1]) + cnic[-1:] if cnic else ""
+
+
+def _emp(r, *, reveal: bool) -> EmployeeOut:
+    """`reveal` = the caller holds payroll.salary.read, or this is their own
+    record. Otherwise salary and CNIC are withheld (D-42, St03 §7.10)."""
     return EmployeeOut(
-        id=str(r["id"]), name=r["name"], email=r["email"], phone=r["phone"], cnic=r["cnic"],
+        id=str(r["id"]), name=r["name"], email=r["email"], phone=r["phone"],
+        cnic=r["cnic"] if reveal else _mask_cnic(r["cnic"]),
         designation=r["designation"], department=r["department"], join_date=r["join_date"],
-        salary_minor=r["salary_minor"], status=r["status"],
+        salary_minor=r["salary_minor"] if reveal else None, status=r["status"],
+        pay_masked=not reveal,
         # Absent from the list query (create/update return the bare row) → default False.
         present_today=bool(r["present_today"]) if "present_today" in r.keys() else False,
         has_login="user_id" in r.keys() and r["user_id"] is not None)
@@ -107,27 +117,40 @@ def _att(r) -> AttendanceOut:
 
 
 # ── Employees ───────────────────────────────────────────────────────────────
+async def _sees_pay(conn, auth: AuthContext) -> bool:
+    return await holds(conn, auth.role_id, "payroll.salary.read")
+
+
+async def _guard_pay_write(conn, auth: AuthContext, salary_minor: int | None) -> None:
+    # Setting pay is a payroll action; an HR clerk onboarding staff leaves it at 0.
+    if salary_minor and not await holds(conn, auth.role_id, "payroll.salary.update"):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Requires payroll.salary.update to set pay")
+
+
 @router.get("/employees", response_model=list[EmployeeOut])
 async def list_employees(auth: AuthContext = Depends(require("hrms", "read"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
+        reveal = await _sees_pay(conn, auth)
         rows = await conn.fetch(
             """select e.*, (a.check_in is not null) as present_today
                  from hrms_employees e
                  left join hrms_attendance a
                    on a.employee_id = e.id and a.work_date = current_date
                 where e.status = 'active' order by e.name""")
-    return [_emp(r) for r in rows]
+    return [_emp(r, reveal=reveal) for r in rows]
 
 
 @router.post("/employees", response_model=EmployeeOut, status_code=status.HTTP_201_CREATED)
 async def create_employee(body: EmployeeCreate, auth: AuthContext = Depends(require("hrms", "write"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
+        await _guard_pay_write(conn, auth, body.salary_minor)
+        reveal = await _sees_pay(conn, auth)
         row = await conn.fetchrow(
             """insert into hrms_employees (tenant_id, name, email, phone, cnic, designation, department, join_date, salary_minor)
                values ($1,$2,$3,$4,$5,$6,$7,$8,$9) returning *""",
             auth.tenant_id, body.name, body.email, body.phone, body.cnic, body.designation,
             body.department, body.join_date, body.salary_minor)
-    return _emp(row)
+    return _emp(row, reveal=reveal)
 
 
 async def _employee_role(conn, tenant_id: str) -> str:
@@ -176,11 +199,14 @@ async def update_employee(employee_id: str, body: EmployeeUpdate, auth: AuthCont
     if not fields:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Nothing to update")
     async with db.tenant_conn(auth.tenant_id) as conn:
+        if "salary_minor" in fields and not await holds(conn, auth.role_id, "payroll.salary.update"):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Requires payroll.salary.update to change pay")
+        reveal = await _sees_pay(conn, auth)
         cols = ", ".join(f"{k}=${i+2}" for i, k in enumerate(fields))
         row = await conn.fetchrow(f"update hrms_employees set {cols} where id=$1 returning *", employee_id, *fields.values())
         if row is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Employee not found")
-    return _emp(row)
+    return _emp(row, reveal=reveal)
 
 
 # ── Attendance ──────────────────────────────────────────────────────────────
@@ -519,7 +545,7 @@ async def delete_holiday(holiday_id: str, response: Response,
     return response
 
 
-def _payslip(r, month_days: int, pay_date: date) -> Payslip:
+def _payslip(r, month_days: int, pay_date: date, ty: payroll.TaxYear) -> Payslip:
     gross = r["salary_minor"]
     unpaid = r["unpaid_leave_days"]
     wfh = r["wfh_days"]
@@ -536,7 +562,8 @@ def _payslip(r, month_days: int, pay_date: date) -> Payslip:
         present_days=r["present_days"], paid_leave_days=r["paid_leave_days"],
         unpaid_leave_days=unpaid, wfh_days=wfh, absent_days=absent,
         absence_deduction_minor=deduction, tax_minor=tax,
-        net_minor=max(0, gross - deduction - tax))
+        net_minor=max(0, gross - deduction - tax),
+        tax_year=ty.label, tax_rates_verified=ty.verified)
 
 
 async def _compute_payroll(conn, tenant_id: str, month: str) -> PayrollOut:
@@ -553,13 +580,15 @@ async def _compute_payroll(conn, tenant_id: str, month: str) -> PayrollOut:
     pay_date = first.replace(day=calendar.monthrange(first.year, first.month)[1])
     ty = payroll.tax_year_for(pay_date)
     return PayrollOut(month=month, working_days=month_days,
-                      payslips=[_payslip(r, month_days, pay_date) for r in rows],
+                      payslips=[_payslip(r, month_days, pay_date, ty) for r in rows],
                       tax_year=ty.label, tax_rates_verified=ty.verified)
 
 
 @router.get("/payroll", response_model=PayrollOut)
-async def run_payroll(month: str | None = None, auth: AuthContext = Depends(require("hrms", "read"))):
-    """Monthly payslips: gross − absence deduction − FBR tax. `month` = YYYY-MM."""
+async def run_payroll(month: str | None = None,
+                      auth: AuthContext = Depends(require_key("payroll.run.read", "hrms"))):
+    """Monthly payslips: gross − absence deduction − FBR tax. `month` = YYYY-MM.
+    Everyone's pay is on it, so it needs a payroll key, not hrms:read (D-42)."""
     async with db.tenant_conn(auth.tenant_id) as conn:
         month = month or (await conn.fetchval("select current_date")).strftime("%Y-%m")
         return await _compute_payroll(conn, auth.tenant_id, month)
@@ -577,7 +606,7 @@ async def my_profile(auth: AuthContext = Depends(current_auth),
                      employee_id: str = Depends(current_employee)):
     async with db.tenant_conn(auth.tenant_id) as conn:
         row = await conn.fetchrow("select * from hrms_employees where id=$1", employee_id)
-    return _emp(row)
+    return _emp(row, reveal=True)  # their own record
 
 
 @portal.get("/attendance", response_model=list[AttendanceOut])
