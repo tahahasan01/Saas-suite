@@ -34,6 +34,10 @@ APP_USER: dict[str, set[str]] = {
     "sessions":             set(),
     "auth_tokens":          set(),
     "schema_migrations":    set(),
+    # the worker's job tables (0043): the owner (worker) connection only
+    "scheduled_jobs":       set(),
+    "job_triggers":         set(),
+    "job_runs":             set(),
     # crm
     "crm_pipelines":        {S, I},
     "crm_stages":           {S, I},

@@ -24,7 +24,9 @@ from app.config import settings
 from . import grant_matrix
 
 # Not tenant-scoped by design. Anything else without tenant_id fails below.
-GLOBAL_TABLES = {"terminology", "occasion_calendar", "schema_migrations"}
+GLOBAL_TABLES = {"terminology", "occasion_calendar", "schema_migrations",
+                 # the worker's job tables (0043): platform-owned, owner connection only
+                 "scheduled_jobs", "job_triggers", "job_runs"}
 
 _TENANT_TABLES_SQL = """
     select c.relname,

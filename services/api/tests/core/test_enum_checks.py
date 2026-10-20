@@ -36,6 +36,8 @@ ENUM_COLUMNS = {
     ("pos_purchase_orders", "status"): models.PO_STATUSES,
     ("pos_fbr_invoices", "status"): models.FBR_STATUSES,
     ("fbr_settings", "environment"): models.FBR_ENVIRONMENTS,
+    ("scheduled_jobs", "status"): models.JOB_STATUSES,
+    ("job_runs", "status"): models.JOB_RUN_STATUSES,
 }
 
 
