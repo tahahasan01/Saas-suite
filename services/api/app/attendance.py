@@ -270,8 +270,12 @@ async def finalise_open_days(conn, employee_id=None, *, before: date | None = No
             where not final and not locked
               and ($1::uuid is null or employee_id = $1::uuid)
               and work_date < coalesce($2::date, coalesce($3::timestamptz, now())::date + 1)
-            order by work_date""",
+            order by employee_id, work_date""",
         employee_id, before, now)
     for r in rows:
+        # The punch lock, so a check-out committing meanwhile can't be
+        # overwritten by a derivation that didn't see it. Employee order keeps
+        # two concurrent finalisations from deadlocking.
+        await conn.execute("select 1 from hrms_employees where id=$1 for update", r["employee_id"])
         await rederive(conn, r["tenant_id"], r["employee_id"], r["work_date"], now=now)
     return len(rows)
