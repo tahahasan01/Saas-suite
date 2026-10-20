@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import type { Sale } from "@business-os/types";
-import { money } from "@/lib/format";
+import { formatDateTime, money } from "@/lib/format";
 import { BUSINESS_TZ } from "@/lib/dates";
 import { Dialog } from "@/components/Dialog";
 import { Button } from "@/components/ui";
@@ -10,7 +10,7 @@ import { FbrStamp } from "./FbrStamp";
 import { Row } from "./CartPanel";
 import { methodLabel } from "./labels";
 
-const when = new Intl.DateTimeFormat("en-PK", { timeZone: BUSINESS_TZ, dateStyle: "medium", timeStyle: "short" });
+const when = (iso: string) => formatDateTime(iso, BUSINESS_TZ);
 
 /* The receipt is a real dialog (P11): Escape and ✕ close it, it scrolls inside
  * itself on a landscape phone, and Print / New sale sit in the footer so they
@@ -80,7 +80,7 @@ function ReceiptBody({ sale, business }: { sale: Sale; business: string }) {
     <div ref={ref} className="receipt-print space-y-2 text-sm">
       <div className="text-center">
         {business && <p className="text-base font-semibold break-words">{business}</p>}
-        <p className="text-xs text-fg-muted">{when.format(new Date(sale.created_at))}</p>
+        <p className="text-xs text-fg-muted">{when(sale.created_at)}</p>
         {/* Full id, not a slice: this is what Returns looks the sale up by. */}
         <p className="font-mono text-[10px] break-all text-fg-subtle">{sale.id}</p>
       </div>

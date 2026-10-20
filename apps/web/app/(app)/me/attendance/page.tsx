@@ -3,15 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Attendance } from "@business-os/types";
 import { api } from "@/lib/api";
+import { formatDay, formatTime } from "@/lib/format";
 import { errorText } from "@/lib/useAction";
 import { DataTable, type Column } from "@/components/DataTable";
 import { Badge, EmptyState, ErrorState } from "@/components/ui";
 
-const timeOf = (iso: string | null) =>
-  iso ? new Date(iso).toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" }) : "—";
-// work_date is a plain date; format it in UTC so it can't slip to the day before.
-const dateOf = (d: string) =>
-  new Date(`${d}T00:00:00Z`).toLocaleDateString("en-PK", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+const timeOf = (iso: string | null) => (iso ? formatTime(iso) : "—");
+// work_date is a plain date; formatted as written so it can't slip to the day before.
+const dateOf = (d: string) => formatDay(d, { weekday: "short", day: "numeric", month: "short" });
 
 const columns: Column<Attendance>[] = [
   { key: "date", header: "Date", primary: true, cell: (r) => <span className="font-medium">{dateOf(r.work_date)}</span> },

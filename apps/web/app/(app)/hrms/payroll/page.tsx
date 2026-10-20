@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Payroll, Payslip } from "@business-os/types";
 import { api } from "@/lib/api";
 import { monthPKT } from "@/lib/dates";
-import { money } from "@/lib/format";
+import { formatMonth, money } from "@/lib/format";
 import { errorText } from "@/lib/useAction";
 import { DataTable, type Column } from "@/components/DataTable";
 import { RatesPendingBanner } from "@/components/RatesPending";
@@ -21,8 +21,7 @@ function shift(month: string, n: number) {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
-const monthName = (month: string) =>
-  new Date(`${month}-01T00:00:00`).toLocaleDateString("en-PK", { month: "long", year: "numeric" });
+const monthName = (month: string) => formatMonth(month);
 
 const dash = (n: number) => (n ? String(n) : "—");
 

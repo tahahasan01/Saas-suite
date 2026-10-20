@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import type { DashboardOverview, Kpi, TrendPoint } from "@business-os/types";
 import { api } from "@/lib/api";
-import { money, moneyCompact, timeAgo } from "@/lib/format";
+import { formatNumber, money, moneyCompact, timeAgo } from "@/lib/format";
+import { qk } from "@/lib/queryKeys";
 import { useSession } from "@/lib/session";
 import { errorText } from "@/lib/useAction";
 import { Card, ErrorState } from "@/components/ui";
@@ -12,23 +13,26 @@ import { AiPrompt } from "@/components/AiPrompt";
 import { AreaChart, PipelineBars, Sparkline } from "@/components/charts";
 import { MODULES, moduleFor, tileStyle } from "@/lib/modules";
 
+/** The pattern for moving a page onto TanStack Query (F10): the key comes from
+ *  lib/queryKeys, the fetcher is plain api<T>(), and the page reads
+ *  isPending / error / data instead of keeping three useStates in step. */
+function useDashboardOverview() {
+  return useQuery({
+    queryKey: qk.dashboard.overview(),
+    queryFn: ({ signal }) => api<DashboardOverview>("/dashboard/overview", { signal }),
+  });
+}
+
 export default function Dashboard() {
   const { me, t } = useSession();
-  const [data, setData] = useState<DashboardOverview | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   // A failed load used to render nothing at all under the AI box — an empty
   // page that looked like a quiet day.
-  const load = useCallback(() => {
-    setLoading(true);
-    setError(null);
-    api<DashboardOverview>("/dashboard/overview")
-      .then(setData)
-      .catch((e) => setError(errorText(e, "Couldn't load your dashboard.")))
-      .finally(() => setLoading(false));
-  }, []);
-  useEffect(load, [load]);
+  const overview = useDashboardOverview();
+  const data = overview.data ?? null;
+  // A retry after a failure shows the skeleton again, not the stale error.
+  const loading = overview.isPending || (overview.isError && overview.isFetching);
+  const error = overview.error ? errorText(overview.error, "Couldn't load your dashboard.") : null;
+  const load = () => void overview.refetch();
 
   if (!me) return null;
   const firstName = me.user.name.split(" ")[0];
@@ -114,7 +118,7 @@ export default function Dashboard() {
 /** A tile wears the colour and icon of the module its number comes from, so
  *  "Rs 42k" reads as sales and "12" as staff before the label is read. */
 function StatTile({ kpi, trend }: { kpi: Kpi; trend?: TrendPoint[] }) {
-  const value = kpi.kind === "money" ? moneyCompact(kpi.value) : kpi.value.toLocaleString("en-PK");
+  const value = kpi.kind === "money" ? moneyCompact(kpi.value) : formatNumber(kpi.value);
   const m = moduleFor(kpi.href, MODULES);
   const token = m?.color ?? "--color-brand";
   const color = `var(${token})`;

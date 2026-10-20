@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Attendance, AttendanceWeek, AttendanceWeekRow, Employee } from "@business-os/types";
 import { api } from "@/lib/api";
+import { formatDay, formatTime } from "@/lib/format";
 import { errorText, useAction } from "@/lib/useAction";
 import { DataTable, type Column } from "@/components/DataTable";
 import { Badge, Button, EmptyState, ErrorState, cx } from "@/components/ui";
 import { useHrmsSummary } from "../summary";
 
-const time = (iso: string | null) => (iso ? new Date(iso).toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" }) : "—");
+const time = (iso: string | null) => (iso ? formatTime(iso) : "—");
 
 export default function AttendancePage() {
   const { refresh: refreshSummary } = useHrmsSummary();
@@ -147,7 +148,7 @@ const CELL: Record<string, { cls: string; letter: string; label: string }> = {
   none:    { cls: "text-fg-subtle", letter: "–", label: "Before joining" },
 };
 
-const dayName = (iso: string) => new Date(iso).toLocaleDateString("en-PK", { weekday: "short" });
+const dayName = (iso: string) => formatDay(iso, { weekday: "short" });
 
 function Square({ status, day }: { status: string; day: string }) {
   const s = CELL[status] ?? CELL.none;

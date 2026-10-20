@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Payslip } from "@business-os/types";
 import { api } from "@/lib/api";
 import { monthPKT } from "@/lib/dates";
-import { money } from "@/lib/format";
+import { formatMonth, money } from "@/lib/format";
 import { errorText } from "@/lib/useAction";
 import { RatesPendingBanner } from "@/components/RatesPending";
 import { Card, EmptyState, ErrorState, Field, Input, LoadingRows } from "@/components/ui";
@@ -63,7 +63,7 @@ export default function MyPayslips() {
           <div>
             <p className="text-sm font-semibold">{slip.name}</p>
             <p className="text-xs text-fg-subtle">
-              {new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-PK", { month: "long", year: "numeric", timeZone: "UTC" })}
+              {formatMonth(month)}
             </p>
           </div>
 

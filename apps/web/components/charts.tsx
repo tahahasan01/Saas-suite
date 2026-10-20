@@ -2,6 +2,7 @@
 
 import { useId, useLayoutEffect, useRef, useState } from "react";
 import type { StageSlice, TrendPoint } from "@business-os/types";
+import { formatDate } from "@/lib/format";
 
 /* Charts are plain SVG — no chart library. Single-series by design: the card
    title names the series, so no legend is needed and the mark carries no
@@ -26,7 +27,7 @@ function scale(data: TrendPoint[]) {
 }
 
 function shortDay(iso: string) {
-  return new Date(iso).toLocaleDateString("en-PK", { day: "numeric", month: "short" });
+  return formatDate(iso, { day: "numeric", month: "short" });
 }
 
 export function AreaChart({

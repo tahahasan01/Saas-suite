@@ -5,7 +5,7 @@ import type { Product } from "@business-os/types";
 import { api, apiPage } from "@/lib/api";
 import { money } from "@/lib/format";
 import { useSession } from "@/lib/session";
-import { useAction } from "@/lib/useAction";
+import { errorText, useAction } from "@/lib/useAction";
 import { Badge, Button, Card, EmptyState, ErrorState, Field, Input } from "@/components/ui";
 import { Dialog } from "@/components/Dialog";
 import { useConfirm } from "@/components/Confirm";
@@ -18,8 +18,8 @@ const blank = { name: "", price: "", stock: "", barcode: "", low: "", hs_code: "
 /** Minor units in the API, rupees in the input — convert at the boundary only. */
 const toMinor = (rupees: string) => Math.round(Number(rupees || 0) * 100);
 
-/** Rows per request. The API's own unfiltered default, so a small catalog is one request. */
-const PAGE = 200;
+/** Rows per page: a screenful or two, so Edit/Archive stay a short scroll away. */
+const PAGE = 50;
 
 /** Shared by every number field here: the wheel doesn't change amounts. */
 const num = { type: "number", inputMode: "decimal", min: 0, onWheel: blurOnWheel } as const;
@@ -46,43 +46,36 @@ export default function ProductsPage() {
 
   // Search and paging happen on the server: the list used to be the first 200
   // products filtered in the browser, so the 201st onwards could never be
-  // found, edited or archived here. Only the newest request may write.
+  // found, edited or archived here. One page at a time (DataTable pagination,
+  // the total from X-Total-Count). Only the newest request may write.
+  const [page, setPage] = useState(1);
+  const [paging, setPaging] = useState(false);
   const seq = useRef(0);
-  const loaded = useRef(0);
-  loaded.current = items?.length ?? 0;
-  const url = useCallback((offset: number, limit: number) => {
-    const p = new URLSearchParams({ include_archived: String(showArchived), limit: String(limit), offset: String(offset) });
-    if (query) p.set("q", query);
-    return `/pos/products?${p}`;
-  }, [showArchived, query]);
 
-  // Reloads from the top, keeping as many rows as were showing — saving an
-  // edit on row 350 shouldn't snap the list back to 200.
-  const load = useCallback(() => {
+  const load = useCallback((target: number) => {
     const n = ++seq.current;
     setLoadError(null);
-    apiPage<Product>(url(0, Math.min(500, Math.max(PAGE, loaded.current))))
-      .then((r) => { if (n === seq.current) { setItems(r.items); setTotal(r.total); } })
-      .catch(() => { if (n === seq.current) setLoadError(`Couldn't load ${word.toLowerCase()}.`); });
-  }, [url, word]);
+    setPaging(true);
+    const p = new URLSearchParams({
+      include_archived: String(showArchived), limit: String(PAGE), offset: String((target - 1) * PAGE),
+    });
+    if (query) p.set("q", query);
+    apiPage<Product>(`/pos/products?${p}`)
+      .then((r) => {
+        if (n !== seq.current) return;
+        // Archiving the last row of the last page leaves that page empty: step back.
+        const last = Math.max(1, Math.ceil(r.total / PAGE));
+        if (r.items.length === 0 && target > last) { load(last); return; }
+        setItems(r.items); setTotal(r.total); setPage(target);
+      })
+      .catch((e) => { if (n === seq.current) setLoadError(errorText(e, `Couldn't load ${word.toLowerCase()}.`)); })
+      .finally(() => { if (n === seq.current) setPaging(false); });
+  }, [showArchived, query, word]);
   // A new search or the archived toggle starts again from the first page (the
   // old rows stay up until the new ones arrive, rather than flashing a skeleton).
-  useEffect(() => { loaded.current = 0; load(); }, [load]);
-
-  const loadMore = useAction(
-    async () => {
-      const n = seq.current;
-      const r = await apiPage<Product>(url(loaded.current, PAGE));
-      if (n !== seq.current) return true; // a newer search replaced the list
-      setItems((prev) => {
-        const have = new Set((prev ?? []).map((p) => p.id));
-        return [...(prev ?? []), ...r.items.filter((p) => !have.has(p.id))];
-      });
-      setTotal(r.total);
-      return true;
-    },
-    { failure: `Couldn't load more ${word.toLowerCase()}` },
-  );
+  useEffect(() => { load(1); }, [load]);
+  // After a save, the same page again: an edit on page 4 shouldn't snap back to page 1.
+  const reload = () => load(page);
 
   // Every write says when it fails — a failed save used to look like a good one (I2).
   const create = useAction(
@@ -104,12 +97,12 @@ export default function ProductsPage() {
       hs_code: form.hs_code,
       tax_rate: Number(form.tax_rate || 0),
     });
-    if (ok !== undefined) { setForm(blank); load(); }
+    if (ok !== undefined) { setForm(blank); reload(); }
   }
 
   async function save(id: string, body: Partial<Product>) {
     const ok = await patch.run(id, body);
-    if (ok !== undefined) { setEditing(null); load(); }
+    if (ok !== undefined) { setEditing(null); reload(); }
   }
 
   async function onArchive(p: Product) {
@@ -126,7 +119,7 @@ export default function ProductsPage() {
       tone: "danger",
       run: () => patch.run(p.id, { active: false }),
     });
-    if (done) load();
+    if (done) reload();
   }
 
   const columns: Column<Product>[] = [
@@ -171,7 +164,7 @@ export default function ProductsPage() {
     <>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-fg-muted">Manage your catalog and stock levels.</p>
-        <ImportCsv path="/pos/products" onDone={load} />
+        <ImportCsv path="/pos/products" onDone={reload} />
       </div>
 
       {/* Stacks below xl: beside a 248px sidebar at 1024 the side card pushed
@@ -196,15 +189,11 @@ export default function ProductsPage() {
           </div>
 
           {loadError ? (
-            <ErrorState message={loadError} onRetry={load} />
+            <ErrorState message={loadError} onRetry={reload} />
           ) : (
             <>
-              {items && (
-                <p className="text-xs text-fg-subtle" aria-live="polite">
-                  {items.length < total ? `Showing ${items.length} of ${total}` : total} {word.toLowerCase()}
-                </p>
-              )}
               <DataTable
+                pagination={{ page, pageSize: PAGE, total, onPageChange: load, noun: word.toLowerCase(), busy: paging }}
                 columns={columns}
                 rows={items ?? []}
                 rowKey={(p) => p.id}
@@ -225,13 +214,6 @@ export default function ProductsPage() {
                   </>
                 )}
               />
-              {items && items.length < total && (
-                <div className="flex justify-center pt-1">
-                  <Button variant="subtle" disabled={loadMore.busy} onClick={() => void loadMore.run()}>
-                    {loadMore.busy ? "Loading…" : `Load ${Math.min(PAGE, total - items.length)} more`}
-                  </Button>
-                </div>
-              )}
             </>
           )}
         </div>

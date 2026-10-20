@@ -2,12 +2,14 @@
  * yesterday from midnight to 5am PKT, which showed staff "Not clocked in" after
  * they had, and opened payroll on last month on the 1st. */
 
+import { dateFmt } from "./format";
+
 export const BUSINESS_TZ = "Asia/Karachi";
 
 /** YYYY-MM-DD for `d` in Pakistan time. */
 export function dayPKT(d: Date = new Date()): string {
   // en-CA formats as YYYY-MM-DD.
-  return new Intl.DateTimeFormat("en-CA", { timeZone: BUSINESS_TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+  return dateFmt({ timeZone: BUSINESS_TZ, year: "numeric", month: "2-digit", day: "2-digit" }, "en-CA").format(d);
 }
 
 /** YYYY-MM for `d` in Pakistan time (the value an <input type="month"> takes). */

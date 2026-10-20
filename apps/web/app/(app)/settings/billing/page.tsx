@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Copy } from "lucide-react";
 import type { Billing, PaymentInstructions, Plan } from "@business-os/types";
 import { api } from "@/lib/api";
-import { money } from "@/lib/format";
+import { formatDate, formatNumber, money } from "@/lib/format";
 import { errorText, useAction } from "@/lib/useAction";
 import { Badge, Button, Card, ErrorState, LoadingRows } from "@/components/ui";
 import { Dialog } from "@/components/Dialog";
@@ -83,7 +83,7 @@ export default function BillingPage() {
               : billing.status === "trialing"
               ? `${plural(billing.days_left ?? 0, "day")} left in your free trial`
               : billing.current_period_end
-              ? `Renews ${new Date(billing.current_period_end).toLocaleDateString("en-PK")}`
+              ? `Renews ${formatDate(billing.current_period_end)}`
               : "Active"}
           </p>
         </div>
@@ -111,7 +111,7 @@ export default function BillingPage() {
               <ul className="mt-4 space-y-1.5 text-sm text-fg-muted">
                 <li>✓ {p.max_sections === 3 ? "All 3 modules" : plural(p.max_sections, "module")}</li>
                 <li>✓ {p.max_seats >= 100000 ? "Unlimited" : p.max_seats} users</li>
-                <li>✓ {p.ai_monthly >= 100000 ? "Custom" : p.ai_monthly.toLocaleString()} AI queries/mo</li>
+                <li>✓ {p.ai_monthly >= 100000 ? "Custom" : formatNumber(p.ai_monthly)} AI queries/mo</li>
               </ul>
               <div className="mt-5">
                 {current ? (
