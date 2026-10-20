@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from . import db, jobs
+from .bodylimit import BodyLimitMiddleware
 from .config import settings
 from .routers import (
     ai, auth, billing, crm, dashboard, entitlements, fbr, hrms, invoices, notifications, pos, team,
@@ -38,6 +39,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Business OS API", version="0.1.0", lifespan=lifespan)
+
+# Added before CORS so CORS stays outermost and a 413 still carries its headers.
+app.add_middleware(BodyLimitMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
