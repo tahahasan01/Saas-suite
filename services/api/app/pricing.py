@@ -1,87 +1,136 @@
 """One pricing function for the till (decision D-21, audit P0-5).
 
 Checkout, the receipt, the FBR invoice and every refund read their amounts
-from here, so they cannot disagree. Order of operations per line:
+from here, so they cannot disagree. The spec is
+packages/pos-core/vectors/README.md and the expected figures are
+packages/pos-core/vectors/pricing.json (tests/pos/test_pricing_vectors.py);
+the Phase 3 TypeScript till implements the same spec against the same file.
 
-    gross = unit price x qty
-    discount = the sale-level discount, spread over lines by value
-    net = gross - discount
-    tax = split from net (inclusive prices) or added on top (exclusive prices)
-    total = what the customer pays for the line
+Order of operations per line, all integer minor units (paisa), every rounding
+half-up (0.5 goes away from zero):
 
-All amounts are integer minor units (paisa).
+    gross         = round(unit price x qty)
+    line discount = capped at gross
+    line net      = gross - line discount
+    share         = the order discount spread over lines pro rata to line net
+                    (largest remainder; ties go to the lowest line index)
+    net           = line net - share
+    excl, tax     = inclusive: excl = round(net / (1 + rate)), tax = net - excl
+                    exclusive: excl = net, tax = round(excl x rate)
+    incl (total)  = excl + tax — what the customer pays for the line
+
+Sale total = sum of line incl. Cash rounding (cash only) happens after, in
+cash_due, and never changes the invoice total. Refunds use cumulative
+rounding (refund_for).
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from .fbr import split_tax
+
+
+def round_half_up(x: Decimal) -> int:
+    return int(x.quantize(Decimal(1), rounding=ROUND_HALF_UP))
+
+
+def _dec(x) -> Decimal:
+    # str() first: Decimal(0.1) would carry the float's binary error into money.
+    return x if isinstance(x, Decimal) else Decimal(str(x))
 
 
 @dataclass(frozen=True)
 class PricedLine:
     gross_minor: int
-    discount_minor: int
-    net_minor: int
-    excl_minor: int    # value excluding sales tax
+    line_discount_minor: int   # this line's own discount (capped at gross)
+    share_minor: int           # this line's part of the order discount
+    net_minor: int             # gross - both discounts
+    excl_minor: int            # value excluding sales tax
     tax_minor: int
-    total_minor: int   # what the customer pays for this line
+    total_minor: int           # incl: what the customer pays for this line
+
+    @property
+    def line_net_minor(self) -> int:
+        return self.gross_minor - self.line_discount_minor
+
+    @property
+    def discount_minor(self) -> int:
+        """All discount on the line — what FBR's per-line `discount` reports."""
+        return self.line_discount_minor + self.share_minor
 
 
 @dataclass(frozen=True)
 class PricedSale:
     lines: list[PricedLine]
-    subtotal_minor: int   # sum of gross
-    discount_minor: int   # discount actually applied (capped at the subtotal)
+    subtotal_minor: int        # sum of gross
+    discount_minor: int        # order discount actually applied (capped at what was left)
     tax_minor: int
     total_minor: int
+    line_discount_minor: int = 0   # sum of line discounts
 
 
 def allocate(amount: int, weights: list[int]) -> list[int]:
     """Split `amount` across `weights` proportionally, in whole paisa, so the
-    parts always add back to `amount` (largest-remainder method)."""
+    parts always add back to `amount` (largest-remainder method).
+
+    Integer arithmetic throughout: each part is floor(amount x w / total), and
+    the paisa left over go one each to the largest remainders. Equal
+    remainders go to the lowest index — exactly, which a decimal division
+    cannot promise (its precision depends on the size of the quotient)."""
     total = sum(weights)
     if amount <= 0 or total <= 0:
         return [0] * len(weights)
-    exact = [Decimal(amount) * w / total for w in weights]
-    parts = [int(x) for x in exact]
-    by_remainder = sorted(range(len(weights)), key=lambda i: exact[i] - parts[i], reverse=True)
+    parts = [amount * w // total for w in weights]
+    remainders = [amount * w % total for w in weights]
+    by_remainder = sorted(range(len(weights)), key=lambda i: (-remainders[i], i))
     for i in by_remainder[: amount - sum(parts)]:
         parts[i] += 1
     return parts
 
 
-def price_sale(lines: list[tuple[int, float, Decimal]], discount_minor: int, *,
-               tax_on: bool, inclusive: bool) -> PricedSale:
-    """`lines` are (unit_price_minor, qty, tax_rate_pct)."""
-    gross = [round(price * qty) for price, qty, _ in lines]
-    subtotal = sum(gross)
-    discount = min(max(discount_minor, 0), subtotal)
-    shares = allocate(discount, gross)
+def price_sale(lines: list[tuple[int, float | Decimal, Decimal]], discount_minor: int, *,
+               tax_on: bool, inclusive: bool,
+               line_discounts: list[int] | None = None) -> PricedSale:
+    """`lines` are (unit_price_minor, qty, tax_rate_pct); `line_discounts` are
+    per-line amounts in minor units (default none)."""
+    gross = [round_half_up(Decimal(price) * _dec(qty)) for price, qty, _ in lines]
+    line_disc = [min(max(d, 0), g) for d, g in zip(line_discounts or [0] * len(lines), gross)]
+    line_net = [g - d for g, d in zip(gross, line_disc)]
+    discount = min(max(discount_minor, 0), sum(line_net))
+    shares = allocate(discount, line_net)
 
     priced = []
-    for (_, _, rate), g, d in zip(lines, gross, shares):
-        net = g - d
+    for (_, _, rate), g, ld, ln, s in zip(lines, gross, line_disc, line_net, shares):
+        net = ln - s
+        rate = _dec(rate)
         if tax_on and rate > 0:
             excl, tax = split_tax(net, rate, inclusive)
-            total = net if inclusive else net + tax
         else:
-            excl, tax, total = net, 0, net
-        priced.append(PricedLine(g, d, net, excl, tax, total))
+            excl, tax = net, 0
+        priced.append(PricedLine(gross_minor=g, line_discount_minor=ld, share_minor=s, net_minor=net,
+                                 excl_minor=excl, tax_minor=tax, total_minor=excl + tax))
 
-    return PricedSale(priced, subtotal, discount,
-                      sum(p.tax_minor for p in priced), sum(p.total_minor for p in priced))
+    return PricedSale(priced, sum(gross), discount,
+                      sum(p.tax_minor for p in priced), sum(p.total_minor for p in priced),
+                      line_discount_minor=sum(line_disc))
 
 
 def refund_for(line_total_minor: int, qty_sold: float, refunded_minor: int,
                qty_returned: float, qty: float) -> int:
     """What returning `qty` of a line gives back: its share of what was paid.
-    The return that takes the last units gets exactly what is left, so a line
-    returned in parts refunds precisely what was paid — no paisa invented or lost."""
-    if qty_returned + qty >= qty_sold:
-        return line_total_minor - refunded_minor
-    return round(line_total_minor * Decimal(str(qty)) / Decimal(str(qty_sold)))
+
+    Cumulative rounding: after k of n units have come back, the line has
+    refunded round(paid x k / n) in total, however the k were split across
+    visits — so the parts never run ahead of the line, and the return that
+    takes the last unit lands exactly on what was paid. Clamped to what is
+    left, for lines refunded before this rule."""
+    left = line_total_minor - refunded_minor
+    sold, after = _dec(qty_sold), _dec(qty_returned) + _dec(qty)
+    if after >= sold:
+        return max(left, 0)
+    target = round_half_up(Decimal(line_total_minor) * after / sold)
+    return min(max(target - refunded_minor, 0), max(left, 0))
 
 
 def cash_due(total_minor: int, rounding_minor: int) -> tuple[int, int]:
