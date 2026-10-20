@@ -11,7 +11,7 @@ import uuid
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
-from app import registry
+from app import rbac
 from app.main import app
 
 PASSWORD = "Sup3rSecret!23"
@@ -54,7 +54,7 @@ async def _with_cnic(client, tenant) -> dict:
 
 
 def test_the_payroll_module_declares_its_permission_keys():
-    keys = registry.PERMISSIONS["payroll"]
+    keys = rbac.MODULE_KEYS["payroll"]
     for key in ("payroll.run.read", "payroll.salary.read", "payroll.salary.update",
                 "payroll.run.approve", "payroll.report.export"):
         assert key in keys
@@ -62,11 +62,11 @@ def test_the_payroll_module_declares_its_permission_keys():
 
 
 def test_a_legacy_read_grant_carries_only_read_keys():
-    assert registry.keys_for_grant("payroll", "read") == {"payroll.run.read", "payroll.salary.read"}
-    assert "payroll.salary.update" in registry.keys_for_grant("payroll", "write")
-    assert registry.keys_for_grant("payroll", "admin") == set(registry.PERMISSIONS["payroll"])
+    assert rbac.keys_for_grant("payroll", "read") == {"payroll.run.read", "payroll.salary.read"}
+    assert "payroll.salary.update" in rbac.keys_for_grant("payroll", "write")
+    assert rbac.keys_for_grant("payroll", "admin") == set(rbac.MODULE_KEYS["payroll"])
     # HR grants never carry payroll keys (TR-SEC-36).
-    assert registry.keys_for_grant("hrms", "admin") == set()
+    assert rbac.keys_for_grant("hrms", "admin") == set()
 
 
 async def test_without_payroll_access_salary_and_cnic_are_masked(client, tenant, hr_clerk):

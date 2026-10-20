@@ -46,6 +46,9 @@ async def current_auth(
               -- A disabled user or suspended tenant loses access immediately,
               -- not when the 30-day session finally expires.
               and u.status = 'active' and t.status = 'active'
+              -- D-05: a password, status or role change since login bumped
+              -- the user's epoch (users trigger, 0033), revoking this session.
+              and s.auth_epoch = u.auth_epoch
             """,
             # The cookie holds the raw token; the table holds only its hash.
             hash_session_token(bos_session),

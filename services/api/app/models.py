@@ -85,10 +85,22 @@ class EntitlementOut(BaseModel):
     limits: dict = Field(default_factory=dict)
 
 
+class LocaleOut(BaseModel):
+    """How to render for this caller (12-trd §5.2 `locale`)."""
+    locale: Literal["en", "ur"]
+    dir: Literal["ltr", "rtl"]
+    timezone: str
+    currency: str
+
+
 class MeResponse(BaseModel):
     user: UserOut
     tenant: TenantOut
     entitlements: list[EntitlementOut]
+    # Permission key -> scope (D-04). The web gates controls on these keys;
+    # the API re-checks every request regardless.
+    permissions: dict[str, Literal["own", "team", "branch", "all"]]
+    locale: LocaleOut
     # True when this login belongs to an employee: the app shows self-service.
     employee_portal: bool = False
 
@@ -119,7 +131,13 @@ UserStatus = Literal["active", "disabled"]
 USER_STATUSES = list(get_args(UserStatus))
 
 
+class PasswordChange(BaseModel):
+    current_password: str = Field(min_length=1, max_length=200)
+    new_password: str = Field(min_length=8, max_length=200)
+
+
 class UserUpdate(BaseModel):
+    # Omitted = unchanged; an explicit null removes the user's role.
     role_id: str | None = None
     status: UserStatus | None = None
 

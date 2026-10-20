@@ -28,15 +28,18 @@ def new_session_token() -> str:
     return secrets.token_urlsafe(32)
 
 
-def hash_session_token(token: str) -> str:
-    """What actually lands in `sessions.id`.
+def hash_token(token: str) -> str:
+    """What actually lands in `sessions.id` and `auth_tokens.token_hash`.
 
-    A stolen database dump must not be a pile of live sessions. SHA-256 (not
-    argon2) is the right tool here: the token is 256 bits of CSPRNG output, so
-    there is nothing to brute-force, and this runs on every authenticated
-    request — a deliberately slow KDF would be a self-inflicted DoS.
+    A stolen database dump must not be a pile of live sessions or reset links.
+    SHA-256 (not argon2) is the right tool here: the token is 256 bits of
+    CSPRNG output, so there is nothing to brute-force, and this runs on every
+    authenticated request — a deliberately slow KDF would be a self-inflicted DoS.
     """
     return hashlib.sha256(token.encode()).hexdigest()
+
+
+hash_session_token = hash_token
 
 
 SESSION_COOKIE = "bos_session"
