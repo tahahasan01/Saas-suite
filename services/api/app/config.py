@@ -17,20 +17,37 @@ class Settings(BaseSettings):
     # Runtime connection: tenant-scoped queries as non-owner role (RLS enforced)
     app_database_url: str = "postgres://app_user:app_user_pw@localhost:5432/businessos"
 
-    redis_url: str = "redis://localhost:6379"
+    redis_url: str = "redis://localhost:6379"  # rate limits, lockouts, alert de-dup (Redis 7+)
+    redis_prefix: str = "bos:"
 
     session_secret: str = "dev_only_change_me"
     session_ttl_days: int = 30
 
     api_port: int = 4000
     node_env: str = "development"
-    # Run the proactive scheduler in this process (disable on extra replicas).
-    enable_scheduler: bool = True
+    # Jobs run in the worker process (`python -m app.worker`), never in the API.
+    worker_poll_s: float = 5.0
+    worker_heartbeat_file: str = ""            # default: <tmp>/bos-worker-heartbeat
 
     # Comma-separated allowed browser origins for CORS
     web_origin: str = "http://localhost:3000"
+    # Comma-separated CIDRs of the reverse proxy (Caddy). X-Forwarded-For is
+    # believed only when the direct peer is in one of them; empty = never.
+    trusted_proxy_cidrs: str = ""
 
     sentry_dsn: str = ""                       # error tracking (no-op if empty)
+    git_sha: str = ""                          # the release tag for Sentry and logs (CI sets it)
+    log_format: str = "json"                   # json | text (text is for a dev terminal)
+    log_level: str = "INFO"
+    # Where /ready finds the migration files (default: the repo's infra/migrations).
+    migrations_dir: str = ""
+
+    # Alerts (app/alerts.py). The webhook is optional: Slack/Discord/ntfy-style JSON POST.
+    alert_webhook_url: str = ""
+    alert_5xx_per_5min: int = 20               # 5xx responses in a 5-minute window
+    alert_401_per_5min: int = 200              # 401s (bad/expired sessions, wrong passwords)
+    alert_ratelimit_per_5min: int = 200        # 429s and 423 lockouts
+    outbox_lag_alert_min: int = 30             # a due outbox row waiting this long
 
     anthropic_api_key: str = ""
     ai_model: str = "claude-sonnet-5"          # reasoning/answers

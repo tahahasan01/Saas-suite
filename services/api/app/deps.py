@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from fastapi import Cookie, Depends, HTTPException, status
 
-from . import db
+from . import db, obs
 from .security import SESSION_COOKIE, hash_session_token
 
 
@@ -57,6 +57,8 @@ async def current_auth(
     if row is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Session expired")
 
+    # Every log line and Sentry event from here on names the tenant and user.
+    obs.bind(tenant_id=row["tenant_id"], user_id=row["user_id"], actor_kind="user")
     return AuthContext(
         session_id=row["session_id"],
         user_id=str(row["user_id"]),

@@ -33,7 +33,7 @@ import random
 from datetime import date
 from decimal import Decimal
 
-from . import db, fbr, notifications
+from . import alerts, db, fbr, notifications
 
 log = logging.getLogger("fbr")
 
@@ -283,6 +283,10 @@ async def _alert(row, status: str, error: str) -> None:
         if first is None:
             return
         what = "return" if row["kind"] == KIND_DEBIT_NOTE else "sale"
+        # The platform hears about it too (log + alert sinks), not only the shop.
+        await alerts.emit(f"fbr.outbox_{status}", f"FBR {what} filing is {status}: {error or 'no reason given'}",
+                          severity="error", tenant_id=str(row["tenant_id"]), outbox_id=row["id"],
+                          kind=row["kind"])
         if status == "failed":
             title = f"FBR filing failed for a {what}"
             body = f"FBR did not accept it ({error or 'no reason given'}). Check Settings → FBR."
