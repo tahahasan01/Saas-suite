@@ -45,7 +45,7 @@ async def list_plans() -> list[PlanOut]:
 async def upgrade(body: UpgradeRequest, auth: AuthContext = Depends(require("settings", "admin"))) -> PaymentInstructions:
     plan = billing.PLANS.get(body.plan)
     if plan is None or body.plan == "enterprise":
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Choose Starter or Growth (Enterprise = contact sales)")
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Choose Starter or Growth (Enterprise = contact sales)")
     async with db.tenant_conn(auth.tenant_id) as conn:
         rid = await conn.fetchval(
             """insert into payment_requests (tenant_id, plan, amount_minor, reference)

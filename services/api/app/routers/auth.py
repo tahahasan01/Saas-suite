@@ -70,7 +70,7 @@ async def _create_session(conn, user_id: str, tenant_id: str) -> str:
              dependencies=[Depends(rate_limit(5, 60))])
 async def signup(body: SignupRequest, response: Response, background: BackgroundTasks) -> MeResponse:
     if body.industry_type not in INDUSTRIES:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Unknown industry: {body.industry_type}")
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"Unknown industry: {body.industry_type}")
     sections = [s for s in body.sections if s in SECTIONS] or ["crm"]
 
     async with db.owner_conn() as conn:

@@ -82,7 +82,7 @@ def read_rows(body: bytes, headers: dict[str, list[str]]) -> list[dict[str, str]
     try:
         raw_header = next(reader)
     except StopIteration:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "The file is empty.")
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "The file is empty.")
 
     synonyms = {syn: field for field, spellings in headers.items() for syn in spellings}
     mapping: dict[int, str] = {}
@@ -94,7 +94,7 @@ def read_rows(body: bytes, headers: dict[str, list[str]]) -> list[dict[str, str]
     if "name" not in mapping.values():
         known = ", ".join(sorted({s[0] for s in headers.values()}))
         raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
             f"Couldn't find a name column. First row must be headers — recognised names include: {known}.")
 
     rows = []
@@ -104,7 +104,7 @@ def read_rows(body: bytes, headers: dict[str, list[str]]) -> list[dict[str, str]
         rows.append({field: cells[idx].strip() if idx < len(cells) else ""
                      for idx, field in mapping.items()})
         if len(rows) > MAX_ROWS:
-            raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE,
                                 f"Maximum {MAX_ROWS} rows per import — split the file and try again.")
     return rows
 

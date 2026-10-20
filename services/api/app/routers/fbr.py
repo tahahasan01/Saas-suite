@@ -49,7 +49,7 @@ async def update_settings(body: FbrSettingsUpdate,
     if not fields:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Nothing to update")
     if fields.get("environment") not in (None, *ENVIRONMENTS):
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "environment must be sandbox or production")
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "environment must be sandbox or production")
 
     # Encrypted before it reaches SQL; the plaintext column only accepts '' (0046).
     token = fields.pop("token", None)
@@ -67,7 +67,7 @@ async def update_settings(body: FbrSettingsUpdate,
                                    "seller_province", "seller_address", "token_enc") if not merged.get(k)]
             if missing:
                 raise HTTPException(
-                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status.HTTP_422_UNPROCESSABLE_CONTENT,
                     "Add your NTN, business name, province, address and FBR token before turning this on.")
             # FBR rejects every line without an HS code (error 0052), so each
             # sale would sit in the retry queue until it failed for good.
@@ -75,7 +75,7 @@ async def update_settings(body: FbrSettingsUpdate,
                 "select count(*) from pos_products where active and coalesce(trim(hs_code), '') = ''")
             if no_hs:
                 raise HTTPException(
-                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status.HTTP_422_UNPROCESSABLE_CONTENT,
                     f"{no_hs} active product(s) have no HS code. Add one to each before turning FBR on.")
 
         cols = ", ".join(f"{k}=${i + 2}" for i, k in enumerate(fields))
@@ -117,7 +117,7 @@ async def resolve_invoice(invoice_id: UUID, body: FbrResolve,
     it was sent). FBR offers no lookup, so a person checks IRIS: filed (record
     FBR's number, never resend) or not filed (send it once more)."""
     if body.filed and not body.fbr_invoice_number:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
                             "Enter the FBR invoice number shown in IRIS.")
     # Another tenant's filing (or a made-up id) is "not found" — answering 409
     # would confirm that it exists.

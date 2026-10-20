@@ -224,7 +224,7 @@ async def create_lead(body: LeadCreate, auth: AuthContext = Depends(require("crm
         pid = body.pipeline_id or await _ensure_default_pipeline(conn, auth.tenant_id)
         if body.stage_id and not await conn.fetchval(
                 "select 1 from crm_stages where id=$1 and pipeline_id=$2", body.stage_id, pid):
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "That stage isn't in this pipeline")
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "That stage isn't in this pipeline")
         if not body.force:
             dups = await _find_duplicates(conn, body.name, body.company, body.phone, body.email)
             if dups:

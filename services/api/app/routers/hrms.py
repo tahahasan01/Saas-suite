@@ -194,7 +194,7 @@ async def invite_employee(employee_id: str, response: Response, background: Back
         if emp is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Employee not found")
         if not emp["email"]:
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
                                 "Add an email to this employee before inviting them.")
         if emp["user_id"]:
             raise HTTPException(status.HTTP_409_CONFLICT, "This employee already has a login.")
@@ -400,14 +400,14 @@ async def assign_shift(shift_id: str, body: ShiftAssign,
     so a day never has two shifts. It applies to punches from then on — days
     already derived keep their derivation."""
     if body.date_to is not None and body.date_to < body.date_from:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "date_to cannot be before date_from")
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "date_to cannot be before date_from")
     async with db.tenant_conn(auth.tenant_id) as conn:
         await refs.ensure_visible(conn, "hrms_employees", body.employee_id)
         shift = await conn.fetchrow("select active from hrms_shifts where id=$1", shift_id)
         if shift is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Shift not found")
         if not shift["active"]:
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "That shift is no longer in use.")
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "That shift is no longer in use.")
         # One roster change per employee at a time, in step with punches
         # (attendance.punch takes the same lock).
         await conn.execute("select 1 from hrms_employees where id=$1 for update", body.employee_id)
@@ -471,7 +471,7 @@ async def list_leave(request_type: RequestType | None = None,
 @router.post("/leave", response_model=LeaveOut, status_code=status.HTTP_201_CREATED)
 async def create_leave(body: LeaveCreate, auth: AuthContext = Depends(require("hrms", "write"))):
     if body.to_date < body.from_date:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "to_date cannot be before from_date")
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "to_date cannot be before from_date")
     # A WFH day is worked, so it carries no leave subtype — storing one would
     # let it be mistaken for unpaid leave and deducted.
     leave_type = "annual" if body.request_type == "wfh" else body.leave_type
@@ -712,7 +712,7 @@ async def _compute_payroll(conn, tenant_id: str, month: str) -> PayrollOut:
     try:
         first = date.fromisoformat(f"{month}-01")
     except ValueError:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "month must be YYYY-MM")
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "month must be YYYY-MM")
     off_days = await conn.fetchval("select weekly_off_days from tenants where id=$1", tenant_id)
     # A day derived while still open (a check-in, no check-out) must be judged
     # as over before it is counted, or a check-in alone earns a full day.

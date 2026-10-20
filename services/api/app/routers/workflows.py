@@ -33,7 +33,7 @@ async def list_workflows(auth: AuthContext = Depends(require("settings", "read")
 @router.post("", response_model=WorkflowOut, status_code=status.HTTP_201_CREATED)
 async def create_workflow(body: WorkflowCreate, auth: AuthContext = Depends(require("settings", "admin"))):
     if body.trigger not in WORKFLOW_TRIGGERS:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Unknown trigger: {body.trigger}")
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"Unknown trigger: {body.trigger}")
     async with db.tenant_conn(auth.tenant_id) as conn:
         row = await conn.fetchrow(
             """insert into workflows (tenant_id, name, trigger, conditions, actions)

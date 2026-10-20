@@ -255,7 +255,7 @@ async def _record_sale(body: SaleCreate, auth: AuthContext, fingerprint: str) ->
         paid = body.paid_minor or due
         if paid < due:
             raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
                 f"Payment is short by Rs {(due - paid) / 100:,.2f} (due Rs {due / 100:,.2f}).")
         change = paid - due
 
