@@ -119,6 +119,11 @@ register("hrms", {
     "hrms.leave.request": ("hrms", "write"),
     "hrms.leave.approve": ("hrms", "admin"),
     "hrms.holiday.manage": ("hrms", "write"),
+    # Shift rules decide late / half day / absent, so they move pay: admin.
+    # Putting people on shifts is rostering: write.
+    "hrms.shift.read": ("hrms", "read"),
+    "hrms.shift.manage": ("hrms", "admin"),
+    "hrms.shift.assign": ("hrms", "write"),
     "hrms.settings.manage": ("hrms", "admin"),
 })
 # Payroll is its own grant, never carried by `hrms` (D-42, TR-SEC-36): salary,

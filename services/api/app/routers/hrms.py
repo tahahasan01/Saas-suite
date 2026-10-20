@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from datetime import date, datetime, timedelta
 
-from .. import db, email, payroll, refs, tokens
+from .. import attendance, db, email, payroll, refs, tokens
 from ..deps import AuthContext, current_auth, current_employee
 from ..models import (
     AttendanceOut,
@@ -27,10 +27,14 @@ from ..models import (
     PayrollOut,
     Payslip,
     RequestType,
+    ShiftAssign,
+    ShiftAssignmentOut,
+    ShiftCreate,
+    ShiftOut,
     WeekOut,
     WeekRow,
 )
-from ..rbac import holds, require, require_key
+from ..rbac import holds, perm, require, require_key
 
 router = APIRouter(prefix="/hrms", tags=["hrms"])
 
@@ -60,9 +64,18 @@ select e.id, e.name, e.salary_minor,
          where w.day < current_date
            and w.day >= greatest(coalesce(e.join_date, e.created_at::date), e.created_at::date)
        ) as elapsed_days,
+       -- A check-in is presence unless the shift's thresholds derived the
+       -- day as an absence (worked under absent_below_min, 0045).
        (select count(distinct a.work_date) from hrms_attendance a
-         where a.employee_id = e.id and a.check_in is not null
+         where a.employee_id = e.id and a.check_in is not null and a.status <> 'absent'
            and a.work_date in (select day from working_days)) as present_days,
+       -- Half days cost half a day, unless approved leave or WFH covers them.
+       (select count(distinct a.work_date) from hrms_attendance a
+         where a.employee_id = e.id and a.status = 'half_day'
+           and a.work_date in (select day from working_days)
+           and not exists (select 1 from hrms_leave_requests l
+                            where l.employee_id = e.id and l.status = 'approved'
+                              and a.work_date between l.from_date and l.to_date)) as half_days,
        (select count(*) from working_days w
          where w.day < current_date
            and exists (select 1 from hrms_leave_requests l
@@ -113,7 +126,9 @@ def _att(r) -> AttendanceOut:
     return AttendanceOut(
         id=str(r["id"]), employee_id=str(r["employee_id"]), employee_name=r["employee_name"],
         work_date=r["work_date"], check_in=r["check_in"], check_out=r["check_out"],
-        status=r["status"], method=r["method"], fraud_flag=r["fraud_flag"])
+        status=r["status"], method=r["method"], fraud_flag=r["fraud_flag"],
+        late_min=r["late_min"], early_min=r["early_min"], worked_min=r["worked_min"],
+        shift_id=str(r["shift_id"]) if r["shift_id"] else None, locked=r["locked"])
 
 
 # ── Employees ───────────────────────────────────────────────────────────────
@@ -215,44 +230,33 @@ _ATT_SELECT = """select a.*, e.name as employee_name from hrms_attendance a
 
 
 async def _do_checkin(conn, employee_id: str, *, method: str, lat=None, lng=None, flag: str = "",
-                      at: datetime | None = None):
+                      at: datetime | None = None, by: str | None = None):
     """The check-in write, shared by the admin action and an employee's own.
 
-    `at` is the punch instant (now, unless a test freezes it). The work day and
-    lateness are its *local* date and time: casting a timestamptz to date or
-    time uses the session TimeZone, which tenant_conn set to the tenant's (D-11)."""
-    tenant_id = await conn.fetchval("select tenant_id from hrms_employees where id=$1", employee_id)
-    if tenant_id is None:
+    `at` is the punch instant (now, unless a test freezes it). It is appended
+    to the punch log and the day is re-derived from the log (D-43): the work
+    day and lateness come from the employee's shift, or tenants.late_after
+    without one, in the tenant's local time (D-11)."""
+    row_id = await attendance.punch(conn, employee_id, "in", method=method, at=at,
+                                    lat=lat, lng=lng, flag=flag, by=by)
+    if row_id is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Employee not found")
-    return await conn.fetchrow(
-        """with p as (select coalesce($7::timestamptz, now()) as at)
-           insert into hrms_attendance (tenant_id, employee_id, work_date, check_in, status, method, lat, lng, fraud_flag)
-           select $1, $2, p.at::date, p.at,
-                  case when p.at::time >= (select late_after from tenants where id = $1) then 'late' else 'present' end,
-                  $3, $4, $5, $6
-             from p
-           on conflict (employee_id, work_date) do update set
-             check_in = coalesce(hrms_attendance.check_in, excluded.check_in),
-             method = excluded.method, lat = excluded.lat, lng = excluded.lng,
-             fraud_flag = excluded.fraud_flag,
-             -- Lateness belongs to the punch that is kept: the first one.
-             status = case when hrms_attendance.check_in is null then excluded.status
-                           else hrms_attendance.status end
-           returning id""",
-        tenant_id, employee_id, method, lat, lng, flag, at)
+    return {"id": row_id}
 
 
-async def _do_checkout(conn, employee_id: str):
-    return await conn.fetchrow(
-        "update hrms_attendance set check_out=now() where employee_id=$1 and work_date=current_date returning id",
-        employee_id)
+async def _do_checkout(conn, employee_id: str, *, method: str = "web", at: datetime | None = None,
+                       by: str | None = None):
+    """None when there is no check-in on the punch's work day (then nothing is
+    recorded). An overnight shift's morning check-out closes last night."""
+    row_id = await attendance.punch(conn, employee_id, "out", method=method, at=at, by=by)
+    return None if row_id is None else {"id": row_id}
 
 
 @router.post("/attendance/checkin", response_model=AttendanceOut)
 async def check_in(body: CheckInRequest, auth: AuthContext = Depends(require("hrms", "write"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
         row = await _do_checkin(conn, body.employee_id, method=body.method, lat=body.lat, lng=body.lng,
-                                flag="mock_gps" if body.mock_gps else "")
+                                flag="mock_gps" if body.mock_gps else "", by=auth.user_id)
         rec = await conn.fetchrow(_ATT_SELECT + " where a.id=$1", row["id"])
     return _att(rec)
 
@@ -261,7 +265,7 @@ async def check_in(body: CheckInRequest, auth: AuthContext = Depends(require("hr
 async def check_out(body: CheckInRequest, auth: AuthContext = Depends(require("hrms", "write"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
         await refs.ensure_visible(conn, "hrms_employees", body.employee_id)
-        row = await _do_checkout(conn, body.employee_id)
+        row = await _do_checkout(conn, body.employee_id, method=body.method, by=auth.user_id)
         if row is None:
             raise HTTPException(status.HTTP_409_CONFLICT, "No check-in recorded today")
         rec = await conn.fetchrow(_ATT_SELECT + " where a.id=$1", row["id"])
@@ -317,22 +321,124 @@ async def attendance_week(auth: AuthContext = Depends(require("hrms", "read"))):
     def cell(emp, d: date) -> str:
         if d < emp["started"]:
             return "none"                      # before the company tracked them
-        if (emp["id"], d) in att:
-            return att[(emp["id"], d)]         # 'present' | 'late'
+        derived = att.get((emp["id"], d))
+        if derived and derived != "absent":
+            return derived                     # 'present' | 'late' | 'half_day'
         if (emp["id"], d) in on_leave:
             return on_leave[(emp["id"], d)]
         if d in holidays:
             return "holiday"
         if d.isoweekday() % 7 in off_days:     # ISO Mon=1..Sun=7 -> dow Sun=0
             return "off"
-        if d == today:
+        if d == today and not derived:
             return "pending"                   # the day isn't over yet
+        # No evidence, or a day too short to count (payroll agrees: such a
+        # check-in is not presence).
         return "absent"
 
     return WeekOut(
         days=days,
         employees=[WeekRow(id=str(e["id"]), name=e["name"], cells=[cell(e, d) for d in days])
                    for e in employees])
+
+
+# ── Shifts ──────────────────────────────────────────────────────────────────
+# Defining the rules that decide late, half day and absence moves pay, so it
+# is hrms admin; putting someone on a shift (rostering) is day-to-day HR work.
+def _shift_out(r) -> ShiftOut:
+    return ShiftOut(id=str(r["id"]), name=r["name"], start_time=r["start_time"], end_time=r["end_time"],
+                    grace_in_min=r["grace_in_min"], grace_out_min=r["grace_out_min"],
+                    half_day_below_min=r["half_day_below_min"], absent_below_min=r["absent_below_min"],
+                    overnight=r["overnight"], active=r["active"])
+
+
+@router.get("/shifts", response_model=list[ShiftOut])
+async def list_shifts(auth: AuthContext = Depends(perm("hrms.shift.read"))):
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        rows = await conn.fetch("select * from hrms_shifts order by name")
+    return [_shift_out(r) for r in rows]
+
+
+@router.post("/shifts", response_model=ShiftOut, status_code=status.HTTP_201_CREATED)
+async def create_shift(body: ShiftCreate, auth: AuthContext = Depends(perm("hrms.shift.manage"))):
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        row = await conn.fetchrow(
+            """insert into hrms_shifts (tenant_id, name, start_time, end_time, grace_in_min, grace_out_min,
+                                        half_day_below_min, absent_below_min)
+               values ($1,$2,$3,$4,$5,$6,$7,$8)
+               on conflict (tenant_id, name) do nothing returning *""",
+            auth.tenant_id, body.name, body.start_time, body.end_time, body.grace_in_min,
+            body.grace_out_min, body.half_day_below_min, body.absent_below_min)
+    if row is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, f"A shift named {body.name!r} already exists.")
+    return _shift_out(row)
+
+
+_ASSIGNMENT_SELECT = """select a.*, e.name as employee_name, s.name as shift_name
+                          from hrms_shift_assignments a
+                          join hrms_employees e on e.id = a.employee_id
+                          join hrms_shifts s on s.id = a.shift_id"""
+
+
+def _assignment(r) -> ShiftAssignmentOut:
+    return ShiftAssignmentOut(id=str(r["id"]), employee_id=str(r["employee_id"]),
+                              employee_name=r["employee_name"], shift_id=str(r["shift_id"]),
+                              shift_name=r["shift_name"], date_from=r["date_from"], date_to=r["date_to"])
+
+
+@router.post("/shifts/{shift_id}/assign", response_model=ShiftAssignmentOut,
+             status_code=status.HTTP_201_CREATED)
+async def assign_shift(shift_id: str, body: ShiftAssign,
+                       auth: AuthContext = Depends(perm("hrms.shift.assign"))):
+    """Put an employee on a shift from `date_from`. An open-ended assignment
+    that started earlier is closed the day before; any other overlap is a 409,
+    so a day never has two shifts. It applies to punches from then on — days
+    already derived keep their derivation."""
+    if body.date_to is not None and body.date_to < body.date_from:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "date_to cannot be before date_from")
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        await refs.ensure_visible(conn, "hrms_employees", body.employee_id)
+        shift = await conn.fetchrow("select active from hrms_shifts where id=$1", shift_id)
+        if shift is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Shift not found")
+        if not shift["active"]:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "That shift is no longer in use.")
+        # One roster change per employee at a time, in step with punches
+        # (attendance.punch takes the same lock).
+        await conn.execute("select 1 from hrms_employees where id=$1 for update", body.employee_id)
+        # Everything that overlaps the new span, except an open-ended
+        # assignment that started earlier — that one is closed below.
+        clash = await conn.fetchrow(
+            """select date_from, date_to from hrms_shift_assignments
+                where employee_id=$1 and (date_to is null or date_to >= $2)
+                  and ($3::date is null or date_from <= $3)
+                  and not (date_from < $2 and date_to is null)
+                limit 1""",
+            body.employee_id, body.date_from, body.date_to)
+        if clash:
+            raise HTTPException(status.HTTP_409_CONFLICT,
+                                f"Overlaps an existing assignment ({clash['date_from']} → "
+                                f"{clash['date_to'] or 'open'}).")
+        await conn.execute(
+            """update hrms_shift_assignments set date_to = $2::date - 1
+                where employee_id=$1 and date_from < $2 and date_to is null""",
+            body.employee_id, body.date_from)
+        aid = await conn.fetchval(
+            """insert into hrms_shift_assignments (tenant_id, employee_id, shift_id, date_from, date_to, created_by)
+               values ($1,$2,$3,$4,$5,$6) returning id""",
+            auth.tenant_id, body.employee_id, shift_id, body.date_from, body.date_to, auth.user_id)
+        rec = await conn.fetchrow(_ASSIGNMENT_SELECT + " where a.id=$1", aid)
+    return _assignment(rec)
+
+
+@router.get("/shift-assignments", response_model=list[ShiftAssignmentOut])
+async def list_shift_assignments(employee_id: str | None = None,
+                                 auth: AuthContext = Depends(perm("hrms.shift.read"))):
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        rows = await conn.fetch(
+            _ASSIGNMENT_SELECT + """ where ($1::uuid is null or a.employee_id = $1::uuid)
+                                     order by e.name, a.date_from""", employee_id)
+    return [_assignment(r) for r in rows]
 
 
 # ── Leave ───────────────────────────────────────────────────────────────────
@@ -579,12 +685,13 @@ def _payslip(r, month_days: int, pay_date: date, ty: payroll.TaxYear) -> Payslip
     accounted = min(r["elapsed_days"], r["present_days"] + r["paid_leave_days"] + unpaid + wfh)
     absent = max(0, r["elapsed_days"] - accounted)
     per_day = gross / month_days if month_days else 0
-    deduction = round((absent + unpaid) * per_day)
+    half = r["half_days"]
+    deduction = round((absent + unpaid + 0.5 * half) * per_day)
     tax = payroll.monthly_tax_minor(gross, pay_date)
     return Payslip(
         employee_id=str(r["id"]), name=r["name"], gross_minor=gross,
         present_days=r["present_days"], paid_leave_days=r["paid_leave_days"],
-        unpaid_leave_days=unpaid, wfh_days=wfh, absent_days=absent,
+        unpaid_leave_days=unpaid, wfh_days=wfh, absent_days=absent, half_days=half,
         absence_deduction_minor=deduction, tax_minor=tax,
         net_minor=max(0, gross - deduction - tax),
         tax_year=ty.label, tax_rates_verified=ty.verified)
@@ -648,7 +755,7 @@ async def my_attendance(auth: AuthContext = Depends(current_auth),
 async def my_checkin(auth: AuthContext = Depends(current_auth),
                      employee_id: str = Depends(current_employee)):
     async with db.tenant_conn(auth.tenant_id) as conn:
-        row = await _do_checkin(conn, employee_id, method="self")
+        row = await _do_checkin(conn, employee_id, method="self", by=auth.user_id)
         rec = await conn.fetchrow(_ATT_SELECT + " where a.id=$1", row["id"])
     return _att(rec)
 
@@ -657,7 +764,7 @@ async def my_checkin(auth: AuthContext = Depends(current_auth),
 async def my_checkout(auth: AuthContext = Depends(current_auth),
                       employee_id: str = Depends(current_employee)):
     async with db.tenant_conn(auth.tenant_id) as conn:
-        row = await _do_checkout(conn, employee_id)
+        row = await _do_checkout(conn, employee_id, method="self", by=auth.user_id)
         if row is None:
             raise HTTPException(status.HTTP_409_CONFLICT, "No check-in recorded today")
         rec = await conn.fetchrow(_ATT_SELECT + " where a.id=$1", row["id"])

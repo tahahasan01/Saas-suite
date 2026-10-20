@@ -60,6 +60,9 @@ APP_USER: dict[str, set[str]] = {
     "hrms_leave_requests":  {S, I, U},
     "hrms_leave_policies":  {S, I, U},
     "hrms_holidays":        {S, I, U, D},       # upsert + delete
+    "hrms_shifts":          {S, I},
+    "hrms_shift_assignments": {S, I, U},        # the next assignment closes an open one
+    "hrms_punches":         {S, I},             # append-only: the attendance evidence
     # AI views: app_user reaches them only through `set local role ai_reader`
     "ai_v_leads":           set(),
     "ai_v_interactions":    set(),

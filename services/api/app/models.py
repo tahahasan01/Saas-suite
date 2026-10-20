@@ -1,12 +1,12 @@
 """Pydantic request/response schemas (the API contract)."""
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, time
 
 from typing import Literal, get_args
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 # FBR's reference UoM list; this is the value for discrete countable goods.
 FBR_DEFAULT_UOM = "Numbers, pieces, units"
@@ -579,11 +579,15 @@ REQUEST_TYPES = list(get_args(RequestType))
 LEAVE_STATUSES = ["pending", "approved", "rejected"]
 EmployeeStatus = Literal["active", "inactive"]
 EMPLOYEE_STATUSES = list(get_args(EmployeeStatus))
-ATTENDANCE_STATUSES = ["present", "late", "absent", "leave"]
+# half_day and absent are derived from a shift's worked-minute thresholds
+# (0045); 'leave' is legacy — approved leave is read from the requests.
+ATTENDANCE_STATUSES = ["present", "late", "half_day", "absent", "leave"]
 # What a caller may claim; 'self' is written only by the employee's own portal punch.
 CheckInMethod = Literal["web", "mobile", "biometric", "qr"]
 ATTENDANCE_METHODS = [*get_args(CheckInMethod), "self"]
 FRAUD_FLAGS = ["", "mock_gps", "vpn", "face_mismatch"]
+PunchKind = Literal["in", "out"]
+PUNCH_KINDS = list(get_args(PunchKind))
 
 
 class EmployeeOut(BaseModel):
@@ -640,6 +644,54 @@ class AttendanceOut(BaseModel):
     status: str
     method: str
     fraud_flag: str
+    # Derived from the punches and the shift (D-43). Zero without a shift
+    # except late_min, which is measured from tenants.late_after then.
+    late_min: int = 0
+    early_min: int = 0
+    worked_min: int = 0
+    shift_id: str | None = None
+    locked: bool = False
+
+
+class ShiftCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    # Local times in the tenant's timezone; end at or before start = overnight.
+    start_time: time = time(9, 0)
+    end_time: time = time(18, 0)
+    grace_in_min: int = Field(default=15, ge=0, le=240)
+    grace_out_min: int = Field(default=10, ge=0, le=240)
+    half_day_below_min: int = Field(default=240, ge=0, le=1440)
+    absent_below_min: int = Field(default=120, ge=0, le=1440)
+
+    @model_validator(mode="after")
+    def _consistent(self):
+        if self.end_time == self.start_time:
+            raise ValueError("A shift can't end when it starts")
+        if self.absent_below_min > self.half_day_below_min:
+            raise ValueError("absent_below_min can't exceed half_day_below_min")
+        return self
+
+
+class ShiftOut(ShiftCreate):
+    id: str
+    overnight: bool
+    active: bool
+
+
+class ShiftAssign(BaseModel):
+    employee_id: str
+    date_from: date
+    date_to: date | None = None
+
+
+class ShiftAssignmentOut(BaseModel):
+    id: str
+    employee_id: str
+    employee_name: str
+    shift_id: str
+    shift_name: str
+    date_from: date
+    date_to: date | None
 
 
 class LeaveCreate(BaseModel):
@@ -679,6 +731,7 @@ class Payslip(BaseModel):
     unpaid_leave_days: int    # approved 'unpaid' leave — deducted
     wfh_days: int             # approved work-from-home — worked, never deducted
     absent_days: int          # a working day with no check-in, leave or WFH
+    half_days: int = 0        # derived half days (shift thresholds) — half a day deducted
     absence_deduction_minor: int
     tax_minor: int
     net_minor: int
