@@ -23,7 +23,8 @@ ENV PATH=/opt/venv/bin:$PATH \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     ENV=production \
-    API_PORT=4000
+    API_PORT=4000 \
+    MIGRATIONS_DIR=/srv/infra/migrations
 RUN groupadd --system --gid 10001 app \
  && useradd --system --uid 10001 --gid app --home-dir /srv --shell /usr/sbin/nologin app
 COPY --from=deps /opt/venv /opt/venv
@@ -34,11 +35,12 @@ COPY services/api/app ./app
 COPY services/api/scripts ./scripts
 USER app
 EXPOSE 4000
-# Liveness only. Swap to /ready once it exists (Phase 2E, gate O1).
+# Readiness (gate O1): DB pools, Redis, migration level (MIGRATIONS_DIR).
+# The worker service overrides it with `python -m app.worker --healthcheck`.
 HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=3 \
-  CMD ["python", "-c", "import sys,urllib.request as u; sys.exit(0 if u.urlopen('http://127.0.0.1:4000/health', timeout=4).status == 200 else 1)"]
-# One worker: the in-process rate limiter and scheduler are not multi-process
-# safe until Phase 2B moves them to Redis and the worker container.
+  CMD ["python", "-c", "import sys,urllib.request as u; sys.exit(0 if u.urlopen('http://127.0.0.1:4000/ready', timeout=4).status == 200 else 1)"]
+# One uvicorn process per container: rate limits and lockouts live in Redis
+# and jobs in the worker service, so scale with replicas, not --workers.
 # Forwarded headers are trusted only from FORWARDED_ALLOW_IPS (the proxy's
 # network, set in docker-compose.prod.yml), never from the internet.
 CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${API_PORT} --proxy-headers --forwarded-allow-ips \"${FORWARDED_ALLOW_IPS:-127.0.0.1}\" --no-server-header"]

@@ -19,7 +19,7 @@ The images are built from the repo root: `services/api/Dockerfile`,
 ## Images
 
 - **API** (`services/api/Dockerfile`). `python:3.12-slim`, runs as uid 10001,
-  `HEALTHCHECK` on `/health`. Its dependencies come only from
+  `HEALTHCHECK` on `/ready`. Its dependencies come only from
   `services/api/requirements.lock`, which pins exact versions with sha256 hashes,
   installed with `pip --require-hashes --no-deps`. A wheel that was swapped or
   tampered with fails the build. After you edit `requirements.txt`, run
@@ -35,9 +35,12 @@ The images are built from the repo root: `services/api/Dockerfile`,
   pinned by digest, plus `age`, `rclone` and `curl`.
 - **Caddy** (`infra/caddy/Dockerfile`). Caddy 2.10.2 with `caddy-dns/cloudflare`.
 
-The API healthcheck uses `/health` (liveness). Once Phase 2E adds `/ready`
-(DB, Redis and migration level), switch the API `HEALTHCHECK` and the compose
-dependency to it (gate O1).
+The API healthcheck uses `/ready` (both DB pools, Redis, and every file in
+`MIGRATIONS_DIR=/srv/infra/migrations` applied; gate O1), and Caddy waits for
+it. `/health` stays as the no-I/O liveness probe. The same image runs the
+**worker** service (`python -m app.worker`, always on: the API runs no
+scheduler), whose healthcheck is `python -m app.worker --healthcheck` (a
+heartbeat file the loop touches every tick).
 
 ## Edge (Caddy + Cloudflare)
 
@@ -113,8 +116,8 @@ exits with code 78 before it serves anything if:
 - or uses one shorter than 16 characters,
 - or `BOS_DATA_KEYS` is missing, invalid, or the public dev key.
 
-The message names the setting, never its value. The worker (Phase 2B) must
-call `startup_guard.enforce(settings)` at boot as well.
+The message names the setting, never its value. The worker calls
+`startup_guard.enforce(settings)` at boot as well.
 `crypto.default_ring()` also raises in production rather than fall back to
 the dev key, and `scripts/encrypt_credentials.py` runs the guard first.
 `SESSION_SECRET` is gone: sessions are random tokens stored hashed, so nothing

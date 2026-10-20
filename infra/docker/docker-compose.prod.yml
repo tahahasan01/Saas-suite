@@ -29,8 +29,13 @@ x-api-env: &api-env
   SMTP_PORT: ${SMTP_PORT:-587}
   SMTP_USER: ${SMTP_USER:-}
   SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-  # Until Phase 2B's worker lands, the API runs the scheduler (one replica only).
-  ENABLE_SCHEDULER: ${ENABLE_SCHEDULER:-true}
+  # The release tag on Sentry events and logs (CI passes the commit).
+  GIT_SHA: ${GIT_SHA:-}
+  # Rate limits and lockouts key on the client IP: X-Forwarded-For is believed
+  # only from inside this network (Caddy), never from the internet.
+  TRUSTED_PROXY_CIDRS: ${COMPOSE_SUBNET:-172.30.0.0/24}
+  # /ready compares this folder with schema_migrations (the image copies it here).
+  MIGRATIONS_DIR: /srv/infra/migrations
 
 x-backup-env: &backup-env
   BACKUP_S3_ENDPOINT: ${BACKUP_S3_ENDPOINT:?set BACKUP_S3_ENDPOINT}
@@ -109,24 +114,37 @@ services:
     depends_on:
       migrate: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
-    # The image's HEALTHCHECK probes /health (liveness). Switch to /ready
-    # (DB + Redis + migration level) when Phase 2E adds it (gate O1).
+    # /ready (gate O1): both DB pools, Redis and the migration level. Caddy
+    # waits for it, so traffic only reaches an API that can serve.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys,urllib.request as u; sys.exit(0 if u.urlopen('http://127.0.0.1:4000/ready', timeout=4).status == 200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 3
     deploy: { resources: { limits: { memory: 768m } } }
     logging: *logging
 
-  # Phase 2B: the dedicated job/outbox worker. Off until its entrypoint exists;
-  # enable with `--profile worker` and set ENABLE_SCHEDULER=false for the API.
+  # The job and outbox worker (D-08): every scheduled job, the FBR and email
+  # outboxes. The API runs no scheduler, so this service always runs. Claims
+  # are DB-locked, so a second replica would be safe (and idle-ish).
   worker:
-    profiles: ["worker"]
     image: business-os-api:${IMAGE_TAG:-latest}
     command: ["python", "-m", "app.worker"]
     restart: unless-stopped
-    environment: *api-env
+    environment:
+      <<: *api-env
+      WORKER_HEARTBEAT_FILE: /tmp/bos-worker-heartbeat
     depends_on:
       migrate: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
+    # The loop touches the heartbeat file every tick; stale = unhealthy.
     healthcheck:
-      disable: true   # the image's check targets the API port; 2B adds its own
+      test: ["CMD", "python", "-m", "app.worker", "--healthcheck"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
     deploy: { resources: { limits: { memory: 512m } } }
     logging: *logging
 
