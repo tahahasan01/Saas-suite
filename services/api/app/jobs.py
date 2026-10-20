@@ -173,7 +173,8 @@ async def finish(c: dict, *, ok: bool, error: str = "", result: Any = None, time
             return
         row = await oc.fetchrow(_FAILED, c["code"], c["run_id"], error)
     if row and row["just_disabled"]:
-        await _disabled_alert(c["code"], row["failure_count"], error)
+        etype = "Timeout" if timed_out else error.split(":", 1)[0].strip()[:60]
+        await _disabled_alert(c["code"], row["failure_count"], etype, error)
 
 
 async def _release(c: dict) -> None:
@@ -189,9 +190,11 @@ async def _release(c: dict) -> None:
                 where code = $1 and current_run_id = $2""", c["code"], c["run_id"])
 
 
-async def _disabled_alert(code: str, failures: int, error: str) -> None:
-    await alerts.emit("job.disabled", f"Job {code} was switched off after {failures} failures in a row: {error[:300]}",
-                      severity="critical", job=code, failures=failures)
+async def _disabled_alert(code: str, failures: int, error_type: str, error: str) -> None:
+    # The error text stays in the log (redacted); the alert carries its type.
+    log.error("job %s switched off after %d failures in a row: %s", code, failures, error)
+    await alerts.emit("job.disabled", f"Job {code} was switched off after {failures} failures in a row ({error_type})",
+                      severity="critical", job=code, failures=failures, error_type=error_type)
 
 
 async def reap() -> list[str]:
@@ -224,7 +227,7 @@ async def reap() -> list[str]:
     for r in rows:
         log.warning("reaped job %s (run %s): its worker stopped responding", r["code"], r["run_id"])
         if r["just_disabled"]:
-            await _disabled_alert(r["code"], r["failure_count"], "its worker stopped responding")
+            await _disabled_alert(r["code"], r["failure_count"], "WorkerLost", "its worker stopped responding")
     return [r["code"] for r in rows]
 
 

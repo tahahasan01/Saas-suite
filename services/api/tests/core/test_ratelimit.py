@@ -111,17 +111,29 @@ async def test_an_unknown_address_locks_the_same_way(client):
     assert codes == [401] * 5 + [423]
 
 
-async def test_each_further_lock_doubles(client):
-    email = f"ghost+{uuid.uuid4().hex[:8]}@example.com"
-    first = await ratelimit.login_failed(email, "198.51.100.1")
+async def _begin(email, ip, n) -> list[int]:
+    """n login attempts as the endpoint makes them: 0 = let through to the password check."""
+    from fastapi import HTTPException
+
+    out = []
+    for _ in range(n):
+        try:
+            await ratelimit.begin_login(email, ip)
+            out.append(0)
+        except HTTPException as e:
+            out.append(e.status_code)
+    return out
+
+
+async def test_each_further_lock_doubles_up_to_an_hour(client):
+    email, ip = f"ghost+{uuid.uuid4().hex[:8]}@example.com", "198.51.100.1"
+    waits = []
     for _ in range(4):
-        first = await ratelimit.login_failed(email, "198.51.100.1") or first
-    await store.delete(f"lock:until:{ratelimit._account(email)}")       # the first lock ran out
-    second = 0
-    for _ in range(5):
-        second = await ratelimit.login_failed(email, "198.51.100.1") or second
-    assert (first, second) == (900, 1800)
-    assert 1700 < await ratelimit.locked_for(email) <= 1800
+        assert await _begin(email, ip, 6) == [0] * 5 + [423]
+        waits.append(await ratelimit.locked_for(email, ip))
+        await store.delete(await ratelimit._attempt_key(email, ip))      # this lock ran out
+    expected = [900, 1800, 3600, 3600]                                  # doubling, capped at an hour
+    assert all(e - 60 < w <= e for w, e in zip(waits, expected)), waits
 
 
 async def test_a_successful_reset_lifts_the_lock(client, crm_tenant, monkeypatch):
@@ -159,3 +171,69 @@ async def test_many_failures_from_one_ip_throttle_it(client, monkeypatch):
         await ratelimit.login_failed(f"a{i}+{uuid.uuid4().hex[:6]}@example.com", "127.0.0.1")
     r = await _login(client, f"fresh+{uuid.uuid4().hex[:6]}@example.com", "whatever-pass")
     assert r.status_code == 429
+
+
+async def test_an_attacker_cannot_lock_the_real_user_out(client, crm_tenant, monkeypatch):
+    """The hard lock is per (account, client IP): wrong passwords typed from
+    one address lock that address out of the account, not its owner."""
+    monkeypatch.setattr(settings, "trusted_proxy_cidrs", "127.0.0.1/32")
+    email = (await client.get("/auth/me")).json()["user"]["email"]
+    attacker = {"X-Forwarded-For": "198.51.100.66"}
+    codes = [(await client.post("/auth/login", json={"email": email, "password": "guess"},
+                                headers=attacker)).status_code for _ in range(6)]
+    assert codes == [401] * 5 + [423]
+    r = await client.post("/auth/login", json={"email": email, "password": "Sup3rSecret!23"},
+                          headers={"X-Forwarded-For": "203.0.113.5"})
+    assert r.status_code == 200
+
+
+async def test_guesses_from_many_ips_are_bounded_per_account(client, monkeypatch):
+    """Past a per-account ceiling, attempts from anywhere are slowed to one
+    per ACCOUNT_SLOW_S — a slow-down (429), never a lock on the owner."""
+    monkeypatch.setattr(ratelimit, "ACCOUNT_SLOW_AFTER", 8)
+    email = f"target+{uuid.uuid4().hex[:8]}@example.com"
+    first = [(await _begin(email, f"198.51.100.{i}", 1))[0] for i in range(8)]
+    assert first == [0] * 8
+    later = [(await _begin(email, f"203.0.113.{i}", 1))[0] for i in range(4)]
+    assert later == [0, 429, 429, 429]          # one attempt per slow window, from any IP
+
+
+async def test_parallel_attempts_cannot_race_past_the_lock(client, crm_tenant, monkeypatch):
+    """The attempt is reserved (atomic INCR) before the password is checked,
+    so a burst of parallel guesses gets at most the allowed number checked."""
+    import asyncio
+
+    from app.routers import auth
+
+    checked = []
+
+    def spy(stored_hash, password):
+        checked.append(1)
+        return False
+
+    monkeypatch.setattr(auth, "verify_password", spy)
+    email = (await client.get("/auth/me")).json()["user"]["email"]   # a real account: its hash gets checked
+    rs = await asyncio.gather(*(_login(client, email, f"guess-{i}") for i in range(20)))
+    codes = [r.status_code for r in rs]
+    assert len(checked) <= ratelimit.LOGIN_FAILS_PER_ACCOUNT
+    assert codes.count(401) == len(checked)
+    assert set(codes) - {401} <= {423, 429}
+
+
+# ── The in-process fallback under pressure ──────────────────────────────────
+async def test_flooding_the_fallback_cannot_evict_a_lock(client, monkeypatch):
+    monkeypatch.setattr(store, "_down_until", __import__("time").monotonic() + 600)   # Redis "down"
+    monkeypatch.setattr(store, "_MEMORY_MAX_KEYS", 50)
+    monkeypatch.setattr(store, "_MEMORY_MAX_PROTECTED", 60)
+    email, ip = f"locked+{uuid.uuid4().hex[:8]}@example.com", "198.51.100.9"
+    assert await _begin(email, ip, 6) == [0] * 5 + [423]
+    for i in range(500):                                   # junk: alert de-dup, spike counters …
+        await store.claim_once(f"alert:junk{i}", 600)
+    assert await _begin(email, ip, 1) == [423]
+    # Junk in the protected partition (rate-limit buckets) can't push it out
+    # either: once full, the store refuses new security keys and the
+    # limiter fails closed.
+    for i in range(500):
+        await ratelimit.hit(f"ip:10.9.{i // 250}.{i % 250}:/auth/verify", 5, 900)
+    assert await _begin(email, ip, 1) == [423]
+    assert await _begin(f"new+{uuid.uuid4().hex[:6]}@example.com", "198.51.100.10", 1) == [429]

@@ -256,7 +256,7 @@ async def _settle(row, result: fbr.FbrResult, *, frozen: dict | None = None,
                       number=result.invoice_number if result.ok else None,
                       code=result.error_code, error=result.error, attempts=row["attempts"])
     if status in ("failed", "unknown"):
-        await _alert(row, status, result.error)
+        await _alert(row, status, result.error, result.error_code)
     return status
 
 
@@ -272,7 +272,7 @@ async def _release(row) -> None:
                  where id = $1 and status = 'sending'""", row["id"])
 
 
-async def _alert(row, status: str, error: str) -> None:
+async def _alert(row, status: str, error: str, error_code: str | None = None) -> None:
     """Tell the tenant's owners, once per row, that a filing needs a person.
     Never raises: an alert must not stop the worker."""
     try:
@@ -283,10 +283,14 @@ async def _alert(row, status: str, error: str) -> None:
         if first is None:
             return
         what = "return" if row["kind"] == KIND_DEBIT_NOTE else "sale"
-        # The platform hears about it too (log + alert sinks), not only the shop.
-        await alerts.emit(f"fbr.outbox_{status}", f"FBR {what} filing is {status}: {error or 'no reason given'}",
+        # The platform hears about it too, by ids and FBR's code only: FBR's
+        # error text can quote buyer names, NTNs and CNICs (it stays in the
+        # redacted log, and in the shop's own notification below).
+        code = error_code if error_code is not None else row["last_error_code"]
+        log.warning("FBR outbox row %s is %s (%s): %s", row["id"], status, code, error)
+        await alerts.emit(f"fbr.outbox_{status}", f"FBR {what} filing is {status} (code {code or 'none'})",
                           severity="error", tenant_id=str(row["tenant_id"]), outbox_id=row["id"],
-                          kind=row["kind"])
+                          kind=row["kind"], error_code=code or "")
         if status == "failed":
             title = f"FBR filing failed for a {what}"
             body = f"FBR did not accept it ({error or 'no reason given'}). Check Settings → FBR."

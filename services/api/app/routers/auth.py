@@ -139,12 +139,10 @@ async def signup(body: SignupRequest, response: Response, background: Background
 @router.post("/login", response_model=UserOut, dependencies=[Depends(rate_limit(10, 60))])
 async def login(body: LoginRequest, request: Request, response: Response) -> UserOut:
     ip = client_ip(request)
-    if retry := await ratelimit.ip_throttled(ip):
-        raise ratelimit.too_many(retry)
-    # Checked before the password, for known and unknown emails alike, so a
-    # lock reveals nothing and can't be probed past.
-    if retry := await ratelimit.locked_for(body.email):
-        raise ratelimit.locked(retry)
+    # The attempt is reserved before the password is checked — atomically, so
+    # parallel guesses can't race past a lock — and for known and unknown
+    # emails alike, so a lock reveals nothing.
+    await ratelimit.begin_login(body.email, ip)
     async with db.owner_conn() as conn:
         user = await conn.fetchrow(
             """select u.id, u.tenant_id, u.email, u.name, u.password_hash, r.name as role
@@ -156,7 +154,7 @@ async def login(body: LoginRequest, request: Request, response: Response) -> Use
             await ratelimit.login_failed(body.email, ip)
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password")
         token = await _create_session(conn, str(user["id"]), str(user["tenant_id"]))
-    await ratelimit.login_succeeded(body.email)
+    await ratelimit.login_succeeded(body.email, ip)
 
     _set_session_cookie(response, token)
     return UserOut(id=str(user["id"]), email=user["email"], name=user["name"], role=user["role"])

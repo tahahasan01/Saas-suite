@@ -10,7 +10,12 @@ hands it to every sink. Sinks:
 
 Tenant-facing alerts (an FBR filing that failed) also notify the tenant's
 owners in-app, where they are raised (fbr_submit._alert); this module is the
-platform side. A sink can never break the caller: failures are logged and
+platform side.
+
+Alerts leave the building (a chat webhook), so every message and field is
+run through obs.redact() here, once, before any sink sees it. Callers also
+keep free text out: an alert names ids, codes and exception types; the full
+error goes to the (redacted) log where it was raised. A sink can never break the caller: failures are logged and
 swallowed. Repeats are suppressed with `dedup_key` for `dedup_s` seconds
 (shared through Redis, so N API processes alert once).
 
@@ -30,7 +35,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Callable
 
-from . import store
+from . import obs, store
 from .config import settings
 
 log = logging.getLogger("alerts")
@@ -60,15 +65,19 @@ def _log_sink(a: Alert) -> None:
                    **{f"alert_{k}": v for k, v in a.fields.items()}})
 
 
-async def _webhook_sink(a: Alert) -> None:
-    if not settings.alert_webhook_url:
-        return
+async def _post(url: str, payload: dict) -> None:
     import httpx
 
     async with httpx.AsyncClient(timeout=5) as c:
-        await c.post(settings.alert_webhook_url,
-                     json={"text": f"[{settings.node_env}] {a.severity.upper()} {a.event}: {a.message}",
-                           "alert": a.as_dict()})
+        await c.post(url, json=payload)
+
+
+async def _webhook_sink(a: Alert) -> None:
+    if not settings.alert_webhook_url:
+        return
+    await _post(settings.alert_webhook_url,
+                {"text": f"[{settings.node_env}] {a.severity.upper()} {a.event}: {a.message}",
+                 "alert": a.as_dict()})
 
 
 _sinks: list[Sink] = [_log_sink, _webhook_sink]
@@ -85,8 +94,8 @@ async def emit(event: str, message: str, *, severity: str = "error", tenant_id: 
     try:
         if dedup_key and not await store.claim_once(f"alert:{event}:{dedup_key}", dedup_s):
             return None
-        alert = Alert(event=event, severity=severity, message=message,
-                      tenant_id=str(tenant_id) if tenant_id else None, fields=fields)
+        alert = Alert(event=event, severity=severity, message=obs.redact(message),
+                      tenant_id=str(tenant_id) if tenant_id else None, fields=obs.redact(fields))
         for sink in list(_sinks):
             try:
                 out = sink(alert)

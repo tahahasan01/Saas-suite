@@ -87,6 +87,15 @@ Redis-backed (Redis 7+), with an in-process fallback when Redis is down.
 `TRUSTED_PROXY_CIDRS` (set it to the Caddy container network); the client is
 the right-most address that isn't a trusted proxy. Limits: login 10/min/IP,
 signup 5/min/IP, forgot/reset/verify/accept-invite 5 per 15 min per IP, reset
-emails 3/h per address. Five failed logins in 15 minutes lock the account for
-15 minutes (423 + `Retry-After`), doubling up to 24 h; 20 failed logins from
-one IP in 15 minutes throttle the IP. A password reset lifts the lock.
+emails 3/h per address. Login attempts are reserved before the password is
+checked (no parallel race). Five attempts without a success from one IP lock
+that IP out of that account for 15 minutes (423 + `Retry-After`), doubling up
+to 1 h — so a stranger can't lock the owner out. Past 30 attempts an hour on
+one account (all IPs), attempts are slowed to one per 30 s (429). 20 failed
+logins from one IP in 15 minutes throttle the IP. A password reset lifts
+every lock on the account. If Redis is down, the in-process fallback never
+evicts lockout/limit keys; when full it refuses new ones (429, fail closed),
+and a `redis.unavailable` alert fires.
+
+Alerts are redacted centrally (`alerts.emit`) and carry ids, codes and
+exception types only — FBR and SMTP error text stays in the redacted log.

@@ -178,11 +178,14 @@ async def _settle(row, error: str | None) -> str | None:
     if held is None:
         return None
     if status == "failed":
+        # The provider's text (which can quote the address) stays in the log.
+        error_type = (error or "").split(":", 1)[0].strip()[:60]
+        log.error("email outbox row %s failed for good: %s", row["id"], error)
         await alerts.emit("email.failed",
                           f"Email outbox row {row['id']} ({row['payload'].get('template')}) "
-                          f"failed {row['attempts']} times: {(error or '')[:200]}",
+                          f"failed {row['attempts']} times ({error_type})",
                           severity="error", tenant_id=str(row["tenant_id"]), outbox_id=row["id"],
-                          template=row["payload"].get("template"))
+                          template=row["payload"].get("template"), error_type=error_type)
     return status
 
 

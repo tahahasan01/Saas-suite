@@ -278,3 +278,115 @@ async def test_the_webhook_sink_posts_json_when_configured(monkeypatch):
     await alerts._webhook_sink(alerts.Alert(event="job.disabled", severity="critical", message="m"))
     assert posted["url"] == "https://hooks.example.invalid/x"
     assert posted["json"]["alert"]["event"] == "job.disabled" and "job.disabled" in posted["json"]["text"]
+
+
+# ── Alerts leave the building redacted ──────────────────────────────────────
+LEAKS = ("a.khan@example.com", "+92 300 1234567", "35202-1234567-1",
+         "Q2x1ZGUtaXMtYS10b2tlbi1mb3ItdGVzdHMtMTIzNDU2Nzg")
+
+
+@pytest.fixture
+def webhook(monkeypatch):
+    """The real webhook sink, pointed at a fake endpoint. (Patched below the
+    sink, not on httpx, so the test's own HTTP client keeps working.)"""
+    posted: list[dict] = []
+
+    async def post(url, payload):
+        posted.append(payload)
+
+    monkeypatch.setattr(settings, "alert_webhook_url", "https://hooks.example.invalid/x")
+    monkeypatch.setattr(alerts, "_post", post)
+    monkeypatch.setattr(alerts, "_sinks", [alerts._webhook_sink])
+    return posted
+
+
+def _assert_clean(posted):
+    text = json.dumps(posted)
+    for leak in LEAKS:
+        assert leak not in text, leak
+
+
+async def test_alerts_are_redacted_before_any_sink_sees_them(webhook):
+    await alerts.emit("test.event", "user a.khan@example.com +92 300 1234567 cnic 35202-1234567-1",
+                      note=f"token={LEAKS[3]}", nested={"who": "a.khan@example.com"})
+    assert len(webhook) == 1
+    _assert_clean(webhook)
+
+
+async def test_email_failed_alert_carries_no_smtp_text(client, crm_tenant, webhook, monkeypatch):
+    from app import email
+
+    async def down(to, subject, body):
+        raise RuntimeError(f"550 mailbox a.khan@example.com unavailable; CNIC 35202-1234567-1 {LEAKS[3]}")
+
+    monkeypatch.setattr(email, "_send", down)
+    role = next(r["id"] for r in (await client.get("/team/roles")).json() if r["name"] == "Owner")
+    await client.post("/team/invite", json={"email": "a.khan@example.com", "role_id": role})
+    owner = await asyncpg.connect(settings.database_url)
+    try:
+        await owner.execute("""update outbox set attempts = max_attempts - 1, run_after = now()
+                                where tenant_id=$1 and kind='email.send' and status <> 'done'""",
+                            uuid.UUID(crm_tenant.tenant_id))
+    finally:
+        await owner.close()
+    await email.process_outbox()
+    [sent] = [p for p in webhook if p["alert"]["event"] == "email.failed"]
+    assert sent["alert"]["error_type"] == "RuntimeError"
+    assert "550" not in json.dumps(sent)              # the provider's text stays in the (redacted) log
+    _assert_clean(webhook)
+
+
+async def test_fbr_alert_carries_ids_not_fbr_text(client, pos_tenant, webhook):
+    owner = await asyncpg.connect(settings.database_url)
+    try:
+        await owner.set_type_codec("jsonb", encoder=json.dumps, decoder=json.loads, schema="pg_catalog")
+        row = await owner.fetchrow(
+            """insert into outbox (tenant_id, kind, dedup_key, payload, status, last_error_code)
+               values ($1, 'fbr.submit_sale', $2, '{}', 'failed', '0052') returning *""",
+            uuid.UUID(pos_tenant.tenant_id), uuid.uuid4().hex)
+    finally:
+        await owner.close()
+    await fbr_submit._alert(row, "failed", "Buyer Ali Khan NTN 1234567-8 CNIC 35202-1234567-1 a.khan@example.com")
+    [sent] = webhook
+    a = sent["alert"]
+    assert a["event"] == "fbr.outbox_failed" and a["outbox_id"] == row["id"]
+    assert a["tenant_id"] == pos_tenant.tenant_id and a["error_code"] == "0052"
+    assert "Ali Khan" not in json.dumps(sent) and "1234567-8" not in json.dumps(sent)
+    _assert_clean(webhook)
+
+
+async def test_job_disabled_alert_carries_the_error_type_only(webhook, monkeypatch):
+    from app import jobs
+
+    await db.connect()
+    code = "test." + uuid.uuid4().hex.translate(str.maketrans("0123456789", "ghijklmnop"))[:10]
+
+    async def boom():
+        raise ValueError(f"bad row for a.khan@example.com token={LEAKS[3]}")
+
+    monkeypatch.setitem(jobs.HANDLERS, code, boom)
+    owner = await asyncpg.connect(settings.database_url)
+    try:
+        await owner.execute("""insert into scheduled_jobs (code, run_every, max_failures)
+                               values ($1, interval '1 hour', 1)""", code)
+        await jobs.run_due("w", only=[code])
+        await owner.execute("delete from scheduled_jobs where code=$1", code)
+    finally:
+        await owner.close()
+        await db.disconnect()
+    [sent] = webhook
+    assert sent["alert"]["event"] == "job.disabled" and sent["alert"]["error_type"] == "ValueError"
+    assert "bad row" not in json.dumps(sent)
+    _assert_clean(webhook)
+
+
+async def test_losing_redis_raises_an_alert(monkeypatch, raised):
+    class Down:
+        async def get(self, k):
+            raise ConnectionError("redis down")
+
+    monkeypatch.setattr(store, "_redis", lambda: Down())
+    await store.get("anything")
+    for t in list(alerts._pending):
+        await t
+    assert [a.event for a in raised] == ["redis.unavailable"]
