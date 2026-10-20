@@ -115,7 +115,13 @@ class UserCreate(BaseModel):
     role_id: str
 
 
+class PasswordChange(BaseModel):
+    current_password: str = Field(min_length=1, max_length=200)
+    new_password: str = Field(min_length=8, max_length=200)
+
+
 class UserUpdate(BaseModel):
+    # Omitted = unchanged; an explicit null removes the user's role.
     role_id: str | None = None
     status: str | None = Field(default=None, pattern="^(active|disabled)$")
 

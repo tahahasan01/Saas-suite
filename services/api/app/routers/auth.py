@@ -21,6 +21,7 @@ from ..models import (
     ForgotRequest,
     LoginRequest,
     MeResponse,
+    PasswordChange,
     ResetRequest,
     SignupRequest,
     TenantOut,
@@ -52,11 +53,13 @@ def _set_session_cookie(response: Response, token: str) -> None:
 
 
 async def _create_session(conn, user_id: str, tenant_id: str) -> str:
-    """Returns the raw token for the cookie; only its hash is persisted."""
+    """Returns the raw token for the cookie; only its hash is persisted.
+    The session copies the user's current auth_epoch (D-05)."""
     token = new_session_token()
     expires = datetime.now(timezone.utc) + timedelta(days=settings.session_ttl_days)
     await conn.execute(
-        "insert into sessions (id, user_id, tenant_id, expires_at) values ($1,$2,$3,$4)",
+        """insert into sessions (id, user_id, tenant_id, expires_at, auth_epoch)
+           select $1, $2, $3, $4, auth_epoch from users where id = $2""",
         hash_session_token(token), user_id, tenant_id, expires,
     )
     return token
@@ -176,8 +179,28 @@ async def reset(body: ResetRequest, response: Response) -> Response:
         await conn.execute("update users set password_hash=$1, updated_at=now() where id=$2",
                            hash_password(body.password), row["user_id"])
         # A reset is how a user recovers from a stolen session, so every
-        # session that existed before it must die with the old password.
+        # session that existed before it must die with the old password. The
+        # new hash already bumped auth_epoch; deleting is belt and braces.
         await conn.execute("delete from sessions where user_id=$1", row["user_id"])
+    response.status_code = status.HTTP_204_NO_CONTENT
+    return response
+
+
+@router.post("/password", status_code=status.HTTP_204_NO_CONTENT,
+             dependencies=[Depends(rate_limit(5, 60))])
+async def change_password(body: PasswordChange, response: Response,
+                          auth: AuthContext = Depends(current_auth)) -> Response:
+    """Change the password and sign out every other device. The caller keeps
+    working on a re-issued session: its old one died with the epoch bump."""
+    async with db.owner_conn() as conn, conn.transaction():
+        current = await conn.fetchval("select password_hash from users where id=$1", auth.user_id)
+        if not verify_password(current, body.current_password):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Current password is incorrect")
+        await conn.execute("update users set password_hash=$1, updated_at=now() where id=$2",
+                           hash_password(body.new_password), auth.user_id)
+        await conn.execute("delete from sessions where user_id=$1", auth.user_id)
+        token = await _create_session(conn, auth.user_id, auth.tenant_id)
+    _set_session_cookie(response, token)
     response.status_code = status.HTTP_204_NO_CONTENT
     return response
 
