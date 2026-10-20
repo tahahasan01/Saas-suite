@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Weekly physical base backup — the starting point for point-in-time
+# recovery (base + archived WAL). Encrypted, streamed straight off-site.
+. /usr/local/bin/bos-backup-lib.sh
+stamp="$(date -u +%Y-%m-%dT%H%MZ)"
+dest="$REMOTE/base/$stamp/base.tar.gz.age"
+log "base backup -> base/$stamp"
+# -X fetch puts the WAL needed for consistency inside the tar, so the base
+# backup is restorable even without the archive.
+pg_basebackup -D - -Ft -X fetch --checkpoint=fast --label "bos-$stamp" | gzip -c | encrypt | rclone rcat "$dest"
+log "base backup done"

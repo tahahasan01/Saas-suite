@@ -1,0 +1,241 @@
+# Business OS — production stack for ONE VPS (gate I3). Sized for a Hostinger
+# KVM 2 (2 vCPU / 8 GB RAM, Ubuntu 24.04): memory limits below add up to
+# ~5.7 GB, leaving the rest for the kernel and page cache.
+#
+#   docker compose -f infra/docker/docker-compose.prod.yml --env-file /opt/business-os/prod.env up -d --build
+#
+# Every setting comes from that env file (template: infra/docker/prod.env.example,
+# runbook: infra/deploy/README.md). Only Caddy publishes ports (80/443).
+# Postgres and Redis are reachable on the internal network only.
+name: business-os
+
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "5" }   # never fill the disk with logs
+
+x-api-env: &api-env
+  ENV: production
+  DATABASE_URL: postgres://${POSTGRES_USER:-businessos}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-businessos}
+  APP_DATABASE_URL: postgres://app_user:${APP_DB_PASSWORD:?set APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB:-businessos}
+  REDIS_URL: redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD}@redis:6379/0
+  WEB_ORIGIN: https://${APP_DOMAIN:?set APP_DOMAIN}
+  BOS_DATA_KEYS: ${BOS_DATA_KEYS:?set BOS_DATA_KEYS}
+  BOS_DATA_KEY_ACTIVE: ${BOS_DATA_KEY_ACTIVE:?set BOS_DATA_KEY_ACTIVE}
+  SENTRY_DSN: ${SENTRY_DSN:-}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  EMAIL_PROVIDER: ${EMAIL_PROVIDER:-smtp}
+  EMAIL_FROM: ${EMAIL_FROM:-Business OS <no-reply@example.com>}
+  SMTP_HOST: ${SMTP_HOST:-}
+  SMTP_PORT: ${SMTP_PORT:-587}
+  SMTP_USER: ${SMTP_USER:-}
+  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  # Until Phase 2B's worker lands, the API runs the scheduler (one replica only).
+  ENABLE_SCHEDULER: ${ENABLE_SCHEDULER:-true}
+
+x-backup-env: &backup-env
+  BACKUP_S3_ENDPOINT: ${BACKUP_S3_ENDPOINT:?set BACKUP_S3_ENDPOINT}
+  BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET:?set BACKUP_S3_BUCKET}
+  BACKUP_S3_ACCESS_KEY_ID: ${BACKUP_S3_ACCESS_KEY_ID:?set BACKUP_S3_ACCESS_KEY_ID}
+  BACKUP_S3_SECRET_ACCESS_KEY: ${BACKUP_S3_SECRET_ACCESS_KEY:?set BACKUP_S3_SECRET_ACCESS_KEY}
+  BACKUP_S3_REGION: ${BACKUP_S3_REGION:-auto}
+  BACKUP_S3_PROVIDER: ${BACKUP_S3_PROVIDER:-Cloudflare}
+  BACKUP_PREFIX: ${BACKUP_PREFIX:-business-os}
+  BACKUP_AGE_RECIPIENTS: ${BACKUP_AGE_RECIPIENTS:?set BACKUP_AGE_RECIPIENTS (age public keys)}
+
+services:
+  caddy:
+    build: { context: ../.., dockerfile: infra/caddy/Dockerfile }
+    image: business-os-caddy:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    ports:
+      - "${CADDY_HTTP_PORT:-80}:80"
+      - "${CADDY_HTTPS_PORT:-443}:443"
+      - "${CADDY_HTTPS_PORT:-443}:443/udp"   # HTTP/3
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?set APP_DOMAIN}
+      API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL}
+      CADDY_TLS: ${CADDY_TLS:-cloudflare}
+      CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN:-}
+    volumes:
+      - caddy_data:/data       # certificates + ACME account: keep across deploys
+      - caddy_config:/config
+    depends_on:
+      api: { condition: service_healthy }
+      web: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:2019/config/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    deploy: { resources: { limits: { memory: 192m } } }
+    logging: *logging
+
+  web:
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
+      args:
+        # Inlined into the browser bundle at build time. Becomes /api once the
+        # same-origin rewrite (D-51) lands; API_INTERNAL_URL is its upstream.
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://${API_DOMAIN}}
+        API_INTERNAL_URL: http://api:4000
+    image: business-os-web:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      API_INTERNAL_URL: http://api:4000
+    deploy: { resources: { limits: { memory: 512m } } }
+    logging: *logging
+
+  # One-shot, before the API starts: migrations, the app_user password from
+  # APP_DB_PASSWORD, and the credential-encryption backfill (idempotent).
+  migrate:
+    image: business-os-api:${IMAGE_TAG:-latest}
+    command: ["sh", "-c", "python -m scripts.migrate && python -m scripts.encrypt_credentials"]
+    environment: *api-env
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: "no"
+    logging: *logging
+
+  api:
+    build: { context: ../.., dockerfile: services/api/Dockerfile }
+    image: business-os-api:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      <<: *api-env
+      # X-Forwarded-For is trusted only from inside this network (Caddy).
+      FORWARDED_ALLOW_IPS: ${COMPOSE_SUBNET:-172.30.0.0/24}
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    # The image's HEALTHCHECK probes /health (liveness). Switch to /ready
+    # (DB + Redis + migration level) when Phase 2E adds it (gate O1).
+    deploy: { resources: { limits: { memory: 768m } } }
+    logging: *logging
+
+  # Phase 2B: the dedicated job/outbox worker. Off until its entrypoint exists;
+  # enable with `--profile worker` and set ENABLE_SCHEDULER=false for the API.
+  worker:
+    profiles: ["worker"]
+    image: business-os-api:${IMAGE_TAG:-latest}
+    command: ["python", "-m", "app.worker"]
+    restart: unless-stopped
+    environment: *api-env
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    healthcheck:
+      disable: true   # the image's check targets the API port; 2B adds its own
+    deploy: { resources: { limits: { memory: 512m } } }
+    logging: *logging
+
+  postgres:
+    build: { context: ../.., dockerfile: infra/backup/Dockerfile }
+    image: business-os-postgres:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    shm_size: 256m
+    environment:
+      <<: *backup-env
+      POSTGRES_USER: ${POSTGRES_USER:-businessos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-businessos}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    # Tuned for a 3 GB slice of an 8 GB VPS (SSD). archive_command ships every
+    # WAL segment off-site encrypted; archive_timeout caps the RPO at 5 min on
+    # a quiet day.
+    command:
+      - postgres
+      - -c
+      - hba_file=/etc/postgresql/pg_hba.conf
+      - -c
+      - max_connections=60
+      - -c
+      - shared_buffers=1GB
+      - -c
+      - effective_cache_size=3GB
+      - -c
+      - work_mem=8MB
+      - -c
+      - maintenance_work_mem=256MB
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - effective_io_concurrency=200
+      - -c
+      - wal_compression=on
+      - -c
+      - max_wal_size=2GB
+      - -c
+      - checkpoint_timeout=15min
+      - -c
+      - archive_mode=${BACKUP_ARCHIVE_MODE:-on}
+      - -c
+      - archive_command=/usr/local/bin/bos-wal-archive %p %f
+      - -c
+      - archive_timeout=300
+      - -c
+      - log_min_duration_statement=500ms
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # Over TCP: during first-boot init the entrypoint runs a socket-only
+      # server, which must not count as ready.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    deploy: { resources: { limits: { memory: 3g } } }
+    logging: *logging
+
+  redis:
+    image: redis:7.4-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+    restart: unless-stopped
+    # noeviction: Redis will hold rate-limit counters and job state (2B);
+    # silently evicting those is worse than a loud OOM error.
+    command: ["sh", "-c", "exec redis-server --appendonly yes --requirepass \"$$REDIS_PASSWORD\" --maxmemory 256mb --maxmemory-policy noeviction"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD}
+      REDISCLI_AUTH: ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    deploy: { resources: { limits: { memory: 320m } } }
+    logging: *logging
+
+  # Nightly encrypted pg_dump + weekly base backup + retention (infra/backup).
+  backup:
+    image: business-os-postgres:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    user: postgres
+    command: ["/usr/local/bin/bos-backup-scheduler"]
+    environment:
+      <<: *backup-env
+      POSTGRES_USER: ${POSTGRES_USER:-businessos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-businessos}
+      PGHOST: postgres
+      BACKUP_TIME_UTC: ${BACKUP_TIME_UTC:-21:30}
+      BACKUP_HEALTHCHECK_URL: ${BACKUP_HEALTHCHECK_URL:-}
+    depends_on:
+      postgres: { condition: service_healthy }
+    healthcheck:
+      disable: true
+    deploy: { resources: { limits: { memory: 384m } } }
+    logging: *logging
+
+volumes:
+  pgdata:
+  redis_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${COMPOSE_SUBNET:-172.30.0.0/24}

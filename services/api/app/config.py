@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # services/api/app/config.py -> parents[3] == monorepo root
@@ -10,7 +11,7 @@ ROOT_ENV = Path(__file__).resolve().parents[3] / ".env"
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=ROOT_ENV, extra="ignore")
+    model_config = SettingsConfigDict(env_file=ROOT_ENV, extra="ignore", populate_by_name=True)
 
     # Owner connection: migrations + auth/signup (bypasses RLS as table owner)
     database_url: str = "postgres://businessos:change_me_in_prod@localhost:5432/businessos"
@@ -20,11 +21,15 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379"  # rate limits, lockouts, alert de-dup (Redis 7+)
     redis_prefix: str = "bos:"
 
-    session_secret: str = "dev_only_change_me"
+    # Sessions are opaque random tokens stored hashed (security.py), so there
+    # is no signing secret to configure (P1-15: the unused default is gone).
     session_ttl_days: int = 30
 
     api_port: int = 4000
-    node_env: str = "development"
+    # ENV=production (NODE_ENV kept as a fallback for existing .env files)
+    # switches on the startup guard, Secure cookies, HSTS and hides /docs.
+    # Code asks `settings.is_prod`; node_env is only the label (logs, Sentry).
+    node_env: str = Field("development", validation_alias=AliasChoices("env", "node_env"))
     # Jobs run in the worker process (`python -m app.worker`), never in the API.
     worker_poll_s: float = 5.0
     worker_heartbeat_file: str = ""            # default: <tmp>/bos-worker-heartbeat
@@ -34,6 +39,12 @@ class Settings(BaseSettings):
     # Comma-separated CIDRs of the reverse proxy (Caddy). X-Forwarded-For is
     # believed only when the direct peer is in one of them; empty = never.
     trusted_proxy_cidrs: str = ""
+
+    # Master keys for credentials encrypted in the DB (app/crypto.py):
+    # JSON {"key_id": "<base64 of 32 random bytes>"}. Lives outside the DB and
+    # its backups. Empty = a public dev key, which production refuses.
+    bos_data_keys: str = ""
+    bos_data_key_active: str = ""
 
     sentry_dsn: str = ""                       # error tracking (no-op if empty)
     git_sha: str = ""                          # the release tag for Sentry and logs (CI sets it)

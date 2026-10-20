@@ -8,7 +8,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from .. import audit, db, fbr_submit
+from .. import audit, crypto, db, fbr, fbr_submit
 from ..deps import AuthContext
 from ..models import FbrInvoiceOut, FbrResolve, FbrSettingsOut, FbrSettingsUpdate
 from ..rbac import require
@@ -25,7 +25,7 @@ def _out(row) -> FbrSettingsOut:
         seller_province=row["seller_province"], seller_address=row["seller_address"],
         prices_include_tax=row["prices_include_tax"],
         # Write-only: a 5-year bearer token must not be readable back out of the API.
-        token_set=bool(row["token"]))
+        token_set=bool(row["token_enc"]))
 
 
 async def _ensure(conn, tenant_id: str):
@@ -51,6 +51,11 @@ async def update_settings(body: FbrSettingsUpdate,
     if fields.get("environment") not in (None, *ENVIRONMENTS):
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "environment must be sandbox or production")
 
+    # Encrypted before it reaches SQL; the plaintext column only accepts '' (0046).
+    token = fields.pop("token", None)
+    if token is not None:
+        fields["token_enc"] = crypto.encrypt(token, fbr.token_aad(auth.tenant_id)) if token else None
+
     async with db.tenant_conn(auth.tenant_id) as conn:
         await _ensure(conn, auth.tenant_id)
         if fields.get("enabled"):
@@ -59,7 +64,7 @@ async def update_settings(body: FbrSettingsUpdate,
             # from a tax notice.
             merged = {**dict(await _ensure(conn, auth.tenant_id)), **fields}
             missing = [k for k in ("seller_ntn_cnic", "seller_business_name",
-                                   "seller_province", "seller_address", "token") if not merged.get(k)]
+                                   "seller_province", "seller_address", "token_enc") if not merged.get(k)]
             if missing:
                 raise HTTPException(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -77,7 +82,7 @@ async def update_settings(body: FbrSettingsUpdate,
         row = await conn.fetchrow(
             f"update fbr_settings set {cols}, updated_at=now() where tenant_id=$1 returning *",
             auth.tenant_id, *fields.values())
-        # Audited by the fbr_settings trigger (0044), token masked there.
+        # Audited by the fbr_settings trigger (0044/0048), the token masked there.
     return _out(row)
 
 

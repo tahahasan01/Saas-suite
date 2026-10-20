@@ -22,6 +22,8 @@ from decimal import ROUND_HALF_UP, Decimal
 
 import httpx
 
+from . import crypto
+
 log = logging.getLogger("fbr")
 
 POST_URL = {
@@ -153,11 +155,29 @@ def _parse(body: dict) -> FbrResult:
     )
 
 
+def token_aad(tenant_id) -> bytes:
+    return crypto.aad(tenant_id, "fbr_settings", "token")
+
+
+def bearer_token(settings) -> str:
+    """The FBR token from an fbr_settings row. Stored only encrypted (S14)."""
+    blob = settings.get("token_enc")
+    return crypto.decrypt(blob, token_aad(settings["tenant_id"])) if blob else ""
+
+
 async def post_invoice(settings, payload: dict) -> FbrResult:
     """Transmit one invoice. Never raises — a government outage must not take
     the till down with it; the caller queues anything that is not ok."""
     url = POST_URL.get(settings["environment"], POST_URL["sandbox"])
-    headers = {"Authorization": f"Bearer {settings['token']}", "Content-Type": "application/json"}
+    try:
+        token = bearer_token(settings)
+    except crypto.DecryptError:
+        # Wrong/missing BOS_DATA_KEYS, or a blob copied from another tenant:
+        # nothing was sent, and resending will not help until it is fixed.
+        log.error("FBR token for tenant %s does not decrypt", settings.get("tenant_id"))
+        return FbrResult(ok=False, error_code="token",
+                         error="The saved FBR token cannot be read. Enter it again in Settings.")
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     try:
         async with httpx.AsyncClient(timeout=TIMEOUT_S) as client:
             r = await client.post(url, json=payload, headers=headers)

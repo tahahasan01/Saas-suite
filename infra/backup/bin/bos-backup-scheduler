@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# The `backup` container's main process: run bos-nightly once a day at
+# BACKUP_TIME_UTC (default 21:30 UTC = 02:30 PKT, the quietest hour for a
+# Pakistani retailer). A failed night is logged and pinged as /fail; the loop
+# carries on so one bad night never stops the next.
+set -uo pipefail
+at="${BACKUP_TIME_UTC:-21:30}"
+while true; do
+  now=$(date -u +%s)
+  next=$(date -u -d "today $at" +%s)
+  [ "$next" -le "$now" ] && next=$(date -u -d "tomorrow $at" +%s)
+  echo "$(date -u +%FT%TZ) next backup at $(date -u -d "@$next" +%FT%TZ)" >&2
+  sleep $(( next - now ))
+  /usr/local/bin/bos-nightly || echo "$(date -u +%FT%TZ) nightly backup failed (see above)" >&2
+done

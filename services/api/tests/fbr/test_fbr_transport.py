@@ -7,12 +7,17 @@ httpx's client is replaced by a stub.
 """
 from __future__ import annotations
 
+import uuid
+
 import httpx
 import pytest
 
-from app import fbr
+from app import crypto, fbr
 
-SETTINGS = {"environment": "sandbox", "token": "t"}
+_TENANT = uuid.uuid4()
+# Shaped like an fbr_settings row: the token is only ever stored encrypted.
+SETTINGS = {"environment": "sandbox", "tenant_id": _TENANT,
+            "token_enc": crypto.encrypt("t", fbr.token_aad(_TENANT))}
 REQUEST = httpx.Request("POST", fbr.POST_URL["sandbox"])
 
 

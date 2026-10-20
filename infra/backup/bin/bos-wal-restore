@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Postgres restore_command (restore host only): bos-wal-restore %f %p
+# Exits non-zero when the segment does not exist — that is how Postgres
+# learns it has reached the end of the archive.
+. /usr/local/bin/bos-backup-lib.sh
+name="$1"; dest="$2"
+src="$REMOTE/wal/$name.gz.age"
+rclone lsf "$src" 2>/dev/null | grep -q . || exit 1
+rclone cat "$src" | decrypt | gunzip -c > "$dest.part"
+mv "$dest.part" "$dest"

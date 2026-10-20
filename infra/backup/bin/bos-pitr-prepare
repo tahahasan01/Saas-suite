@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Prepare an EMPTY data directory for point-in-time recovery (restore host):
+#   bos-pitr-prepare <base-stamp|latest> "<target time, e.g. 2026-10-20 09:00:00+05>" <pgdata>
+# Then start Postgres on <pgdata>: it replays archived WAL (bos-wal-restore)
+# up to the target time and pauses so you can check before promoting:
+#   select pg_wal_replay_resume();   -- or pg_promote() once satisfied
+. /usr/local/bin/bos-backup-lib.sh
+base="${1:?base stamp or latest}"; target="${2:?target time}"; pgdata="${3:?empty data dir}"
+[ -z "$(ls -A "$pgdata" 2>/dev/null)" ] || die "$pgdata is not empty"
+if [ "$base" = latest ]; then
+  base="$(rclone lsf --dirs-only "$REMOTE/base" | sort | tail -n 1 | tr -d /)"
+fi
+log "fetch base/$base"
+rclone cat "$REMOTE/base/$base/base.tar.gz.age" | decrypt | gunzip -c | tar -x -C "$pgdata"
+cat >> "$pgdata/postgresql.auto.conf" <<EOF
+# bos-pitr-prepare $(date -u +%FT%TZ)
+restore_command = '/usr/local/bin/bos-wal-restore %f %p'
+recovery_target_time = '$target'
+recovery_target_action = 'pause'
+archive_mode = 'off'
+EOF
+touch "$pgdata/recovery.signal"
+chmod 700 "$pgdata"
+log "ready: start postgres on $pgdata (target $target)"
