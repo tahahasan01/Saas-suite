@@ -111,7 +111,10 @@ async def test_an_unhandled_error_still_returns_the_request_id():
     async def boom(scope, receive, send):
         raise RuntimeError("kaput")
 
-    handler_app = ServerErrorMiddleware(obs.RequestContextMiddleware(boom), handler=unhandled_exception_handler)
+    from app.context import RequestContextMiddleware
+
+    handler_app = ServerErrorMiddleware(RequestContextMiddleware(obs.AccessLogMiddleware(boom)),
+                                        handler=unhandled_exception_handler)
     async with AsyncClient(transport=ASGITransport(app=handler_app, raise_app_exceptions=False),
                            base_url="http://t") as c:
         r = await c.get("/anything")
@@ -131,10 +134,12 @@ async def test_an_access_line_names_the_request_tenant_and_user(client, crm_tena
     assert line["level"] == "info" and line["service"] == "api"
 
 
-async def test_unauthenticated_requests_log_as_anonymous(client, json_logs):
+async def test_unauthenticated_requests_log_without_an_actor(client, json_logs):
     await client.get("/auth/me")
     [line] = [l for l in json_logs() if l.get("route") == "/auth/me"]
-    assert line["actor_kind"] == "anonymous" and "tenant_id" not in line and line["status"] == 401
+    # No session: the audit context's default actor ('system'), no user, no tenant.
+    assert line["actor_kind"] == "system" and line["status"] == 401
+    assert "tenant_id" not in line and "user_id" not in line
 
 
 def test_log_lines_redact_pii_and_secrets(json_logs):
@@ -157,7 +162,19 @@ def test_long_identifiers_and_uuids_survive_redaction():
 
 
 def test_sentry_events_are_tagged_and_scrubbed():
-    obs.new_context(request_id="rid-12345678", tenant_id="t-1", user_id="u-1")
+    from app import context as actor_context
+
+    token = actor_context._current.set(actor_context.ActorContext(request_id="rid-12345678",
+                                                                  actor_kind="user", actor_id="u-1"))
+    obs.new_context(tenant_id="t-1")
+    try:
+        _scrub_checks()
+    finally:
+        actor_context._current.reset(token)
+        obs.new_context()
+
+
+def _scrub_checks():
     event = {
         "request": {"cookies": {"bos_session": "secret"}, "data": {"password": "x"},
                     "query_string": "token=abc", "headers": {"Cookie": "bos_session=1", "User-Agent": "ua"}},
@@ -194,7 +211,7 @@ async def test_a_5xx_spike_alerts_once_per_window(raised, monkeypatch):
         await send({"type": "http.response.start", "status": 503, "headers": []})
         await send({"type": "http.response.body", "body": b""})
 
-    async with AsyncClient(transport=ASGITransport(app=obs.RequestContextMiddleware(fails)),
+    async with AsyncClient(transport=ASGITransport(app=obs.AccessLogMiddleware(fails)),
                            base_url="http://t") as c:
         for _ in range(6):
             await c.get("/x")

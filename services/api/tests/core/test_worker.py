@@ -226,6 +226,23 @@ async def test_a_running_job_inside_its_timeout_is_left_alone(job):
     assert (await _job(job["code"]))["status"] == "running"
 
 
+async def test_a_job_runs_as_actor_kind_job_for_the_audit_trail(job, monkeypatch):
+    """Tenant connections opened by a job carry actor_kind 'job' and a
+    job:<code>:<run> request id (migration 0044's audit trigger reads them)."""
+    seen = {}
+
+    async def handler():
+        async with db.tenant_conn("00000000-0000-0000-0000-000000000000") as conn:
+            seen.update(await conn.fetchrow(
+                "select current_setting('app.actor_kind', true) as kind, "
+                "current_setting('app.request_id', true) as rid"))
+
+    monkeypatch.setitem(jobs.HANDLERS, job["code"], handler)
+    await jobs.run_due("w", only=[job["code"]])
+    [run] = await _runs(job["code"])
+    assert seen == {"kind": "job", "rid": f"job:{job['code']}:{run['id']}"}
+
+
 # ── The long-running loop ───────────────────────────────────────────────────
 async def test_the_worker_loop_runs_due_jobs_and_stops_cleanly(job, monkeypatch):
     from app import worker

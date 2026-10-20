@@ -26,7 +26,7 @@ import asyncio
 import logging
 from typing import Any, Awaitable, Callable
 
-from . import alerts, db, email, fbr_submit, monitor, notifications, obs
+from . import alerts, context, db, email, fbr_submit, monitor, notifications, obs
 from .routers.pos import _VELOCITY_SQL
 
 log = logging.getLogger("jobs")
@@ -234,8 +234,14 @@ async def reap() -> list[str]:
 # ── Running ─────────────────────────────────────────────────────────────────
 async def execute(c: dict) -> None:
     """Run one claimed job to completion, failure or timeout. Never raises
-    (except cancellation, after handing the job back)."""
-    obs.bind(job_code=c["code"], job_run_id=c["run_id"], actor_kind="job")
+    (except cancellation, after handing the job back). Runs as actor_kind
+    'job' (context.job), so every tenant_conn it opens audits as this run."""
+    obs.bind(job_code=c["code"], job_run_id=c["run_id"])
+    with context.job(c["code"], str(c["run_id"])):
+        await _execute(c)
+
+
+async def _execute(c: dict) -> None:
     handler = HANDLERS.get(c["code"])
     if handler is None:
         await finish(c, ok=False, error=f"no handler registered for {c['code']}")

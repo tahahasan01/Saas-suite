@@ -1,23 +1,22 @@
-"""Observability: request context, JSON logs with PII redaction, Sentry,
-and the request middleware (gates O2, O3; 12-trd TR-NFR-20/21, TR-CONV-11).
+"""Observability: JSON logs with PII redaction, Sentry, and the access-log
+middleware (gates O2, O3, O5; 12-trd TR-NFR-20/21).
 
-Context. Each request (and each job run) gets one context dict —
-request_id, tenant_id, user_id, actor_kind, job_code — held in a
-contextvar. Every log line and Sentry event made while handling it carries
-those fields. deps.current_auth binds the tenant and user once the session
-is resolved. The dict itself is shared by everything awaited inside the
-request, so a value bound deep in a dependency is visible to the access log.
+Context. Who is acting comes from app/context.py — the request id (its
+RequestContextMiddleware keeps a safe client X-Request-ID or makes one and
+echoes it), actor_kind and actor id, set by deps.current_auth or by
+context.job() in the worker. This module adds the log-only fields: the
+tenant (bound by deps.current_auth) and, in the worker, job_code / job_run_id.
+Every log line and Sentry event carries all of them.
 
 Redaction. Log messages, log extras and Sentry events go through `redact()`:
 emails, Pakistani and international phone numbers, CNICs, bearer tokens,
 `token=`/`password=`-style pairs and long opaque strings are masked; extras
 whose key names a secret or PII field are dropped to "[redacted]".
 
-Request middleware (pure ASGI, outermost):
-  * accepts a well-formed client X-Request-ID, otherwise makes one, and
-    returns it on every response (also inside the 500 body);
-  * one access log line per request: method, route, status, duration_ms
-    (no query string — it can carry tokens; /health and /ready are skipped);
+Access-log middleware (pure ASGI, just inside the request context):
+  * one access line per request: method, route, status, duration_ms (no
+    query string — it can carry tokens; /health and /ready are skipped);
+  * hands the request id to the 500 handler (which runs outside it);
   * counts 5xx, 401 and 429/423 responses per 5-minute window in the shared
     store and alerts when a window crosses its threshold (gate O5).
 """
@@ -29,19 +28,19 @@ import logging
 import re
 import sys
 import time
-import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+from . import context as actor_context
 from .config import settings
 
 log = logging.getLogger("api.access")
 
-_ctx: contextvars.ContextVar[dict[str, Any]] = contextvars.ContextVar("bos_ctx")
-CONTEXT_FIELDS = ("request_id", "tenant_id", "user_id", "actor_kind", "job_code", "job_run_id")
+# Log-only extras (tenant_id, job_code, job_run_id) for this request or job run.
+_ctx: contextvars.ContextVar[dict[str, Any]] = contextvars.ContextVar("bos_log_ctx")
 
 
-def context() -> dict[str, Any]:
+def _extras() -> dict[str, Any]:
     try:
         return _ctx.get()
     except LookupError:
@@ -51,25 +50,40 @@ def context() -> dict[str, Any]:
 
 
 def new_context(**kv: Any) -> dict[str, Any]:
-    d = {k: v for k, v in kv.items() if v is not None}
+    d = {k: str(v) for k, v in kv.items() if v is not None}
     _ctx.set(d)
     return d
 
 
 def bind(**kv: Any) -> None:
-    context().update({k: str(v) if v is not None else None for k, v in kv.items()})
+    _extras().update({k: str(v) if v is not None else None for k, v in kv.items()})
     _sentry_tags(kv)
 
 
 async def in_new_context(coro, **kv: Any):
-    """Run `coro` with its own context (one per job run in the worker). Call
-    it inside its own task (gather/create_task) so the contexts stay apart."""
+    """Run `coro` with its own log extras (one per job run in the worker).
+    Call it inside its own task (gather/create_task) so they stay apart."""
     new_context(**kv)
     return await coro
 
 
+def fields() -> dict[str, Any]:
+    """Everything a log line or Sentry event should name about who and where."""
+    out: dict[str, Any] = {}
+    ctx = actor_context.current()
+    if ctx is not None:
+        if ctx.request_id:
+            out["request_id"] = ctx.request_id
+        out["actor_kind"] = ctx.actor_kind
+        if ctx.actor_id:
+            out["user_id"] = ctx.actor_id
+    out.update({k: v for k, v in _extras().items() if v is not None})
+    return out
+
+
 def request_id() -> str | None:
-    return context().get("request_id")
+    ctx = actor_context.current()
+    return ctx.request_id if ctx else None
 
 
 # ── Redaction ───────────────────────────────────────────────────────────────
@@ -137,7 +151,7 @@ class JsonFormatter(logging.Formatter):
         }
         if settings.git_sha:
             out["release"] = settings.git_sha
-        out.update({k: v for k, v in context().items() if v is not None})
+        out.update(fields())
         extras = {k: v for k, v in record.__dict__.items() if k not in _RESERVED and not k.startswith("_")}
         out.update(extras if raw else redact(extras))
         if record.exc_info:
@@ -152,7 +166,7 @@ class TextFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         raw = _may_skip_redaction(record)
         line = super().format(record)
-        rid = context().get("request_id")
+        rid = request_id()
         line = f"{line} [rid={rid}]" if rid else line
         return line if raw else redact(line)
 
@@ -194,10 +208,10 @@ def scrub_event(event: dict, hint: dict | None = None) -> dict:
     tags = event.setdefault("tags", {})
     # Ours win: our context is per task, while a Sentry scope can be shared by
     # the worker's concurrent jobs.
+    now = fields()
     for k in ("request_id", "tenant_id", "user_id", "job_code"):
-        v = context().get(k)
-        if v:
-            tags[k] = v
+        if now.get(k):
+            tags[k] = now[k]
     req = event.get("request")
     if isinstance(req, dict):
         for k in ("cookies", "data", "query_string", "env"):
@@ -246,8 +260,7 @@ def init_sentry(service: str) -> bool:
     return True
 
 
-# ── Request middleware ──────────────────────────────────────────────────────
-_RID_OK = re.compile(r"^[A-Za-z0-9._-]{8,128}$")
+# ── Access-log middleware ───────────────────────────────────────────────────
 _QUIET = ("/health", "/ready")
 WINDOW_S = 300
 
@@ -278,39 +291,37 @@ async def count_status(status: int) -> None:
                          severity="error" if status >= 500 else "warning", window=window, count=n)
 
 
-class RequestContextMiddleware:
+class AccessLogMiddleware:
+    """Install inside context.RequestContextMiddleware, which owns the id."""
+
     def __init__(self, app):
         self.app = app
 
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
-        incoming = dict(scope.get("headers") or []).get(b"x-request-id", b"").decode("latin-1")
-        rid = incoming if _RID_OK.match(incoming) else str(uuid.uuid4())
-        new_context(request_id=rid, actor_kind="anonymous")
-        _sentry_tags({"request_id": rid})
-        scope.setdefault("state", {})["request_id"] = rid   # for the 500 handler
+        new_context()                                   # fresh log extras per request
+        rid = request_id()
+        if rid:
+            _sentry_tags({"request_id": rid})
+            scope.setdefault("state", {})["request_id"] = rid   # for the 500 handler
         started = time.perf_counter()
         status_holder = {"status": 500}
 
-        async def send_with_id(message):
+        async def send_status(message):
             if message["type"] == "http.response.start":
                 status_holder["status"] = message["status"]
-                headers = [(k, v) for k, v in message.get("headers", []) if k.lower() != b"x-request-id"]
-                headers.append((b"x-request-id", rid.encode("latin-1")))
-                message = {**message, "headers": headers}
             await send(message)
 
         try:
-            await self.app(scope, receive, send_with_id)
+            await self.app(scope, receive, send_status)
         finally:
             status = status_holder["status"]
             path = scope.get("path", "")
             if not path.startswith(_QUIET):
-                route = scope.get("route")
-                log.info("%s %s %s", scope.get("method"), getattr(route, "path", path), status,
-                         extra={"method": scope.get("method"), "route": getattr(route, "path", path),
-                                "status": status,
+                route = getattr(scope.get("route"), "path", path)
+                log.info("%s %s %s", scope.get("method"), route, status,
+                         extra={"method": scope.get("method"), "route": route, "status": status,
                                 "duration_ms": round((time.perf_counter() - started) * 1000, 1)})
                 try:
                     await count_status(status)
