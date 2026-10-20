@@ -103,7 +103,7 @@ def default_ring() -> KeyRing:
     return _ring
 
 
-def aad(tenant_id, table: str, column: str) -> bytes:
+def aad(tenant_id: object, table: str, column: str) -> bytes:
     return f"{tenant_id}|{table}|{column}".encode()
 
 

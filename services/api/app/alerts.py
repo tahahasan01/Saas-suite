@@ -65,7 +65,7 @@ def _log_sink(a: Alert) -> None:
                    **{f"alert_{k}": v for k, v in a.fields.items()}})
 
 
-async def _post(url: str, payload: dict) -> None:
+async def _post(url: str, payload: dict[str, Any]) -> None:
     import httpx
 
     async with httpx.AsyncClient(timeout=5) as c:
@@ -120,4 +120,4 @@ def emit_soon(event: str, message: str, **kw: Any) -> None:
         pass
 
 
-_pending: set[asyncio.Task] = set()
+_pending: set[asyncio.Task[Alert | None]] = set()

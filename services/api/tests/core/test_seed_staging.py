@@ -7,6 +7,7 @@ import uuid
 import asyncpg
 import pytest
 
+from app import crypto, fbr
 from app.config import settings
 from scripts import seed_staging
 
@@ -19,7 +20,7 @@ async def _tenant_of(email: str):
     owner = await asyncpg.connect(settings.database_url)
     try:
         return await owner.fetchrow(
-            """select u.tenant_id, f.environment, f.token, f.enabled
+            """select u.tenant_id, f.environment, f.token, f.token_enc, f.enabled
                  from users u left join fbr_settings f on f.tenant_id = u.tenant_id
                 where u.email = $1""", email)
     finally:
@@ -46,7 +47,9 @@ async def test_seeds_once_and_points_fbr_at_the_sandbox(client):
         assert first.tenant_id == again.tenant_id
         row = await _tenant_of(email)
         assert row["environment"] == "sandbox"
-        assert row["token"]  # stored (2D encrypts it at rest), never echoed back by the API
+        # Stored encrypted at rest (0046), never as plaintext, never echoed back by the API.
+        assert row["token"] == "" and row["token_enc"]
+        assert crypto.decrypt(row["token_enc"], fbr.token_aad(first.tenant_id)) == "sandbox-token-from-pral"
         assert first.fbr == "sandbox"
     finally:
         await _drop(uuid.UUID(first.tenant_id))

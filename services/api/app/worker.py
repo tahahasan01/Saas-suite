@@ -53,8 +53,17 @@ def _beat() -> None:
         pass
 
 
+def healthcheck() -> int:
+    """0 if the loop touched the heartbeat file recently, else 1."""
+    try:
+        age = time.time() - float(HEARTBEAT.read_text())
+    except (OSError, ValueError):
+        return 1
+    return 0 if age < max(60.0, settings.worker_poll_s * 6) else 1
+
+
 async def serve(stop: asyncio.Event, wid: str, only: list[str] | None = None) -> None:
-    running: set[asyncio.Task] = set()
+    running: set[asyncio.Task[None]] = set()
     log.info("worker %s started (poll every %ss)", wid, settings.worker_poll_s)
     while not stop.is_set():
         try:
@@ -104,11 +113,7 @@ async def main(argv: list[str] | None = None) -> int:
     args = p.parse_args(argv)
 
     if args.healthcheck:
-        try:
-            age = time.time() - float(HEARTBEAT.read_text())
-        except (OSError, ValueError):
-            return 1
-        return 0 if age < max(60.0, settings.worker_poll_s * 6) else 1
+        return healthcheck()
 
     # Same credentials as the API, same refusal (S10): exits 78 before any I/O.
     startup_guard.enforce(settings)

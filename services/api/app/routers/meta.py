@@ -14,7 +14,10 @@ say nothing about tenants or versions beyond the migration head.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
+from contextlib import AbstractAsyncContextManager
 from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
@@ -32,14 +35,14 @@ def migrations_dir() -> Path:
 
 
 @router.get("/health")
-async def health() -> dict:
+async def health() -> dict[str, str]:
     return {"status": "ok", "service": "business-os-api"}
 
 
-async def _db_ok(pool_conn) -> bool:
+async def _db_ok(pool_conn: Callable[[], AbstractAsyncContextManager[Any]]) -> bool:
     try:
         async with pool_conn() as conn:
-            return await asyncio.wait_for(conn.fetchval("select 1"), timeout=2) == 1
+            return bool(await asyncio.wait_for(conn.fetchval("select 1"), timeout=2) == 1)
     except Exception:  # noqa: BLE001 — any failure means not ready
         return False
 
@@ -64,13 +67,14 @@ async def ready() -> JSONResponse:
     db_owner, db_app, redis_ok, (mig_ok, head, missing) = await asyncio.gather(
         _db_ok(db.owner_conn), _db_ok(_app_conn), store.ping(), _migrations())
     checks = {"database": db_owner and db_app, "redis": redis_ok, "migrations": mig_ok}
-    body = {"status": "ready" if all(checks.values()) else "not_ready", "checks": checks,
+    body: dict[str, Any] = {"status": "ready" if all(checks.values()) else "not_ready", "checks": checks,
             "migration_head": head}
     if missing:
         body["migrations_missing"] = missing[:20]
     return JSONResponse(body, status_code=200 if all(checks.values()) else 503)
 
 
-def _app_conn():
+def _app_conn() -> AbstractAsyncContextManager[Any]:
     # The runtime pool (RLS-enforced role) must answer too, not just the owner's.
-    return db._app().acquire()
+    acquire: AbstractAsyncContextManager[Any] = db._app().acquire()
+    return acquire

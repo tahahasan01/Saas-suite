@@ -3,6 +3,7 @@ Guarded by the 'hrms' section. Mobile face-match/biometric plug into attendance 
 from __future__ import annotations
 
 import calendar
+from typing import Literal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
 
@@ -594,7 +595,7 @@ async def decide_leave(leave_id: str, decision: str,
     leave could approve their own (the audit's separation-of-duties finding)."""
     if decision not in ("approve", "reject"):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "decision must be approve or reject")
-    new_status = "approved" if decision == "approve" else "rejected"
+    new_status: Literal["approved", "rejected"] = "approved" if decision == "approve" else "rejected"
     async with db.tenant_conn(auth.tenant_id) as conn:
         # Locked so two approvers can't both decide it.
         req = await conn.fetchrow("select * from hrms_leave_requests where id=$1 for update", leave_id)

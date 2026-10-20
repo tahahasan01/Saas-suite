@@ -10,6 +10,7 @@ not every five minutes.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from . import alerts, db
 from .config import settings
@@ -39,7 +40,7 @@ select code, last_success_at from scheduled_jobs
  order by code"""
 
 
-async def outbox_lag() -> list[dict]:
+async def outbox_lag() -> list[dict[str, Any]]:
     async with db.owner_conn() as oc:
         rows = await oc.fetch(_LAG, settings.outbox_lag_alert_min)
     for r in rows:
@@ -59,7 +60,7 @@ async def stale_jobs() -> list[str]:
     return [r["code"] for r in rows]
 
 
-async def check() -> dict:
+async def check() -> dict[str, Any]:
     return {"outbox_lag": await outbox_lag(), "stale_jobs": await stale_jobs()}
 
 

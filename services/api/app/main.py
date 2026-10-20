@@ -38,8 +38,11 @@ async def lifespan(app: FastAPI):
 
 
 # The schema and Swagger UI are a map of every endpoint: dev only (S11).
-_docs = {"docs_url": None, "redoc_url": None, "openapi_url": None} if settings.is_prod else {}
-app = FastAPI(title="Business OS API", version="0.1.0", lifespan=lifespan, **_docs)
+_docs: dict[str, str | None] = (
+    {"docs_url": None, "redoc_url": None, "openapi_url": None} if settings.is_prod
+    else {"docs_url": "/docs", "redoc_url": "/redoc", "openapi_url": "/openapi.json"})
+app = FastAPI(title="Business OS API", version="0.1.0", lifespan=lifespan,
+              docs_url=_docs["docs_url"], redoc_url=_docs["redoc_url"], openapi_url=_docs["openapi_url"])
 
 # Added before CORS so CORS stays outermost and a 413 still carries its headers.
 app.add_middleware(BodyLimitMiddleware)

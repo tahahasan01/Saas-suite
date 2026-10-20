@@ -4,6 +4,7 @@ invoicing.invoice.approve key (legacy accounts:admin), never a role name."""
 from __future__ import annotations
 
 import io
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -64,7 +65,7 @@ async def create_invoice(body: InvoiceCreate, auth: AuthContext = Depends(requir
     return _out(row)
 
 
-async def _decide(invoice_id: str, auth: AuthContext, new_status: str) -> InvoiceOut:
+async def _decide(invoice_id: str, auth: AuthContext, new_status: Literal["approved", "rejected"]) -> InvoiceOut:
     async with db.tenant_conn(auth.tenant_id) as conn:
         cur = await conn.fetchrow("select requested_by, status from crm_invoice_requests where id=$1", invoice_id)
         if cur is None:

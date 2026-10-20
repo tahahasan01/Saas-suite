@@ -29,12 +29,16 @@ import re
 import sys
 import time
 from datetime import datetime, timezone
-from typing import Any
+from collections.abc import Awaitable
+from typing import Any, TypeVar
+
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from . import context as actor_context
 from .config import settings
 
 log = logging.getLogger("api.access")
+T = TypeVar("T")
 
 # Log-only extras (tenant_id, job_code, job_run_id) for this request or job run.
 _ctx: contextvars.ContextVar[dict[str, Any]] = contextvars.ContextVar("bos_log_ctx")
@@ -60,7 +64,7 @@ def bind(**kv: Any) -> None:
     _sentry_tags(kv)
 
 
-async def in_new_context(coro, **kv: Any):
+async def in_new_context(coro: Awaitable[T], **kv: Any) -> T:
     """Run `coro` with its own log extras (one per job run in the worker).
     Call it inside its own task (gather/create_task) so they stay apart."""
     new_context(**kv)
@@ -202,7 +206,7 @@ def _sentry_tags(kv: dict[str, Any]) -> None:
         sentry_sdk.set_user({"id": str(kv["user_id"])})   # an id only, never an email
 
 
-def scrub_event(event: dict, hint: dict | None = None) -> dict:
+def scrub_event(event: Any, hint: Any = None) -> Any:
     """Sentry before_send: tag with our context, strip what could hold PII or
     credentials (cookies, headers, bodies, query strings), redact the rest."""
     tags = event.setdefault("tags", {})
@@ -294,10 +298,10 @@ async def count_status(status: int) -> None:
 class AccessLogMiddleware:
     """Install inside context.RequestContextMiddleware, which owns the id."""
 
-    def __init__(self, app):
+    def __init__(self, app: ASGIApp) -> None:
         self.app = app
 
-    async def __call__(self, scope, receive, send):
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
         new_context()                                   # fresh log extras per request
@@ -308,7 +312,7 @@ class AccessLogMiddleware:
         started = time.perf_counter()
         status_holder = {"status": 500}
 
-        async def send_status(message):
+        async def send_status(message: Message) -> None:
             if message["type"] == "http.response.start":
                 status_holder["status"] = message["status"]
             await send(message)

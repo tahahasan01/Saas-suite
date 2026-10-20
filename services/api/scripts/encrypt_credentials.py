@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import sys
+from typing import Any
 
 import asyncpg
 
@@ -49,7 +50,7 @@ async def backfill(conn: asyncpg.Connection, *, ring: crypto.KeyRing | None = No
     return moved
 
 
-async def verify(conn: asyncpg.Connection, *, ring: crypto.KeyRing | None = None) -> dict:
+async def verify(conn: asyncpg.Connection, *, ring: crypto.KeyRing | None = None) -> dict[str, Any]:
     rows = await conn.fetch(
         "select tenant_id, token, token_enc from fbr_settings where token_enc is not null or token <> ''")
     report = {"encrypted": 0, "plaintext": 0, "failed": 0}

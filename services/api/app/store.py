@@ -24,6 +24,8 @@ import logging
 import time
 import uuid
 from collections import OrderedDict
+from collections.abc import Awaitable, Callable
+from typing import Any, TypeVar
 
 from .config import settings
 
@@ -73,7 +75,7 @@ class _Memory:
     def _part_of(name: str) -> bool:
         return name.startswith(_PROTECTED)
 
-    def _d(self, name: str) -> OrderedDict:
+    def _d(self, name: str) -> OrderedDict[str, tuple[int, float]]:
         return self._protected if self._part_of(name) else self._general
 
     def _live(self, name: str, k: str) -> tuple[int, float] | None:
@@ -141,14 +143,15 @@ _mem = _Memory()
 
 
 # ── Redis ───────────────────────────────────────────────────────────────────
-def _redis():
+def _redis() -> Any:
     """One client per event loop (a pooled connection can't cross loops)."""
     global _client, _client_loop
     loop = asyncio.get_running_loop()
     if _client is None or _client_loop is not loop:
         import redis.asyncio as aioredis
 
-        _client = aioredis.from_url(settings.redis_url, socket_timeout=0.5,
+        from_url: Any = aioredis.from_url   # untyped in redis-py
+        _client = from_url(settings.redis_url, socket_timeout=0.5,
                                     socket_connect_timeout=0.5, decode_responses=True)
         _client_loop = loop
     return _client
@@ -158,10 +161,15 @@ def degraded() -> bool:
     return time.monotonic() < _down_until
 
 
-_FALLBACK = object()
+class _Fallback:
+    """Returned by _try when Redis is down: use the in-process map."""
 
 
-async def _try(op):
+_FALLBACK = _Fallback()
+T = TypeVar("T")
+
+
+async def _try(op: Callable[[Any], Awaitable[T]]) -> T | _Fallback:
     """Run `op(redis)`; on any Redis failure, note the outage (log + alert)
     and return the sentinel so the caller uses the in-process map."""
     global _down_until
@@ -184,7 +192,7 @@ async def incr(name: str, ttl_s: int) -> int:
     """Increment a counter that expires `ttl_s` after its first increment."""
     k = key(name)
 
-    async def op(r):
+    async def op(r: Any) -> int:
         async with r.pipeline(transaction=True) as p:
             p.incr(k)
             p.expire(k, ttl_s, nx=True)
@@ -192,26 +200,26 @@ async def incr(name: str, ttl_s: int) -> int:
         return int(n)
 
     out = await _try(op)
-    return _mem.incr(name, k, ttl_s) if out is _FALLBACK else out
+    return _mem.incr(name, k, ttl_s) if isinstance(out, _Fallback) else out
 
 
 async def get(name: str) -> int:
     k = key(name)
 
-    async def op(r):
+    async def op(r: Any) -> int:
         return int(await r.get(k) or 0)
 
     out = await _try(op)
-    return _mem.get(name, k) if out is _FALLBACK else out
+    return _mem.get(name, k) if isinstance(out, _Fallback) else out
 
 
 async def put(name: str, value: int, ttl_s: int) -> None:
     k = key(name)
 
-    async def op(r):
+    async def op(r: Any) -> None:
         await r.set(k, value, ex=ttl_s)
 
-    if await _try(op) is _FALLBACK:
+    if isinstance(await _try(op), _Fallback):
         _mem.set(name, k, value, ttl_s)
 
 
@@ -219,10 +227,10 @@ async def expire(name: str, ttl_s: int) -> None:
     """Reset an existing key's time to live."""
     k = key(name)
 
-    async def op(r):
+    async def op(r: Any) -> None:
         await r.expire(k, ttl_s)
 
-    if await _try(op) is _FALLBACK:
+    if isinstance(await _try(op), _Fallback):
         _mem.expire(name, k, ttl_s)
 
 
@@ -230,20 +238,20 @@ async def ttl(name: str) -> int:
     """Seconds until `name` expires; 0 if it doesn't exist."""
     k = key(name)
 
-    async def op(r):
+    async def op(r: Any) -> int:
         return max(0, int(await r.ttl(k)))
 
     out = await _try(op)
-    return _mem.ttl(name, k) if out is _FALLBACK else out
+    return _mem.ttl(name, k) if isinstance(out, _Fallback) else out
 
 
 async def delete(*names: str) -> None:
     ks = [key(n) for n in names]
 
-    async def op(r):
+    async def op(r: Any) -> None:
         await r.delete(*ks)
 
-    if await _try(op) is _FALLBACK:
+    if isinstance(await _try(op), _Fallback):
         for n, k in zip(names, ks):
             _mem.delete(n, k)
 
@@ -252,11 +260,11 @@ async def claim_once(name: str, ttl_s: int) -> bool:
     """True the first time within `ttl_s` (SET NX): de-duplicates alerts."""
     k = key(name)
 
-    async def op(r):
+    async def op(r: Any) -> bool:
         return bool(await r.set(k, 1, ex=ttl_s, nx=True))
 
     out = await _try(op)
-    return _mem.set_nx(name, k, ttl_s) if out is _FALLBACK else out
+    return _mem.set_nx(name, k, ttl_s) if isinstance(out, _Fallback) else out
 
 
 async def ping() -> bool:

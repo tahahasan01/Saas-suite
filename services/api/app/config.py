@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     # ENV=production (NODE_ENV kept as a fallback for existing .env files)
     # switches on the startup guard, Secure cookies, HSTS and hides /docs.
     # Code asks `settings.is_prod`; node_env is only the label (logs, Sentry).
-    node_env: str = Field("development", validation_alias=AliasChoices("env", "node_env"))
+    node_env: str = Field(default="development", validation_alias=AliasChoices("env", "node_env"))
     # Jobs run in the worker process (`python -m app.worker`), never in the API.
     worker_poll_s: float = 5.0
     worker_heartbeat_file: str = ""            # default: <tmp>/bos-worker-heartbeat

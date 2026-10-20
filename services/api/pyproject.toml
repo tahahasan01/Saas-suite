@@ -33,9 +33,22 @@ no_implicit_optional = true
 
 [[tool.mypy.overrides]]
 module = [
+    "app.alerts",
+    "app.attendance",
+    "app.context",
+    "app.crypto",
+    "app.monitor",
+    "app.obs",
     "app.pricing",
+    "app.routers.meta",
+    "app.secheaders",
+    "app.startup_guard",
+    "app.store",
+    "app.worker",
+    "scripts.encrypt_credentials",
     "scripts.export_openapi",
     "scripts.seed_staging",
+    "scripts.with_db",
 ]
 # `strict` itself is global-only in mypy, so its per-module parts are spelled out.
 disallow_untyped_defs = true

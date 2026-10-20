@@ -19,6 +19,8 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
 
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
+
 from .models import ActorKind
 
 REQUEST_ID_HEADER = "X-Request-ID"
@@ -84,10 +86,10 @@ class RequestContextMiddleware:
     (the caller's X-Request-ID if it is safe, else a new one), echoed back on
     the response."""
 
-    def __init__(self, app):
+    def __init__(self, app: ASGIApp) -> None:
         self.app = app
 
-    async def __call__(self, scope, receive, send):
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
@@ -95,7 +97,7 @@ class RequestContextMiddleware:
         rid = supplied if _SAFE_ID.match(supplied) else uuid.uuid4().hex
         token = _current.set(ActorContext(request_id=rid))
 
-        async def send_with_id(message):
+        async def send_with_id(message: Message) -> None:
             if message["type"] == "http.response.start":
                 headers = list(message.get("headers") or [])
                 headers.append((REQUEST_ID_HEADER.lower().encode(), rid.encode()))

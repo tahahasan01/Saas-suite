@@ -29,8 +29,14 @@ set (D-11), so DST zones work without a timezone library here.
 from __future__ import annotations
 
 import math
+import uuid
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
+
+import asyncpg
+
+# Ids arrive as strings from the API and as UUIDs from the database.
+Id = str | uuid.UUID
 
 
 @dataclass(frozen=True)
@@ -109,12 +115,13 @@ def derive(punches: list[Punch], *, rule: Rule | None, late_after_at: datetime |
 
     if rule is None:
         late = first_in is not None and late_after_at is not None and first_in >= late_after_at
-        late_min = _minutes_up(first_in - late_after_at) if late else 0
+        late_min = _minutes_up(first_in - late_after_at) if late and first_in and late_after_at else 0
         return Day("late" if late else "present", late_min, 0, worked_min, first_in, last_out,
                    missing, day_over)
 
     late_min = _minutes_up(first_in - (rule.start_at + timedelta(minutes=rule.grace_in_min))) if first_in else 0
-    early_min = _minutes_up(rule.end_at - timedelta(minutes=rule.grace_out_min) - last_out) if checked_out else 0
+    early_min = (_minutes_up(rule.end_at - timedelta(minutes=rule.grace_out_min) - last_out)
+                 if checked_out and last_out is not None else 0)
     if judged and worked_min < rule.absent_below_min:
         status = "absent"
     elif judged and worked_min < rule.half_day_below_min:
@@ -140,18 +147,18 @@ select s.* from hrms_shift_assignments a join hrms_shifts s on s.id = a.shift_id
  order by a.date_from desc limit 1"""
 
 
-def _shift(r) -> Shift:
+def _shift(r: asyncpg.Record) -> Shift:
     return Shift(id=str(r["id"]), name=r["name"], start_time=r["start_time"], end_time=r["end_time"],
                  grace_in_min=r["grace_in_min"], grace_out_min=r["grace_out_min"],
                  half_day_below_min=r["half_day_below_min"], absent_below_min=r["absent_below_min"])
 
 
-async def shift_for(conn, employee_id, day: date) -> Shift | None:
+async def shift_for(conn: asyncpg.Connection, employee_id: Id, day: date) -> Shift | None:
     r = await conn.fetchrow(_SHIFT_FOR, employee_id, day)
     return _shift(r) if r else None
 
 
-async def resolve(conn, employee_id, at: datetime) -> tuple[date, Shift | None]:
+async def resolve(conn: asyncpg.Connection, employee_id: Id, at: datetime) -> tuple[date, Shift | None]:
     """The work day a punch at `at` counts towards, and that day's shift.
     Its local date — unless yesterday's shift is overnight and the punch falls
     before that shift's cutoff (an 02:00 check-out ends last night's shift)."""
@@ -162,7 +169,7 @@ async def resolve(conn, employee_id, at: datetime) -> tuple[date, Shift | None]:
     return local["d"], await shift_for(conn, employee_id, local["d"])
 
 
-async def _rule(conn, day: date, shift: Shift) -> Rule:
+async def _rule(conn: asyncpg.Connection, day: date, shift: Shift) -> Rule:
     # date + time is a local timestamp; the cast to timestamptz reads it in
     # the session TimeZone (the tenant's).
     r = await conn.fetchrow(
@@ -173,7 +180,7 @@ async def _rule(conn, day: date, shift: Shift) -> Rule:
                 absent_below_min=shift.absent_below_min)
 
 
-async def preview(conn, employee_id, day: date, shift: Shift | None = None, *,
+async def preview(conn: asyncpg.Connection, employee_id: Id, day: date, shift: Shift | None = None, *,
                   now: datetime | None = None) -> Day:
     """Derive `day` from its punches without writing anything. `now` is the
     clock the day is judged by (the database's, unless a test freezes it)."""
@@ -196,8 +203,8 @@ async def preview(conn, employee_id, day: date, shift: Shift | None = None, *,
                   day_over=clock["later"] or clock["today"] > day)
 
 
-async def rederive(conn, tenant_id, employee_id, day: date, shift: Shift | None = None, *,
-                   now: datetime | None = None) -> str | None:
+async def rederive(conn: asyncpg.Connection, tenant_id: Id, employee_id: Id, day: date,
+                   shift: Shift | None = None, *, now: datetime | None = None) -> uuid.UUID | None:
     """Write the derived row for (employee, day); returns its id. A locked
     day (frozen by a payroll run) is left exactly as it is, and so is a day
     with no check-in punch (nothing to derive it from)."""
@@ -207,11 +214,12 @@ async def rederive(conn, tenant_id, employee_id, day: date, shift: Shift | None 
             where employee_id=$1 and work_date=$2 and kind='in' order by at desc limit 1""",
         employee_id, day)
     if last_in is None:
-        return await conn.fetchval(
+        existing: uuid.UUID | None = await conn.fetchval(
             "select id from hrms_attendance where employee_id=$1 and work_date=$2", employee_id, day)
+        return existing
     shift = shift or await shift_for(conn, employee_id, day)
     d = await preview(conn, employee_id, day, shift, now=now)
-    row_id = await conn.fetchval(
+    row_id: uuid.UUID | None = await conn.fetchval(
         """insert into hrms_attendance (tenant_id, employee_id, work_date, check_in, check_out, status,
                                         method, lat, lng, fraud_flag, shift_id, late_min, early_min, worked_min,
                                         missing_checkout, final)
@@ -233,8 +241,9 @@ async def rederive(conn, tenant_id, employee_id, day: date, shift: Shift | None 
     return row_id
 
 
-async def punch(conn, employee_id, kind: str, *, method: str, at: datetime | None = None,
-                lat=None, lng=None, flag: str = "", by: str | None = None) -> str | None:
+async def punch(conn: asyncpg.Connection, employee_id: Id, kind: str, *, method: str,
+                at: datetime | None = None, lat: float | None = None, lng: float | None = None,
+                flag: str = "", by: str | None = None) -> uuid.UUID | None:
     """Record one punch and re-derive its day; returns the day's row id.
 
     A check-out with no check-in on its work day records nothing and returns
@@ -258,7 +267,8 @@ async def punch(conn, employee_id, kind: str, *, method: str, at: datetime | Non
     return row_id
 
 
-async def finalise_open_days(conn, employee_id=None, *, before: date | None = None,
+async def finalise_open_days(conn: asyncpg.Connection, employee_id: Id | None = None, *,
+                             before: date | None = None,
                              now: datetime | None = None) -> int:
     """Re-derive every unlocked day not yet judged as over, up to today (or
     strictly before `before`), for one employee or the whole tenant; returns
