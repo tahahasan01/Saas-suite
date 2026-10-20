@@ -22,6 +22,13 @@
     "turbo": "^2.3.3",
     "typescript": "^5.7.2"
   },
+  "//overrides": "Security: Next 15 pins postcss 8.4.31 and sharp 0.34 (npm audit high: GHSA-qx2v-qp2m-jg93 et al., libvips CVEs); drop these once Next ships patched versions.",
+  "overrides": {
+    "next": {
+      "postcss": "^8.5.31"
+    },
+    "sharp": "^0.35.5"
+  },
   "engines": {
     "node": ">=20"
   },

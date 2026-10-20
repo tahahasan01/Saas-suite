@@ -5,6 +5,50 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "meta"
+        ],
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "tags": [
+          "meta"
+        ],
+        "summary": "Ready",
+        "operationId": "ready_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/signup": {
       "post": {
         "tags": [
@@ -93,6 +137,7 @@
           "auth"
         ],
         "summary": "Forgot",
+        "description": "Always 204, whatever the address and whatever SMTP is doing: the email\nis queued (never sent inline), so the answer, its timing and a mail\noutage reveal nothing about which emails have accounts (P1-7).",
         "operationId": "forgot_auth_forgot_post",
         "requestBody": {
           "content": {
@@ -821,6 +866,7 @@
           "team"
         ],
         "summary": "Invite Member",
+        "description": "204 once the invite is recorded. The email is queued in the same\ntransaction and sent after commit, so a mail outage can't fail it.",
         "operationId": "invite_member_team_invite_post",
         "parameters": [
           {
@@ -4331,7 +4377,8 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "string",
+                  "format": "date"
                 },
                 {
                   "type": "null"
@@ -4418,6 +4465,254 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/WeekOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hrms/shifts": {
+      "get": {
+        "tags": [
+          "hrms"
+        ],
+        "summary": "List Shifts",
+        "operationId": "list_shifts_hrms_shifts_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ShiftOut"
+                  },
+                  "title": "Response List Shifts Hrms Shifts Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "hrms"
+        ],
+        "summary": "Create Shift",
+        "operationId": "create_shift_hrms_shifts_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShiftCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShiftOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hrms/shifts/{shift_id}/assign": {
+      "post": {
+        "tags": [
+          "hrms"
+        ],
+        "summary": "Assign Shift",
+        "description": "Put an employee on a shift from `date_from`. An open-ended assignment\nthat started earlier is closed the day before; any other overlap is a 409,\nso a day never has two shifts. It applies to punches from then on — days\nalready derived keep their derivation.",
+        "operationId": "assign_shift_hrms_shifts__shift_id__assign_post",
+        "parameters": [
+          {
+            "name": "shift_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shift Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShiftAssign"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShiftAssignmentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hrms/shift-assignments": {
+      "get": {
+        "tags": [
+          "hrms"
+        ],
+        "summary": "List Shift Assignments",
+        "operationId": "list_shift_assignments_hrms_shift_assignments_get",
+        "parameters": [
+          {
+            "name": "employee_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Employee Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ShiftAssignmentOut"
+                  },
+                  "title": "Response List Shift Assignments Hrms Shift Assignments Get"
                 }
               }
             }
@@ -5701,29 +5996,6 @@
           }
         }
       }
-    },
-    "/health": {
-      "get": {
-        "tags": [
-          "meta"
-        ],
-        "summary": "Health",
-        "operationId": "health_health_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object",
-                  "title": "Response Health Health Get"
-                }
-              }
-            }
-          }
-        }
-      }
     }
   },
   "components": {
@@ -5915,6 +6187,42 @@
           "fraud_flag": {
             "type": "string",
             "title": "Fraud Flag"
+          },
+          "late_min": {
+            "type": "integer",
+            "title": "Late Min",
+            "default": 0
+          },
+          "early_min": {
+            "type": "integer",
+            "title": "Early Min",
+            "default": 0
+          },
+          "worked_min": {
+            "type": "integer",
+            "title": "Worked Min",
+            "default": 0
+          },
+          "shift_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shift Id"
+          },
+          "locked": {
+            "type": "boolean",
+            "title": "Locked",
+            "default": false
+          },
+          "missing_checkout": {
+            "type": "boolean",
+            "title": "Missing Checkout",
+            "default": false
           }
         },
         "type": "object",
@@ -8114,6 +8422,11 @@
             "type": "integer",
             "title": "Absent Days"
           },
+          "half_days": {
+            "type": "integer",
+            "title": "Half Days",
+            "default": 0
+          },
           "absence_deduction_minor": {
             "type": "integer",
             "title": "Absence Deduction Minor"
@@ -9475,6 +9788,214 @@
         ],
         "title": "SaleQuoteRequest"
       },
+      "ShiftAssign": {
+        "properties": {
+          "employee_id": {
+            "type": "string",
+            "title": "Employee Id"
+          },
+          "date_from": {
+            "type": "string",
+            "format": "date",
+            "title": "Date From"
+          },
+          "date_to": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date To"
+          }
+        },
+        "type": "object",
+        "required": [
+          "employee_id",
+          "date_from"
+        ],
+        "title": "ShiftAssign"
+      },
+      "ShiftAssignmentOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "employee_id": {
+            "type": "string",
+            "title": "Employee Id"
+          },
+          "employee_name": {
+            "type": "string",
+            "title": "Employee Name"
+          },
+          "shift_id": {
+            "type": "string",
+            "title": "Shift Id"
+          },
+          "shift_name": {
+            "type": "string",
+            "title": "Shift Name"
+          },
+          "date_from": {
+            "type": "string",
+            "format": "date",
+            "title": "Date From"
+          },
+          "date_to": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date To"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "employee_id",
+          "employee_name",
+          "shift_id",
+          "shift_name",
+          "date_from",
+          "date_to"
+        ],
+        "title": "ShiftAssignmentOut"
+      },
+      "ShiftCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "start_time": {
+            "type": "string",
+            "format": "time",
+            "title": "Start Time",
+            "default": "09:00:00"
+          },
+          "end_time": {
+            "type": "string",
+            "format": "time",
+            "title": "End Time",
+            "default": "18:00:00"
+          },
+          "grace_in_min": {
+            "type": "integer",
+            "maximum": 240.0,
+            "minimum": 0.0,
+            "title": "Grace In Min",
+            "default": 15
+          },
+          "grace_out_min": {
+            "type": "integer",
+            "maximum": 240.0,
+            "minimum": 0.0,
+            "title": "Grace Out Min",
+            "default": 10
+          },
+          "half_day_below_min": {
+            "type": "integer",
+            "maximum": 1440.0,
+            "minimum": 0.0,
+            "title": "Half Day Below Min",
+            "default": 240
+          },
+          "absent_below_min": {
+            "type": "integer",
+            "maximum": 1440.0,
+            "minimum": 0.0,
+            "title": "Absent Below Min",
+            "default": 120
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "ShiftCreate"
+      },
+      "ShiftOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "start_time": {
+            "type": "string",
+            "format": "time",
+            "title": "Start Time",
+            "default": "09:00:00"
+          },
+          "end_time": {
+            "type": "string",
+            "format": "time",
+            "title": "End Time",
+            "default": "18:00:00"
+          },
+          "grace_in_min": {
+            "type": "integer",
+            "maximum": 240.0,
+            "minimum": 0.0,
+            "title": "Grace In Min",
+            "default": 15
+          },
+          "grace_out_min": {
+            "type": "integer",
+            "maximum": 240.0,
+            "minimum": 0.0,
+            "title": "Grace Out Min",
+            "default": 10
+          },
+          "half_day_below_min": {
+            "type": "integer",
+            "maximum": 1440.0,
+            "minimum": 0.0,
+            "title": "Half Day Below Min",
+            "default": 240
+          },
+          "absent_below_min": {
+            "type": "integer",
+            "maximum": 1440.0,
+            "minimum": 0.0,
+            "title": "Absent Below Min",
+            "default": 120
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "overnight": {
+            "type": "boolean",
+            "title": "Overnight"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "id",
+          "overnight",
+          "active"
+        ],
+        "title": "ShiftOut"
+      },
       "SignupRequest": {
         "properties": {
           "company_name": {
@@ -9895,6 +10416,13 @@
           "type": {
             "type": "string",
             "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
           }
         },
         "type": "object",

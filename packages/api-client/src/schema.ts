@@ -2,6 +2,40 @@
  * Do not edit by hand: run `npm run api-client:generate`. CI fails when this is stale. */
 
 export interface paths {
+    "/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Health */
+        get: operations["health_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ready */
+        get: operations["ready_ready_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/signup": {
         parameters: {
             query?: never;
@@ -45,7 +79,12 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Forgot */
+        /**
+         * Forgot
+         * @description Always 204, whatever the address and whatever SMTP is doing: the email
+         *     is queued (never sent inline), so the answer, its timing and a mail
+         *     outage reveal nothing about which emails have accounts (P1-7).
+         */
         post: operations["forgot_auth_forgot_post"];
         delete?: never;
         options?: never;
@@ -294,7 +333,11 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Invite Member */
+        /**
+         * Invite Member
+         * @description 204 once the invite is recorded. The email is queued in the same
+         *     transaction and sent after commit, so a mail outage can't fail it.
+         */
         post: operations["invite_member_team_invite_post"];
         delete?: never;
         options?: never;
@@ -1229,6 +1272,64 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/hrms/shifts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Shifts */
+        get: operations["list_shifts_hrms_shifts_get"];
+        put?: never;
+        /** Create Shift */
+        post: operations["create_shift_hrms_shifts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/shifts/{shift_id}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Assign Shift
+         * @description Put an employee on a shift from `date_from`. An open-ended assignment
+         *     that started earlier is closed the day before; any other overlap is a 409,
+         *     so a day never has two shifts. It applies to punches from then on — days
+         *     already derived keep their derivation.
+         */
+        post: operations["assign_shift_hrms_shifts__shift_id__assign_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/shift-assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Shift Assignments */
+        get: operations["list_shift_assignments_hrms_shift_assignments_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/hrms/leave": {
         parameters: {
             query?: never;
@@ -1577,23 +1678,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/health": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Health */
-        get: operations["health_health_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1669,6 +1753,33 @@ export interface components {
             method: string;
             /** Fraud Flag */
             fraud_flag: string;
+            /**
+             * Late Min
+             * @default 0
+             */
+            late_min: number;
+            /**
+             * Early Min
+             * @default 0
+             */
+            early_min: number;
+            /**
+             * Worked Min
+             * @default 0
+             */
+            worked_min: number;
+            /** Shift Id */
+            shift_id?: string | null;
+            /**
+             * Locked
+             * @default false
+             */
+            locked: boolean;
+            /**
+             * Missing Checkout
+             * @default false
+             */
+            missing_checkout: boolean;
         };
         /** BillingOut */
         BillingOut: {
@@ -2511,6 +2622,11 @@ export interface components {
             wfh_days: number;
             /** Absent Days */
             absent_days: number;
+            /**
+             * Half Days
+             * @default 0
+             */
+            half_days: number;
             /** Absence Deduction Minor */
             absence_deduction_minor: number;
             /** Tax Minor */
@@ -3069,6 +3185,118 @@ export interface components {
              */
             payment_method: "cash" | "card" | "jazzcash" | "easypaisa" | "bank";
         };
+        /** ShiftAssign */
+        ShiftAssign: {
+            /** Employee Id */
+            employee_id: string;
+            /**
+             * Date From
+             * Format: date
+             */
+            date_from: string;
+            /** Date To */
+            date_to?: string | null;
+        };
+        /** ShiftAssignmentOut */
+        ShiftAssignmentOut: {
+            /** Id */
+            id: string;
+            /** Employee Id */
+            employee_id: string;
+            /** Employee Name */
+            employee_name: string;
+            /** Shift Id */
+            shift_id: string;
+            /** Shift Name */
+            shift_name: string;
+            /**
+             * Date From
+             * Format: date
+             */
+            date_from: string;
+            /** Date To */
+            date_to: string | null;
+        };
+        /** ShiftCreate */
+        ShiftCreate: {
+            /** Name */
+            name: string;
+            /**
+             * Start Time
+             * Format: time
+             * @default 09:00:00
+             */
+            start_time: string;
+            /**
+             * End Time
+             * Format: time
+             * @default 18:00:00
+             */
+            end_time: string;
+            /**
+             * Grace In Min
+             * @default 15
+             */
+            grace_in_min: number;
+            /**
+             * Grace Out Min
+             * @default 10
+             */
+            grace_out_min: number;
+            /**
+             * Half Day Below Min
+             * @default 240
+             */
+            half_day_below_min: number;
+            /**
+             * Absent Below Min
+             * @default 120
+             */
+            absent_below_min: number;
+        };
+        /** ShiftOut */
+        ShiftOut: {
+            /** Name */
+            name: string;
+            /**
+             * Start Time
+             * Format: time
+             * @default 09:00:00
+             */
+            start_time: string;
+            /**
+             * End Time
+             * Format: time
+             * @default 18:00:00
+             */
+            end_time: string;
+            /**
+             * Grace In Min
+             * @default 15
+             */
+            grace_in_min: number;
+            /**
+             * Grace Out Min
+             * @default 10
+             */
+            grace_out_min: number;
+            /**
+             * Half Day Below Min
+             * @default 240
+             */
+            half_day_below_min: number;
+            /**
+             * Absent Below Min
+             * @default 120
+             */
+            absent_below_min: number;
+            /** Id */
+            id: string;
+            /** Overnight */
+            overnight: boolean;
+            /** Active */
+            active: boolean;
+        };
         /** SignupRequest */
         SignupRequest: {
             /** Company Name */
@@ -3242,6 +3470,10 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+            /** Input */
+            input?: unknown;
+            /** Context */
+            ctx?: Record<string, never>;
         };
         /** VerifyRequest */
         VerifyRequest: {
@@ -3319,6 +3551,48 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    health_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+        };
+    };
+    ready_ready_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
     signup_auth_signup_post: {
         parameters: {
             query?: never;
@@ -5941,6 +6215,142 @@ export interface operations {
             };
         };
     };
+    list_shifts_hrms_shifts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShiftOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_shift_hrms_shifts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShiftCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShiftOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    assign_shift_hrms_shifts__shift_id__assign_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shift_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShiftAssign"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShiftAssignmentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_shift_assignments_hrms_shift_assignments_get: {
+        parameters: {
+            query?: {
+                employee_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShiftAssignmentOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_leave_hrms_leave_get: {
         parameters: {
             query?: {
@@ -6672,28 +7082,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    health_health_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
                 };
             };
         };
