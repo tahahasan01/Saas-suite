@@ -17,6 +17,7 @@ from typing import AsyncIterator
 
 import asyncpg
 
+from . import context
 from .config import settings
 
 owner_pool: asyncpg.Pool | None = None
@@ -70,15 +71,41 @@ async def _use_tenant_clock(conn: asyncpg.Connection) -> None:
                            'Asia/Karachi'), true)""")
 
 
+_SET_CONTEXT = """
+select set_config('app.actor_id', $1, true), set_config('app.request_id', $2, true),
+       set_config('app.actor_kind', $3, true)"""
+
+
+async def apply_context(conn: asyncpg.Connection) -> None:
+    """Stamp the current request/job context (app/context.py) on this
+    transaction, for the audit trigger. tenant_conn does it for you; call it
+    yourself only inside an owner-connection transaction (e.g. the worker)."""
+    await conn.execute(_SET_CONTEXT, *context.gucs())
+
+
 @asynccontextmanager
 async def tenant_conn(tenant_id: str) -> AsyncIterator[asyncpg.Connection]:
     """Runtime connection scoped to a tenant. Opens a transaction and sets the
-    `app.tenant_id` GUC locally so Row-Level Security filters every query."""
+    `app.tenant_id` GUC locally so Row-Level Security filters every query,
+    plus who is acting (app.actor_id / request_id / actor_kind) for audit."""
+    actor_id, request_id, actor_kind = context.gucs()
     async with _app().acquire() as conn:
         async with conn.transaction():
             # is_local = true -> reset at end of transaction
-            await conn.execute("SELECT set_config('app.tenant_id', $1, true)", str(tenant_id))
+            await conn.execute(
+                """select set_config('app.tenant_id', $1, true), set_config('app.actor_id', $2, true),
+                          set_config('app.request_id', $3, true), set_config('app.actor_kind', $4, true)""",
+                str(tenant_id), actor_id, request_id, actor_kind)
             await _use_tenant_clock(conn)
+            yield conn
+
+
+@asynccontextmanager
+async def job_conn(tenant_id: str, job: str, run_id: str | None = None) -> AsyncIterator[asyncpg.Connection]:
+    """A tenant connection for a worker job (D-08, TRD TR-SEC-09): RLS as
+    usual, and audit rows read actor_kind 'job', request_id 'job:<job>:<run_id>'."""
+    with context.job(job, run_id):
+        async with tenant_conn(tenant_id) as conn:
             yield conn
 
 

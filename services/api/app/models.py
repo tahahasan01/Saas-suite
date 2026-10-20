@@ -130,6 +130,14 @@ class UserCreate(BaseModel):
 UserStatus = Literal["active", "disabled"]
 USER_STATUSES = list(get_args(UserStatus))
 
+# Audit trail and record timeline (D-07, migration 0044).
+ActorKind = Literal["user", "job", "ai", "import", "system", "platform_admin", "webhook", "device"]
+ACTOR_KINDS = list(get_args(ActorKind))
+TimelineKind = Literal["note", "field_change", "stage_change", "won", "lost", "restored",
+                       "activity_done", "call", "merge", "system", "attachment",
+                       "approved", "rejected"]
+TIMELINE_KINDS = list(get_args(TimelineKind))
+
 
 class PasswordChange(BaseModel):
     current_password: str = Field(min_length=1, max_length=200)

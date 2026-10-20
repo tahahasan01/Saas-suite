@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from fastapi import Cookie, Depends, HTTPException, status
 
-from . import db
+from . import context, db
 from .security import SESSION_COOKIE, hash_session_token
 
 
@@ -57,6 +57,8 @@ async def current_auth(
     if row is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Session expired")
 
+    # Every tenant_conn this request opens now audits as this user (D-07).
+    context.set_actor(str(row["user_id"]))
     return AuthContext(
         session_id=row["session_id"],
         user_id=str(row["user_id"]),
