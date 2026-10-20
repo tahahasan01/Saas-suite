@@ -296,7 +296,12 @@ async def log_interaction(lead_id: str, body: InteractionCreate, auth: AuthConte
             """insert into crm_interactions (tenant_id, lead_id, user_id, channel, outcome, note, next_follow_up_at)
                values ($1,$2,$3,$4,$5,$6,$7) returning *""",
             auth.tenant_id, lead_id, auth.user_id, body.channel, body.outcome, body.note, body.next_follow_up_at)
-        await conn.execute("update crm_leads set updated_at=now() where id=$1", lead_id)
+        lead = await conn.fetchrow("update crm_leads set updated_at=now() where id=$1 returning *", lead_id)
+        await wf.emit(conn, auth.user_id, "interaction.logged", {
+            **_event_payload(lead), "interaction_id": str(row["id"]), "channel": row["channel"],
+            "outcome": row["outcome"], "note": row["note"],
+            "next_follow_up_at": row["next_follow_up_at"].isoformat() if row["next_follow_up_at"] else None,
+        })
     return InteractionOut(
         id=str(row["id"]), user_id=str(row["user_id"]) if row["user_id"] else None, channel=row["channel"],
         outcome=row["outcome"], note=row["note"], next_follow_up_at=row["next_follow_up_at"], created_at=row["created_at"])

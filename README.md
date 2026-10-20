@@ -121,6 +121,8 @@ python -m venv .venv
 ./.venv/Scripts/python -m scripts.migrate
 ./.venv/Scripts/python -m scripts.seed
 ./.venv/Scripts/python -m uvicorn app.main:app --port 4000 --reload
+# jobs + outbox (FBR filings, email, reminders) run in the worker — new terminal, services/api
+./.venv/Scripts/python -m app.worker        # see infra/worker/README.md
 
 # 4 — frontend (new terminal, repo root)
 npm run dev --workspace @business-os/web     # → http://localhost:3000

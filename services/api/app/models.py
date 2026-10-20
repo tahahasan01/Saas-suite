@@ -780,6 +780,12 @@ class NotificationList(BaseModel):
 WorkflowTrigger = Literal["lead.created", "lead.stage_changed", "interaction.logged"]
 WORKFLOW_TRIGGERS = list(get_args(WorkflowTrigger))
 
+# ── Worker jobs (0043; platform tables, read by app/jobs.py) ────────────────
+JobStatus = Literal["idle", "running"]
+JOB_STATUSES = list(get_args(JobStatus))
+JobRunStatus = Literal["running", "done", "failed", "timeout"]
+JOB_RUN_STATUSES = list(get_args(JobRunStatus))
+
 
 class WorkflowOut(BaseModel):
     id: str

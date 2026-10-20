@@ -38,6 +38,8 @@ ENUM_COLUMNS = {
     ("fbr_settings", "environment"): models.FBR_ENVIRONMENTS,
     ("audit_log", "actor_kind"): models.ACTOR_KINDS,
     ("timeline_events", "kind"): models.TIMELINE_KINDS,
+    ("scheduled_jobs", "status"): models.JOB_STATUSES,
+    ("job_runs", "status"): models.JOB_RUN_STATUSES,
 }
 
 

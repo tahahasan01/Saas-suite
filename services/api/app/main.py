@@ -10,32 +10,26 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from . import db, jobs
+from . import db, obs
 from .bodylimit import BodyLimitMiddleware
 from .config import settings
 from .context import REQUEST_ID_HEADER, RequestContextMiddleware
 from .routers import (
-    ai, auth, billing, crm, dashboard, entitlements, fbr, hrms, invoices, notifications, pos, team,
-    terminology, workflows,
+    ai, auth, billing, crm, dashboard, entitlements, fbr, hrms, invoices, meta, notifications, pos,
+    team, terminology, workflows,
 )
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+# JSON logs with request/tenant context and PII redaction; Sentry if SENTRY_DSN (app/obs.py).
+obs.setup_logging("api")
+obs.init_sentry("api")
 log = logging.getLogger("api")
-
-if settings.sentry_dsn:
-    import sentry_sdk
-
-    sentry_sdk.init(dsn=settings.sentry_dsn, traces_sample_rate=0.1, environment=settings.node_env)
-    log.info("Sentry error tracking enabled")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # No scheduler here: jobs run in the worker process (`python -m app.worker`, D-08).
     await db.connect()
-    if settings.enable_scheduler:
-        jobs.start()
     yield
-    jobs.stop()
     await db.disconnect()
 
 
@@ -43,6 +37,8 @@ app = FastAPI(title="Business OS API", version="0.1.0", lifespan=lifespan)
 
 # Added before CORS so CORS stays outermost and a 413 still carries its headers.
 app.add_middleware(BodyLimitMiddleware)
+# Access log, error-spike counting and log context, inside the request context.
+app.add_middleware(obs.AccessLogMiddleware)
 # A request id and actor context per request, for the audit trail (D-07).
 app.add_middleware(RequestContextMiddleware)
 
@@ -57,6 +53,7 @@ app.add_middleware(
     expose_headers=["X-Total-Count", REQUEST_ID_HEADER],
 )
 
+app.include_router(meta.router)
 app.include_router(auth.router)
 app.include_router(dashboard.router)
 app.include_router(terminology.router)
@@ -85,9 +82,8 @@ async def invalid_value_handler(request: Request, exc: asyncpg.DataError) -> JSO
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     # Log the full trace server-side; never leak internals to the client.
     log.exception("Unhandled error on %s %s", request.method, request.url.path)
-    return JSONResponse(status_code=500, content={"detail": "Something went wrong. Please try again."})
-
-
-@app.get("/health", tags=["meta"])
-async def health() -> dict:
-    return {"status": "ok", "service": "business-os-api"}
+    # This response is built outside the request middleware, so it adds the id itself.
+    rid = getattr(request.state, "request_id", None)
+    return JSONResponse(status_code=500,
+                        content={"detail": "Something went wrong. Please try again.", "request_id": rid},
+                        headers={"X-Request-ID": rid} if rid else None)

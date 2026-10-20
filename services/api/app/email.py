@@ -1,27 +1,58 @@
-"""Transactional email behind a provider abstraction.
+"""Transactional email, delivered through the outbox (D-09, P1-7, checklist 2B).
 
-'console' (default) logs the message + link so flows work end-to-end in dev with
-no credentials. 'smtp' sends for real. A Resend/SES HTTP provider slots in the
-same way — implement `_send` and branch on settings.email_provider.
+A request never talks to SMTP. It writes an `email.send` outbox row in its
+own transaction (`queue_*` below) and returns; the row is delivered after
+commit — at once by the request's background fast path (`deliver_now`), and
+otherwise by the worker's `email.outbox` job. So SMTP being down can't fail
+or slow a request, and /auth/forgot answers the same whether or not the
+address has an account.
+
+The row holds what to send, never a credential: the reset / verify / invite
+token is minted at delivery (tokens.create stores only its hash), so neither
+a dump of `outbox` nor a stuck row is a working link. A retried delivery
+mints a fresh token; an undelivered one simply expires.
+
+Delivery: claim (`sending`, attempts + 1, committed) -> send -> `done`, or
+`retry` with back-off, or `failed` after max_attempts (alert `email.failed`).
+A row left `sending` past its lock goes back to `retry`: unlike an FBR
+filing, a repeated email is harmless.
+
+Providers: 'console' (default) logs the message + link so flows work in dev
+with no credentials; 'smtp' sends for real. A Resend/SES HTTP provider slots
+in the same way — implement it in `_send` and branch on settings.email_provider.
 """
 from __future__ import annotations
 
 import asyncio
 import logging
+import random
+import uuid
 from email.message import EmailMessage
 
+from . import alerts, db, tokens
 from .config import settings
 
 log = logging.getLogger("email")
 
 WEB = settings.web_origin.split(",")[0].strip()
 
+KIND = "email.send"
+MAX_ATTEMPTS = 8                   # with the back-off below, about an hour of trying
+BACKOFF_BASE_S = 30
+BACKOFF_CAP_S = 3600
+LOCK_FOR = "5 minutes"
+BATCH = 50
+MAX_PASSES = 5
 
+
+# ── Providers ───────────────────────────────────────────────────────────────
 async def _send(to: str, subject: str, body: str) -> None:
     if settings.email_provider == "smtp" and settings.smtp_host:
         await asyncio.to_thread(_send_smtp, to, subject, body)
     else:
-        log.warning("EMAIL[console] to=%s | %s\n%s", to, subject, body)
+        # The dev console provider: this line IS the email, so it is the one
+        # log line allowed through unredacted (never in production).
+        log.warning("EMAIL[console] to=%s | %s\n%s", to, subject, body, extra={"unredacted": True})
 
 
 def _send_smtp(to: str, subject: str, body: str) -> None:
@@ -53,19 +84,150 @@ def _send_smtp(to: str, subject: str, body: str) -> None:
         s.send_message(msg)
 
 
-async def send_password_reset(to: str, token: str) -> None:
-    link = f"{WEB}/reset?token={token}"
-    await _send(to, "Reset your Business OS password",
-                f"Click to reset your password (valid 1 hour):\n{link}\n\nIf you didn't request this, ignore it.")
+# ── Enqueue (inside the caller's transaction) ───────────────────────────────
+async def _enqueue(conn, tenant_id: str, template: str, to: str, **params) -> int:
+    return await conn.fetchval(
+        """insert into outbox (tenant_id, kind, dedup_key, payload, max_attempts)
+           values ($1, $2, $3, $4, $5) returning id""",
+        tenant_id, KIND, uuid.uuid4().hex, {"template": template, "to": to, **params}, MAX_ATTEMPTS)
 
 
-async def send_verification(to: str, token: str) -> None:
-    link = f"{WEB}/verify?token={token}"
-    await _send(to, "Verify your email",
-                f"Welcome to Business OS! Confirm your email:\n{link}")
+async def queue_password_reset(conn, tenant_id: str, user_id: str, to: str) -> int:
+    return await _enqueue(conn, tenant_id, "password_reset", to, user_id=str(user_id))
 
 
-async def send_invite(to: str, tenant_name: str, token: str) -> None:
-    link = f"{WEB}/accept-invite?token={token}"
-    await _send(to, f"You're invited to {tenant_name} on Business OS",
-                f"You've been invited to join {tenant_name}. Set up your account:\n{link}")
+async def queue_verification(conn, tenant_id: str, user_id: str, to: str) -> int:
+    return await _enqueue(conn, tenant_id, "verify_email", to, user_id=str(user_id))
+
+
+async def queue_invite(conn, tenant_id: str, to: str, tenant_name: str, role_id: str | None,
+                       employee_id: str | None = None) -> int:
+    return await _enqueue(conn, tenant_id, "invite", to, tenant_name=tenant_name,
+                          role_id=str(role_id) if role_id else None,
+                          employee_id=str(employee_id) if employee_id else None)
+
+
+# ── Rendering (at delivery: the link's token is minted here) ────────────────
+async def _render(row) -> tuple[str, str]:
+    p = row["payload"]
+    to, template = p["to"], p["template"]
+    if template == "password_reset":
+        token = await tokens.create("reset", email=to, user_id=p["user_id"], ttl_hours=1)
+        return ("Reset your Business OS password",
+                f"Click to reset your password (valid 1 hour):\n{WEB}/reset?token={token}\n\n"
+                "If you didn't request this, ignore it.")
+    if template == "verify_email":
+        token = await tokens.create("verify", email=to, user_id=p["user_id"], ttl_hours=48)
+        return "Verify your email", f"Welcome to Business OS! Confirm your email:\n{WEB}/verify?token={token}"
+    if template == "invite":
+        token = await tokens.create("invite", email=to, tenant_id=str(row["tenant_id"]),
+                                    role_id=p.get("role_id"), employee_id=p.get("employee_id"),
+                                    ttl_hours=72)
+        name = p.get("tenant_name") or "a workspace"
+        return (f"You're invited to {name} on Business OS",
+                f"You've been invited to join {name}. Set up your account:\n{WEB}/accept-invite?token={token}")
+    raise ValueError(f"unknown email template {template!r}")
+
+
+# ── Claiming and settling (owner connection) ────────────────────────────────
+_CLAIM = f"""
+with due as (
+    select o.id from outbox o
+     where o.kind = '{KIND}' and o.status in ('pending', 'retry') and o.run_after <= now()
+       and ($2::bigint is null or o.id = $2)
+     order by o.run_after, o.id
+     limit $1
+     for update of o skip locked)
+update outbox o
+   set status = 'sending', attempts = o.attempts + 1,
+       locked_until = now() + interval '{LOCK_FOR}', updated_at = now()
+  from due
+ where o.id = due.id
+returning o.*"""
+
+
+def backoff_seconds(attempts: int) -> float:
+    return min(BACKOFF_CAP_S, BACKOFF_BASE_S * 2 ** max(attempts - 1, 0)) * random.uniform(0.8, 1.2)
+
+
+async def _claim(limit: int, only_id: int | None = None) -> list:
+    async with db.owner_conn() as oc:
+        return await oc.fetch(_CLAIM, limit, only_id)
+
+
+async def _settle(row, error: str | None) -> str | None:
+    if error is None:
+        status = "done"
+    elif row["attempts"] >= row["max_attempts"]:
+        status = "failed"
+    else:
+        status = "retry"
+    wait = backoff_seconds(row["attempts"]) if status == "retry" else 0.0
+    async with db.owner_conn() as oc:
+        held = await oc.fetchval(
+            """update outbox
+                  set status = $2,
+                      run_after = case when $2 = 'retry' then now() + make_interval(secs => $3)
+                                       else run_after end,
+                      locked_until = null, last_error_code = $4, last_error = $5,
+                      result = case when $2 = 'done' then jsonb_build_object('sent_at', now()) else result end,
+                      updated_at = now()
+                where id = $1 and status = 'sending'
+            returning id""",
+            row["id"], status, wait, "" if error is None else "send_failed", (error or "")[:500])
+    if held is None:
+        return None
+    if status == "failed":
+        # The provider's text (which can quote the address) stays in the log.
+        error_type = (error or "").split(":", 1)[0].strip()[:60]
+        log.error("email outbox row %s failed for good: %s", row["id"], error)
+        await alerts.emit("email.failed",
+                          f"Email outbox row {row['id']} ({row['payload'].get('template')}) "
+                          f"failed {row['attempts']} times ({error_type})",
+                          severity="error", tenant_id=str(row["tenant_id"]), outbox_id=row["id"],
+                          template=row["payload"].get("template"), error_type=error_type)
+    return status
+
+
+async def _deliver(row) -> str | None:
+    try:
+        subject, body = await _render(row)
+        await _send(row["payload"]["to"], subject, body)
+    except Exception as e:  # noqa: BLE001 — SMTP down, bad template: an ordinary failed attempt
+        log.warning("email outbox row %s not sent (attempt %s): %r", row["id"], row["attempts"], e)
+        return await _settle(row, f"{type(e).__name__}: {e}")
+    return await _settle(row, None)
+
+
+async def deliver_now(outbox_id: int) -> None:
+    """The post-commit fast path for one row just queued. Never raises: the
+    row stays queued for the worker."""
+    try:
+        rows = await _claim(1, outbox_id)
+        if rows:
+            await _deliver(rows[0])
+    except Exception:  # noqa: BLE001
+        log.exception("fast-path delivery of email outbox row %s failed", outbox_id)
+
+
+async def _reap() -> int:
+    async with db.owner_conn() as oc:
+        status = await oc.execute(
+            f"""update outbox set status = 'retry', locked_until = null, run_after = now(),
+                       last_error_code = 'abandoned', updated_at = now()
+                 where kind = '{KIND}' and status = 'sending' and locked_until < now()""")
+    return int(status.split()[-1])
+
+
+async def process_outbox() -> int:
+    """The worker's email job: requeue abandoned sends, then deliver everything
+    due. Returns the number sent."""
+    await _reap()
+    sent = 0
+    for _ in range(MAX_PASSES):
+        rows = await _claim(BATCH)
+        if not rows:
+            break
+        for row in rows:
+            sent += (await _deliver(row)) == "done"
+    return sent

@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
 
-from .. import audit, context, db, email, rbac, sampledata, tokens
+from .. import audit, context, db, email, ratelimit, rbac, sampledata, tokens
 from ..config import settings
 from ..deps import AuthContext, current_auth
 from ..models import (
@@ -29,7 +29,7 @@ from ..models import (
     UserOut,
     VerifyRequest,
 )
-from ..ratelimit import rate_limit
+from ..ratelimit import client_ip, rate_limit
 from ..security import (
     SESSION_COOKIE,
     hash_password,
@@ -68,7 +68,7 @@ async def _create_session(conn, user_id: str, tenant_id: str) -> str:
 
 @router.post("/signup", response_model=MeResponse, status_code=status.HTTP_201_CREATED,
              dependencies=[Depends(rate_limit(5, 60))])
-async def signup(body: SignupRequest, response: Response) -> MeResponse:
+async def signup(body: SignupRequest, response: Response, background: BackgroundTasks) -> MeResponse:
     if body.industry_type not in INDUSTRIES:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Unknown industry: {body.industry_type}")
     sections = [s for s in body.sections if s in SECTIONS] or ["crm"]
@@ -118,6 +118,9 @@ async def signup(body: SignupRequest, response: Response) -> MeResponse:
                 tenant_id,
             )
             token = await _create_session(conn, user_id, tenant_id)
+            # The verification email is queued with the account, sent after commit.
+            verify_mail = await email.queue_verification(conn, tenant_id, user_id, body.email)
+    background.add_task(email.deliver_now, verify_mail)
 
     # Seed a live demo workspace so the new tenant never lands in an empty app.
     if body.sample_data:
@@ -127,12 +130,6 @@ async def signup(body: SignupRequest, response: Response) -> MeResponse:
         except Exception:
             pass  # best-effort — never fail signup over sample data
 
-    try:  # email verification link (best-effort)
-        vtoken = await tokens.create("verify", email=body.email, user_id=str(user_id), ttl_hours=48)
-        await email.send_verification(body.email, vtoken)
-    except Exception:
-        pass
-
     _set_session_cookie(response, token)
     async with db.tenant_conn(str(tenant_id)) as conn:
         return await _bootstrap(conn, UserOut(id=str(user_id), email=body.email, name=body.name, role="Owner"),
@@ -140,7 +137,12 @@ async def signup(body: SignupRequest, response: Response) -> MeResponse:
 
 
 @router.post("/login", response_model=UserOut, dependencies=[Depends(rate_limit(10, 60))])
-async def login(body: LoginRequest, response: Response) -> UserOut:
+async def login(body: LoginRequest, request: Request, response: Response) -> UserOut:
+    ip = client_ip(request)
+    # The attempt is reserved before the password is checked — atomically, so
+    # parallel guesses can't race past a lock — and for known and unknown
+    # emails alike, so a lock reveals nothing.
+    await ratelimit.begin_login(body.email, ip)
     async with db.owner_conn() as conn:
         user = await conn.fetchrow(
             """select u.id, u.tenant_id, u.email, u.name, u.password_hash, r.name as role
@@ -149,8 +151,10 @@ async def login(body: LoginRequest, response: Response) -> UserOut:
             body.email,
         )
         if user is None or not verify_password(user["password_hash"], body.password):
+            await ratelimit.login_failed(body.email, ip)
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password")
         token = await _create_session(conn, str(user["id"]), str(user["tenant_id"]))
+    await ratelimit.login_succeeded(body.email, ip)
 
     # A login is a semantic audit event (TRD TR-SEC-61), in the tenant's trail.
     context.set_actor(str(user["id"]))
@@ -161,18 +165,26 @@ async def login(body: LoginRequest, response: Response) -> UserOut:
 
 
 @router.post("/forgot", status_code=status.HTTP_204_NO_CONTENT,
-             dependencies=[Depends(rate_limit(5, 60))])
-async def forgot(body: ForgotRequest, response: Response) -> Response:
-    async with db.owner_conn() as conn:
-        user = await conn.fetchrow("select id, email from users where email=$1", body.email)
-    if user:  # always 204 — never leak whether an email exists
-        token = await tokens.create("reset", email=user["email"], user_id=str(user["id"]), ttl_hours=1)
-        await email.send_password_reset(user["email"], token)
+             dependencies=[Depends(rate_limit(5, 15 * 60))])
+async def forgot(body: ForgotRequest, response: Response, background: BackgroundTasks) -> Response:
+    """Always 204, whatever the address and whatever SMTP is doing: the email
+    is queued (never sent inline), so the answer, its timing and a mail
+    outage reveal nothing about which emails have accounts (P1-7)."""
+    # 3 reset emails an hour per address, silently: a 429 here would only
+    # tell a stranger they had found someone's inbox to flood.
+    if await ratelimit.limit_email("forgot", body.email, 3, 3600):
+        async with db.owner_conn() as conn:
+            user = await conn.fetchrow(
+                "select id, email, tenant_id from users where email=$1 and status='active'", body.email)
+            if user:
+                mail = await email.queue_password_reset(conn, user["tenant_id"], user["id"], user["email"])
+                background.add_task(email.deliver_now, mail)
     response.status_code = status.HTTP_204_NO_CONTENT
     return response
 
 
-@router.post("/reset", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/reset", status_code=status.HTTP_204_NO_CONTENT,
+             dependencies=[Depends(rate_limit(5, 15 * 60))])
 async def reset(body: ResetRequest, response: Response) -> Response:
     row = await tokens.consume(body.token, "reset")
     if row is None or not row["user_id"]:
@@ -184,6 +196,7 @@ async def reset(body: ResetRequest, response: Response) -> Response:
         # session that existed before it must die with the old password. The
         # new hash already bumped auth_epoch; deleting is belt and braces.
         await conn.execute("delete from sessions where user_id=$1", row["user_id"])
+    await ratelimit.unlock(row["email"])   # the inbox owner proved themselves: lift any lockout
     response.status_code = status.HTTP_204_NO_CONTENT
     return response
 
@@ -207,7 +220,8 @@ async def change_password(body: PasswordChange, response: Response,
     return response
 
 
-@router.post("/verify", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/verify", status_code=status.HTTP_204_NO_CONTENT,
+             dependencies=[Depends(rate_limit(5, 15 * 60))])
 async def verify(body: VerifyRequest, response: Response) -> Response:
     row = await tokens.consume(body.token, "verify")
     if row is None or not row["user_id"]:
@@ -218,7 +232,8 @@ async def verify(body: VerifyRequest, response: Response) -> Response:
     return response
 
 
-@router.post("/accept-invite", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+@router.post("/accept-invite", response_model=UserOut, status_code=status.HTTP_201_CREATED,
+             dependencies=[Depends(rate_limit(5, 15 * 60))])
 async def accept_invite(body: AcceptInviteRequest, response: Response) -> UserOut:
     row = await tokens.consume(body.token, "invite")
     if row is None or not row["tenant_id"]:
