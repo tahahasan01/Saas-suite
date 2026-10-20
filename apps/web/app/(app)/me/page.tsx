@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { Attendance, Employee } from "@business-os/types";
 import { api } from "@/lib/api";
+import { attendanceBadge } from "@/lib/format";
 import { isTodayPKT } from "@/lib/dates";
 import { useSession } from "@/lib/session";
 import { useAction } from "@/lib/useAction";
@@ -65,7 +66,7 @@ export default function MySpace() {
             <div className="mt-1 w-48"><LoadingRows rows={1} label="Loading today" /></div>
           ) : today ? (
             <p className="mt-1 flex items-center gap-2 text-sm text-fg-muted">
-              <Badge tone={today.status === "late" ? "warning" : "success"}>{today.status}</Badge>
+              <Badge tone={attendanceBadge(today.status).tone}>{attendanceBadge(today.status).label}</Badge>
               In {timeOf(today.check_in)}{today.check_out && ` · Out ${timeOf(today.check_out)}`}
             </p>
           ) : (

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Attendance, AttendanceWeek, AttendanceWeekRow, Employee } from "@business-os/types";
 import { api } from "@/lib/api";
+import { attendanceBadge } from "@/lib/format";
 import { errorText, useAction } from "@/lib/useAction";
 import { DataTable, type Column } from "@/components/DataTable";
 import { Badge, Button, EmptyState, ErrorState, cx } from "@/components/ui";
@@ -73,8 +74,9 @@ export default function AttendancePage() {
         if (!a) return <span className="text-fg-subtle">Not in</span>;
         return (
           <span className="flex flex-wrap items-center gap-1.5">
-            <Badge tone={a.status === "late" ? "warning" : "success"}>{a.status}</Badge>
+            <Badge tone={attendanceBadge(a.status).tone}>{attendanceBadge(a.status).label}</Badge>
             {a.fraud_flag && <Badge tone="danger">⚠ {a.fraud_flag.replace(/_/g, " ")}</Badge>}
+            {a.missing_checkout && <Badge tone="warning">no check-out</Badge>}
           </span>
         );
       },
@@ -138,6 +140,7 @@ export default function AttendancePage() {
 const CELL: Record<string, { cls: string; letter: string; label: string }> = {
   present: { cls: "bg-success text-white", letter: "P", label: "Present" },
   late:    { cls: "bg-warning text-black", letter: "L", label: "Late" },
+  half_day: { cls: "bg-warning/60 text-black", letter: "½", label: "Half day" },
   leave:   { cls: "bg-[var(--color-chart-2)] text-white", letter: "Lv", label: "Leave" },
   wfh:     { cls: "bg-brand text-brand-fg", letter: "W", label: "WFH" },
   holiday: { cls: "bg-line-strong text-fg", letter: "H", label: "Holiday" },

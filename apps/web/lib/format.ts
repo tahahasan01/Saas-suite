@@ -39,3 +39,10 @@ export function timeAgo(iso: string) {
   }
   return relativeDate(iso);
 }
+
+/** A derived attendance status as a badge: on time is green, late or a half
+ *  day amber, a day too short to count red (shift thresholds, migration 0045). */
+export function attendanceBadge(status: string): { tone: "success" | "warning" | "danger"; label: string } {
+  const tone = status === "present" ? "success" : status === "absent" ? "danger" : "warning";
+  return { tone, label: status.replace(/_/g, " ") };
+}

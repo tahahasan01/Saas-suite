@@ -113,6 +113,9 @@ export const PERMISSION_KEYS = [
   "hrms.leave.request",
   "hrms.leave.approve",
   "hrms.holiday.manage",
+  "hrms.shift.read",
+  "hrms.shift.manage",
+  "hrms.shift.assign",
   "hrms.settings.manage",
   // payroll
   "payroll.run.read",
@@ -414,9 +417,44 @@ export interface Attendance {
   work_date: string;
   check_in: string | null;
   check_out: string | null;
+  /** present | late | half_day | absent — derived from the punches and the shift. */
   status: string;
   method: string;
   fraud_flag: string;
+  /** Minutes past start + grace (or past tenants.late_after without a shift). */
+  late_min: number;
+  /** Minutes before end − grace, once checked out. */
+  early_min: number;
+  worked_min: number;
+  shift_id: string | null;
+  /** Frozen by a payroll run; never re-derived. */
+  locked: boolean;
+  /** The day is over with a check-in still open (counted as 0 minutes). */
+  missing_checkout: boolean;
+}
+
+export interface Shift {
+  id: string;
+  name: string;
+  /** Local "HH:MM:SS" in the tenant's timezone; end ≤ start means overnight. */
+  start_time: string;
+  end_time: string;
+  grace_in_min: number;
+  grace_out_min: number;
+  half_day_below_min: number;
+  absent_below_min: number;
+  overnight: boolean;
+  active: boolean;
+}
+
+export interface ShiftAssignment {
+  id: string;
+  employee_id: string;
+  employee_name: string;
+  shift_id: string;
+  shift_name: string;
+  date_from: string;
+  date_to: string | null;
 }
 
 export interface Leave {
@@ -452,6 +490,8 @@ export interface Payslip {
   wfh_days: number;
   /** A completed working day with no check-in, leave or WFH. */
   absent_days: number;
+  /** Derived half days (shift thresholds) — half a day each is deducted. */
+  half_days: number;
   absence_deduction_minor: number;
   tax_minor: number;
   net_minor: number;
@@ -601,7 +641,7 @@ export interface DashboardOverview {
 export interface AttendanceWeekRow {
   id: string;
   name: string;
-  /** One per day: present | late | leave | wfh | holiday | off | pending | absent | none */
+  /** One per day: present | late | half_day | leave | wfh | holiday | off | pending | absent | none */
   cells: string[];
 }
 
