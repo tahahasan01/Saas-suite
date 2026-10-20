@@ -34,4 +34,8 @@ async def ask(body: AskRequest, auth: AuthContext = Depends(current_auth)) -> As
         result = await gateway.ask(auth.tenant_id, auth.user_id, body.question, sections)
     except gateway.AiUnavailable as e:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(e))
+    except gateway.AiUpstreamError as e:
+        # 503 = try again later, 502 = the provider answered with garbage.
+        headers = {"Retry-After": "30"} if e.status_code == 503 else None
+        raise HTTPException(e.status_code, str(e), headers=headers)
     return AskResponse(**result)

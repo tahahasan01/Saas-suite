@@ -7,6 +7,7 @@ Two pools by design (see migration 0001 header):
   * app_pool    — connects as the non-owner `app_user`; RLS IS enforced. Every
                   tenant request runs inside `tenant_conn()`, which opens a
                   transaction and sets `app.tenant_id` so RLS filters all rows.
+                  `ai_conn()` borrows the same pool and drops to `ai_reader`.
 """
 from __future__ import annotations
 
@@ -82,13 +83,23 @@ async def tenant_conn(tenant_id: str) -> AsyncIterator[asyncpg.Connection]:
 
 
 @asynccontextmanager
-async def readonly_tenant_conn(tenant_id: str, timeout_ms: int = 5000) -> AsyncIterator[asyncpg.Connection]:
-    """Like tenant_conn but the transaction is READ ONLY with a statement timeout.
-    Used to execute AI-generated SQL — a hard guarantee it cannot mutate data."""
+async def ai_conn(tenant_id: str, timeout_ms: int = 5000) -> AsyncIterator[asyncpg.Connection]:
+    """Connection for executing AI-generated SQL (TR-SEC-10).
+
+    A READ ONLY transaction with short timeouts, pinned to the tenant, that
+    then drops to `ai_reader` (migration 0032): that role can read the ai_v_*
+    views and nothing else, and cannot call set_config(), so even SQL that got
+    past the validator can't write, read a base table or switch tenant. Every
+    setting is transaction-local, so the pooled connection comes back clean.
+    """
     async with _app().acquire() as conn:
-        async with conn.transaction():
-            await conn.execute("SET TRANSACTION READ ONLY")  # must be first statement
+        async with conn.transaction(readonly=True):
             await conn.execute(f"SET LOCAL statement_timeout = {int(timeout_ms)}")
+            await conn.execute("SET LOCAL lock_timeout = 1000")
+            await conn.execute("SET LOCAL idle_in_transaction_session_timeout = 10000")
             await conn.execute("SELECT set_config('app.tenant_id', $1, true)", str(tenant_id))
             await _use_tenant_clock(conn)
+            # Last: ai_reader may not call set_config, so everything above
+            # has to happen while still app_user.
+            await conn.execute("SET LOCAL ROLE ai_reader")
             yield conn
