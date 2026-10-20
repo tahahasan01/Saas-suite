@@ -296,7 +296,7 @@ PaymentMethod = Literal["cash", "card", "jazzcash", "easypaisa", "bank"]
 PAYMENT_METHODS = list(get_args(PaymentMethod))
 DRAWER_STATUSES = ["open", "closed"]
 PO_STATUSES = ["ordered", "received", "cancelled"]
-FBR_STATUSES = ["pending", "sending", "submitted", "failed"]   # 0026
+FBR_STATUSES = ["pending", "sending", "submitted", "failed", "unknown"]   # 0026; unknown from 0035
 FbrEnvironment = Literal["sandbox", "production"]
 FBR_ENVIRONMENTS = list(get_args(FbrEnvironment))
 

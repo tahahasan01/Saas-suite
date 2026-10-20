@@ -40,7 +40,7 @@ $$;
 select pg_temp.enum_check('pos_sales',            'payment_method', array['cash','card','jazzcash','easypaisa','bank']);
 select pg_temp.enum_check('pos_drawers',          'status',         array['open','closed']);
 select pg_temp.enum_check('pos_purchase_orders',  'status',         array['ordered','received','cancelled']);
-select pg_temp.enum_check('pos_fbr_invoices',     'status',         array['pending','sending','submitted','failed']);
+select pg_temp.enum_check('pos_fbr_invoices',     'status',         array['pending','sending','submitted','failed','unknown']);
 select pg_temp.enum_check('fbr_settings',         'environment',    array['sandbox','production']);
 
 select pg_temp.enum_check('hrms_leave_requests',  'leave_type',     array['annual','sick','casual','unpaid']);

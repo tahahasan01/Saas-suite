@@ -102,7 +102,8 @@ async def _required_columns(conn, table: str) -> list[tuple[str, str]]:
         """select a.attname, format_type(a.atttypid, a.atttypmod) as typ
              from pg_attribute a
             where a.attrelid = $1::regclass and a.attnum > 0 and not a.attisdropped
-              and a.attnotnull and not a.atthasdef and a.attgenerated = ''""", table)]
+              and a.attnotnull and not a.atthasdef and a.attgenerated = ''
+              and a.attidentity = ''""", table)]
 
 
 def _value(typ: str) -> str:
@@ -117,9 +118,18 @@ def _value(typ: str) -> str:
         return "2026-01-01T00:00:00Z"
     if typ == "boolean":
         return "false"
+    if typ in ("jsonb", "json"):
+        return "{}"
     if typ.startswith(("text", "character")):
         return f"rls-{uuid.uuid4().hex[:12]}"
     raise AssertionError(f"teach _value() about type {typ!r}")
+
+
+# Columns whose CHECK is a format rather than a list.
+_SHAPED = {
+    "auth_tokens": {"token_hash": lambda: uuid.uuid4().hex * 2},
+    "outbox": {"kind": lambda: "rls.test_" + uuid.uuid4().hex[:8].translate(str.maketrans("0123456789", "ghijklmnop"))},
+}
 
 
 async def _allowed_values(conn, table: str) -> dict[str, str]:
@@ -138,6 +148,7 @@ async def _allowed_values(conn, table: str) -> dict[str, str]:
 
 async def _plant(conn, table: str, key: str, owner_id: uuid.UUID) -> None:
     allowed = await _allowed_values(conn, table)
+    allowed.update({col: make() for col, make in _SHAPED.get(table, {}).items()})
     cols = {name: (typ, allowed.get(name, _value(typ))) for name, typ in await _required_columns(conn, table)}
     cols[key] = ("uuid", str(owner_id))
     names = list(cols)

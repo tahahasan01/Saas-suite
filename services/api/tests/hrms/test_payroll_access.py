@@ -66,7 +66,7 @@ def test_a_legacy_read_grant_carries_only_read_keys():
     assert "payroll.salary.update" in rbac.keys_for_grant("payroll", "write")
     assert rbac.keys_for_grant("payroll", "admin") == set(rbac.MODULE_KEYS["payroll"])
     # HR grants never carry payroll keys (TR-SEC-36).
-    assert rbac.keys_for_grant("hrms", "admin") == set()
+    assert not {k for k in rbac.keys_for_grant("hrms", "admin") if k.startswith("payroll.")}
 
 
 async def test_without_payroll_access_salary_and_cnic_are_masked(client, tenant, hr_clerk):

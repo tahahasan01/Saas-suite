@@ -119,6 +119,11 @@ async def resolve_invoice(invoice_id: UUID, body: FbrResolve,
     if body.filed and not body.fbr_invoice_number:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
                             "Enter the FBR invoice number shown in IRIS.")
+    # Another tenant's filing (or a made-up id) is "not found" — answering 409
+    # would confirm that it exists.
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        if not await conn.fetchval("select 1 from pos_fbr_invoices where id=$1", invoice_id):
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Filing not found")
     settled = await fbr_submit.resolve_unknown(
         auth.tenant_id, str(invoice_id), filed=body.filed, invoice_number=body.fbr_invoice_number)
     if not settled:

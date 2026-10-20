@@ -52,6 +52,7 @@ APP_USER: dict[str, set[str]] = {
     "pos_purchase_orders":  {S, I, U},
     "pos_po_items":         {S, I, U},
     "pos_fbr_invoices":     {S, I, U},
+    "outbox":               {S, I},     # state changes run on the owner (worker) connection
     "fbr_settings":         {S, I, U},
     # hrms
     "hrms_employees":       {S, I, U},
