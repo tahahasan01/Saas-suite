@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { relativeDate } from "@/lib/format";
 import { errorText, useAction } from "@/lib/useAction";
 import { Badge, Button, Card, ErrorState, Field, Input, LoadingRows, Select } from "@/components/ui";
-import { Dialog } from "@/components/Dialog";
+import { useConfirm } from "@/components/Confirm";
 
 const PROVINCES = ["Punjab", "Sindh", "Khyber Pakhtunkhwa", "Balochistan", "Islamabad Capital Territory",
                    "Gilgit-Baltistan", "Azad Jammu and Kashmir"];
@@ -18,7 +18,7 @@ export default function FbrSettingsPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [invoices, setInvoices] = useState<FbrInvoice[]>([]);
   const [token, setToken] = useState("");
-  const [confirmProd, setConfirmProd] = useState(false);
+  const confirm = useConfirm();
 
   const loadInvoices = useCallback(() => {
     api<FbrInvoice[]>("/fbr/invoices?pending_only=true").then(setInvoices).catch(() => setInvoices([]));
@@ -54,8 +54,26 @@ export default function FbrSettingsPage() {
     if (await save.run({ token })) setToken("");
   }
 
-  async function switchToProduction() {
-    if (await save.run({ environment: "production" })) setConfirmProd(false);
+  // Production is never one slip away: picking it asks first, and the select
+  // stays on Sandbox (it shows cfg, which only changes once the save lands).
+  function askProduction(c: FbrSettings) {
+    void confirm({
+      title: "Switch to Production?",
+      body: (
+        <div className="space-y-2">
+          <p className="text-fg">
+            This sends real invoices to FBR. {c.enabled ? "From your next sale" : "Once filing is on"}, every
+            sale is filed officially under {c.seller_ntn_cnic ? <span className="font-medium">{c.seller_ntn_cnic}</span> : "your NTN"} and
+            can&apos;t be taken back.
+          </p>
+          <p>Stay on Sandbox until your test filings go through cleanly.</p>
+        </div>
+      ),
+      confirmLabel: "Switch to Production",
+      busyLabel: "Switching…",
+      tone: "danger",
+      run: () => save.run({ environment: "production" }),
+    });
   }
 
   return (
@@ -121,15 +139,13 @@ export default function FbrSettingsPage() {
 
       <Card className="space-y-3">
         <h3 className="text-sm font-semibold">Where filings go</h3>
-        {/* Production is never one slip away: picking it opens a confirmation,
-            and the select stays on Sandbox until that's confirmed. */}
         <Field label="Environment">
           <Select
             value={cfg.environment}
             disabled={save.busy}
             onChange={(e) => {
               const env = e.target.value as FbrSettings["environment"];
-              if (env === "production") setConfirmProd(true);
+              if (env === "production") askProduction(cfg);
               else save.run({ environment: env });
             }}
           >
@@ -169,30 +185,6 @@ export default function FbrSettingsPage() {
           </ul>
         </Card>
       )}
-
-      <Dialog
-        open={confirmProd}
-        onOpenChange={(o) => { if (!save.busy) setConfirmProd(o); }}
-        title="Switch to Production?"
-        size="sm"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setConfirmProd(false)} disabled={save.busy}>Cancel</Button>
-            <Button variant="danger" onClick={switchToProduction} disabled={save.busy}>
-              {save.busy ? "Switching…" : "Switch to Production"}
-            </Button>
-          </>
-        }
-      >
-        <div className="space-y-2 text-sm">
-          <p>
-            This sends real invoices to FBR. {cfg.enabled ? "From your next sale" : "Once filing is on"}, every
-            sale is filed officially under {cfg.seller_ntn_cnic ? <span className="font-medium">{cfg.seller_ntn_cnic}</span> : "your NTN"} and
-            can&apos;t be taken back.
-          </p>
-          <p className="text-fg-muted">Stay on Sandbox until your test filings go through cleanly.</p>
-        </div>
-      </Dialog>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, IBM_Plex_Sans } from "next/font/google";
 import { SessionProvider } from "@/lib/session";
 import { ToastProvider } from "@/components/Toast";
+import { ConfirmProvider } from "@/components/Confirm";
 import { THEME_INIT } from "@/components/ThemeToggle";
 import "./globals.css";
 
@@ -34,7 +35,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <SessionProvider>
-          <ToastProvider>{children}</ToastProvider>
+          <ToastProvider>
+            <ConfirmProvider>{children}</ConfirmProvider>
+          </ToastProvider>
         </SessionProvider>
       </body>
     </html>

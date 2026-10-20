@@ -8,7 +8,7 @@ import { useSession } from "@/lib/session";
 import { errorText, useAction } from "@/lib/useAction";
 import { Badge, Button, EmptyState, ErrorState } from "@/components/ui";
 import { DataTable, type Column } from "@/components/DataTable";
-import { Dialog } from "@/components/Dialog";
+import { useConfirm } from "@/components/Confirm";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const tone = { pending: "warning", approved: "success", rejected: "danger" } as const;
@@ -18,7 +18,7 @@ export default function InvoicesPage() {
   // null = loading; "No invoice requests yet" while loading read as "they're gone".
   const [items, setItems] = useState<Invoice[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [confirming, setConfirming] = useState<Invoice | null>(null);
+  const confirm = useConfirm();
   const canApprove = me?.user.role === "Owner"; // accounts approver
 
   const load = useCallback(() => {
@@ -41,11 +41,24 @@ export default function InvoicesPage() {
   );
   const deciding = approve.busy || reject.busy;
 
-  async function confirmApprove() {
-    if (!confirming) return;
-    const ok = await approve.run(confirming.id);
-    setConfirming(null);
-    if (ok !== undefined) load();
+  async function onApprove(inv: Invoice) {
+    // Approving issues a real invoice for real money, so it asks first and
+    // names the client and amount.
+    const done = await confirm({
+      title: "Approve this invoice?",
+      body: (
+        <>
+          <span className="font-medium text-fg">{money(inv.total_minor)}</span> for{" "}
+          <span className="font-medium text-fg">{inv.lead_name}</span>
+          {inv.discount_pct > 0 && ` (after a ${inv.discount_pct}% discount)`}. Once approved it can be
+          downloaded and sent to the client.
+        </>
+      ),
+      confirmLabel: "Approve",
+      busyLabel: "Approving…",
+      run: () => approve.run(inv.id),
+    });
+    if (done) load();
   }
   async function doReject(inv: Invoice) {
     if ((await reject.run(inv.id)) !== undefined) load();
@@ -77,7 +90,7 @@ export default function InvoicesPage() {
             <>
               {inv.status === "pending" && canApprove && (
                 <>
-                  <Button size="sm" disabled={deciding} onClick={() => setConfirming(inv)}>Approve</Button>
+                  <Button size="sm" disabled={deciding} onClick={() => onApprove(inv)}>Approve</Button>
                   <Button size="sm" variant="subtle" disabled={deciding} onClick={() => doReject(inv)}>
                     {reject.busy ? "Rejecting…" : "Reject"}
                   </Button>
@@ -93,30 +106,6 @@ export default function InvoicesPage() {
           )}
         />
       )}
-
-      {/* Approving issues a real invoice for real money, so it asks first and
-          names the client and amount. */}
-      <Dialog
-        open={!!confirming}
-        onOpenChange={(o) => { if (!o && !approve.busy) setConfirming(null); }}
-        title="Approve this invoice?"
-        size="sm"
-        footer={
-          <>
-            <Button variant="ghost" disabled={approve.busy} onClick={() => setConfirming(null)}>Cancel</Button>
-            <Button disabled={approve.busy} onClick={confirmApprove}>{approve.busy ? "Approving…" : "Approve"}</Button>
-          </>
-        }
-      >
-        {confirming && (
-          <p className="text-sm text-fg-muted">
-            <span className="font-medium text-fg">{money(confirming.total_minor)}</span> for{" "}
-            <span className="font-medium text-fg">{confirming.lead_name}</span>
-            {confirming.discount_pct > 0 && ` (after a ${confirming.discount_pct}% discount)`}. Once approved it can be
-            downloaded and sent to the client.
-          </p>
-        )}
-      </Dialog>
     </>
   );
 }

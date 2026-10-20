@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { api, ApiError } from "@/lib/api";
+import { api } from "@/lib/api";
 import { money, relativeDate } from "@/lib/format";
 import { useAction } from "@/lib/useAction";
 import { Badge, Button, Card, EmptyState, ErrorState, Field, Input, LoadingRows } from "@/components/ui";
-import { Dialog } from "@/components/Dialog";
+import { useConfirm } from "@/components/Confirm";
 import { DataTable, type Column } from "@/components/DataTable";
 import { blurOnWheel, methodLabel } from "@/components/pos/labels";
 
@@ -36,18 +36,15 @@ export default function DrawerPage() {
   const [counted, setCounted] = useState("");
   const [notes, setNotes] = useState("");
   const [closed, setClosed] = useState<Drawer | null>(null);
-  const [confirming, setConfirming] = useState(false);
+  const confirm = useConfirm();
 
   const load = useCallback(() => {
     setDrawerError(false);
     setHistoryError(false);
+    // null means no drawer is open — an answer, not a failure.
     api<Drawer | null>("/pos/drawer/current")
       .then((d) => setDrawer(d ?? null))
-      .catch((e) => {
-        // "No drawer is open" is an answer, not a failure; anything else is.
-        if (e instanceof ApiError && e.status === 404) setDrawer(null);
-        else setDrawerError(true);
-      });
+      .catch(() => setDrawerError(true));
     api<Drawer[]>("/pos/drawer/history").then(setHistory).catch(() => setHistoryError(true));
   }, []);
   useEffect(load, [load]);
@@ -71,15 +68,35 @@ export default function DrawerPage() {
 
   const countedMinor = Math.round(Number(counted || 0) * 100);
 
-  async function close() {
-    const d = await closeDrawer.run({ counted_minor: countedMinor, notes });
-    if (d !== undefined) {
-      setConfirming(false);
-      setClosed(d);
-      setCounted("");
-      setNotes("");
-      load();
-    }
+  // Closing freezes the shift's figures, so it's confirmed with the
+  // difference in front of the cashier first (I7).
+  function askClose(expectedMinor: number) {
+    void confirm({
+      title: "Close the drawer?",
+      body: (
+        <>
+          <p className="mb-3">The shift&apos;s figures are frozen once it&apos;s closed.</p>
+          <dl className="space-y-1 text-sm text-fg">
+            <div className="flex justify-between gap-3"><dt className="text-fg-muted">Expected</dt><dd className="tabular-nums">{money(expectedMinor)}</dd></div>
+            <div className="flex justify-between gap-3"><dt className="text-fg-muted">Counted</dt><dd className="tabular-nums">{money(countedMinor)}</dd></div>
+            <div className="flex justify-between gap-3 font-medium"><dt>Over / short</dt><dd><Variance v={countedMinor - expectedMinor} /></dd></div>
+          </dl>
+        </>
+      ),
+      confirmLabel: "Close drawer",
+      busyLabel: "Closing…",
+      cancelLabel: "Keep counting",
+      run: async () => {
+        const d = await closeDrawer.run({ counted_minor: countedMinor, notes });
+        if (d !== undefined) {
+          setClosed(d);
+          setCounted("");
+          setNotes("");
+          load();
+        }
+        return d;
+      },
+    });
   }
 
   const historyColumns: Column<Drawer>[] = [
@@ -136,9 +153,7 @@ export default function DrawerPage() {
 
           <Card className="h-fit space-y-3">
             <h2 className="text-sm font-semibold">Close drawer</h2>
-            {/* Closing freezes the shift's figures, so it's confirmed with the
-                difference in front of the cashier first (I7). */}
-            <form onSubmit={(e) => { e.preventDefault(); setConfirming(true); }} className="space-y-3">
+            <form onSubmit={(e) => { e.preventDefault(); askClose(drawer.expected_minor); }} className="space-y-3">
               <Field label="Cash counted (PKR)">
                 <Input type="number" inputMode="decimal" min={0} step="0.01" value={counted} required
                        onWheel={blurOnWheel} onChange={(e) => setCounted(e.target.value)} />
@@ -149,28 +164,6 @@ export default function DrawerPage() {
               <Button type="submit" className="w-full" disabled={closeDrawer.busy}>Close &amp; reconcile</Button>
             </form>
           </Card>
-
-          <Dialog
-            open={confirming}
-            onOpenChange={setConfirming}
-            title="Close the drawer?"
-            description="The shift's figures are frozen once it's closed."
-            size="sm"
-            footer={
-              <>
-                <Button variant="ghost" onClick={() => setConfirming(false)}>Keep counting</Button>
-                <Button onClick={() => void close()} disabled={closeDrawer.busy}>
-                  {closeDrawer.busy ? "Closing…" : "Close drawer"}
-                </Button>
-              </>
-            }
-          >
-            <dl className="space-y-1 text-sm">
-              <div className="flex justify-between gap-3"><dt className="text-fg-muted">Expected</dt><dd className="tabular-nums">{money(drawer.expected_minor)}</dd></div>
-              <div className="flex justify-between gap-3"><dt className="text-fg-muted">Counted</dt><dd className="tabular-nums">{money(countedMinor)}</dd></div>
-              <div className="flex justify-between gap-3 font-medium"><dt>Over / short</dt><dd><Variance v={countedMinor - drawer.expected_minor} /></dd></div>
-            </dl>
-          </Dialog>
         </div>
       ) : (
         <Card className="max-w-sm space-y-3">

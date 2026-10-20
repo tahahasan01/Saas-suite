@@ -7,7 +7,7 @@ import { api } from "@/lib/api";
 import { money, relativeDate } from "@/lib/format";
 import { useAction } from "@/lib/useAction";
 import { Badge, Button, Card, EmptyState, ErrorState, Field, Input, LoadingRows, Select } from "@/components/ui";
-import { Dialog } from "@/components/Dialog";
+import { useConfirm } from "@/components/Confirm";
 import { DataTable, type Column } from "@/components/DataTable";
 import { blurOnWheel } from "@/components/pos/labels";
 
@@ -93,7 +93,7 @@ export default function PurchaseOrdersPage() {
 
 function PoDetail({ po, onChanged }: { po: Po; onChanged: () => void }) {
   const [qty, setQty] = useState<Record<string, number>>({});
-  const [confirmCancel, setConfirmCancel] = useState(false);
+  const confirm = useConfirm();
   const id = encodeURIComponent(po.id);
 
   const receive = useAction(
@@ -110,8 +110,18 @@ function PoDetail({ po, onChanged }: { po: Po; onChanged: () => void }) {
     if (await receive.run(items) !== undefined) { setQty({}); onChanged(); }
   }
 
-  async function doCancel() {
-    if (await cancel.run() !== undefined) { setConfirmCancel(false); onChanged(); }
+  async function onCancel() {
+    const done = await confirm({
+      title: "Cancel this purchase order?",
+      description: "Nothing more can be received against it. Stock already received stays.",
+      body: <p>{po.supplier_name ?? "No supplier"} · {money(po.total_cost_minor)}</p>,
+      confirmLabel: "Cancel order",
+      busyLabel: "Cancelling…",
+      cancelLabel: "Keep order",
+      tone: "danger",
+      run: () => cancel.run(),
+    });
+    if (done) onChanged();
   }
 
   const columns: Column<PoLine>[] = [
@@ -122,7 +132,7 @@ function PoDetail({ po, onChanged }: { po: Po; onChanged: () => void }) {
   ];
   if (po.status === "ordered") {
     columns.push({
-      key: "now", header: "Receive now", align: "right",
+      key: "now", header: "Receive now", align: "right", wrap: true,
       cell: (l) => {
         const outstanding = l.qty - l.received_qty;
         return outstanding > 0 ? (
@@ -139,30 +149,13 @@ function PoDetail({ po, onChanged }: { po: Po; onChanged: () => void }) {
 
   return (
     <div className="border-t border-line px-4 py-3">
-      <DataTable columns={columns} rows={po.items} rowKey={(l) => l.id} caption="Order lines" className="[&_dd]:overflow-visible" />
+      <DataTable columns={columns} rows={po.items} rowKey={(l) => l.id} caption="Order lines" />
       {po.status === "ordered" && (
         <div className="mt-3 flex flex-wrap justify-end gap-2">
-          <Button size="sm" variant="ghost" onClick={() => setConfirmCancel(true)}>Cancel order</Button>
+          <Button size="sm" variant="ghost" onClick={() => void onCancel()}>Cancel order</Button>
           <Button size="sm" onClick={() => void doReceive()} disabled={receive.busy}>{receive.busy ? "Receiving…" : "Receive delivery"}</Button>
         </div>
       )}
-      <Dialog
-        open={confirmCancel}
-        onOpenChange={setConfirmCancel}
-        title="Cancel this purchase order?"
-        description="Nothing more can be received against it. Stock already received stays."
-        size="sm"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setConfirmCancel(false)}>Keep order</Button>
-            <Button variant="danger" onClick={() => void doCancel()} disabled={cancel.busy}>
-              {cancel.busy ? "Cancelling…" : "Cancel order"}
-            </Button>
-          </>
-        }
-      >
-        <p className="text-sm text-fg-muted">{po.supplier_name ?? "No supplier"} · {money(po.total_cost_minor)}</p>
-      </Dialog>
     </div>
   );
 }

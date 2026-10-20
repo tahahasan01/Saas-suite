@@ -18,6 +18,9 @@ export type Column<T> = {
   primary?: boolean;
   /** Left out of the phone card (e.g. a column the title already says). */
   hideOnCard?: boolean;
+  /** Don't clip this cell on the phone card — for inputs and text that must
+   *  show in full. Other card cells truncate to keep the grid tidy. */
+  wrap?: boolean;
   className?: string;
 };
 
@@ -60,7 +63,7 @@ export function DataTable<T>({ columns, rows, rowKey, actions, onRowClick, rowLa
                   {rest.map((c) => (
                     <div key={c.key} className="min-w-0">
                       <dt className="text-xs text-fg-subtle">{c.header}</dt>
-                      <dd className="truncate">{c.cell(r)}</dd>
+                      <dd className={c.wrap ? "min-w-0" : "truncate"}>{c.cell(r)}</dd>
                     </div>
                   ))}
                 </dl>

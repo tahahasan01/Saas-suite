@@ -5,7 +5,7 @@ import type { Holiday } from "@business-os/types";
 import { api, ApiError } from "@/lib/api";
 import { dayPKT } from "@/lib/dates";
 import { errorText, useAction } from "@/lib/useAction";
-import { Dialog } from "@/components/Dialog";
+import { useConfirm } from "@/components/Confirm";
 import { Button, Card, EmptyState, ErrorState, Field, Input, LoadingRows, Select } from "@/components/ui";
 
 /* Holidays are tenant-owned rather than seeded: Pakistan's Eid dates are lunar
@@ -37,7 +37,7 @@ export default function HolidaysPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ holiday_date: "", name: "" });
   const [year, setYear] = useState(thisYear);
-  const [removing, setRemoving] = useState<Holiday | null>(null);
+  const confirm = useConfirm();
 
   const load = useCallback(() => {
     setLoadError(null);
@@ -70,10 +70,22 @@ export default function HolidaysPage() {
     { success: "Holiday removed", failure: "Couldn't remove holiday" },
   );
 
-  async function confirmRemove() {
-    if (!removing) return;
-    if (await del.run(removing)) setRemoving(null);
-    load();
+  function onRemove(h: Holiday) {
+    void confirm({
+      title: "Remove this holiday?",
+      body: (
+        <>
+          <span className="font-medium text-fg">{h.name}</span> ({fmtDate(h.holiday_date)}) becomes a
+          working day again. Payroll for that month will expect attendance on it, and anyone who stayed home
+          will be marked absent.
+        </>
+      ),
+      confirmLabel: "Remove",
+      busyLabel: "Removing…",
+      tone: "danger",
+      // Reload whichever way it went: a failure may mean it was already gone.
+      run: async () => { const done = await del.run(h); load(); return done; },
+    });
   }
 
   const fixed = fixedFor(year);
@@ -134,7 +146,7 @@ export default function HolidaysPage() {
               <li key={h.id} className="flex items-center gap-3 px-4 py-2.5">
                 <span className="w-28 shrink-0 text-sm tabular-nums text-fg-muted">{fmtDate(h.holiday_date)}</span>
                 <span className="min-w-0 flex-1 break-words text-sm">{h.name}</span>
-                <Button size="sm" variant="ghost" onClick={() => setRemoving(h)} aria-label={`Remove ${h.name}`}>Remove</Button>
+                <Button size="sm" variant="ghost" onClick={() => onRemove(h)} aria-label={`Remove ${h.name}`}>Remove</Button>
               </li>
             ))}
           </ul>
@@ -190,27 +202,6 @@ export default function HolidaysPage() {
           </Button>
         </Card>
       </div>
-
-      <Dialog
-        open={removing !== null}
-        onOpenChange={(o) => !o && setRemoving(null)}
-        title="Remove this holiday?"
-        size="sm"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setRemoving(null)}>Cancel</Button>
-            <Button variant="danger" onClick={confirmRemove} disabled={del.busy}>{del.busy ? "Removing…" : "Remove"}</Button>
-          </>
-        }
-      >
-        {removing && (
-          <p className="text-sm text-fg-muted">
-            <span className="font-medium text-fg">{removing.name}</span> ({fmtDate(removing.holiday_date)}) becomes a
-            working day again. Payroll for that month will expect attendance on it, and anyone who stayed home
-            will be marked absent.
-          </p>
-        )}
-      </Dialog>
     </div>
   );
 }

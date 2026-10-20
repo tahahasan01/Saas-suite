@@ -8,6 +8,7 @@ import { useSession } from "@/lib/session";
 import { useAction } from "@/lib/useAction";
 import { Badge, Button, Card, EmptyState, ErrorState, Field, Input } from "@/components/ui";
 import { Dialog } from "@/components/Dialog";
+import { useConfirm } from "@/components/Confirm";
 import { DataTable, type Column } from "@/components/DataTable";
 import { ImportCsv } from "@/components/ImportCsv";
 import { blurOnWheel } from "@/components/pos/labels";
@@ -26,9 +27,9 @@ export default function ProductsPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState(blank);
   const [editing, setEditing] = useState<Product | null>(null);
-  const [archiving, setArchiving] = useState<Product | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [filter, setFilter] = useState("");
+  const confirm = useConfirm();
   const word = t("products");
   const one = t("product");
 
@@ -65,7 +66,24 @@ export default function ProductsPage() {
 
   async function save(id: string, body: Partial<Product>) {
     const ok = await patch.run(id, body);
-    if (ok !== undefined) { setEditing(null); setArchiving(null); load(); }
+    if (ok !== undefined) { setEditing(null); load(); }
+  }
+
+  async function onArchive(p: Product) {
+    // Archiving rather than deleting: a sold product is referenced by past
+    // sales, so removing the row would rewrite history. Still asked first —
+    // it vanishes from the till.
+    const done = await confirm({
+      title: `Archive ${p.name}?`,
+      description: 'It disappears from the till and search. Past sales keep it, and you can restore it from "Show archived".',
+      body: <p>{p.stock_qty} {p.unit} in stock.</p>,
+      confirmLabel: "Archive",
+      busyLabel: "Archiving…",
+      cancelLabel: "Keep it",
+      tone: "danger",
+      run: () => patch.run(p.id, { active: false }),
+    });
+    if (done) load();
   }
 
   const shown = useMemo(() => {
@@ -157,7 +175,7 @@ export default function ProductsPage() {
                   <>
                     <Button size="sm" variant="ghost" onClick={() => setEditing(p)} aria-label={`Edit ${p.name}`}>Edit</Button>
                     {p.active ? (
-                      <Button size="sm" variant="ghost" onClick={() => setArchiving(p)} aria-label={`Archive ${p.name}`}>Archive</Button>
+                      <Button size="sm" variant="ghost" onClick={() => void onArchive(p)} aria-label={`Archive ${p.name}`}>Archive</Button>
                     ) : (
                       <Button size="sm" variant="ghost" disabled={patch.busy} onClick={() => void save(p.id, { active: true })} aria-label={`Restore ${p.name}`}>
                         Restore
@@ -196,27 +214,6 @@ export default function ProductsPage() {
       {editing && (
         <EditDialog p={editing} busy={patch.busy} onCancel={() => setEditing(null)} onSave={(b) => void save(editing.id, b)} />
       )}
-
-      {/* Archiving rather than deleting: a sold product is referenced by past
-          sales, so removing the row would rewrite history. Still asked first —
-          it vanishes from the till. */}
-      <Dialog
-        open={archiving !== null}
-        onOpenChange={(o) => { if (!o) setArchiving(null); }}
-        title={`Archive ${archiving?.name ?? ""}?`}
-        description={`It disappears from the till and search. Past sales keep it, and you can restore it from "Show archived".`}
-        size="sm"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setArchiving(null)}>Keep it</Button>
-            <Button variant="danger" disabled={patch.busy} onClick={() => archiving && void save(archiving.id, { active: false })}>
-              {patch.busy ? "Archiving…" : "Archive"}
-            </Button>
-          </>
-        }
-      >
-        <p className="text-sm text-fg-muted">{archiving?.stock_qty ?? 0} {archiving?.unit} in stock.</p>
-      </Dialog>
     </>
   );
 }

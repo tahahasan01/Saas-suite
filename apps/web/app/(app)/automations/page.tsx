@@ -6,7 +6,7 @@ import { X } from "lucide-react";
 import { api } from "@/lib/api";
 import { errorText, useAction } from "@/lib/useAction";
 import { Button, Card, EmptyState, ErrorState, Field, Input, LoadingRows, Select, Switch } from "@/components/ui";
-import { Dialog } from "@/components/Dialog";
+import { useConfirm } from "@/components/Confirm";
 
 const TRIGGER_LABEL: Record<string, string> = {
   "lead.created": "When a lead is created",
@@ -20,7 +20,7 @@ export default function AutomationsPage() {
   const [items, setItems] = useState<Workflow[] | null>(null); // null = loading
   const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState(blank);
-  const [deleting, setDeleting] = useState<Workflow | null>(null);
+  const confirm = useConfirm();
 
   const load = useCallback(() => {
     setLoadError(null);
@@ -58,11 +58,16 @@ export default function AutomationsPage() {
     const updated = await toggle.run(w);
     if (updated) setItems((cur) => cur && cur.map((x) => (x.id === w.id ? { ...x, enabled: updated.enabled } : x)));
   }
-  async function confirmDelete() {
-    if (!deleting) return;
-    const ok = await remove.run(deleting);
-    setDeleting(null);
-    if (ok !== undefined) load();
+  async function onDelete(w: Workflow) {
+    const done = await confirm({
+      title: `Delete “${w.name}”?`,
+      body: "The rule stops running straight away. This can't be undone.",
+      confirmLabel: "Delete",
+      busyLabel: "Deleting…",
+      tone: "danger",
+      run: () => remove.run(w),
+    });
+    if (done) load();
   }
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -106,7 +111,7 @@ export default function AutomationsPage() {
                   {!w.is_system && (
                     <button
                       type="button"
-                      onClick={() => setDeleting(w)}
+                      onClick={() => onDelete(w)}
                       aria-label={`Delete ${w.name}`}
                       title={`Delete ${w.name}`}
                       className="grid h-9 w-9 place-items-center rounded-lg text-fg-subtle hover:bg-elevated hover:text-danger pointer-coarse:h-11 pointer-coarse:w-11"
@@ -146,21 +151,6 @@ export default function AutomationsPage() {
           </form>
         </Card>
       </div>
-
-      <Dialog
-        open={!!deleting}
-        onOpenChange={(o) => { if (!o && !remove.busy) setDeleting(null); }}
-        title={deleting ? `Delete “${deleting.name}”?` : "Delete automation?"}
-        size="sm"
-        footer={
-          <>
-            <Button variant="ghost" disabled={remove.busy} onClick={() => setDeleting(null)}>Cancel</Button>
-            <Button variant="danger" disabled={remove.busy} onClick={confirmDelete}>{remove.busy ? "Deleting…" : "Delete"}</Button>
-          </>
-        }
-      >
-        <p className="text-sm text-fg-muted">The rule stops running straight away. This can&apos;t be undone.</p>
-      </Dialog>
     </>
   );
 }
