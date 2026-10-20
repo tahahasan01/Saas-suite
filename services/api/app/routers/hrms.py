@@ -260,6 +260,7 @@ async def check_in(body: CheckInRequest, auth: AuthContext = Depends(require("hr
 @router.post("/attendance/checkout", response_model=AttendanceOut)
 async def check_out(body: CheckInRequest, auth: AuthContext = Depends(require("hrms", "write"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
+        await refs.ensure_visible(conn, "hrms_employees", body.employee_id)
         row = await _do_checkout(conn, body.employee_id)
         if row is None:
             raise HTTPException(status.HTTP_409_CONFLICT, "No check-in recorded today")
@@ -545,7 +546,9 @@ async def create_holiday(body: HolidayCreate, auth: AuthContext = Depends(requir
 async def delete_holiday(holiday_id: str, response: Response,
                          auth: AuthContext = Depends(require("hrms", "write"))) -> Response:
     async with db.tenant_conn(auth.tenant_id) as conn:
-        await conn.execute("delete from hrms_holidays where id=$1", holiday_id)
+        # 404, not a silent 204, for an id this tenant can't see.
+        if await conn.fetchval("delete from hrms_holidays where id=$1 returning id", holiday_id) is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Holiday not found")
     # Must set the code on the injected response, as logout/read-all do —
     # returning it unset yields no status at all.
     response.status_code = status.HTTP_204_NO_CONTENT

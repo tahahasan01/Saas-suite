@@ -65,6 +65,13 @@ async def update_workflow(workflow_id: str, body: WorkflowUpdate,
 async def delete_workflow(workflow_id: str, response: Response,
                           auth: AuthContext = Depends(require("settings", "admin"))) -> Response:
     async with db.tenant_conn(auth.tenant_id) as conn:
-        await conn.execute("delete from workflows where id=$1 and not is_system", workflow_id)
+        # A 204 for a row RLS hid (another tenant's) or a system one we kept
+        # would claim a delete that never happened.
+        is_system = await conn.fetchval("select is_system from workflows where id=$1", workflow_id)
+        if is_system is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Workflow not found")
+        if is_system:
+            raise HTTPException(status.HTTP_409_CONFLICT, "Built-in automations can be turned off, not deleted.")
+        await conn.execute("delete from workflows where id=$1", workflow_id)
     response.status_code = status.HTTP_204_NO_CONTENT
     return response
