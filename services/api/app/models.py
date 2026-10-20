@@ -444,7 +444,7 @@ class RefundableLine(ReturnableLine):
 
 
 class SaleLookup(SaleDetail):
-    returnable: list[RefundableLine] = Field(default_factory=list)
+    returnable: list[RefundableLine] = Field(default_factory=list)  # type: ignore[assignment]  # narrows the base field
     # Never refund more than this in total: what was paid (cash-rounded) less
     # earlier refunds. create_return caps at the same figure.
     refundable_minor: int = 0

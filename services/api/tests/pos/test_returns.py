@@ -5,7 +5,6 @@ including across several separate visits. Everything else is bookkeeping.
 """
 from __future__ import annotations
 
-import pytest
 import pytest_asyncio
 
 

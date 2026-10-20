@@ -170,7 +170,7 @@ async def ask(tenant_id: str, user_id: str, question: str, sections: set[str]) -
         raise AiUnavailable("Turn on a module before asking questions about your data.")
 
     tokens_in = tokens_out = 0
-    refusal = {"answer": "I couldn't answer that safely from your data. Try rephrasing it.",
+    refusal: dict[str, Any] = {"answer": "I couldn't answer that safely from your data. Try rephrasing it.",
                "sql": None, "rows": []}
 
     # 1) NL -> SQL

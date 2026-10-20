@@ -17,11 +17,16 @@ export default function FbrSettingsPage() {
   const [cfg, setCfg] = useState<FbrSettings | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [invoices, setInvoices] = useState<FbrInvoice[]>([]);
+  // An empty "not yet filed" list must mean nothing is pending, never "we couldn't ask".
+  const [invoicesError, setInvoicesError] = useState<string | null>(null);
   const [token, setToken] = useState("");
   const confirm = useConfirm();
 
   const loadInvoices = useCallback(() => {
-    api<FbrInvoice[]>("/fbr/invoices?pending_only=true").then(setInvoices).catch(() => setInvoices([]));
+    setInvoicesError(null);
+    api<FbrInvoice[]>("/fbr/invoices?pending_only=true")
+      .then(setInvoices)
+      .catch((e) => setInvoicesError(errorText(e, "Couldn't check for invoices FBR hasn't accepted yet.")));
   }, []);
   const load = useCallback(async () => {
     setLoadError(null);
@@ -168,6 +173,7 @@ export default function FbrSettingsPage() {
         {save.error && <p role="alert" className="text-xs text-danger">{save.error}</p>}
       </Card>
 
+      {invoicesError && <ErrorState message={invoicesError} onRetry={loadInvoices} />}
       {invoices.length > 0 && (
         <Card className="space-y-2">
           <h3 className="text-sm font-semibold">Not yet filed ({invoices.length})</h3>

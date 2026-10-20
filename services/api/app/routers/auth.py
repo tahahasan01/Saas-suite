@@ -290,7 +290,8 @@ async def _bootstrap(conn, user: UserOut, tenant_id: str, role_id: str | None) -
         entitlements=[EntitlementOut(section_key=r["section_key"], enabled=r["enabled"], limits=r["limits"])
                       for r in ent_rows],
         permissions=await rbac.effective_permissions(conn, tenant_id, role_id),
-        locale=LocaleOut(locale=locale, dir="rtl" if locale == "ur" else "ltr",
+        # A CHECK keeps users.locale to en|ur; the column type is still text.
+        locale=LocaleOut(locale=locale, dir="rtl" if locale == "ur" else "ltr",  # type: ignore[arg-type]
                          timezone=tenant_row["timezone"], currency="PKR"),
         employee_portal=is_employee,
     )

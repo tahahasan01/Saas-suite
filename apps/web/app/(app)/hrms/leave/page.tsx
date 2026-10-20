@@ -29,6 +29,7 @@ export default function LeavePage() {
   const [form, setForm] = useState(blank);
   const [filter, setFilter] = useState<Filter>("all");
   const [balances, setBalances] = useState<Balance[]>([]);
+  const [balancesError, setBalancesError] = useState<string | null>(null);
   const [deciding, setDeciding] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -48,9 +49,11 @@ export default function LeavePage() {
   // approver needs at the moment of deciding.
   useEffect(() => {
     if (!form.employee_id) return;
+    setBalancesError(null);
     api<Balance[]>(`/hrms/leave/balances?employee_id=${form.employee_id}`)
       .then(setBalances)
-      .catch(() => setBalances([]));
+      // Said, not swallowed: an approver deciding blind should know the numbers are missing.
+      .catch((e) => { setBalances([]); setBalancesError(errorText(e, "Couldn't load leave balances.")); });
   }, [form.employee_id, items]);
 
   const shown = useMemo(
@@ -183,6 +186,7 @@ export default function LeavePage() {
               {employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
             </Select>
           </Field>
+          {balancesError && <p role="status" className="text-xs text-warning">{balancesError}</p>}
           {balances.length > 0 && (
             <div className="flex gap-1.5" role="group" aria-label="Leave balances this year">
               {balances.map((b) => (

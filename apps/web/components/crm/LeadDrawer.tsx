@@ -10,13 +10,12 @@ import {
   type LeadDetail,
   type Stage,
 } from "@business-os/types";
-import { api } from "@/lib/api";
+import { api, apiUrl } from "@/lib/api";
 import { money, relativeDate } from "@/lib/format";
 import { errorText, useAction } from "@/lib/useAction";
 import { Sheet } from "@/components/Dialog";
 import { Badge, Button, ErrorState, Field, Input, LoadingRows, Select, Textarea } from "@/components/ui";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const invTone = { pending: "warning", approved: "success", rejected: "danger" } as const;
 
 const emptyLog = { channel: "call", outcome: "", note: "", follow: "" };
@@ -248,7 +247,7 @@ function Invoices({ leadId, onChanged }: { leadId: string; onChanged: () => void
           <span className="flex items-center gap-2">
             <Badge tone={invTone[iv.status]}>{iv.status}</Badge>
             {iv.status === "approved" && (
-              <a href={`${API}/crm/invoices/${iv.id}/pdf`} target="_blank" rel="noreferrer" className="text-brand hover:underline">PDF</a>
+              <a href={apiUrl(`/crm/invoices/${iv.id}/pdf`)} target="_blank" rel="noreferrer" className="text-brand hover:underline">PDF</a>
             )}
           </span>
         </div>

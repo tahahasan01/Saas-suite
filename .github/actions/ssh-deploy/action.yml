@@ -1,0 +1,72 @@
+# Deploys one release tag to a host that runs the production compose stack.
+# The host needs Docker + the compose plugin, a deploy user in the docker
+# group, and APP_DIR containing the stack's .env (written once by hand; see
+# .github/README.md). This action never writes app secrets to the host.
+name: SSH deploy
+description: Pull a tagged release on a compose host, migrate, restart, optionally seed staging.
+
+inputs:
+  host: { description: "SSH host", required: true }
+  user: { description: "SSH user", required: true }
+  key: { description: "SSH private key (ed25519)", required: true }
+  known-hosts: { description: "The host's known_hosts line(s): pins its key", required: true }
+  tag: { description: "Release tag, e.g. v0.3.0", required: true }
+  registry-user: { description: "GHCR user", required: true }
+  registry-token: { description: "GHCR token with read:packages", required: true }
+  app-dir: { description: "Directory on the host", default: /opt/business-os }
+  compose-file: { description: "Compose file in this repo, copied to the host", default: infra/docker/docker-compose.prod.yml }
+  seed: { description: "Run scripts.seed_staging after the deploy (staging only)", default: "false" }
+  env-file: { description: "KEY=VALUE lines for the staging seed (never stored in the repo)", default: "" }
+
+runs:
+  using: composite
+  steps:
+    - name: SSH key
+      shell: bash
+      env:
+        KEY: ${{ inputs.key }}
+        KNOWN_HOSTS: ${{ inputs.known-hosts }}
+      run: |
+        install -m 700 -d ~/.ssh
+        printf '%s\n' "$KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+        printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+    - name: Ship the compose file
+      shell: bash
+      run: |
+        if [ -f "${{ inputs.compose-file }}" ]; then
+          scp -i ~/.ssh/deploy_key "${{ inputs.compose-file }}" "${{ inputs.user }}@${{ inputs.host }}:${{ inputs.app-dir }}/docker-compose.prod.yml"
+        else
+          echo "::warning::${{ inputs.compose-file }} not in this release; using the one already on the host"
+        fi
+    - name: Seed env (staging)
+      if: inputs.seed == 'true'
+      shell: bash
+      env:
+        SEED_ENV: ${{ inputs.env-file }}
+      run: |
+        printf '%s\n' "$SEED_ENV" | ssh -i ~/.ssh/deploy_key "${{ inputs.user }}@${{ inputs.host }}" \
+          "umask 077 && cat > '${{ inputs.app-dir }}/.seed.env'"
+    - name: Pull, migrate, restart
+      shell: bash
+      env:
+        REGISTRY_TOKEN: ${{ inputs.registry-token }}
+      run: |
+        ssh -i ~/.ssh/deploy_key "${{ inputs.user }}@${{ inputs.host }}" bash -s -- \
+          "${{ inputs.app-dir }}" "${{ inputs.tag }}" "${{ inputs.registry-user }}" "${{ inputs.seed }}" <<EOF
+        set -euo pipefail
+        cd "\$1"
+        export IMAGE_TAG="\$2"
+        echo "$REGISTRY_TOKEN" | docker login ghcr.io -u "\$3" --password-stdin
+        compose="docker compose -f docker-compose.prod.yml"
+        \$compose pull
+        # Migrations first: they only ever add (expand/contract, 14 §3.3), so the
+        # old containers keep working against the new schema until they restart.
+        \$compose run --rm api python -m scripts.migrate
+        \$compose up -d --remove-orphans
+        if [ "\$4" = "true" ]; then
+          \$compose run --rm -v "\$PWD/.seed.env:/run/seed.env:ro" api python -m scripts.seed_staging --env-file /run/seed.env
+          rm -f .seed.env
+        fi
+        docker image prune -f > /dev/null
+        echo "deployed \$2"
+        EOF

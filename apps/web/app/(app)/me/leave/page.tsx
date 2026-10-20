@@ -26,12 +26,15 @@ export default function MyLeave() {
   const [items, setItems] = useState<Leave[] | null>(null); // null = loading
   const [loadError, setLoadError] = useState<string | null>(null);
   const [balances, setBalances] = useState<Balance[]>([]);
+  const [balancesError, setBalancesError] = useState<string | null>(null);
   const [form, setForm] = useState(blank);
 
   const load = useCallback(() => {
     setLoadError(null);
     api<Leave[]>("/me/leave").then(setItems).catch((e) => setLoadError(errorText(e, "Couldn't load your requests.")));
-    api<Balance[]>("/me/leave/balances").then(setBalances).catch(() => setBalances([]));
+    setBalancesError(null);
+    api<Balance[]>("/me/leave/balances").then(setBalances)
+      .catch((e) => { setBalances([]); setBalancesError(errorText(e, "Couldn't load your leave balances.")); });
   }, []);
   useEffect(load, [load]);
 
@@ -70,6 +73,7 @@ export default function MyLeave() {
       </div>
 
       <div className="space-y-4">
+        {balancesError && <p role="status" className="text-sm text-warning">{balancesError}</p>}
         <div className="grid grid-cols-3 gap-2">
           {balances.map((b) => (
             <Card key={b.leave_type} className="p-3 text-center">

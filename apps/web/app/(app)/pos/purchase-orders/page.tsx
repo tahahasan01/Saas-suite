@@ -5,7 +5,7 @@ import type { Product } from "@business-os/types";
 import { X } from "lucide-react";
 import { api } from "@/lib/api";
 import { money, relativeDate } from "@/lib/format";
-import { useAction } from "@/lib/useAction";
+import { errorText, useAction } from "@/lib/useAction";
 import { Badge, Button, Card, EmptyState, ErrorState, Field, Input, LoadingRows, Select } from "@/components/ui";
 import { useConfirm } from "@/components/Confirm";
 import { DataTable, type Column } from "@/components/DataTable";
@@ -33,11 +33,17 @@ export default function PurchaseOrdersPage() {
   const [open, setOpen] = useState<string | null>(null);   // expanded PO
   const [creating, setCreating] = useState(false);
 
+  // The order form's pick-lists: empty dropdowns with no reason looked like
+  // "you have no suppliers", so a failure is said above the form.
+  const [listsError, setListsError] = useState<string | null>(null);
+
   const load = useCallback(() => {
     setLoadError(null);
-    api<Po[]>("/pos/purchase-orders").then(setOrders).catch(() => setLoadError("Couldn't load purchase orders."));
-    api<Supplier[]>("/pos/suppliers").then(setSuppliers).catch(() => setSuppliers([]));
-    api<Product[]>("/pos/products").then(setProducts).catch(() => setProducts([]));
+    setListsError(null);
+    api<Po[]>("/pos/purchase-orders").then(setOrders).catch((e) => setLoadError(errorText(e, "Couldn't load purchase orders.")));
+    const listFailed = (e: unknown) => setListsError(errorText(e, "Couldn't load suppliers and products for a new order."));
+    api<Supplier[]>("/pos/suppliers").then(setSuppliers).catch(listFailed);
+    api<Product[]>("/pos/products").then(setProducts).catch(listFailed);
   }, []);
   useEffect(load, [load]);
 
@@ -50,6 +56,9 @@ export default function PurchaseOrdersPage() {
         </Button>
       </div>
 
+      {creating && listsError && (
+        <div className="mb-3"><ErrorState message={listsError} onRetry={load} /></div>
+      )}
       {creating && (
         <NewOrder suppliers={suppliers} products={products} onDone={() => { setCreating(false); load(); }} />
       )}

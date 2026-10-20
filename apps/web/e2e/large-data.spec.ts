@@ -140,7 +140,7 @@ test.describe("catalog beyond 200 products", () => {
   // GET /pos/products used to stop at 200 rows and the Products page filtered
   // that capped list in the browser, so the 201st product onwards
   // (alphabetically) couldn't be found, edited or archived there. Now search
-  // runs on the server and the page pages with "Load more".
+  // runs on the server and the table pages on the server (50 a page).
   test("every product is reachable on the Products page", async ({ page, request }) => {
     const first = await request.get(`${API}/pos/products?limit=1`);
     expect(first.ok()).toBeTruthy();
@@ -150,13 +150,13 @@ test.describe("catalog beyond 200 products", () => {
     const [last] = await (await request.get(`${API}/pos/products?limit=1&offset=${total - 1}`)).json();
     const edit = page.getByRole("button", { name: `Edit ${last.name}`, exact: true }).locator("visible=true");
 
-    // "Showing 200 of 230 products", or "230 products" once all are loaded.
-    // The page's own count line (it's announced politely as it changes);
-    // a loose text match also caught stock figures like "120 pcs".
-    const count = page.locator("p[aria-live=polite]").filter({ hasText: /^(Showing \d+ of \d+|\d+) [a-z ]+$/i });
+    // "Showing 1–50 of 230 products": the pager's own count line (announced
+    // politely as it changes); a loose text match also caught stock figures.
+    const count = page.getByRole("navigation", { name: "Pages" }).locator("p[aria-live=polite]");
+    const pages = Math.ceil(total / 50);
     await page.goto("/pos/products");
     await ready(page);
-    await expect(count).toHaveText(new RegExp(`^Showing 200 of ${total} `, "i"));
+    await expect(count).toHaveText(new RegExp(`^Showing 1–50 of ${total} `, "i"));
     await expect(edit).toHaveCount(0);
 
     // Found by searching…
@@ -164,16 +164,16 @@ test.describe("catalog beyond 200 products", () => {
     await search.fill(last.name);
     await expect(edit).toBeVisible({ timeout: 10_000 });
 
-    // …and by paging through the whole catalog.
+    // …and by paging to the end of the catalog.
     await search.fill("");
-    await expect(count).toHaveText(new RegExp(`^Showing 200 of ${total} `, "i"), { timeout: 10_000 });
-    const more = page.getByRole("button", { name: /^Load \d+ more$/ });
-    while (await more.isVisible()) {
-      const before = (await count.textContent()) ?? "";
-      await more.click();
-      await expect(count).not.toHaveText(before, { timeout: 10_000 });
+    await expect(count).toHaveText(new RegExp(`^Showing 1–50 of ${total} `, "i"), { timeout: 10_000 });
+    const next = page.getByRole("button", { name: "Next page" });
+    for (let p = 2; p <= pages; p++) {
+      await next.click();
+      await expect(page.getByText(`Page ${p} of ${pages}`)).toBeVisible({ timeout: 10_000 });
     }
-    await expect(count).toHaveText(new RegExp(`^${total} `, "i"));
+    await expect(next).toBeDisabled();
+    await expect(count).toHaveText(new RegExp(`^Showing ${(pages - 1) * 50 + 1}–${total} of ${total} `, "i"));
     await expect(edit).toBeVisible();
   });
 });

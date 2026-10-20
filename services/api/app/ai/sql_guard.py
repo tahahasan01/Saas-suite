@@ -71,7 +71,7 @@ class UnsafeQuery(Exception):
     pass
 
 
-def _check_functions(tree: exp.Expression) -> None:
+def _check_functions(tree: exp.Expr) -> None:
     for fn in tree.find_all(exp.Func):
         if isinstance(fn, exp.Anonymous):
             if fn.name.lower() not in _ALLOWED_ANONYMOUS:
@@ -80,14 +80,14 @@ def _check_functions(tree: exp.Expression) -> None:
             raise UnsafeQuery(f"function '{fn.sql_name()}' is not allowed")
 
 
-def _check_casts(tree: exp.Expression) -> None:
+def _check_casts(tree: exp.Expr) -> None:
     for cast in tree.find_all(exp.Cast):
         to = cast.to
         if type(to) is not exp.DataType or to.this not in _ALLOWED_CAST_TYPES:
             raise UnsafeQuery(f"cast to '{to.sql(dialect='postgres')}' is not allowed")
 
 
-def _literal_limit(tree: exp.Expression) -> int | None:
+def _literal_limit(tree: exp.Expr) -> int | None:
     """The row count a LIMIT / FETCH FIRST asks for, if it is a plain number."""
     node = tree.args.get("limit")
     if isinstance(node, exp.Limit):
@@ -120,7 +120,7 @@ def _check_table(table: exp.Table, allowed: set[str], visible_ctes: set[str]) ->
         raise UnsafeQuery(f"table '{table.sql()}' is not queryable")
 
 
-def _check_tables(tree: exp.Expression, allowed: set[str]) -> None:
+def _check_tables(tree: exp.Expr, allowed: set[str]) -> None:
     """A CTE name only excuses a reference that SQL scoping lets see it. To keep
     that rule simple and checkable: WITH is allowed only at the top level, never
     RECURSIVE, and a CTE body sees only the CTEs defined before it (a

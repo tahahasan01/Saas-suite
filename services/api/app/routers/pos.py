@@ -32,14 +32,12 @@ from ..models import (
     ProductUpdate,
     RestockItem,
     RefundableLine,
-    ReturnableLine,
     ReturnCreate,
     ReturnItemOut,
     ReturnOut,
     SaleCreate,
     SaleQuote,
     SaleQuoteRequest,
-    SaleDetail,
     SaleLookup,
     SaleItemOut,
     SaleOut,
@@ -693,7 +691,7 @@ async def create_return(sale_id: str, body: ReturnCreate,
 
         fbr_cfg = await conn.fetchrow("select * from fbr_settings where tenant_id=$1", auth.tenant_id)
         if fbr_cfg and fbr_cfg["enabled"]:
-            for row, qty, line_refund in lines:
+            for row, _qty, line_refund in lines:
                 # A refund is an amount the customer paid, so tax is inside it —
                 # at the rate the sale charged, not the product's rate today.
                 _, line_tax = fbr.split_tax(line_refund, Decimal(str(row["tax_rate"])), True)

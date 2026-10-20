@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Lead, Pipeline, Stage } from "@business-os/types";
 import { api } from "@/lib/api";
-import { money, moneyCompact } from "@/lib/format";
+import { formatDate, money, moneyCompact } from "@/lib/format";
 import { useSession } from "@/lib/session";
 import { errorText } from "@/lib/useAction";
 import { useToast } from "@/components/Toast";
@@ -298,7 +298,7 @@ function LeadCard({ lead: l, onOpen, setDragId }: {
           <span className="text-xs font-medium tabular-nums">{money(l.value_minor, l.currency)}</span>
           <span className="flex items-center gap-1.5 text-[10px] text-fg-subtle">
             <span className="rounded bg-surface px-1.5 py-0.5">{l.source}</span>
-            <span title={new Date(l.created_at).toLocaleDateString("en-PK")}>{age(l.created_at)}</span>
+            <span title={formatDate(l.created_at)}>{age(l.created_at)}</span>
           </span>
         </span>
       </span>

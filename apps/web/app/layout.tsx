@@ -1,8 +1,11 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { Bricolage_Grotesque, IBM_Plex_Sans } from "next/font/google";
 import { SessionProvider } from "@/lib/session";
 import { ToastProvider } from "@/components/Toast";
 import { ConfirmProvider } from "@/components/Confirm";
+import { ApiErrorBridge } from "@/components/ApiErrorBridge";
+import { QueryProvider } from "@/components/QueryProvider";
 import { THEME_INIT } from "@/components/ThemeToggle";
 import "./globals.css";
 
@@ -27,18 +30,23 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // The CSP allows only scripts carrying this request's nonce (middleware.ts).
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html lang="en" className={`${plex.variable} ${bricolage.variable}`} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
       </head>
       <body>
-        <SessionProvider>
-          <ToastProvider>
-            <ConfirmProvider>{children}</ConfirmProvider>
-          </ToastProvider>
-        </SessionProvider>
+        <QueryProvider>
+          <SessionProvider>
+            <ToastProvider>
+              <ApiErrorBridge />
+              <ConfirmProvider>{children}</ConfirmProvider>
+            </ToastProvider>
+          </SessionProvider>
+        </QueryProvider>
       </body>
     </html>
   );

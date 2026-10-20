@@ -9,11 +9,9 @@ from __future__ import annotations
 import uuid
 
 import asyncpg
-import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
-from app import db
 from app.config import settings
 from app.main import app
 from app.security import SESSION_COOKIE, hash_session_token

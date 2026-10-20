@@ -1,6 +1,10 @@
-# Test and tooling deps. The runtime set (requirements.txt) is what ships;
-# its exact, hash-pinned resolution is requirements.lock (see infra/README.md).
+# Test and tooling deps for CI and local checks — never installed in the API
+# image. The runtime set (requirements.txt) is what ships; its exact,
+# hash-pinned resolution is requirements.lock (see infra/README.md).
 -r requirements.txt
 pytest>=8.3
 pytest-asyncio>=0.24
 hypothesis>=6.100,<7
+ruff==0.17.1
+mypy==2.4.0
+pip-audit==2.10.1

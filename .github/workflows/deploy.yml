@@ -1,0 +1,151 @@
+# Release pipeline skeleton (07 Q5, I9; 14 §10).
+#   push a tag vX.Y.Z  -> build + push images to GHCR -> deploy to STAGING
+#                         (FBR/PRAL sandbox, seeded demo tenant)
+#   Actions -> Deploy -> Run workflow (tag)  -> deploy that tag to PRODUCTION
+#                         (the "production" environment requires a reviewer)
+# Hosts, keys and FBR credentials are GitHub environment secrets; see
+# .github/README.md for the full list. Nothing real lives in this file.
+name: Deploy
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to promote to production (already on staging), e.g. v0.3.0"
+        required: true
+        type: string
+
+# Least privilege: read-only by default; only the image job may push packages,
+# the deploy jobs may only read them (the host pulls with this run's token).
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.event_name == 'workflow_dispatch' && 'production' || 'staging' }}
+  cancel-in-progress: false # never interrupt a deploy halfway
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository }}
+
+jobs:
+  images:
+    name: Build + push images
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - { name: api, dockerfile: services/api/Dockerfile, context: services/api }
+          - { name: web, dockerfile: apps/web/Dockerfile, context: . }
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:${{ github.ref_name }}
+            ${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:sha-${{ github.sha }}
+          build-args: |
+            API_ORIGIN=http://api:4000
+            GIT_SHA=${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+      - name: Trivy gate before anything ships
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:${{ github.ref_name }}
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+
+  staging:
+    name: Deploy to staging
+    needs: [images]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: read
+    environment:
+      name: staging
+      url: ${{ vars.STAGING_URL }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Deploy over SSH
+        uses: ./.github/actions/ssh-deploy
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          user: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          known-hosts: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          tag: ${{ github.ref_name }}
+          registry-user: ${{ github.actor }}
+          registry-token: ${{ secrets.GITHUB_TOKEN }}
+          # Staging only: seed the demo tenant and point it at the PRAL sandbox.
+          seed: "true"
+          env-file: |
+            STAGING_OWNER_EMAIL=${{ secrets.STAGING_OWNER_EMAIL }}
+            STAGING_OWNER_PASSWORD=${{ secrets.STAGING_OWNER_PASSWORD }}
+            FBR_SANDBOX_TOKEN=${{ secrets.FBR_SANDBOX_TOKEN }}
+            FBR_SANDBOX_NTN=${{ secrets.FBR_SANDBOX_NTN }}
+            FBR_SANDBOX_BUSINESS_NAME=${{ secrets.FBR_SANDBOX_BUSINESS_NAME }}
+            FBR_SANDBOX_PROVINCE=${{ secrets.FBR_SANDBOX_PROVINCE }}
+            FBR_SANDBOX_ADDRESS=${{ secrets.FBR_SANDBOX_ADDRESS }}
+      - name: Smoke the deployed stack
+        run: |
+          curl -fsS --retry 10 --retry-delay 6 --retry-all-errors "${{ vars.STAGING_URL }}/api/health"
+          curl -fsS -o /dev/null "${{ vars.STAGING_URL }}/login"
+
+  production:
+    name: Promote to production
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: read
+    environment:
+      # Configure "Required reviewers" on this environment: that is the manual gate.
+      name: production
+      url: ${{ vars.PRODUCTION_URL }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: The tag must exist and have images (it went through staging)
+        run: |
+          docker manifest inspect "${{ env.IMAGE_PREFIX }}-api:${{ inputs.tag }}" > /dev/null
+          docker manifest inspect "${{ env.IMAGE_PREFIX }}-web:${{ inputs.tag }}" > /dev/null
+      - name: Deploy over SSH
+        uses: ./.github/actions/ssh-deploy
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          user: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          known-hosts: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          tag: ${{ inputs.tag }}
+          registry-user: ${{ github.actor }}
+          registry-token: ${{ secrets.GITHUB_TOKEN }}
+          seed: "false"
+      - name: Smoke the deployed stack
+        run: curl -fsS --retry 10 --retry-delay 6 --retry-all-errors "${{ vars.PRODUCTION_URL }}/api/health"

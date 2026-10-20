@@ -2,8 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useQueryClient } from "@tanstack/react-query";
 import type { PosSummary, Product, Sale } from "@business-os/types";
 import { api, ApiError } from "@/lib/api";
+import { qk } from "@/lib/queryKeys";
+import { useHotkey, useHotkeyScope } from "@/lib/useHotkey";
 import { money, moneyCompact } from "@/lib/format";
 import { useSession } from "@/lib/session";
 import { Button, Card, cx, ErrorState, Input, LoadingRows } from "@/components/ui";
@@ -41,6 +44,7 @@ const finePointer = () => typeof window !== "undefined" && window.matchMedia("(p
 
 export default function PosBilling() {
   const { t, me } = useSession();
+  const queryClient = useQueryClient();
   const [q, setQ] = useState("");
   const [results, setResults] = useState<Product[] | null>(null); // null = first load
   const [catalogError, setCatalogError] = useState<string | null>(null);
@@ -95,8 +99,11 @@ export default function PosBilling() {
   }, [t]);
 
   const loadStatus = useCallback(() => {
+    // Intentionally quiet: these two feed the glanceable chips above the
+    // catalog. A failure hides the chip (it never shows a wrong figure), and
+    // the till itself must keep selling; each has its own page that says why.
     api<PosSummary>("/pos/summary").then(setSummary).catch(() => setSummary(null));
-    // null means no drawer is open; undefined means we couldn't tell.
+    // null means no drawer is open; undefined means we couldn't tell (no chip).
     api<DrawerLite | null>("/pos/drawer/current")
       .then((d) => setDrawer(d ?? null))
       .catch(() => setDrawer(undefined));
@@ -212,7 +219,8 @@ export default function PosBilling() {
     const seq = ++quoteSeq.current;
     if (cart.length === 0) return;
     const id = setTimeout(() => {
-      api<Quote>("/pos/sales/quote", { method: "POST", body: quoteBody })
+      // notify: false — a failed quote shows in the cart as "estimate", not as a toast per keystroke.
+      api<Quote>("/pos/sales/quote", { method: "POST", body: quoteBody, notify: false })
         .then((r) => { if (seq === quoteSeq.current) { setQuote({ body: quoteBody, quote: r }); setQuoteFail(null); } })
         .catch((e) => {
           if (seq !== quoteSeq.current) return;
@@ -254,6 +262,7 @@ export default function PosBilling() {
     try {
       const sale = await api<Sale>("/pos/sales", {
         method: "POST",
+        notify: false, // the cart says exactly what happened (and whether it's safe to retry)
         body: JSON.stringify({
           client_uuid: cartKey.current, // reused if this attempt fails and is retried
           items: cart.map((l) => ({ product_id: l.product.id, qty: l.qty })),
@@ -271,6 +280,7 @@ export default function PosBilling() {
       setReceiptOpen(true);
       search(qRef.current); // stock just changed
       loadStatus(); // today's figures and the drawer expectation just changed
+      void queryClient.invalidateQueries({ queryKey: qk.dashboard.all }); // so are the dashboard's
     } catch (e) {
       if (e instanceof ApiError && e.status < 500) {
         setChargeError(e.message); // refused, so nothing was recorded: fix and retry
@@ -284,24 +294,17 @@ export default function PosBilling() {
     }
   }
 
-  // Keyboard-first checkout. Registered once; the handlers are read through
-  // refs so the listener never goes stale and isn't re-added each render (P15).
-  const keys = useRef({ charge, clearCart });
-  keys.current = { charge, clearCart };
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "F2") { e.preventDefault(); setCartOpen(false); scanRef.current?.focus(); }
-      else if (e.key === "F1") { e.preventDefault(); keys.current.clearCart(); }
-      else if (e.key === "F6") {
-        e.preventDefault();
-        if (isWide()) sidePaidRef.current?.focus();
-        else { focusPaidOnOpen.current = true; setCartOpen(true); sheetPaidRef.current?.focus(); }
-      }
-      else if (e.key === "F7") { e.preventDefault(); void keys.current.charge(); }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  // Keyboard-first checkout, in the "pos" hotkey scope: on only while the till
+  // is mounted. useHotkey reads the handlers through a ref, so they never go
+  // stale and nothing is re-registered on each render (P15).
+  useHotkeyScope("pos");
+  useHotkey("F2", () => { setCartOpen(false); scanRef.current?.focus(); }, { scope: "pos" });
+  useHotkey("F1", () => clearCart(), { scope: "pos" });
+  useHotkey("F6", () => {
+    if (isWide()) sidePaidRef.current?.focus();
+    else { focusPaidOnOpen.current = true; setCartOpen(true); sheetPaidRef.current?.focus(); }
+  }, { scope: "pos" });
+  useHotkey("F7", () => void charge(), { scope: "pos" });
 
   // The sheet is a small-screen view; rotating a tablet to landscape (lg)
   // puts the cart back beside the products, so don't leave an overlay behind.

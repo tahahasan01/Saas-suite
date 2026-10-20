@@ -1,0 +1,22 @@
+# gitleaks: the default rules, plus the dev/CI placeholders that are public on
+# purpose. Anything real belongs in GitHub environment secrets (.github/README.md).
+title = "Business OS gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Documented local-dev and CI-only placeholders, and generated files"
+regexTarget = "match"
+regexes = [
+  '''change_me_in_prod''',
+  '''app_user_pw''',
+  '''ci_only_password''',
+  '''dev_only_change_me''',
+  '''replace_with_openssl_rand_hex_32''',
+]
+paths = [
+  '''package-lock\.json''',
+  '''packages/api-client/openapi\.json''',
+  '''packages/api-client/src/schema\.ts''',
+]

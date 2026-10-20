@@ -1,6 +1,7 @@
 "use client";
 
-import { cx, EmptyState, LoadingRows } from "@/components/ui";
+import { Button, cx, EmptyState, LoadingRows } from "@/components/ui";
+import { pageCount, pageSummary, type Pagination } from "@/components/pagination";
 
 /* One table for the whole app. On a phone a 9-column payroll table can't fit,
  * and squeezing it pushed the page sideways by 400px. So:
@@ -40,13 +41,45 @@ type Props<T> = {
   /** Visible header for the actions column (e.g. "Stage"); screen-reader-only "Actions" otherwise. */
   actionsHeader?: string;
   className?: string;
+  /** Server-side paging: `rows` is one page, `total` how many match in all
+   *  (the API's X-Total-Count). Renders the count and Previous/Next below. */
+  pagination?: Pagination;
 };
+
+export type { Pagination };
 
 const alignCls = { left: "text-left", right: "text-right", center: "text-center" };
 
-export function DataTable<T>({ columns, rows, rowKey, actions, onRowClick, rowLabel, loading, empty, mode = "auto", caption, actionsHeader, className }: Props<T>) {
+export function DataTable<T>(props: Props<T>) {
+  const { rows, loading, empty, pagination } = props;
   if (loading) return <LoadingRows />;
   if (rows.length === 0) return <>{empty ?? <EmptyState title="Nothing here yet" />}</>;
+  return (
+    <>
+      <Table {...props} />
+      {pagination && <Pager {...pagination} />}
+    </>
+  );
+}
+
+function Pager({ page, pageSize, total, onPageChange, noun, busy }: Pagination) {
+  const pages = pageCount(total, pageSize);
+  return (
+    <nav aria-label="Pages" className="flex flex-wrap items-center justify-between gap-3 pt-3 text-sm">
+      {/* Announced as it changes, so a screen reader hears where it landed. */}
+      <p aria-live="polite" className="text-xs text-fg-subtle tabular-nums">{pageSummary({ page, pageSize, total, noun })}</p>
+      {pages > 1 && (
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="subtle" disabled={busy || page <= 1} onClick={() => onPageChange(page - 1)}>Previous page</Button>
+          <span className="text-xs text-fg-muted tabular-nums">Page {page} of {pages}</span>
+          <Button size="sm" variant="subtle" disabled={busy || page >= pages} onClick={() => onPageChange(page + 1)}>Next page</Button>
+        </div>
+      )}
+    </nav>
+  );
+}
+
+function Table<T>({ columns, rows, rowKey, actions, onRowClick, rowLabel, mode = "auto", caption, actionsHeader, className }: Props<T>) {
 
   const primary = columns.find((c) => c.primary) ?? columns[0];
   const rest = columns.filter((c) => c !== primary && !c.hideOnCard);

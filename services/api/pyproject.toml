@@ -1,0 +1,50 @@
+# Tool config only: the API is run from source and its dependencies live in
+# requirements.txt (runtime) and requirements-dev.txt (lint, types, audit).
+
+[tool.ruff]
+target-version = "py312"
+line-length = 140
+
+[tool.ruff.lint]
+# Pyflakes + pycodestyle + bugbear + async pitfalls. Rules are spelled out so a
+# ruff upgrade that widens its defaults can't turn CI red overnight.
+select = ["E", "F", "W", "B", "ASYNC"]
+ignore = [
+    "E741",  # `l` for a line item reads fine in this codebase's short comprehensions
+    "B008",  # FastAPI's `Depends(...)` in defaults is the framework's idiom
+    "B905",  # zip(strict=) would change behaviour at call sites that rely on truncation
+    "B904",  # HTTPException inside `except` is the intended translation, not a lost cause
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["B011", "ASYNC109"]
+
+[tool.mypy]
+# The whole package is checked loosely, so existing code type-checks today;
+# modules listed under the strict override below must be fully typed. Add every
+# NEW module there (Phase 2 rule): strict on new code, ratchet the old.
+python_version = "3.12"
+files = ["app", "scripts"]
+ignore_missing_imports = true
+check_untyped_defs = false
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+
+[[tool.mypy.overrides]]
+module = [
+    "app.pricing",
+    "scripts.export_openapi",
+    "scripts.seed_staging",
+]
+# `strict` itself is global-only in mypy, so its per-module parts are spelled out.
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_calls = true
+disallow_untyped_decorators = true
+disallow_any_generics = true
+disallow_subclassing_any = true
+check_untyped_defs = true
+warn_return_any = true
+no_implicit_reexport = true
+strict_equality = true

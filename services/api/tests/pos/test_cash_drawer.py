@@ -6,7 +6,6 @@ in the drawer, so it must never appear in expected.
 """
 from __future__ import annotations
 
-import pytest
 import pytest_asyncio
 
 

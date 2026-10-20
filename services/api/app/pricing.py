@@ -35,7 +35,7 @@ def round_half_up(x: Decimal) -> int:
     return int(x.quantize(Decimal(1), rounding=ROUND_HALF_UP))
 
 
-def _dec(x) -> Decimal:
+def _dec(x: Decimal | int | float | str) -> Decimal:
     # str() first: Decimal(0.1) would carry the float's binary error into money.
     return x if isinstance(x, Decimal) else Decimal(str(x))
 

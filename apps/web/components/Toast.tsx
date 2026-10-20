@@ -1,14 +1,14 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
-import { CheckCircle2, AlertTriangle, X } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Info, X } from "lucide-react";
 
 /* One quiet line that confirms an action or says why it failed. Before this,
  * failures were swallowed and a failed save looked exactly like a good one. */
 
-type Tone = "success" | "error";
+type Tone = "success" | "error" | "info";
 type Item = { id: number; tone: Tone; text: string };
-type Api = { success: (text: string) => void; error: (text: string) => void };
+type Api = { success: (text: string) => void; error: (text: string) => void; info: (text: string) => void };
 
 const Ctx = createContext<Api | null>(null);
 
@@ -23,7 +23,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     setTimeout(() => dismiss(id), tone === "error" ? 7000 : 3500);
   }, [dismiss]);
 
-  const api = useMemo<Api>(() => ({ success: (t) => push("success", t), error: (t) => push("error", t) }), [push]);
+  const api = useMemo<Api>(() => ({
+    success: (t) => push("success", t), error: (t) => push("error", t), info: (t) => push("info", t),
+  }), [push]);
 
   return (
     <Ctx.Provider value={api}>
@@ -40,7 +42,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           >
             {t.tone === "success"
               ? <CheckCircle2 size={18} className="mt-px shrink-0 text-success" aria-hidden />
-              : <AlertTriangle size={18} className="mt-px shrink-0 text-danger" aria-hidden />}
+              : t.tone === "info"
+                ? <Info size={18} className="mt-px shrink-0 text-fg-muted" aria-hidden />
+                : <AlertTriangle size={18} className="mt-px shrink-0 text-danger" aria-hidden />}
             <span className="flex-1">{t.text}</span>
             <button type="button" onClick={() => dismiss(t.id)} aria-label="Dismiss" className="-m-1 grid h-7 w-7 place-items-center rounded text-fg-subtle hover:text-fg">
               <X size={14} aria-hidden />

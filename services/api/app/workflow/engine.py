@@ -38,7 +38,7 @@ def _match(conditions: list[dict], payload: dict[str, Any]) -> bool:
         if op is None:
             return False
         try:
-            if not op(payload.get(c.get("field")), c.get("value")):
+            if not op(payload.get(c.get("field", "")), c.get("value")):
                 return False
         except (TypeError, ValueError):
             return False

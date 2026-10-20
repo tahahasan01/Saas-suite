@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Holiday } from "@business-os/types";
 import { api, ApiError } from "@/lib/api";
 import { dayPKT } from "@/lib/dates";
+import { formatDay } from "@/lib/format";
 import { errorText, useAction } from "@/lib/useAction";
 import { useConfirm } from "@/components/Confirm";
 import { Button, Card, EmptyState, ErrorState, Field, Input, LoadingRows, Select } from "@/components/ui";
@@ -25,9 +26,8 @@ const FIXED_PK: [string, string][] = [
 ];
 const fixedFor = (year: number) => FIXED_PK.map(([md, name]) => ({ holiday_date: `${year}-${md}`, name }));
 
-// A date-only string is midnight UTC; format it in UTC so it can't slip a day.
-const fmtDate = (d: string) =>
-  new Date(`${d}T00:00:00Z`).toLocaleDateString("en-PK", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+// A calendar date, formatted as written so it can't slip a day.
+const fmtDate = (d: string) => formatDay(d);
 
 type FixedResult = { added: string[]; skipped: string[] };
 

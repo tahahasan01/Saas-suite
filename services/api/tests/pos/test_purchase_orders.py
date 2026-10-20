@@ -5,7 +5,6 @@ reconciled per line, and you cannot receive more than you ordered.
 """
 from __future__ import annotations
 
-import pytest
 import pytest_asyncio
 
 

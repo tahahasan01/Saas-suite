@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { MeResponse, TerminologyResponse } from "@business-os/types";
-import { api } from "./api";
+import { api, ApiError } from "./api";
 
 interface SessionState {
   me: MeResponse | null;
@@ -10,7 +10,7 @@ interface SessionState {
   /** Resolve an industry terminology key to its label (falls back to the key). */
   t: (key: string) => string;
   refresh: () => Promise<void>;
-  logout: () => Promise<void>;
+  logout: () => Promise<boolean>;
 }
 
 const Ctx = createContext<SessionState | null>(null);
@@ -24,6 +24,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     try {
       const [meRes, term] = await Promise.all([
         api<MeResponse>("/auth/me"),
+        // Intentionally quiet: without the industry labels t() falls back to the
+        // generic words, and the app still works; failing sign-in over it wouldn't.
         api<TerminologyResponse>("/terminology").catch(() => null),
       ]);
       setMe(meRes);
@@ -39,9 +41,16 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     refresh();
   }, [refresh]);
 
+  /** True once signed out. On a failure the server session is still live, so we
+   *  don't pretend otherwise: the API error chain has already toasted why. */
   const logout = useCallback(async () => {
-    await api("/auth/logout", { method: "POST" }).catch(() => {});
+    try {
+      await api("/auth/logout", { method: "POST" });
+    } catch (e) {
+      if (!(e instanceof ApiError && e.status === 401)) return false; // 401: already signed out
+    }
     setMe(null);
+    return true;
   }, []);
 
   const t = useCallback((key: string) => labels[key] ?? key, [labels]);
