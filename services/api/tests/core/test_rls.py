@@ -13,6 +13,7 @@ superuser owner, which the dev and CI databases have.
 from __future__ import annotations
 
 import asyncio
+import re
 import uuid
 
 import asyncpg
@@ -121,8 +122,23 @@ def _value(typ: str) -> str:
     raise AssertionError(f"teach _value() about type {typ!r}")
 
 
+async def _allowed_values(conn, table: str) -> dict[str, str]:
+    """For text columns held to a fixed list by a CHECK (0042's enum checks),
+    the first allowed value — a random string would trip the check instead of
+    exercising RLS."""
+    out: dict[str, str] = {}
+    for r in await conn.fetch(
+            """select pg_get_constraintdef(oid) as def from pg_constraint
+                where conrelid = $1::regclass and contype = 'c'""", table):
+        m = re.search(r"\(\(?(\w+)\)?(?:::text)? = ANY \(\(?ARRAY\['([^']*)'", r["def"])
+        if m:
+            out.setdefault(m.group(1), m.group(2))
+    return out
+
+
 async def _plant(conn, table: str, key: str, owner_id: uuid.UUID) -> None:
-    cols = {name: (typ, _value(typ)) for name, typ in await _required_columns(conn, table)}
+    allowed = await _allowed_values(conn, table)
+    cols = {name: (typ, allowed.get(name, _value(typ))) for name, typ in await _required_columns(conn, table)}
     cols[key] = ("uuid", str(owner_id))
     names = list(cols)
     params = ", ".join(f"${i}::text::{cols[n][0]}" for i, n in enumerate(names, 1))
