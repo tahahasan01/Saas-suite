@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
-from .. import db, email, sampledata, tokens
+from .. import db, email, rbac, sampledata, tokens
 from ..config import settings
 from ..deps import AuthContext, current_auth
 from ..models import (
@@ -19,6 +19,7 @@ from ..models import (
     AcceptInviteRequest,
     EntitlementOut,
     ForgotRequest,
+    LocaleOut,
     LoginRequest,
     MeResponse,
     PasswordChange,
@@ -111,12 +112,6 @@ async def signup(body: SignupRequest, response: Response) -> MeResponse:
             )
             token = await _create_session(conn, user_id, tenant_id)
 
-            tenant_row = await conn.fetchrow("select id,name,industry_type,status from tenants where id=$1", tenant_id)
-            ent_rows = await conn.fetch(
-                "select section_key, enabled, limits from entitlements where tenant_id=$1 order by section_key",
-                tenant_id,
-            )
-
     # Seed a live demo workspace so the new tenant never lands in an empty app.
     if body.sample_data:
         try:
@@ -132,13 +127,9 @@ async def signup(body: SignupRequest, response: Response) -> MeResponse:
         pass
 
     _set_session_cookie(response, token)
-    return MeResponse(
-        user=UserOut(id=str(user_id), email=body.email, name=body.name, role="Owner"),
-        tenant=TenantOut(id=str(tenant_row["id"]), name=tenant_row["name"],
-                         industry_type=tenant_row["industry_type"], status=tenant_row["status"]),
-        entitlements=[EntitlementOut(section_key=r["section_key"], enabled=r["enabled"], limits=r["limits"])
-                      for r in ent_rows],
-    )
+    async with db.tenant_conn(str(tenant_id)) as conn:
+        return await _bootstrap(conn, UserOut(id=str(user_id), email=body.email, name=body.name, role="Owner"),
+                                str(tenant_id), str(role_id))
 
 
 @router.post("/login", response_model=UserOut, dependencies=[Depends(rate_limit(10, 60))])
@@ -249,24 +240,40 @@ async def logout(response: Response, auth: AuthContext = Depends(current_auth)) 
     return response
 
 
-@router.get("/me", response_model=MeResponse)
-async def me(auth: AuthContext = Depends(current_auth)) -> MeResponse:
-    # Tenant-scoped reads via the app pool → exercises RLS end-to-end.
-    async with db.tenant_conn(auth.tenant_id) as conn:
-        tenant_row = await conn.fetchrow("select id,name,industry_type,status from tenants where id=$1", auth.tenant_id)
-        ent_rows = await conn.fetch(
-            "select section_key, enabled, limits from entitlements where tenant_id=$1 order by section_key",
-            auth.tenant_id,
-        )
-        # This login is the employee portal iff it is linked to a staff record.
-        # The frontend renders the self-service nav instead of the admin app.
-        is_employee = bool(await conn.fetchval(
-            "select 1 from hrms_employees where user_id=$1", auth.user_id))
+async def _bootstrap(conn, user: UserOut, tenant_id: str, role_id: str | None) -> MeResponse:
+    """The one bootstrap the web loads: who, which tenant, which sections, which
+    permission keys, and how to render. Signup and /auth/me share it so the
+    two can't drift."""
+    tenant_row = await conn.fetchrow(
+        "select id,name,industry_type,status,timezone from tenants where id=$1", tenant_id)
+    ent_rows = await conn.fetch(
+        "select section_key, enabled, limits from entitlements where tenant_id=$1 order by section_key",
+        tenant_id,
+    )
+    # This login is the employee portal iff it is linked to a staff record.
+    # The frontend renders the self-service nav instead of the admin app.
+    is_employee = bool(await conn.fetchval(
+        "select 1 from hrms_employees where user_id=$1", user.id))
+    # The user's choice, else English; a tenant default joins here when the
+    # typed tenant settings land (12-trd §4.2).
+    locale = await conn.fetchval("select locale from users where id=$1", user.id) or "en"
     return MeResponse(
-        user=UserOut(id=auth.user_id, email=auth.email, name=auth.name, role=auth.role),
+        user=user,
         tenant=TenantOut(id=str(tenant_row["id"]), name=tenant_row["name"],
                          industry_type=tenant_row["industry_type"], status=tenant_row["status"]),
         entitlements=[EntitlementOut(section_key=r["section_key"], enabled=r["enabled"], limits=r["limits"])
                       for r in ent_rows],
+        permissions=await rbac.effective_permissions(conn, tenant_id, role_id),
+        locale=LocaleOut(locale=locale, dir="rtl" if locale == "ur" else "ltr",
+                         timezone=tenant_row["timezone"], currency="PKR"),
         employee_portal=is_employee,
     )
+
+
+@router.get("/me", response_model=MeResponse)
+async def me(auth: AuthContext = Depends(current_auth)) -> MeResponse:
+    # Tenant-scoped reads via the app pool → exercises RLS end-to-end.
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        return await _bootstrap(
+            conn, UserOut(id=auth.user_id, email=auth.email, name=auth.name, role=auth.role),
+            auth.tenant_id, auth.role_id)
