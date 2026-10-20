@@ -38,8 +38,8 @@ async def create_user(body: UserCreate, auth: AuthContext = Depends(require("set
         except asyncpg.UniqueViolationError:
             raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered")
         role = await conn.fetchval("select name from roles where id=$1", body.role_id)
-        await audit.record(conn, actor_id=auth.user_id, action="user.create", entity="user",
-                           entity_id=str(user_id), after={"email": body.email, "role": role})
+        await audit.event(conn, "user.create", "user", str(user_id),
+                          changes=audit.diff(None, {"email": body.email, "role": role}))
     return TeamUser(id=str(user_id), email=body.email, name=body.name, role=role, status="active")
 
 
@@ -59,9 +59,9 @@ async def update_user(user_id: str, body: UserUpdate, auth: AuthContext = Depend
         row = await conn.fetchrow(
             """select u.id,u.email,u.name,u.status,r.name as role
                from users u left join roles r on r.id=u.role_id where u.id=$1""", user_id)
-        await audit.record(conn, actor_id=auth.user_id, action="user.update", entity="user",
-                           entity_id=user_id,
-                           after={"role_id": str(role_id) if role_id else None, "status": new_status})
+        await audit.event(conn, "user.update", "user", user_id, changes=audit.diff(
+            {"role_id": str(current["role_id"]) if current["role_id"] else None, "status": current["status"]},
+            {"role_id": str(role_id) if role_id else None, "status": new_status}))
     return TeamUser(id=str(row["id"]), email=row["email"], name=row["name"], role=row["role"], status=row["status"])
 
 
@@ -74,8 +74,7 @@ async def invite_member(body: InviteRequest, response: Response,
         if role is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Role not found")
         tenant_name = await conn.fetchval("select name from tenants where id=$1", auth.tenant_id)
-        await audit.record(conn, actor_id=auth.user_id, action="user.invite", entity="user",
-                           after={"email": body.email, "role": role})
+        await audit.event(conn, "user.invite", "user", data={"email": body.email, "role": role})
     token = await tokens.create("invite", email=body.email, tenant_id=auth.tenant_id,
                                 role_id=body.role_id, ttl_hours=72)
     await email.send_invite(body.email, tenant_name, token)
@@ -103,6 +102,6 @@ async def create_role(body: RoleCreate, auth: AuthContext = Depends(require("set
                 await conn.execute(
                     "insert into permissions (tenant_id, role_id, section, action) values ($1,$2,$3,$4)",
                     auth.tenant_id, role_id, section, action)
-        await audit.record(conn, actor_id=auth.user_id, action="role.create", entity="role",
-                           entity_id=str(role_id), after={"name": body.name, "permissions": body.permissions})
+        await audit.event(conn, "role.create", "role", str(role_id),
+                          changes=audit.diff(None, {"name": body.name, "permissions": body.permissions}))
     return RoleOut(id=str(role_id), name=body.name, is_system=False)

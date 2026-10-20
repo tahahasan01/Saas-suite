@@ -8,8 +8,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from .. import db, fbr_submit
-from ..audit import record
+from .. import audit, db, fbr_submit
 from ..deps import AuthContext
 from ..models import FbrInvoiceOut, FbrResolve, FbrSettingsOut, FbrSettingsUpdate
 from ..rbac import require
@@ -78,11 +77,7 @@ async def update_settings(body: FbrSettingsUpdate,
         row = await conn.fetchrow(
             f"update fbr_settings set {cols}, updated_at=now() where tenant_id=$1 returning *",
             auth.tenant_id, *fields.values())
-        await record(
-            conn, actor_id=auth.user_id, action="fbr.settings.update", entity="fbr_settings",
-            entity_id=auth.tenant_id,
-            # Redacted: the audit trail must not become a second copy of the token.
-            after={k: ("***" if k == "token" else v) for k, v in fields.items()})
+        # Audited by the fbr_settings trigger (0044), token masked there.
     return _out(row)
 
 
@@ -131,7 +126,6 @@ async def resolve_invoice(invoice_id: UUID, body: FbrResolve,
                             "Only a filing whose outcome is unknown can be settled by hand.")
     async with db.tenant_conn(auth.tenant_id) as conn:
         row = await conn.fetchrow(f"select {_INVOICE_COLS} from pos_fbr_invoices where id=$1", invoice_id)
-        await record(conn, actor_id=auth.user_id, action="fbr.invoice.resolve", entity="pos_fbr_invoices",
-                     entity_id=str(invoice_id),
-                     after={"filed": body.filed, "fbr_invoice_number": body.fbr_invoice_number})
+        await audit.event(conn, "fbr.invoice.resolve", "pos_fbr_invoices", str(invoice_id),
+                          data={"filed": body.filed, "fbr_invoice_number": body.fbr_invoice_number})
     return _invoice_out(row)

@@ -84,9 +84,12 @@ select (select count(*) from hrms_employees where status = 'active') as headcoun
 """
 
 _ACTIVITY = """
-select a.action, a.entity, u.name as actor, a.created_at
+select a.action, a.entity, u.name as actor, a.occurred_at as created_at
   from audit_log a left join users u on u.id = a.actor_id
- order by a.created_at desc limit 8
+ -- Semantic events only (module.verb): row diffs from the audit trigger and
+ -- logins would bury what people did.
+ where a.action like '%.%' and a.action not like 'auth.%'
+ order by a.occurred_at desc, a.id desc limit 8
 """
 
 

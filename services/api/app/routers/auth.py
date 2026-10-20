@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
-from .. import db, email, rbac, sampledata, tokens
+from .. import audit, context, db, email, rbac, sampledata, tokens
 from ..config import settings
 from ..deps import AuthContext, current_auth
 from ..models import (
@@ -152,6 +152,10 @@ async def login(body: LoginRequest, response: Response) -> UserOut:
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password")
         token = await _create_session(conn, str(user["id"]), str(user["tenant_id"]))
 
+    # A login is a semantic audit event (TRD TR-SEC-61), in the tenant's trail.
+    context.set_actor(str(user["id"]))
+    async with db.tenant_conn(str(user["tenant_id"])) as conn:
+        await audit.event(conn, "auth.login", "user", str(user["id"]))
     _set_session_cookie(response, token)
     return UserOut(id=str(user["id"]), email=user["email"], name=user["name"], role=user["role"])
 

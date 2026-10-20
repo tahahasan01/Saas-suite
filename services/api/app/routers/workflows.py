@@ -40,8 +40,8 @@ async def create_workflow(body: WorkflowCreate, auth: AuthContext = Depends(requ
                values ($1,$2,$3,$4,$5)
                returning id,name,trigger,conditions,actions,enabled,is_system""",
             auth.tenant_id, body.name, body.trigger, body.conditions, body.actions)
-        await audit.record(conn, actor_id=auth.user_id, action="workflow.create",
-                           entity="workflow", entity_id=str(row["id"]), after={"name": body.name})
+        await audit.event(conn, "workflow.create", "workflow", str(row["id"]),
+                          changes=audit.diff(None, {"name": body.name}))
     return _out(row)
 
 
