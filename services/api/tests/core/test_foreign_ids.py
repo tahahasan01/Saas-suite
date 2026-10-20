@@ -28,7 +28,7 @@ KIND_OF = {
     "product_id": "product", "supplier_id": "supplier", "po_id": "po", "po_item_id": "po_item",
     "sale_id": "sale", "sale_item_id": "sale_item",
     "employee_id": "employee", "leave_id": "leave", "holiday_id": "holiday",
-    "request_id": "payment_request",
+    "request_id": "payment_request", "shift_id": "shift",
 }
 
 # Path parameters that are not ids: a fixed, valid value.
@@ -58,7 +58,9 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
     invoice = (await c.post("/crm/invoices", json={"lead_id": lead["id"], "amount_minor": 1000})).json()
     workflow = (await c.post("/workflows", json={"name": "Probe", "trigger": "lead.created"})).json()
     payment = (await c.post("/billing/upgrade", json={"plan": "growth"})).json()
+    shift = (await c.post("/hrms/shifts", json={"name": "Day"})).json()
     return {
+        "shift": shift["id"],
         "role": (await c.get("/team/roles")).json()[0]["id"],
         "user": (await c.get("/auth/me")).json()["user"]["id"],
         "pipeline": pipeline["id"], "stage": pipeline["stages"][0]["id"], "lead": lead["id"],
