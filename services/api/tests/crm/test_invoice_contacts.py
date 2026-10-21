@@ -76,14 +76,16 @@ async def test_the_database_refuses_a_new_invoice_without_a_contact(client, crm_
 
 async def _legacy_invoice(tenant_id: str, lead_id: str) -> str:
     """A request as it stood before 0061: a lead, no contact (the trigger is
-    bypassed the way the migration found such rows)."""
+    bypassed the way the migration found such rows). Bypassing triggers also
+    skips the branch fill (0055), so the row names the default branch itself."""
     owner = await asyncpg.connect(settings.database_url)
     try:
         async with owner.transaction():
             await owner.execute("set local session_replication_role = replica")
             return str(await owner.fetchval(
-                """insert into crm_invoice_requests (tenant_id, lead_id, amount_minor)
-                   values ($1, $2, 5000) returning id""", uuid.UUID(tenant_id), uuid.UUID(lead_id)))
+                """insert into crm_invoice_requests (tenant_id, lead_id, amount_minor, branch_id)
+                   values ($1, $2, 5000, (select id from branches where tenant_id = $1 and is_default))
+                   returning id""", uuid.UUID(tenant_id), uuid.UUID(lead_id)))
     finally:
         await owner.close()
 

@@ -68,6 +68,49 @@ async def test_lead_scopes_on_list_get_and_patch(client, crm_tenant):
         await bob.aclose()
 
 
+async def test_every_lead_route_hides_leads_outside_scope(client, crm_tenant):
+    """CRM v2 and contacts added lead routes after scopes landed: on `own`,
+    each one treats someone else's lead as not found."""
+    own = await _role(client, [{"permission_key": "crm.lead.read", "scope": "own"},
+                               {"permission_key": "crm.lead.update", "scope": "own"}])
+    alice, alice_id, _ = await _user_on(client, [own])
+    try:
+        bob_id = (await client.get("/auth/me")).json()["user"]["id"]
+        mine = await _lead_for(crm_tenant.tenant_id, alice_id, "Alice's lead")
+        bobs = await _lead_for(crm_tenant.tenant_id, bob_id, "Bob's lead")
+        activity_type = (await client.get("/activity-types")).json()[0]["id"]
+        r = await client.post("/activities", json={"entity_type": "lead", "entity_id": bobs, "type_id": activity_type,
+                                                   "due_date": "2027-04-05", "assigned_to": alice_id})
+        assert r.status_code == 201, r.text
+        item = (await _owner("insert into contact_review_items (tenant_id, lead_id, reason) "
+                             "values ($1, $2, 'shared_phone') returning id",
+                             uuid.UUID(crm_tenant.tenant_id), uuid.UUID(bobs)))[0]["id"]
+
+        for method, path, body in [
+            ("get", f"/crm/leads/{bobs}/timeline", None),
+            ("get", f"/crm/leads/{bobs}/contact", None),
+            ("post", f"/crm/leads/{bobs}/won", None),
+            ("post", f"/crm/leads/{bobs}/lost", {"lost_note": "x"}),
+            ("post", f"/crm/leads/{bobs}/restore", None),
+            ("post", f"/crm/leads/{bobs}/notes", {"body": "x"}),
+            ("post", f"/contacts/review/{item}/dismiss", None),
+        ]:
+            r = await alice.request(method.upper(), path, json=body)
+            assert r.status_code == 404, (path, r.status_code, r.text)
+        # The activity on Bob's lead is assigned to Alice, but the lead is out of her scope.
+        assert (await alice.get("/activities", params={"entity_type": "lead", "entity_id": bobs})).json() == []
+        assert (await alice.get("/activities", params={"assigned": "me", "state": "planned"})).json() == []
+
+        # Her own lead still works end to end.
+        assert (await alice.get(f"/crm/leads/{mine}/timeline")).status_code == 200
+        assert (await alice.post(f"/crm/leads/{mine}/notes", json={"body": "called"})).status_code == 201
+        assert (await alice.post(f"/crm/leads/{mine}/won")).status_code == 200
+        # And the owner, on `all`, is unaffected.
+        assert (await client.get(f"/crm/leads/{bobs}/timeline")).status_code == 200
+    finally:
+        await alice.aclose()
+
+
 async def test_sale_scope_on_lookup_and_returns(client, pos_tenant):
     own = await _role(client, [{"permission_key": "pos.sale.read", "scope": "own"},
                                {"permission_key": "pos.sale.refund", "scope": "own"}])
