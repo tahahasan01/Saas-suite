@@ -1299,6 +1299,38 @@ class BackfillReport(BaseModel):
     invoices_linked: int = 0
 
 
+class MergeRequest(BaseModel):
+    winner_id: UUID
+    # Strings, parsed by the endpoint, so a malformed id is a plain 422 like
+    # any other bad id rather than a schema error.
+    loser_ids: list[str] = Field(max_length=10)
+    # field -> the merged contact whose value to keep (e.g. {"ntn": "<id>"}).
+    field_choices: dict[str, UUID] = Field(default_factory=dict)
+
+
+class MergeResult(BaseModel):
+    winner: ContactOut
+    merged_ids: list[str]
+    moved: dict[str, int]      # rows moved per "table.column"
+
+
+class MergePreviewRequest(BaseModel):
+    ids: list[str] = Field(min_length=2, max_length=10)
+
+
+class MergeCounts(BaseModel):
+    leads: int
+    sales: int
+    invoices: int
+    people: int
+
+
+class MergePreview(BaseModel):
+    contacts: list[ContactOut]
+    differing_fields: list[str]
+    counts: dict[str, MergeCounts]
+
+
 class ReviewItem(BaseModel):
     id: str
     lead_id: str

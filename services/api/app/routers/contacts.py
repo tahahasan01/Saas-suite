@@ -8,11 +8,12 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from typing import Any
+from uuid import UUID
 
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
-from .. import audit, contacts, contacts_backfill, db, rbac, refs
+from .. import audit, contact_merge, contacts, contacts_backfill, db, rbac, refs
 from ..deps import AuthContext, current_auth
 from ..models import (
     AddressCreate,
@@ -34,6 +35,11 @@ from ..models import (
     ContactStats,
     ContactUpdate,
     LeadContact,
+    MergeCounts,
+    MergePreview,
+    MergePreviewRequest,
+    MergeRequest,
+    MergeResult,
     QualifyRequest,
     ReviewItem,
     TagCreate,
@@ -232,6 +238,61 @@ async def create_contact(body: ContactCreate, auth: AuthContext = Depends(CREATE
         created = await contacts.fetch_out(conn, row["id"])
     assert created is not None
     return created
+
+
+# ── Merge (D-33) ────────────────────────────────────────────────────────────
+MERGE = perm("contacts.contact.merge")
+
+
+def _uuids(raw: list[str]) -> list[UUID]:
+    try:
+        return [UUID(x) for x in raw]
+    except ValueError:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Invalid contact id")
+
+
+@router.post("/contacts/merge", response_model=MergeResult)
+async def merge_contacts(body: MergeRequest, auth: AuthContext = Depends(MERGE)) -> MergeResult:
+    """Merge up to four contacts into one, in one transaction (soft merge)."""
+    losers = _uuids(body.loser_ids)
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        moved = await contact_merge.merge(conn, auth.tenant_id, body.winner_id, losers, body.field_choices)
+        winner = await contacts.fetch_out(conn, body.winner_id)
+    assert winner is not None
+    return MergeResult(winner=winner, merged_ids=[str(i) for i in losers], moved=moved)
+
+
+@router.post("/contacts/merge/preview", response_model=MergePreview)
+async def merge_preview(body: MergePreviewRequest, auth: AuthContext = Depends(MERGE)) -> MergePreview:
+    """Side by side: the records, the fields that differ, and how many
+    records would move from each (sales only for those who can read POS)."""
+    ids = _uuids(body.ids)
+    if len(set(ids)) != len(ids) or len(ids) > contact_merge.MAX_RECORDS:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+                            f"Choose 2 to {contact_merge.MAX_RECORDS} different contacts")
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        rows = await conn.fetch("select * from contacts where id = any($1::uuid[])", ids)
+        if len(rows) != len(ids):
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Contact not found")
+        held = await rbac.effective_permissions(conn, auth.tenant_id, auth.role_id)
+        out = []
+        counts: dict[str, MergeCounts] = {}
+        for cid in ids:
+            found = await contacts.fetch_out(conn, cid)
+            assert found is not None
+            out.append(found)
+            n = await conn.fetchrow(
+                """select (select count(*) from crm_leads where contact_id = $1) as leads,
+                          (select count(*) from pos_sales where contact_id = $1) as sales,
+                          (select count(*) from crm_invoice_requests where contact_id = $1) as invoices,
+                          (select count(*) from contacts where company_id = $1) as people""", cid)
+            counts[str(cid)] = MergeCounts(
+                leads=n["leads"] if "crm.lead.read" in held else 0,
+                sales=n["sales"] if "pos.sale.read" in held else 0,
+                invoices=n["invoices"] if "invoicing.invoice.read" in held else 0, people=n["people"])
+    by_id = {r["id"]: r for r in rows}
+    return MergePreview(contacts=out, differing_fields=contact_merge.differing_fields([by_id[i] for i in ids]),
+                        counts=counts)
 
 
 # Fixed paths before /contacts/{contact_id}, which would swallow them.

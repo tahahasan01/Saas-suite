@@ -35,6 +35,7 @@ no_implicit_optional = true
 module = [
     "app.alerts",
     "app.attendance",
+    "app.contact_merge",
     "app.contacts",
     "app.contacts_backfill",
     "app.context",

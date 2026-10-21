@@ -30,7 +30,7 @@ KIND_OF = {
     "employee_id": "employee", "leave_id": "leave", "holiday_id": "holiday",
     "request_id": "payment_request", "shift_id": "shift",
     "contact_id": "contact", "company_id": "company", "address_id": "address", "tag_id": "tag",
-    "item_id": "review_item",
+    "item_id": "review_item", "winner_id": "contact",
 }
 
 # Path parameters that are not ids: a fixed, valid value.
