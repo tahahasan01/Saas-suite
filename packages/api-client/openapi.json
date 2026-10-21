@@ -9838,6 +9838,34 @@
         ],
         "title": "LoginRequest"
       },
+      "MeBranch": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "is_default": {
+            "type": "boolean",
+            "title": "Is Default"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "name",
+          "is_default"
+        ],
+        "title": "MeBranch"
+      },
       "MeResponse": {
         "properties": {
           "user": {
@@ -9873,6 +9901,25 @@
             "type": "boolean",
             "title": "Employee Portal",
             "default": false
+          },
+          "branches": {
+            "items": {
+              "$ref": "#/components/schemas/MeBranch"
+            },
+            "type": "array",
+            "title": "Branches"
+          },
+          "branding": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branding"
           }
         },
         "type": "object",

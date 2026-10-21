@@ -2909,6 +2909,17 @@ export interface components {
             /** Password */
             password: string;
         };
+        /** MeBranch */
+        MeBranch: {
+            /** Id */
+            id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Is Default */
+            is_default: boolean;
+        };
         /** MeResponse */
         MeResponse: {
             user: components["schemas"]["UserOut"];
@@ -2925,6 +2936,12 @@ export interface components {
              * @default false
              */
             employee_portal: boolean;
+            /** Branches */
+            branches?: components["schemas"]["MeBranch"][];
+            /** Branding */
+            branding?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** MethodTotal */
         MethodTotal: {

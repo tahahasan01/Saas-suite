@@ -30,6 +30,8 @@ from ..models import (
     VerifyRequest,
 )
 from ..ratelimit import client_ip, rate_limit
+from .. import branches, branding  # /auth/me branches + branding (p3-orgdata)
+from ..models import MeBranch
 from ..security import (
     SESSION_COOKIE,
     hash_password,
@@ -294,6 +296,9 @@ async def _bootstrap(conn, user: UserOut, tenant_id: str, role_id: str | None) -
         locale=LocaleOut(locale=locale, dir="rtl" if locale == "ur" else "ltr",  # type: ignore[arg-type]
                          timezone=tenant_row["timezone"], currency="PKR"),
         employee_portal=is_employee,
+        branches=[MeBranch(id=b["id"], code=b["code"], name=b["name"], is_default=b["is_default"])
+                  for b in await branches.visible(conn)],
+        branding=await branding.load(conn),
     )
 
 

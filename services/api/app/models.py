@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, time
 
-from typing import Literal, get_args
+from typing import Any, Literal, get_args
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
@@ -93,6 +93,13 @@ class LocaleOut(BaseModel):
     currency: str
 
 
+class MeBranch(BaseModel):
+    id: str
+    code: str
+    name: str
+    is_default: bool
+
+
 class MeResponse(BaseModel):
     user: UserOut
     tenant: TenantOut
@@ -103,6 +110,11 @@ class MeResponse(BaseModel):
     locale: LocaleOut
     # True when this login belongs to an employee: the app shows self-service.
     employee_portal: bool = False
+    # The branches this request works in (D-03: X-Branch-Ids narrowed to the
+    # user's own), default first; and the tenant's branding, shaped like
+    # GET /org/branding (D-12). (p3-orgdata)
+    branches: list[MeBranch] = Field(default_factory=list)
+    branding: dict[str, Any] | None = None
 
 
 class TerminologyResponse(BaseModel):

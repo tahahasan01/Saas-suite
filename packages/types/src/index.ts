@@ -162,6 +162,16 @@ export interface MeResponse {
   locale: LocaleOut;
   /** True when this login is an employee self-service account. */
   employee_portal: boolean;
+  /** Branches this request works in (D-03), default first. */
+  branches?: { id: string; code: string; name: string; is_default: boolean }[];
+  /** Tenant branding, as GET /org/branding (D-12): colours, logo, theme tokens. */
+  branding?: {
+    logo_file_id: string | null;
+    primary_color: string | null;
+    accent_color: string | null;
+    version: number;
+    tokens: Record<string, string>;
+  } | null;
 }
 
 export interface TerminologyResponse {
