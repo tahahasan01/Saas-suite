@@ -256,7 +256,7 @@ export default function LeavePage() {
                 </span>
               </span>
               <Can perm="hrms.settings.manage">
-                <Button size="sm" variant="subtle" onClick={() => setEditing(t)} aria-label={`Edit ${t.name}`}>Edit</Button>
+                <Button size="sm" variant="subtle" onClick={() => setEditing(t)} aria-label={`Edit ${t.code} settings`}>Edit</Button>
               </Can>
             </li>
           ))}

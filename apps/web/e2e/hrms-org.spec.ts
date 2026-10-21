@@ -28,7 +28,8 @@ test.describe("employee profile", () => {
     await page.getByLabel("Email").fill(`e2e+${uniq()}@example.com`);
     await page.getByLabel("Phone").fill("0300-1234567");
     await page.getByRole("button", { name: "Save employee" }).click();
-    await page.getByRole("link", { name }).click();
+    await expect(page.getByText("Employee added")).toBeVisible();
+    await page.getByRole("link", { name }).first().click();
     await expect(page.getByRole("heading", { name })).toBeVisible();
     await expect(page.getByLabel("Phone")).toHaveValue("0300-1234567");
     await expect(page.getByRole("button", { name: "Enable login" })).toBeEnabled();
@@ -44,7 +45,7 @@ test.describe("employee profile", () => {
     await expect(page.getByText("Job saved")).toBeVisible();
 
     const soon = new Date(Date.now() + 10 * 86_400_000).toISOString().slice(0, 10);
-    await page.getByLabel("Title").fill("CNIC copy");
+    await page.getByLabel("Title", { exact: true }).fill("CNIC copy");
     await page.getByLabel("Expires on").fill(soon);
     await page.getByRole("button", { name: "Add document" }).click();
     await expect(page.getByText(/days left/)).toBeVisible();
@@ -71,7 +72,7 @@ test.describe("departments", () => {
     await ready(page);
     await page.getByLabel("New department").fill(parent);
     await page.getByRole("button", { name: "Add" }).first().click();
-    await expect(page.getByText(parent)).toBeVisible();
+    await expect(page.getByRole("listitem").filter({ hasText: parent }).first()).toBeVisible();
     await page.getByLabel("New department").fill(child);
     await page.getByLabel("Under").selectOption({ label: parent });
     await page.getByRole("button", { name: "Add" }).first().click();
@@ -80,7 +81,7 @@ test.describe("departments", () => {
 });
 
 test.describe("sites and kiosks", () => {
-  test("a kiosk link is shown once and the kiosk lists the site's staff", async ({ page, request }) => {
+  test("a kiosk link is shown once and the kiosk lists the site's staff", async ({ page, request, browser }) => {
     const site = `E2E Shop ${uniq()}`;
     const loc = await (await request.post(`${API}/hrms/locations`, { data: { name: site } })).json();
     const emp = await newEmployee(request);
@@ -95,7 +96,7 @@ test.describe("sites and kiosks", () => {
     await page.getByRole("button", { name: "Done" }).click();
 
     // The device: no session, only the link.
-    const device = await page.context().browser()!.newContext({ storageState: undefined });
+    const device = await browser.newContext({ storageState: { cookies: [], origins: [] } });
     const kiosk = await device.newPage();
     try {
       await kiosk.goto(url);
@@ -119,7 +120,7 @@ test.describe("leave v2", () => {
     await page.goto("/hrms/leave");
     await ready(page);
     await expect(page.getByRole("heading", { name: "Leave types" })).toBeVisible();
-    await expect(page.getByText("Casual leave", { exact: true })).toBeVisible();
+    await expect(page.getByRole("listitem").filter({ hasText: "Casual leave" }).first()).toBeVisible();
 
     await page.getByLabel("Employee").selectOption({ label: emp.name });
     await page.getByLabel("Type").selectOption({ label: "Casual leave" });
@@ -140,7 +141,7 @@ test.describe("holidays v2", () => {
     await ready(page);
     const year = await page.getByLabel("Year").inputValue();
     const name = `E2E Import ${uniq()}`;
-    await page.getByLabel("CSV").fill(`Date,Name\n${year}-12-29,${name}\nnope,Broken\n`);
+    await page.getByLabel("CSV", { exact: true }).fill(`Date,Name\n${year}-12-29,${name}\nnope,Broken\n`);
     await page.getByRole("button", { name: "Import into this calendar" }).click();
     await expect(page.getByRole("status").filter({ hasText: "added" })).toContainText("Line 3");
     await expect(page.getByRole("listitem").filter({ hasText: name })).toBeVisible();

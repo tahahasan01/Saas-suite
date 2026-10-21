@@ -219,7 +219,7 @@ test.describe("holidays", () => {
   });
 
   test("removing a holiday asks first, because it changes payroll", async ({ page, request }) => {
-    const res = await request.post(`${API}/hrms/holidays`, { data: { holiday_date: "2099-12-30", name: "E2E removal check" } });
+    const res = await request.post(`${API}/hrms/holidays`, { data: { holiday_date: `${yearPKT()}-12-30`, name: "E2E removal check" } });
     expect(res.ok()).toBeTruthy();
     const { id } = await res.json();
     try {
