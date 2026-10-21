@@ -307,6 +307,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/team/users/{user_id}/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set User Roles
+         * @description Give someone several roles (D-04): they hold the union, at the widest
+         *     scope. The first role is their primary one. Their sessions end (D-05).
+         */
+        put: operations["set_user_roles_team_users__user_id__roles_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/team/users/{user_id}": {
         parameters: {
             query?: never;
@@ -1678,6 +1699,243 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/platform/modules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Modules */
+        get: operations["list_modules_platform_modules_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/modules/{key}/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Enable Module */
+        post: operations["enable_module_platform_modules__key__enable_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/modules/{key}/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Disable Module */
+        post: operations["disable_module_platform_modules__key__disable_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/modules/{key}/purge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Purge Module
+         * @description Schedules the deletion of a disabled module's data, 7 days out. Typing
+         *     "DELETE <module>" confirms; turning the module back on cancels it.
+         */
+        post: operations["purge_module_platform_modules__key__purge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/permissions/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Catalog
+         * @description Every key, grouped by the module that owns it, with whether scopes
+         *     narrower than 'all' mean anything for it.
+         */
+        get: operations["catalog_permissions_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Roles */
+        get: operations["list_roles_roles_get"];
+        put?: never;
+        /** Create Role */
+        post: operations["create_role_roles_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/roles/{role_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Role */
+        get: operations["get_role_roles__role_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Role */
+        delete: operations["delete_role_roles__role_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Role */
+        patch: operations["update_role_roles__role_id__patch"];
+        trace?: never;
+    };
+    "/roles/{role_id}/grants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Put Grants */
+        put: operations["put_grants_roles__role_id__grants_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/roles/{role_id}/inherits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Put Inherits */
+        put: operations["put_inherits_roles__role_id__inherits_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/roles/{role_id}/copy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Copy Role
+         * @description Copy-on-edit for system templates: the copy keeps every grant
+         *     (the Owner's '*' too) and inheritance, and is freely editable.
+         */
+        post: operations["copy_role_roles__role_id__copy_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/teams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Teams */
+        get: operations["list_teams_teams_get"];
+        put?: never;
+        /** Create Team */
+        post: operations["create_team_teams_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/teams/{team_id}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Put Members */
+        put: operations["put_members_teams__team_id__members_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/teams/{team_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Team */
+        delete: operations["delete_team_teams__team_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1802,6 +2060,28 @@ export interface components {
             /** Sections Used */
             sections_used: number;
         };
+        /** CatalogKey */
+        CatalogKey: {
+            /** Key */
+            key: string;
+            /** Resource */
+            resource: string;
+            /** Action */
+            action: string;
+            /** Scoped */
+            scoped: boolean;
+            /** Legacy */
+            legacy: string[];
+        };
+        /** CatalogModule */
+        CatalogModule: {
+            /** Module */
+            module: string;
+            /** Label */
+            label: string;
+            /** Keys */
+            keys: components["schemas"]["CatalogKey"][];
+        };
         /** CheckInRequest */
         CheckInRequest: {
             /** Employee Id */
@@ -1849,6 +2129,17 @@ export interface components {
             alerts: components["schemas"]["Alert"][];
             /** Activity */
             activity: components["schemas"]["ActivityItem"][];
+        };
+        /** DisablePlanOut */
+        DisablePlanOut: {
+            /** Module */
+            module: string;
+            /** To Disable */
+            to_disable: string[];
+            /** Blocked By */
+            blocked_by: string[];
+            /** Applied */
+            applied: boolean;
         };
         /** DrawerClose */
         DrawerClose: {
@@ -1993,6 +2284,17 @@ export interface components {
             /** Status */
             status?: ("active" | "inactive") | null;
         };
+        /** EnablePlanOut */
+        EnablePlanOut: {
+            /** Module */
+            module: string;
+            /** To Enable */
+            to_enable: string[];
+            /** Violations */
+            violations: string[];
+            /** Applied */
+            applied: boolean;
+        };
         /** EntitlementOut */
         EntitlementOut: {
             /** Section Key */
@@ -2122,6 +2424,22 @@ export interface components {
             fields: {
                 [key: string]: unknown;
             }[];
+        };
+        /** GrantIn */
+        GrantIn: {
+            /** Permission Key */
+            permission_key: string;
+            /**
+             * Scope
+             * @default all
+             * @enum {string}
+             */
+            scope: "own" | "team" | "branch" | "all";
+        };
+        /** GrantsPut */
+        GrantsPut: {
+            /** Grants */
+            grants: components["schemas"]["GrantIn"][];
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -2497,6 +2815,45 @@ export interface components {
             /** Password */
             password: string;
         };
+        /** MeModule */
+        MeModule: {
+            /** Key */
+            key: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "enabled" | "disabled";
+            /** Application */
+            application: boolean;
+        };
+        /** MeNavChild */
+        MeNavChild: {
+            /** Href */
+            href: string;
+            /** Label Key */
+            label_key: string;
+        };
+        /**
+         * MeNavItem
+         * @description A sidebar entry the caller may see; the web owns labels and icons.
+         */
+        MeNavItem: {
+            /** Key */
+            key: string;
+            /** Module */
+            module: string;
+            /** Href */
+            href: string;
+            /** Label Key */
+            label_key: string;
+            /** Icon */
+            icon: string;
+            /** Group */
+            group: string;
+            /** Children */
+            children?: components["schemas"]["MeNavChild"][];
+        };
         /** MeResponse */
         MeResponse: {
             user: components["schemas"]["UserOut"];
@@ -2507,6 +2864,15 @@ export interface components {
             permissions: {
                 [key: string]: "own" | "team" | "branch" | "all";
             };
+            /** Modules */
+            modules?: components["schemas"]["MeModule"][];
+            /** Nav */
+            nav?: components["schemas"]["MeNavItem"][];
+            /** Flags */
+            flags?: {
+                [key: string]: boolean;
+            };
+            terminology?: components["schemas"]["TerminologyRef"] | null;
             locale: components["schemas"]["LocaleOut"];
             /**
              * Employee Portal
@@ -2522,6 +2888,34 @@ export interface components {
             count: number;
             /** Total Minor */
             total_minor: number;
+        };
+        /** ModuleOut */
+        ModuleOut: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Description */
+            description: string;
+            /** Application */
+            application: boolean;
+            /** Always On */
+            always_on: boolean;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "enabled" | "disabled";
+            /** Reason */
+            reason: ("user" | "dependency" | "auto") | null;
+            /** Depends */
+            depends: string[];
+            /** Auto Enable */
+            auto_enable: string[];
+            /** Purgeable */
+            purgeable: boolean;
+            /** Pending Purge At */
+            pending_purge_at?: string | null;
         };
         /** NotificationList */
         NotificationList: {
@@ -2885,6 +3279,26 @@ export interface components {
             /** Fbr Uom */
             fbr_uom?: string | null;
         };
+        /** PurgeOut */
+        PurgeOut: {
+            /** Module */
+            module: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "cancelled" | "done" | "failed";
+            /**
+             * Run After
+             * Format: date-time
+             */
+            run_after: string;
+        };
+        /** PurgeRequest */
+        PurgeRequest: {
+            /** Confirm */
+            confirm: string;
+        };
         /**
          * RefundableLine
          * @description A returnable line plus the two figures a refund is computed from
@@ -2992,6 +3406,11 @@ export interface components {
             /** Fbr Status */
             fbr_status?: string | null;
         };
+        /** RoleCopy */
+        RoleCopy: {
+            /** Name */
+            name: string;
+        };
         /** RoleCreate */
         RoleCreate: {
             /** Name */
@@ -3001,6 +3420,30 @@ export interface components {
                 [key: string]: string[];
             };
         };
+        /** RoleDetail */
+        RoleDetail: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description: string;
+            /** Is System */
+            is_system: boolean;
+            /** Template Key */
+            template_key: string | null;
+            /** User Count */
+            user_count: number;
+            /** Grants */
+            grants: components["schemas"]["GrantIn"][];
+            /** Inherits */
+            inherits: string[];
+        };
+        /** RoleIdsPut */
+        RoleIdsPut: {
+            /** Role Ids */
+            role_ids: string[];
+        };
         /** RoleOut */
         RoleOut: {
             /** Id */
@@ -3009,6 +3452,47 @@ export interface components {
             name: string;
             /** Is System */
             is_system: boolean;
+        };
+        /** RoleRef */
+        RoleRef: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+        };
+        /** RoleSummary */
+        RoleSummary: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description: string;
+            /** Is System */
+            is_system: boolean;
+            /** Template Key */
+            template_key: string | null;
+            /** User Count */
+            user_count: number;
+        };
+        /** RoleV2Create */
+        RoleV2Create: {
+            /** Name */
+            name: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Grants */
+            grants?: components["schemas"]["GrantIn"][];
+        };
+        /** RoleV2Update */
+        RoleV2Update: {
+            /** Name */
+            name?: string | null;
+            /** Description */
+            description?: string | null;
         };
         /** SaleCreate */
         SaleCreate: {
@@ -3380,6 +3864,29 @@ export interface components {
             /** Notes */
             notes: string;
         };
+        /** TeamCreate */
+        TeamCreate: {
+            /** Name */
+            name: string;
+            /** Lead User Id */
+            lead_user_id?: string | null;
+        };
+        /** TeamMembersPut */
+        TeamMembersPut: {
+            /** User Ids */
+            user_ids: string[];
+        };
+        /** TeamOut */
+        TeamOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Lead User Id */
+            lead_user_id: string | null;
+            /** Member Ids */
+            member_ids: string[];
+        };
         /** TeamUser */
         TeamUser: {
             /** Id */
@@ -3392,6 +3899,8 @@ export interface components {
             role: string | null;
             /** Status */
             status: string;
+            /** Roles */
+            roles?: components["schemas"]["RoleRef"][];
         };
         /** TenantOut */
         TenantOut: {
@@ -3403,6 +3912,18 @@ export interface components {
             industry_type: string;
             /** Status */
             status: string;
+        };
+        /**
+         * TerminologyRef
+         * @description Which label set is current: refetch /terminology when the ETag moves.
+         */
+        TerminologyRef: {
+            /** Etag */
+            etag: string;
+            /** Industry Type */
+            industry_type: string;
+            /** Locale */
+            locale: string;
         };
         /** TerminologyResponse */
         TerminologyResponse: {
@@ -4087,6 +4608,43 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamUser"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_user_roles_team_users__user_id__roles_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoleIdsPut"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7074,6 +7632,588 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["BillingOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_modules_platform_modules_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModuleOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    enable_module_platform_modules__key__enable_post: {
+        parameters: {
+            query?: {
+                dry_run?: boolean;
+            };
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnablePlanOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    disable_module_platform_modules__key__disable_post: {
+        parameters: {
+            query?: {
+                cascade?: boolean;
+                dry_run?: boolean;
+            };
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisablePlanOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    purge_module_platform_modules__key__purge_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PurgeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurgeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    catalog_permissions_catalog_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogModule"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_roles_roles_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_role_roles_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoleV2Create"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_role_roles__role_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                role_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_role_roles__role_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                role_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_role_roles__role_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                role_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoleV2Update"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_grants_roles__role_id__grants_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                role_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GrantsPut"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_inherits_roles__role_id__inherits_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                role_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoleIdsPut"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    copy_role_roles__role_id__copy_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                role_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoleCopy"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_teams_teams_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_team_teams_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TeamCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_members_teams__team_id__members_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TeamMembersPut"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_team_teams__team_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

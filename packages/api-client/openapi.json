@@ -792,6 +792,75 @@
         }
       }
     },
+    "/team/users/{user_id}/roles": {
+      "put": {
+        "tags": [
+          "team"
+        ],
+        "summary": "Set User Roles",
+        "description": "Give someone several roles (D-04): they hold the union, at the widest\nscope. The first role is their primary one. Their sessions end (D-05).",
+        "operationId": "set_user_roles_team_users__user_id__roles_put",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoleIdsPut"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamUser"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/team/users/{user_id}": {
       "patch": {
         "tags": [
@@ -5996,6 +6065,1045 @@
           }
         }
       }
+    },
+    "/platform/modules": {
+      "get": {
+        "tags": [
+          "modules"
+        ],
+        "summary": "List Modules",
+        "operationId": "list_modules_platform_modules_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ModuleOut"
+                  },
+                  "title": "Response List Modules Platform Modules Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/platform/modules/{key}/enable": {
+      "post": {
+        "tags": [
+          "modules"
+        ],
+        "summary": "Enable Module",
+        "operationId": "enable_module_platform_modules__key__enable_post",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Key"
+            }
+          },
+          {
+            "name": "dry_run",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Dry Run"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnablePlanOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/platform/modules/{key}/disable": {
+      "post": {
+        "tags": [
+          "modules"
+        ],
+        "summary": "Disable Module",
+        "operationId": "disable_module_platform_modules__key__disable_post",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Key"
+            }
+          },
+          {
+            "name": "cascade",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Cascade"
+            }
+          },
+          {
+            "name": "dry_run",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Dry Run"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisablePlanOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/platform/modules/{key}/purge": {
+      "post": {
+        "tags": [
+          "modules"
+        ],
+        "summary": "Purge Module",
+        "description": "Schedules the deletion of a disabled module's data, 7 days out. Typing\n\"DELETE <module>\" confirms; turning the module back on cancels it.",
+        "operationId": "purge_module_platform_modules__key__purge_post",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Key"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PurgeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurgeOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/permissions/catalog": {
+      "get": {
+        "tags": [
+          "roles"
+        ],
+        "summary": "Catalog",
+        "description": "Every key, grouped by the module that owns it, with whether scopes\nnarrower than 'all' mean anything for it.",
+        "operationId": "catalog_permissions_catalog_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CatalogModule"
+                  },
+                  "title": "Response Catalog Permissions Catalog Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/roles": {
+      "get": {
+        "tags": [
+          "roles"
+        ],
+        "summary": "List Roles",
+        "operationId": "list_roles_roles_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RoleSummary"
+                  },
+                  "title": "Response List Roles Roles Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "roles"
+        ],
+        "summary": "Create Role",
+        "operationId": "create_role_roles_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoleV2Create"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/roles/{role_id}": {
+      "get": {
+        "tags": [
+          "roles"
+        ],
+        "summary": "Get Role",
+        "operationId": "get_role_roles__role_id__get",
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Role Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "roles"
+        ],
+        "summary": "Update Role",
+        "operationId": "update_role_roles__role_id__patch",
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Role Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoleV2Update"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "roles"
+        ],
+        "summary": "Delete Role",
+        "operationId": "delete_role_roles__role_id__delete",
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Role Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/roles/{role_id}/grants": {
+      "put": {
+        "tags": [
+          "roles"
+        ],
+        "summary": "Put Grants",
+        "operationId": "put_grants_roles__role_id__grants_put",
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Role Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GrantsPut"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/roles/{role_id}/inherits": {
+      "put": {
+        "tags": [
+          "roles"
+        ],
+        "summary": "Put Inherits",
+        "operationId": "put_inherits_roles__role_id__inherits_put",
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Role Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoleIdsPut"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/roles/{role_id}/copy": {
+      "post": {
+        "tags": [
+          "roles"
+        ],
+        "summary": "Copy Role",
+        "description": "Copy-on-edit for system templates: the copy keeps every grant\n(the Owner's '*' too) and inheritance, and is freely editable.",
+        "operationId": "copy_role_roles__role_id__copy_post",
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Role Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoleCopy"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teams": {
+      "get": {
+        "tags": [
+          "roles"
+        ],
+        "summary": "List Teams",
+        "operationId": "list_teams_teams_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TeamOut"
+                  },
+                  "title": "Response List Teams Teams Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "roles"
+        ],
+        "summary": "Create Team",
+        "operationId": "create_team_teams_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teams/{team_id}/members": {
+      "put": {
+        "tags": [
+          "roles"
+        ],
+        "summary": "Put Members",
+        "operationId": "put_members_teams__team_id__members_put",
+        "parameters": [
+          {
+            "name": "team_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Team Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamMembersPut"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teams/{team_id}": {
+      "delete": {
+        "tags": [
+          "roles"
+        ],
+        "summary": "Delete Team",
+        "operationId": "delete_team_teams__team_id__delete",
+        "parameters": [
+          {
+            "name": "team_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Team Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -6307,6 +7415,68 @@
         ],
         "title": "BillingOut"
       },
+      "CatalogKey": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "resource": {
+            "type": "string",
+            "title": "Resource"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "scoped": {
+            "type": "boolean",
+            "title": "Scoped"
+          },
+          "legacy": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Legacy"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "resource",
+          "action",
+          "scoped",
+          "legacy"
+        ],
+        "title": "CatalogKey"
+      },
+      "CatalogModule": {
+        "properties": {
+          "module": {
+            "type": "string",
+            "title": "Module"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "keys": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogKey"
+            },
+            "type": "array",
+            "title": "Keys"
+          }
+        },
+        "type": "object",
+        "required": [
+          "module",
+          "label",
+          "keys"
+        ],
+        "title": "CatalogModule"
+      },
       "CheckInRequest": {
         "properties": {
           "employee_id": {
@@ -6449,6 +7619,40 @@
           "activity"
         ],
         "title": "DashboardOverview"
+      },
+      "DisablePlanOut": {
+        "properties": {
+          "module": {
+            "type": "string",
+            "title": "Module"
+          },
+          "to_disable": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "To Disable"
+          },
+          "blocked_by": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Blocked By"
+          },
+          "applied": {
+            "type": "boolean",
+            "title": "Applied"
+          }
+        },
+        "type": "object",
+        "required": [
+          "module",
+          "to_disable",
+          "blocked_by",
+          "applied"
+        ],
+        "title": "DisablePlanOut"
       },
       "DrawerClose": {
         "properties": {
@@ -6805,6 +8009,40 @@
         },
         "type": "object",
         "title": "EmployeeUpdate"
+      },
+      "EnablePlanOut": {
+        "properties": {
+          "module": {
+            "type": "string",
+            "title": "Module"
+          },
+          "to_enable": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "To Enable"
+          },
+          "violations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Violations"
+          },
+          "applied": {
+            "type": "boolean",
+            "title": "Applied"
+          }
+        },
+        "type": "object",
+        "required": [
+          "module",
+          "to_enable",
+          "violations",
+          "applied"
+        ],
+        "title": "EnablePlanOut"
       },
       "EntitlementOut": {
         "properties": {
@@ -7183,6 +8421,49 @@
           "fields"
         ],
         "title": "FulfillmentSchema"
+      },
+      "GrantIn": {
+        "properties": {
+          "permission_key": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Permission Key"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "own",
+              "team",
+              "branch",
+              "all"
+            ],
+            "title": "Scope",
+            "default": "all"
+          }
+        },
+        "type": "object",
+        "required": [
+          "permission_key"
+        ],
+        "title": "GrantIn"
+      },
+      "GrantsPut": {
+        "properties": {
+          "grants": {
+            "items": {
+              "$ref": "#/components/schemas/GrantIn"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "title": "Grants"
+          }
+        },
+        "type": "object",
+        "required": [
+          "grants"
+        ],
+        "title": "GrantsPut"
       },
       "HTTPValidationError": {
         "properties": {
@@ -8118,6 +9399,97 @@
         ],
         "title": "LoginRequest"
       },
+      "MeModule": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "enabled",
+              "disabled"
+            ],
+            "title": "State"
+          },
+          "application": {
+            "type": "boolean",
+            "title": "Application"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "state",
+          "application"
+        ],
+        "title": "MeModule"
+      },
+      "MeNavChild": {
+        "properties": {
+          "href": {
+            "type": "string",
+            "title": "Href"
+          },
+          "label_key": {
+            "type": "string",
+            "title": "Label Key"
+          }
+        },
+        "type": "object",
+        "required": [
+          "href",
+          "label_key"
+        ],
+        "title": "MeNavChild"
+      },
+      "MeNavItem": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "module": {
+            "type": "string",
+            "title": "Module"
+          },
+          "href": {
+            "type": "string",
+            "title": "Href"
+          },
+          "label_key": {
+            "type": "string",
+            "title": "Label Key"
+          },
+          "icon": {
+            "type": "string",
+            "title": "Icon"
+          },
+          "group": {
+            "type": "string",
+            "title": "Group"
+          },
+          "children": {
+            "items": {
+              "$ref": "#/components/schemas/MeNavChild"
+            },
+            "type": "array",
+            "title": "Children"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "module",
+          "href",
+          "label_key",
+          "icon",
+          "group"
+        ],
+        "title": "MeNavItem",
+        "description": "A sidebar entry the caller may see; the web owns labels and icons."
+      },
       "MeResponse": {
         "properties": {
           "user": {
@@ -8145,6 +9517,37 @@
             },
             "type": "object",
             "title": "Permissions"
+          },
+          "modules": {
+            "items": {
+              "$ref": "#/components/schemas/MeModule"
+            },
+            "type": "array",
+            "title": "Modules"
+          },
+          "nav": {
+            "items": {
+              "$ref": "#/components/schemas/MeNavItem"
+            },
+            "type": "array",
+            "title": "Nav"
+          },
+          "flags": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "type": "object",
+            "title": "Flags"
+          },
+          "terminology": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TerminologyRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "locale": {
             "$ref": "#/components/schemas/LocaleOut"
@@ -8187,6 +9590,98 @@
           "total_minor"
         ],
         "title": "MethodTotal"
+      },
+      "ModuleOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "application": {
+            "type": "boolean",
+            "title": "Application"
+          },
+          "always_on": {
+            "type": "boolean",
+            "title": "Always On"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "enabled",
+              "disabled"
+            ],
+            "title": "State"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "user",
+                  "dependency",
+                  "auto"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "depends": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Depends"
+          },
+          "auto_enable": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Auto Enable"
+          },
+          "purgeable": {
+            "type": "boolean",
+            "title": "Purgeable"
+          },
+          "pending_purge_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending Purge At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "description",
+          "application",
+          "always_on",
+          "state",
+          "reason",
+          "depends",
+          "auto_enable",
+          "purgeable"
+        ],
+        "title": "ModuleOut"
       },
       "NotificationList": {
         "properties": {
@@ -9086,6 +10581,50 @@
         "type": "object",
         "title": "ProductUpdate"
       },
+      "PurgeOut": {
+        "properties": {
+          "module": {
+            "type": "string",
+            "title": "Module"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "cancelled",
+              "done",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "run_after": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Run After"
+          }
+        },
+        "type": "object",
+        "required": [
+          "module",
+          "status",
+          "run_after"
+        ],
+        "title": "PurgeOut"
+      },
+      "PurgeRequest": {
+        "properties": {
+          "confirm": {
+            "type": "string",
+            "maxLength": 80,
+            "title": "Confirm"
+          }
+        },
+        "type": "object",
+        "required": [
+          "confirm"
+        ],
+        "title": "PurgeRequest"
+      },
       "RefundableLine": {
         "properties": {
           "sale_item_id": {
@@ -9359,6 +10898,21 @@
         ],
         "title": "ReturnOut"
       },
+      "RoleCopy": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "RoleCopy"
+      },
       "RoleCreate": {
         "properties": {
           "name": {
@@ -9384,6 +10938,84 @@
         ],
         "title": "RoleCreate"
       },
+      "RoleDetail": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "is_system": {
+            "type": "boolean",
+            "title": "Is System"
+          },
+          "template_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Key"
+          },
+          "user_count": {
+            "type": "integer",
+            "title": "User Count"
+          },
+          "grants": {
+            "items": {
+              "$ref": "#/components/schemas/GrantIn"
+            },
+            "type": "array",
+            "title": "Grants"
+          },
+          "inherits": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Inherits"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description",
+          "is_system",
+          "template_key",
+          "user_count",
+          "grants",
+          "inherits"
+        ],
+        "title": "RoleDetail"
+      },
+      "RoleIdsPut": {
+        "properties": {
+          "role_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "title": "Role Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "role_ids"
+        ],
+        "title": "RoleIdsPut"
+      },
       "RoleOut": {
         "properties": {
           "id": {
@@ -9406,6 +11038,129 @@
           "is_system"
         ],
         "title": "RoleOut"
+      },
+      "RoleRef": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "RoleRef"
+      },
+      "RoleSummary": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "is_system": {
+            "type": "boolean",
+            "title": "Is System"
+          },
+          "template_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Key"
+          },
+          "user_count": {
+            "type": "integer",
+            "title": "User Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description",
+          "is_system",
+          "template_key",
+          "user_count"
+        ],
+        "title": "RoleSummary"
+      },
+      "RoleV2Create": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Description",
+            "default": ""
+          },
+          "grants": {
+            "items": {
+              "$ref": "#/components/schemas/GrantIn"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "title": "Grants"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "RoleV2Create"
+      },
+      "RoleV2Update": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 60,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "title": "RoleV2Update"
       },
       "SaleCreate": {
         "properties": {
@@ -10168,6 +11923,87 @@
         ],
         "title": "SupplierOut"
       },
+      "TeamCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "lead_user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lead User Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "TeamCreate"
+      },
+      "TeamMembersPut": {
+        "properties": {
+          "user_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "title": "User Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_ids"
+        ],
+        "title": "TeamMembersPut"
+      },
+      "TeamOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "lead_user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lead User Id"
+          },
+          "member_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Member Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "lead_user_id",
+          "member_ids"
+        ],
+        "title": "TeamOut"
+      },
       "TeamUser": {
         "properties": {
           "id": {
@@ -10196,6 +12032,13 @@
           "status": {
             "type": "string",
             "title": "Status"
+          },
+          "roles": {
+            "items": {
+              "$ref": "#/components/schemas/RoleRef"
+            },
+            "type": "array",
+            "title": "Roles"
           }
         },
         "type": "object",
@@ -10235,6 +12078,30 @@
           "status"
         ],
         "title": "TenantOut"
+      },
+      "TerminologyRef": {
+        "properties": {
+          "etag": {
+            "type": "string",
+            "title": "Etag"
+          },
+          "industry_type": {
+            "type": "string",
+            "title": "Industry Type"
+          },
+          "locale": {
+            "type": "string",
+            "title": "Locale"
+          }
+        },
+        "type": "object",
+        "required": [
+          "etag",
+          "industry_type",
+          "locale"
+        ],
+        "title": "TerminologyRef",
+        "description": "Which label set is current: refetch /terminology when the ETag moves."
       },
       "TerminologyResponse": {
         "properties": {
