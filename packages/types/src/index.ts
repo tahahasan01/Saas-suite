@@ -348,6 +348,8 @@ export interface FbrSettings {
   prices_include_tax: boolean;
   /** The token itself is write-only and never returned. */
   token_set: boolean;
+  /** pk_regions code behind seller_province (which holds FBR's spelling). */
+  seller_region_code?: string | null;
 }
 
 export interface FbrInvoice {

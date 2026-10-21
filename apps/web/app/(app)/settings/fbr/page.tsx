@@ -3,13 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import type { FbrInvoice, FbrSettings } from "@business-os/types";
 import { api } from "@/lib/api";
+import type { Region } from "@/lib/org";
 import { relativeDate } from "@/lib/format";
 import { errorText, useAction } from "@/lib/useAction";
 import { Badge, Button, Card, ErrorState, Field, Input, LoadingRows, Select } from "@/components/ui";
 import { useConfirm } from "@/components/Confirm";
-
-const PROVINCES = ["Punjab", "Sindh", "Khyber Pakhtunkhwa", "Balochistan", "Islamabad Capital Territory",
-                   "Gilgit-Baltistan", "Azad Jammu and Kashmir"];
 
 type Patch = Partial<FbrSettings> & { token?: string };
 
@@ -20,7 +18,11 @@ export default function FbrSettingsPage() {
   // An empty "not yet filed" list must mean nothing is pending, never "we couldn't ask".
   const [invoicesError, setInvoicesError] = useState<string | null>(null);
   const [token, setToken] = useState("");
+  const [regions, setRegions] = useState<Region[]>([]);
   const confirm = useConfirm();
+  useEffect(() => {
+    api<Region[]>("/org/regions").then(setRegions).catch(() => setRegions([]));
+  }, []);
 
   const loadInvoices = useCallback(() => {
     setInvoicesError(null);
@@ -104,8 +106,10 @@ export default function FbrSettingsPage() {
                        onSave={(v) => put({ seller_ntn_cnic: v })} />
           <SellerField label="Business name" value={cfg.seller_business_name}
                        onSave={(v) => put({ seller_business_name: v })} />
-          <SellerField label="Province" value={cfg.seller_province} options={PROVINCES}
-                       onSave={(v) => put({ seller_province: v })} />
+          {/* The province is a pk_regions code; the API stores FBR's spelling of it. */}
+          <SellerField label="Province" value={cfg.seller_region_code ?? ""}
+                       options={regions.map((r) => ({ value: r.code, label: r.name }))}
+                       onSave={(v) => put(v ? { seller_region_code: v } : { seller_province: "" })} />
           <SellerField label="Address" value={cfg.seller_address}
                        onSave={(v) => put({ seller_address: v })} />
         </div>
@@ -201,7 +205,7 @@ function SellerField({ label, value, onSave, options, placeholder, inputMode }: 
   label: string;
   value: string;
   onSave: (v: string) => Promise<unknown>;
-  options?: string[];
+  options?: { value: string; label: string }[];
   placeholder?: string;
   inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
 }) {
@@ -230,7 +234,7 @@ function SellerField({ label, value, onSave, options, placeholder, inputMode }: 
         {options ? (
           <Select value={draft} disabled={act.busy} onChange={(e) => { setDraft(e.target.value); commit(e.target.value); }}>
             <option value="">Select…</option>
-            {options.map((p) => <option key={p} value={p}>{p}</option>)}
+            {options.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
           </Select>
         ) : (
           <Input value={draft} placeholder={placeholder} inputMode={inputMode} aria-invalid={act.error ? true : undefined}

@@ -10,6 +10,7 @@ import re
 from datetime import date
 
 from pydantic import BaseModel, Field, field_validator
+from pydantic_core import PydanticCustomError
 
 from .models import (
     REGION_CODES, BrandingLayout, FileMime, RegionCode, RegionKind, SequenceReset, TaxAppliesTo, TaxKind,
@@ -19,6 +20,11 @@ _NTN = re.compile(r"^(\d{7}(-\d)?|\d{13})$")
 _STRN = re.compile(r"^(\d{13}|\d{7}(-\d)?)$")
 _EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 _HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+def _bad(message: str) -> PydanticCustomError:
+    """A 422 whose message is just the words (no "Value error, " prefix)."""
+    return PydanticCustomError("value_error", message)
 
 
 def _blank_to_none(v: str | None) -> str | None:
@@ -72,35 +78,35 @@ class CompanyUpdate(BaseModel):
     @classmethod
     def _name(cls, v: str | None) -> str | None:
         if v is not None and not v.strip():
-            raise ValueError("Company name can't be empty")
+            raise _bad("Company name can't be empty")
         return v.strip() if v is not None else None
 
     @field_validator("ntn")
     @classmethod
     def _ntn(cls, v: str | None) -> str | None:
         if v is not None and v.strip() and not _NTN.match(v.strip()):
-            raise ValueError("NTN is 7 digits (optionally -check digit), or a 13-digit CNIC")
+            raise _bad("NTN is 7 digits (optionally -check digit), or a 13-digit CNIC")
         return v
 
     @field_validator("strn")
     @classmethod
     def _strn(cls, v: str | None) -> str | None:
         if v is not None and v.strip() and not _STRN.match(v.strip()):
-            raise ValueError("STRN is 13 digits")
+            raise _bad("STRN is 13 digits")
         return v
 
     @field_validator("email")
     @classmethod
     def _email(cls, v: str | None) -> str | None:
         if v is not None and v.strip() and not _EMAIL.match(v.strip()):
-            raise ValueError("Enter a valid email address")
+            raise _bad("Enter a valid email address")
         return v
 
     @field_validator("region_code")
     @classmethod
     def _region(cls, v: str | None) -> str | None:
         if v is not None and v.strip() and v.strip() not in REGION_CODES:
-            raise ValueError("Unknown province")
+            raise _bad("Unknown province")
         return v
 
 
@@ -233,14 +239,14 @@ class BrandingUpdate(BaseModel):
     @classmethod
     def _hex(cls, v: str | None) -> str | None:
         if v is not None and v != "" and not _HEX.match(v):
-            raise ValueError("Use a hex colour like #0f766e")
+            raise _bad("Use a hex colour like #0f766e")
         return v.lower() if v else v
 
     @field_validator("receipt_width_mm")
     @classmethod
     def _width(cls, v: int | None) -> int | None:
         if v is not None and v not in (58, 80):
-            raise ValueError("Receipt paper is 58 or 80 mm")
+            raise _bad("Receipt paper is 58 or 80 mm")
         return v
 
 
@@ -260,7 +266,7 @@ class ProfileUpdate(BaseModel):
     @classmethod
     def _name(cls, v: str | None) -> str | None:
         if v is not None and not v.strip():
-            raise ValueError("Name can't be empty")
+            raise _bad("Name can't be empty")
         return v.strip() if v is not None else None
 
 
