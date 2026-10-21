@@ -28,9 +28,10 @@ set (D-11), so DST zones work without a timezone library here.
 """
 from __future__ import annotations
 
+import ipaddress
 import math
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime, time, timedelta
 
 import asyncpg
@@ -49,6 +50,10 @@ class Shift:
     grace_out_min: int
     half_day_below_min: int
     absent_below_min: int
+    # 0066: off | shift_end | max_hours (first check-in + auto_checkout_after_min).
+    auto_checkout: str = "off"
+    auto_checkout_after_min: int = 600
+    overtime_after_min: int = 30
 
     @property
     def overnight(self) -> bool:
@@ -64,12 +69,14 @@ class Rule:
     grace_out_min: int
     half_day_below_min: int
     absent_below_min: int
+    overtime_after_min: int = 30
 
 
 @dataclass(frozen=True)
 class Punch:
     at: datetime
     kind: str  # in | out
+    method: str = ""  # 'auto' = the auto check-out job; 'correction' = an approved correction
 
 
 @dataclass(frozen=True)
@@ -82,6 +89,8 @@ class Day:
     last_out: datetime | None
     missing_checkout: bool = False
     final: bool = False          # judged as over; finalise_open_days skips it
+    auto_closed: bool = False    # closed by the auto check-out job, not by the employee
+    overtime_min: int = 0
 
 
 def _minutes_up(delta: timedelta) -> int:
@@ -95,40 +104,59 @@ def derive(punches: list[Punch], *, rule: Rule | None, late_after_at: datetime |
     `day_over`: nothing more is expected that day (see the module docstring)."""
     first_in = last_out = open_at = None
     last_pair: tuple[datetime, datetime] | None = None
+    auto_open: datetime | None = None   # the interval the auto check-out closed
     worked = timedelta()
     for p in sorted(punches, key=lambda p: p.at):
         if p.kind == "in":
             first_in = first_in or p.at
             open_at = open_at or p.at          # a second tap while in is no new pair
+            auto_open = None
+        elif p.method == "auto":
+            # The job closed a forgotten check-out: the interval counts 0
+            # minutes (Phase 2's rule), the day is flagged.
+            if open_at is not None:
+                auto_open, open_at, last_pair = open_at, None, None
+                last_out = p.at
         elif open_at is not None:
             worked += p.at - open_at
             last_pair, open_at = (open_at, p.at), None
+            last_out = p.at
+        elif auto_open is not None:            # a real check-out after the job's: it counts
+            worked += p.at - auto_open
+            last_pair, auto_open = (auto_open, p.at), None
             last_out = p.at
         elif last_pair is not None:            # a repeated check-out moves the last one
             worked += p.at - last_pair[1]
             last_pair = (last_pair[0], p.at)
             last_out = p.at
     worked_min = int(worked.total_seconds() // 60)
-    checked_out = last_out is not None and open_at is None
-    missing = day_over and open_at is not None
-    judged = checked_out or day_over   # worked_min holds closed pairs only
+    auto_closed = auto_open is not None
+    checked_out = last_out is not None and open_at is None and not auto_closed
+    missing = (day_over and open_at is not None) or auto_closed
+    judged = checked_out or day_over or auto_closed   # worked_min holds closed pairs only
+    final = day_over or auto_closed
 
     if rule is None:
         late = first_in is not None and late_after_at is not None and first_in >= late_after_at
         late_min = _minutes_up(first_in - late_after_at) if late and first_in and late_after_at else 0
         return Day("late" if late else "present", late_min, 0, worked_min, first_in, last_out,
-                   missing, day_over)
+                   missing, final, auto_closed)
 
     late_min = _minutes_up(first_in - (rule.start_at + timedelta(minutes=rule.grace_in_min))) if first_in else 0
     early_min = (_minutes_up(rule.end_at - timedelta(minutes=rule.grace_out_min) - last_out)
                  if checked_out and last_out is not None else 0)
+    # Overtime only from a real check-out past end + the threshold; an
+    # auto-closed day earns none (St03 P1).
+    overtime_min = (int((last_out - rule.end_at - timedelta(minutes=rule.overtime_after_min)).total_seconds() // 60)
+                    if checked_out and last_out is not None else 0)
     if judged and worked_min < rule.absent_below_min:
         status = "absent"
     elif judged and worked_min < rule.half_day_below_min:
         status = "half_day"
     else:
         status = "late" if late_min > 0 else "present"
-    return Day(status, late_min, early_min, worked_min, first_in, last_out, missing, day_over)
+    return Day(status, late_min, early_min, worked_min, first_in, last_out, missing, final,
+               auto_closed, max(0, overtime_min))
 
 
 def overnight_cutoff(start: time, end: time) -> time:
@@ -150,7 +178,9 @@ select s.* from hrms_shift_assignments a join hrms_shifts s on s.id = a.shift_id
 def _shift(r: asyncpg.Record) -> Shift:
     return Shift(id=str(r["id"]), name=r["name"], start_time=r["start_time"], end_time=r["end_time"],
                  grace_in_min=r["grace_in_min"], grace_out_min=r["grace_out_min"],
-                 half_day_below_min=r["half_day_below_min"], absent_below_min=r["absent_below_min"])
+                 half_day_below_min=r["half_day_below_min"], absent_below_min=r["absent_below_min"],
+                 auto_checkout=r["auto_checkout"], auto_checkout_after_min=r["auto_checkout_after_min"],
+                 overtime_after_min=r["overtime_after_min"])
 
 
 async def shift_for(conn: asyncpg.Connection, employee_id: Id, day: date) -> Shift | None:
@@ -177,15 +207,28 @@ async def _rule(conn: asyncpg.Connection, day: date, shift: Shift) -> Rule:
         day, shift.start_time, 1 if shift.overnight else 0, shift.end_time)
     return Rule(start_at=r["s"], end_at=r["e"], grace_in_min=shift.grace_in_min,
                 grace_out_min=shift.grace_out_min, half_day_below_min=shift.half_day_below_min,
-                absent_below_min=shift.absent_below_min)
+                absent_below_min=shift.absent_below_min, overtime_after_min=shift.overtime_after_min)
+
+
+def corrected(punches: list[Punch]) -> list[Punch]:
+    """An approved correction sets the day's check-in and/or check-out: where
+    a day has `correction` punches of a kind, they stand in for every other
+    punch of that kind (the originals stay in the log as evidence)."""
+    fixed = {p.kind for p in punches if p.method == "correction"}
+    return [p for p in punches if p.method == "correction" or p.kind not in fixed]
+
+
+async def day_punches(conn: asyncpg.Connection, employee_id: Id, day: date) -> list[Punch]:
+    return corrected([Punch(r["at"], r["kind"], r["method"]) for r in await conn.fetch(
+        "select at, kind, method from hrms_punches where employee_id=$1 and work_date=$2 order by at",
+        employee_id, day)])
 
 
 async def preview(conn: asyncpg.Connection, employee_id: Id, day: date, shift: Shift | None = None, *,
                   now: datetime | None = None) -> Day:
     """Derive `day` from its punches without writing anything. `now` is the
     clock the day is judged by (the database's, unless a test freezes it)."""
-    punches = [Punch(r["at"], r["kind"]) for r in await conn.fetch(
-        "select at, kind from hrms_punches where employee_id=$1 and work_date=$2 order by at", employee_id, day)]
+    punches = await day_punches(conn, employee_id, day)
     shift = shift or await shift_for(conn, employee_id, day)
     clock = await conn.fetchrow(
         """select coalesce($3::timestamptz, now()) as now,
@@ -210,7 +253,10 @@ async def rederive(conn: asyncpg.Connection, tenant_id: Id, employee_id: Id, day
     with no check-in punch (nothing to derive it from)."""
     # Method, geo and the fraud flag describe the latest check-in, as before.
     last_in = await conn.fetchrow(
-        """select method, lat, lng, fraud_flag from hrms_punches
+        """select method, lat, lng, fraud_flag, geo_status, ip_status,
+                  exists (select 1 from hrms_punches c where c.employee_id=$1 and c.work_date=$2
+                             and c.method='correction') as corrected
+             from hrms_punches
             where employee_id=$1 and work_date=$2 and kind='in' order by at desc limit 1""",
         employee_id, day)
     if last_in is None:
@@ -222,28 +268,56 @@ async def rederive(conn: asyncpg.Connection, tenant_id: Id, employee_id: Id, day
     row_id: uuid.UUID | None = await conn.fetchval(
         """insert into hrms_attendance (tenant_id, employee_id, work_date, check_in, check_out, status,
                                         method, lat, lng, fraud_flag, shift_id, late_min, early_min, worked_min,
-                                        missing_checkout, final)
-           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+                                        missing_checkout, final, auto_closed, overtime_min, corrected,
+                                        geo_status, ip_status)
+           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
            on conflict (employee_id, work_date) do update set
              check_in = excluded.check_in, check_out = excluded.check_out, status = excluded.status,
              method = excluded.method, lat = excluded.lat, lng = excluded.lng,
              fraud_flag = excluded.fraud_flag, shift_id = excluded.shift_id,
              late_min = excluded.late_min, early_min = excluded.early_min, worked_min = excluded.worked_min,
-             missing_checkout = excluded.missing_checkout, final = excluded.final
+             missing_checkout = excluded.missing_checkout, final = excluded.final,
+             auto_closed = excluded.auto_closed, overtime_min = excluded.overtime_min,
+             corrected = excluded.corrected, geo_status = excluded.geo_status, ip_status = excluded.ip_status
            where not hrms_attendance.locked
            returning id""",
         tenant_id, employee_id, day, d.first_in, d.last_out, d.status,
         last_in["method"], last_in["lat"], last_in["lng"], last_in["fraud_flag"],
-        shift.id if shift else None, d.late_min, d.early_min, d.worked_min, d.missing_checkout, d.final)
+        shift.id if shift else None, d.late_min, d.early_min, d.worked_min, d.missing_checkout, d.final,
+        d.auto_closed, d.overtime_min, last_in["corrected"], last_in["geo_status"], last_in["ip_status"])
     if row_id is None:  # locked
         row_id = await conn.fetchval(
             "select id from hrms_attendance where employee_id=$1 and work_date=$2", employee_id, day)
     return row_id
 
 
+@dataclass(frozen=True)
+class Evidence:
+    """Where a punch came from and what the server judged (0066, app/geofence.py)."""
+    accuracy_m: float | None = None
+    ip: str | None = None
+    geo_status: str | None = None
+    ip_status: str | None = None
+    risk_flags: tuple[str, ...] = ()
+    location_id: Id | None = None
+    kiosk_id: Id | None = None
+
+
+async def next_kind(conn: asyncpg.Connection, employee_id: Id, at: datetime | None = None) -> str:
+    """What a toggle punch (portal, kiosk) records now: 'out' while the work
+    day the punch belongs to has a check-in left open, else 'in'."""
+    at = at or await conn.fetchval("select now()")
+    day, _ = await resolve(conn, employee_id, at)
+    state = "out"
+    for p in await day_punches(conn, employee_id, day):
+        state = "in" if p.kind == "in" else "out"
+    return "out" if state == "in" else "in"
+
+
 async def punch(conn: asyncpg.Connection, employee_id: Id, kind: str, *, method: str,
                 at: datetime | None = None, lat: float | None = None, lng: float | None = None,
-                flag: str = "", by: str | None = None) -> uuid.UUID | None:
+                flag: str = "", by: str | None = None,
+                evidence: Evidence | None = None) -> uuid.UUID | None:
     """Record one punch and re-derive its day; returns the day's row id.
 
     A check-out with no check-in on its work day records nothing and returns
@@ -257,10 +331,19 @@ async def punch(conn: asyncpg.Connection, employee_id: Id, kind: str, *, method:
     if kind == "out" and not await conn.fetchval(
             "select 1 from hrms_punches where employee_id=$1 and work_date=$2 and kind='in'", employee_id, day):
         return None
+    ev = evidence or Evidence()
+    if ev.ip is not None:
+        try:
+            ipaddress.ip_address(ev.ip)
+        except ValueError:     # "unknown", a test client name: not evidence
+            ev = replace(ev, ip=None)
     await conn.execute(
-        """insert into hrms_punches (tenant_id, employee_id, at, kind, work_date, method, lat, lng, fraud_flag, created_by)
-           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)""",
-        tenant_id, employee_id, at, kind, day, method, lat, lng, flag, by)
+        """insert into hrms_punches (tenant_id, employee_id, at, kind, work_date, method, lat, lng, fraud_flag,
+                                     created_by, accuracy_m, ip, geo_status, ip_status, risk_flags,
+                                     location_id, kiosk_id)
+           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::inet,$13,$14,$15,$16,$17)""",
+        tenant_id, employee_id, at, kind, day, method, lat, lng, flag, by, ev.accuracy_m, ev.ip,
+        ev.geo_status, ev.ip_status, list(ev.risk_flags), ev.location_id, ev.kiosk_id)
     row_id = await rederive(conn, tenant_id, employee_id, day, shift)
     # A new work day closes the earlier ones this employee left open.
     await finalise_open_days(conn, employee_id, before=day)
@@ -289,3 +372,46 @@ async def finalise_open_days(conn: asyncpg.Connection, employee_id: Id | None = 
         await conn.execute("select 1 from hrms_employees where id=$1 for update", r["employee_id"])
         await rederive(conn, r["tenant_id"], r["employee_id"], r["work_date"], now=now)
     return len(rows)
+
+
+async def auto_checkout(conn: asyncpg.Connection, *, now: datetime | None = None) -> int:
+    """Close open days per their shift's auto check-out policy (St03 §6.3);
+    returns how many were closed. For the worker every 15 minutes, per
+    tenant, inside a tenant_conn. Idempotent: a closed day is skipped.
+
+      shift_end — at the shift's end, once end + early grace has passed;
+      max_hours — at the first check-in + auto_checkout_after_min.
+
+    The punch is `out` with method 'auto'; derive() counts its interval as 0
+    minutes and flags the day (never paid as present without a real
+    check-out, no overtime) until a correction or a later real check-out."""
+    now = now or await conn.fetchval("select now()")
+    rows = await conn.fetch(
+        """select a.tenant_id, a.employee_id, a.work_date, a.shift_id
+             from hrms_attendance a join hrms_shifts s on s.id = a.shift_id
+            where not a.locked and not a.auto_closed and s.auto_checkout <> 'off'
+              and a.work_date between $1::timestamptz::date - 3 and $1::timestamptz::date
+            order by a.employee_id, a.work_date""", now)
+    closed = 0
+    for r in rows:
+        await conn.execute("select 1 from hrms_employees where id=$1 for update", r["employee_id"])
+        punches = await day_punches(conn, r["employee_id"], r["work_date"])
+        if not punches or punches[-1].kind != "in":
+            continue                                    # nothing left open
+        shift = _shift(await conn.fetchrow("select * from hrms_shifts where id=$1", r["shift_id"]))
+        rule = await _rule(conn, r["work_date"], shift)
+        if shift.auto_checkout == "shift_end":
+            at, due = rule.end_at, rule.end_at + timedelta(minutes=shift.grace_out_min)
+        else:
+            first_in = next(p.at for p in punches if p.kind == "in")
+            at = due = first_in + timedelta(minutes=shift.auto_checkout_after_min)
+        if now < due:
+            continue
+        at = max(at, punches[-1].at)                    # never before the check-in it closes
+        await conn.execute(
+            """insert into hrms_punches (tenant_id, employee_id, at, kind, work_date, method)
+               values ($1, $2, $3, 'out', $4, 'auto')""",
+            r["tenant_id"], r["employee_id"], at, r["work_date"])
+        await rederive(conn, r["tenant_id"], r["employee_id"], r["work_date"], shift, now=now)
+        closed += 1
+    return closed

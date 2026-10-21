@@ -16,6 +16,10 @@ _LABELS = {
     "crm_stages": "Stage",
     "pos_suppliers": "Supplier",
     "hrms_employees": "Employee",
+    # HR org (0065)
+    "hrms_departments": "Department",
+    "hrms_job_titles": "Job title",
+    "hrms_locations": "Location",
 }
 
 

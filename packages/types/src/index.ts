@@ -130,6 +130,13 @@ export const PERMISSION_KEYS = [
   "payroll.salary.update",
   "payroll.report.export",
   "payroll.settings.manage",
+  // hrms org, kiosks, corrections, leave ledger (3F)
+  "hrms.org.manage",
+  "hrms.document.read",
+  "hrms.document.manage",
+  "hrms.kiosk.manage",
+  "hrms.attendance.approve",
+  "hrms.leave.adjust",
 ] as const;
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];
 

@@ -141,6 +141,31 @@ async def run_finalise_open_days() -> dict[str, int]:
     return {"tenants": len(tenants), "days": days, "failed": failed}
 
 
+async def _hrms_tenants() -> list[str]:
+    async with db.owner_conn() as oc:
+        return [str(r["id"]) for r in await oc.fetch(
+            """select t.id from tenants t
+                 join entitlements e on e.tenant_id = t.id and e.section_key = 'hrms' and e.enabled
+                where t.status = 'active'""")]
+
+
+async def run_auto_checkout() -> dict[str, int]:
+    """Every 15 minutes (0066): close open days per each shift's auto
+    check-out policy. Auto-closed days earn no overtime and, by Phase 2's
+    rule, are not paid as present until corrected."""
+    closed = failed = 0
+    run_id = context.job_run_id()
+    tenants = await _hrms_tenants()
+    for tid in tenants:
+        try:
+            async with db.job_conn(tid, "hrms.auto_checkout", run_id=run_id) as conn:
+                closed += await attendance.auto_checkout(conn)
+        except Exception:  # noqa: BLE001 — one bad tenant must not stop the rest
+            failed += 1
+            log.exception("auto check-out failed for tenant %s", tid)
+    return {"tenants": len(tenants), "closed": closed, "failed": failed}
+
+
 # code -> handler. Every row in scheduled_jobs has one here and vice versa
 # (tests/core/test_worker.py); a new job is a seed row in a migration plus a
 # line here.
@@ -155,6 +180,7 @@ HANDLERS: dict[str, Callable[[], Awaitable[Any]]] = {
     "audit.retention": run_audit_retention,
     "audit.detach": run_audit_detach,
     "hrms.finalise_open_days": run_finalise_open_days,
+    "hrms.auto_checkout": run_auto_checkout,
 }
 
 

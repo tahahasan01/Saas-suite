@@ -43,6 +43,20 @@ ENUM_COLUMNS = {
     ("timeline_events", "kind"): models.TIMELINE_KINDS,
     ("scheduled_jobs", "status"): models.JOB_STATUSES,
     ("job_runs", "status"): models.JOB_RUN_STATUSES,
+    # hrms org (0065)
+    ("hrms_locations", "kind"): models.LOCATION_KINDS,
+    ("hrms_locations", "province"): models.PROVINCES,
+    ("hrms_locations", "geo_mode"): models.GEO_MODES,
+    ("hrms_locations", "ip_mode"): models.GEO_MODES,
+    ("hrms_employees", "employment_type"): models.EMPLOYMENT_TYPES,
+    ("hrms_employee_documents", "kind"): models.DOCUMENT_KINDS,
+    # attendance v2 (0066)
+    ("hrms_punches", "geo_status"): models.GEO_STATUSES,
+    ("hrms_attendance", "geo_status"): models.GEO_STATUSES,
+    ("hrms_punches", "ip_status"): models.IP_STATUSES,
+    ("hrms_attendance", "ip_status"): models.IP_STATUSES,
+    ("hrms_shifts", "auto_checkout"): models.AUTO_CHECKOUT_POLICIES,
+    ("hrms_attendance_corrections", "status"): models.CORRECTION_STATUSES,
 }
 
 

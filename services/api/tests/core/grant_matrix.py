@@ -68,9 +68,17 @@ APP_USER: dict[str, set[str]] = {
     "hrms_leave_requests":  {S, I, U},
     "hrms_leave_policies":  {S, I, U},
     "hrms_holidays":        {S, I, U, D},       # upsert + delete
-    "hrms_shifts":          {S, I},
+    "hrms_shifts":          {S, I, U},          # U: the auto check-out / overtime policy (0066)
     "hrms_shift_assignments": {S, I, U},        # the next assignment closes an open one
     "hrms_punches":         {S, I},             # append-only: the attendance evidence
+    # hrms org (0065)
+    "hrms_departments":     {S, I, U},
+    "hrms_job_titles":      {S, I, U},
+    "hrms_locations":       {S, I, U},
+    "hrms_employee_documents": {S, I, U, D},    # a mistaken entry is removed
+    # attendance v2 (0066)
+    "hrms_kiosks":          {S, I, U},          # revoke; last_seen_at is written by the owner
+    "hrms_attendance_corrections": {S, I, U},   # decided in place, audited by trigger
     # AI views: app_user reaches them only through `set local role ai_reader`
     "ai_v_leads":           set(),
     "ai_v_interactions":    set(),

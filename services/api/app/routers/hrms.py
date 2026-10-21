@@ -9,7 +9,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 
 from datetime import date, datetime, timedelta
 
-from .. import attendance, audit, db, email, payroll, refs
+from .. import attendance, audit, db, email, hrorg, payroll, refs
 from ..deps import AuthContext, current_auth, current_employee
 from ..models import (
     AttendanceOut,
@@ -130,7 +130,9 @@ def _att(r) -> AttendanceOut:
         status=r["status"], method=r["method"], fraud_flag=r["fraud_flag"],
         late_min=r["late_min"], early_min=r["early_min"], worked_min=r["worked_min"],
         shift_id=str(r["shift_id"]) if r["shift_id"] else None, locked=r["locked"],
-        missing_checkout=r["missing_checkout"])
+        missing_checkout=r["missing_checkout"],
+        auto_closed=r["auto_closed"], overtime_min=r["overtime_min"], corrected=r["corrected"],
+        geo_status=r["geo_status"], ip_status=r["ip_status"])
 
 
 # ── Employees ───────────────────────────────────────────────────────────────
@@ -167,6 +169,11 @@ async def create_employee(body: EmployeeCreate, auth: AuthContext = Depends(requ
                values ($1,$2,$3,$4,$5,$6,$7,$8,$9) returning *""",
             auth.tenant_id, body.name, body.email, body.phone, body.cnic, body.designation,
             body.department, body.join_date, body.salary_minor)
+        # Org links (0065): set ones win; text-only department/designation is linked.
+        await hrorg.apply_job(conn, str(row["id"]),
+                              body.model_dump(include=set(hrorg.JOB_FIELDS), exclude_none=True))
+        await hrorg.link_text(conn)
+        row = await conn.fetchrow("select * from hrms_employees where id=$1", row["id"])
     return _emp(row, reveal=reveal)
 
 
@@ -223,6 +230,15 @@ async def update_employee(employee_id: str, body: EmployeeUpdate, auth: AuthCont
         row = await conn.fetchrow(f"update hrms_employees set {cols} where id=$1 returning *", employee_id, *fields.values())
         if row is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Employee not found")
+        # A department or designation typed as text re-points the link (0065).
+        if {"department", "designation"} & fields.keys():
+            await conn.execute(
+                """update hrms_employees set
+                     department_id = case when $2 then null else department_id end,
+                     job_title_id  = case when $3 then null else job_title_id end
+                    where id=$1""", employee_id, "department" in fields, "designation" in fields)
+            await hrorg.link_text(conn)
+            row = await conn.fetchrow("select * from hrms_employees where id=$1", employee_id)
     return _emp(row, reveal=reveal)
 
 
@@ -354,7 +370,9 @@ def _shift_out(r) -> ShiftOut:
     return ShiftOut(id=str(r["id"]), name=r["name"], start_time=r["start_time"], end_time=r["end_time"],
                     grace_in_min=r["grace_in_min"], grace_out_min=r["grace_out_min"],
                     half_day_below_min=r["half_day_below_min"], absent_below_min=r["absent_below_min"],
-                    overnight=r["overnight"], active=r["active"])
+                    overnight=r["overnight"], active=r["active"],
+                    auto_checkout=r["auto_checkout"], auto_checkout_after_min=r["auto_checkout_after_min"],
+                    overtime_after_min=r["overtime_after_min"])
 
 
 @router.get("/shifts", response_model=list[ShiftOut])
@@ -763,24 +781,8 @@ async def my_attendance(auth: AuthContext = Depends(current_auth),
     return [_att(r) for r in rows]
 
 
-@portal.post("/attendance/checkin", response_model=AttendanceOut, status_code=status.HTTP_201_CREATED)
-async def my_checkin(auth: AuthContext = Depends(current_auth),
-                     employee_id: str = Depends(current_employee)):
-    async with db.tenant_conn(auth.tenant_id) as conn:
-        row = await _do_checkin(conn, employee_id, method="self", by=auth.user_id)
-        rec = await conn.fetchrow(_ATT_SELECT + " where a.id=$1", row["id"])
-    return _att(rec)
-
-
-@portal.post("/attendance/checkout", response_model=AttendanceOut)
-async def my_checkout(auth: AuthContext = Depends(current_auth),
-                      employee_id: str = Depends(current_employee)):
-    async with db.tenant_conn(auth.tenant_id) as conn:
-        row = await _do_checkout(conn, employee_id, method="self", by=auth.user_id)
-        if row is None:
-            raise HTTPException(status.HTTP_409_CONFLICT, "No check-in recorded today")
-        rec = await conn.fetchrow(_ATT_SELECT + " where a.id=$1", row["id"])
-    return _att(rec)
+# The portal's own punches (/me/attendance/punch, checkin, checkout) are in
+# routers/hrms_attendance.py: they run the server-side geofence (D-43).
 
 
 @portal.get("/leave", response_model=list[LeaveOut])

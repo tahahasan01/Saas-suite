@@ -143,6 +143,17 @@ register("payroll", {
     "payroll.report.export": ("payroll", "admin"),
     "payroll.settings.manage": ("payroll", "admin"),
 })
+# HR org, kiosks, corrections and the leave ledger (3F, 0065–0068). Shaping
+# the org and kiosks, deciding corrections and adjusting balances are admin;
+# documents follow employee read/write.
+register("hrms", {
+    "hrms.org.manage": ("hrms", "admin"),
+    "hrms.document.read": ("hrms", "read"),
+    "hrms.document.manage": ("hrms", "write"),
+    "hrms.kiosk.manage": ("hrms", "admin"),
+    "hrms.attendance.approve": ("hrms", "admin"),
+    "hrms.leave.adjust": ("hrms", "admin"),
+})
 
 
 def _grants(rows) -> set[tuple[str, str]]:

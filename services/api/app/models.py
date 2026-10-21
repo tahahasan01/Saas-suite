@@ -592,10 +592,14 @@ EMPLOYEE_STATUSES = list(get_args(EmployeeStatus))
 ATTENDANCE_STATUSES = ["present", "late", "half_day", "absent", "leave"]
 # What a caller may claim; 'self' is written only by the employee's own portal punch.
 CheckInMethod = Literal["web", "mobile", "biometric", "qr"]
-ATTENDANCE_METHODS = [*get_args(CheckInMethod), "self"]
+# 0066: 'kiosk', 'auto' (the auto check-out job) and 'correction' (an approved
+# correction request) are written by the server, never claimed by a caller.
+ATTENDANCE_METHODS = [*get_args(CheckInMethod), "self", "kiosk", "auto", "correction"]
 FRAUD_FLAGS = ["", "mock_gps", "vpn", "face_mismatch"]
 PunchKind = Literal["in", "out"]
 PUNCH_KINDS = list(get_args(PunchKind))
+EmploymentType = Literal["permanent", "contract", "probation", "daily_wage", "intern"]   # 0065
+EMPLOYMENT_TYPES = list(get_args(EmploymentType))
 
 
 class EmployeeOut(BaseModel):
@@ -623,10 +627,19 @@ class EmployeeCreate(BaseModel):
     department: str = ""
     join_date: date | None = None
     salary_minor: int = Field(default=0, ge=0)
+    # Org fields (0065); the same rules as PATCH /hrms/employees/{id}/job.
+    code: str | None = Field(default=None, max_length=40)
+    department_id: UUID | None = None
+    job_title_id: UUID | None = None
+    location_id: UUID | None = None
+    manager_id: UUID | None = None
+    employment_type: EmploymentType = "permanent"
+    probation_end: date | None = None
 
 
 class EmployeeUpdate(BaseModel):
     name: str | None = None
+    email: str | None = Field(default=None, max_length=254)
     phone: str | None = None
     designation: str | None = None
     department: str | None = None
@@ -662,6 +675,14 @@ class AttendanceOut(BaseModel):
     # The day is over with a check-in still open: its open interval counted
     # 0 minutes. HR should correct it.
     missing_checkout: bool = False
+    # 0066: closed by the auto check-out job (no overtime, 0 minutes for the
+    # open interval), fixed by an approved correction, and the server's
+    # geofence / network verdict on the last check-in.
+    auto_closed: bool = False
+    overtime_min: int = 0
+    corrected: bool = False
+    geo_status: str | None = None
+    ip_status: str | None = None
 
 
 class ShiftCreate(BaseModel):
@@ -687,6 +708,10 @@ class ShiftOut(ShiftCreate):
     id: str
     overnight: bool
     active: bool
+    # 0066 policy (PATCH /hrms/shifts/{id}/policy).
+    auto_checkout: str = "off"
+    auto_checkout_after_min: int = 600
+    overtime_after_min: int = 30
 
 
 class ShiftAssign(BaseModel):
@@ -1047,3 +1072,313 @@ class WeekRow(BaseModel):
 class WeekOut(BaseModel):
     days: list[date]
     employees: list[WeekRow]
+
+
+# ─── HR org structure (3F, 0065; St03 §6.2) ──────────────────────────────────
+# Province codes as pk_regions holds them (integration adds the FK).
+Province = Literal["PB", "SD", "KP", "BA", "ICT", "GB", "AJK"]
+PROVINCES = list(get_args(Province))
+LocationKind = Literal["office", "store", "warehouse", "factory", "remote"]
+LOCATION_KINDS = list(get_args(LocationKind))
+# off: not checked · record: checked and flagged · require: refused unless it passes.
+GeoMode = Literal["off", "record", "require"]
+GEO_MODES = list(get_args(GeoMode))
+DocumentKind = Literal["cnic", "contract", "certificate", "medical", "license", "passport", "other"]
+DOCUMENT_KINDS = list(get_args(DocumentKind))
+
+
+def _networks(v: list[str] | None) -> list[str] | None:
+    """Normalised CIDRs ("198.51.100.7" -> "198.51.100.7/32"); 422 on junk."""
+    import ipaddress
+    if v is None:
+        return None
+    out = []
+    for c in v:
+        try:
+            out.append(str(ipaddress.ip_network(c.strip(), strict=False)))
+        except ValueError:
+            raise ValueError(f"{c!r} is not an IP address or network") from None
+    return out
+
+
+class DepartmentCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    parent_id: UUID | None = None
+    head_employee_id: UUID | None = None
+
+
+class DepartmentUpdate(BaseModel):
+    """An explicit null clears parent or head."""
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    parent_id: UUID | None = None
+    head_employee_id: UUID | None = None
+    active: bool | None = None
+
+
+class DepartmentOut(BaseModel):
+    id: str
+    name: str
+    parent_id: str | None
+    head_employee_id: str | None
+    active: bool
+    headcount: int = 0
+
+
+class JobTitleCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    department_id: UUID | None = None
+
+
+class JobTitleUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    department_id: UUID | None = None
+    active: bool | None = None
+
+
+class JobTitleOut(BaseModel):
+    id: str
+    name: str
+    department_id: str | None
+    active: bool
+
+
+class LocationCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    kind: LocationKind = "office"
+    address: str = Field(default="", max_length=400)
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lng: float | None = Field(default=None, ge=-180, le=180)
+    radius_m: int = Field(default=150, ge=10, le=5000)
+    allowed_cidrs: list[str] = Field(default_factory=list, max_length=50)
+    province: Province | None = None
+    geo_mode: GeoMode = "record"
+    ip_mode: GeoMode = "off"
+
+    _cidrs = field_validator("allowed_cidrs")(lambda cls, v: _networks(v))
+
+    @model_validator(mode="after")
+    def _consistent(self):
+        check_location(self.lat, self.lng, self.geo_mode, self.ip_mode, self.allowed_cidrs)
+        return self
+
+
+def check_location(lat, lng, geo_mode, ip_mode, cidrs) -> None:
+    """The rules a location must keep, on create and on the merged update."""
+    if (lat is None) != (lng is None):
+        raise ValueError("Give both latitude and longitude, or neither")
+    if geo_mode == "require" and lat is None:
+        raise ValueError("A required geofence needs the location's latitude and longitude")
+    if ip_mode == "require" and not cidrs:
+        raise ValueError("Requiring the office network needs at least one allowed network")
+
+
+class LocationUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    kind: LocationKind | None = None
+    address: str | None = Field(default=None, max_length=400)
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lng: float | None = Field(default=None, ge=-180, le=180)
+    radius_m: int | None = Field(default=None, ge=10, le=5000)
+    allowed_cidrs: list[str] | None = Field(default=None, max_length=50)
+    province: Province | None = None
+    geo_mode: GeoMode | None = None
+    ip_mode: GeoMode | None = None
+    active: bool | None = None
+
+    _cidrs = field_validator("allowed_cidrs")(lambda cls, v: _networks(v))
+
+
+class LocationOut(BaseModel):
+    id: str
+    name: str
+    kind: str
+    address: str
+    lat: float | None
+    lng: float | None
+    radius_m: int
+    allowed_cidrs: list[str]
+    province: str | None
+    geo_mode: str
+    ip_mode: str
+    active: bool
+    kiosks: int = 0
+
+
+class EmployeeJobUpdate(BaseModel):
+    """Org fields; an explicit null clears a link."""
+    code: str | None = Field(default=None, max_length=40)
+    department_id: UUID | None = None
+    job_title_id: UUID | None = None
+    location_id: UUID | None = None
+    manager_id: UUID | None = None
+    employment_type: EmploymentType | None = None
+    probation_end: date | None = None
+
+
+class EmployeeProfile(EmployeeOut):
+    code: str | None = None
+    department_id: str | None = None
+    job_title_id: str | None = None
+    location_id: str | None = None
+    location_name: str | None = None
+    province: str | None = None
+    manager_id: str | None = None
+    manager_name: str | None = None
+    employment_type: str = "permanent"
+    probation_end: date | None = None
+    has_kiosk_pin: bool = False
+    documents_expiring: int = 0     # expired or due within 30 days
+
+
+class DocumentCreate(BaseModel):
+    kind: DocumentKind = "other"
+    title: str = Field(min_length=1, max_length=160)
+    number: str = Field(default="", max_length=80)
+    issued_on: date | None = None
+    expires_on: date | None = None
+    file_id: UUID | None = None
+    note: str = Field(default="", max_length=1000)
+
+    @model_validator(mode="after")
+    def _dates(self):
+        if self.issued_on and self.expires_on and self.expires_on < self.issued_on:
+            raise ValueError("A document can't expire before it was issued")
+        return self
+
+
+class DocumentOut(BaseModel):
+    id: str
+    employee_id: str
+    employee_name: str = ""
+    kind: str
+    title: str
+    number: str
+    issued_on: date | None
+    expires_on: date | None
+    file_id: str | None
+    note: str
+    days_left: int | None = None    # negative once expired
+
+
+# ─── Attendance v2: geofence, kiosks, auto check-out, corrections (3F, 0066) ─
+GeoStatus = Literal["inside", "outside", "no_fix", "not_required"]
+GEO_STATUSES = list(get_args(GeoStatus))
+IpStatus = Literal["allowed", "outside", "not_required"]
+IP_STATUSES = list(get_args(IpStatus))
+AutoCheckout = Literal["off", "shift_end", "max_hours"]
+AUTO_CHECKOUT_POLICIES = list(get_args(AutoCheckout))
+CorrectionStatus = Literal["pending", "approved", "rejected", "cancelled"]
+CORRECTION_STATUSES = list(get_args(CorrectionStatus))
+
+
+class ShiftPolicyUpdate(BaseModel):
+    auto_checkout: AutoCheckout | None = None
+    auto_checkout_after_min: int | None = Field(default=None, ge=30, le=1440)
+    overtime_after_min: int | None = Field(default=None, ge=0, le=1440)
+
+
+class PunchRequest(BaseModel):
+    """What the browser's Geolocation API reported; all optional — a punch
+    without a fix is recorded as `no_fix` (TR-NFR-32)."""
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lng: float | None = Field(default=None, ge=-180, le=180)
+    accuracy_m: float | None = Field(default=None, ge=0, le=100_000)
+    mock_gps: bool = False      # the client's suspicion: a risk flag, never a pass
+
+
+class PunchOut(BaseModel):
+    kind: str                   # in | out
+    attendance: AttendanceOut
+    geo_status: str
+    ip_status: str
+
+
+class CorrectionCreate(BaseModel):
+    work_date: date
+    requested_in: datetime | None = None
+    requested_out: datetime | None = None
+    reason: str = Field(min_length=1, max_length=500)
+
+    @model_validator(mode="after")
+    def _times(self):
+        if self.requested_in is None and self.requested_out is None:
+            raise ValueError("Give the check-in time, the check-out time, or both")
+        if self.requested_in and self.requested_out and self.requested_out <= self.requested_in:
+            raise ValueError("The check-out must be after the check-in")
+        if not self.reason.strip():
+            raise ValueError("Say why the day needs correcting")
+        return self
+
+
+class CorrectionOut(BaseModel):
+    id: str
+    employee_id: str
+    employee_name: str
+    work_date: date
+    requested_in: datetime | None
+    requested_out: datetime | None
+    reason: str
+    status: str
+    decided_by: str | None
+    decided_at: datetime | None
+    decision_note: str
+    created_at: datetime
+
+
+class Decision(BaseModel):
+    note: str = Field(default="", max_length=500)
+
+
+class KioskCreate(BaseModel):
+    location_id: UUID
+    name: str = Field(min_length=1, max_length=80)
+
+
+class KioskOut(BaseModel):
+    id: str
+    location_id: str
+    location_name: str
+    name: str
+    created_at: datetime
+    last_seen_at: datetime | None
+    revoked_at: datetime | None
+    token: str | None = None    # only in the create response; stored as a hash
+
+
+class KioskPinSet(BaseModel):
+    pin: str = Field(pattern=r"^\d{4,6}$")
+
+
+class KioskPunchRequest(BaseModel):
+    employee_id: UUID
+    pin: str = Field(min_length=1, max_length=12)
+
+
+class KioskEmployee(BaseModel):
+    id: str
+    name: str
+    has_pin: bool
+
+
+class KioskLocation(BaseModel):
+    id: str
+    name: str
+
+
+class KioskBootstrap(BaseModel):
+    location: KioskLocation
+    kiosk_name: str
+    employees: list[KioskEmployee]
+
+
+class KioskPunchOut(BaseModel):
+    kind: str
+    name: str
+    at: datetime
+    worked_today_min: int
+
+
+class ApprovalsOut(BaseModel):
+    """A manager's inbox: pending requests from their direct reports."""
+    corrections: list[CorrectionOut]
+    leave: list[LeaveOut]
