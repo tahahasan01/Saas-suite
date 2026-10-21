@@ -93,13 +93,50 @@ class LocaleOut(BaseModel):
     currency: str
 
 
+class MeModule(BaseModel):
+    key: str
+    state: Literal["enabled", "disabled"]
+    application: bool
+
+
+class MeNavChild(BaseModel):
+    href: str
+    label_key: str
+
+
+class MeNavItem(BaseModel):
+    """A sidebar entry the caller may see; the web owns labels and icons."""
+    key: str
+    module: str
+    href: str
+    label_key: str
+    icon: str
+    group: str
+    children: list[MeNavChild] = Field(default_factory=list)
+
+
+class TerminologyRef(BaseModel):
+    """Which label set is current: refetch /terminology when the ETag moves."""
+    etag: str
+    industry_type: str
+    locale: str
+
+
 class MeResponse(BaseModel):
     user: UserOut
     tenant: TenantOut
+    # Deprecated (12-trd §5.2): read `modules`. Kept for one release.
     entitlements: list[EntitlementOut]
     # Permission key -> scope (D-04). The web gates controls on these keys;
     # the API re-checks every request regardless.
     permissions: dict[str, Literal["own", "team", "branch", "all"]]
+    # Every module with its state (D-01), and the nav the server computed
+    # from manifests ∩ enabled modules ∩ held keys (D-04, D-50).
+    modules: list[MeModule] = Field(default_factory=list)
+    nav: list[MeNavItem] = Field(default_factory=list)
+    flags: dict[str, bool] = Field(default_factory=dict)
+    terminology: TerminologyRef | None = None
+    # `branches` and `branding` (12-trd §5.2) are added by the org-data work.
     locale: LocaleOut
     # True when this login belongs to an employee: the app shows self-service.
     employee_portal: bool = False
@@ -112,12 +149,18 @@ class TerminologyResponse(BaseModel):
 
 
 # ── Team management ─────────────────────────────────────────────────────────
+class RoleRef(BaseModel):
+    id: str
+    name: str
+
+
 class TeamUser(BaseModel):
     id: str
     email: str
     name: str
-    role: str | None
+    role: str | None                 # the primary role (users.role_id)
     status: str
+    roles: list[RoleRef] = Field(default_factory=list)   # every role held (RBAC v2)
 
 
 class UserCreate(BaseModel):
@@ -1047,3 +1090,125 @@ class WeekRow(BaseModel):
 class WeekOut(BaseModel):
     days: list[date]
     employees: list[WeekRow]
+
+
+# ─── Modules and RBAC v2 (migrations 0052–0054, D-01, D-02, D-04) ───────────
+ModuleState = Literal["enabled", "disabled"]
+MODULE_STATES = list(get_args(ModuleState))
+ModuleReason = Literal["user", "dependency", "auto"]
+MODULE_REASONS = list(get_args(ModuleReason))
+PurgeStatus = Literal["pending", "cancelled", "done", "failed"]
+PURGE_STATUSES = list(get_args(PurgeStatus))
+GrantScope = Literal["own", "team", "branch", "all"]
+GRANT_SCOPES = list(get_args(GrantScope))
+
+
+class ModuleOut(BaseModel):
+    key: str
+    label: str
+    description: str
+    application: bool
+    always_on: bool
+    state: ModuleState
+    reason: ModuleReason | None
+    depends: list[str]
+    auto_enable: list[str]
+    purgeable: bool
+    pending_purge_at: datetime | None = None
+
+
+class EnablePlanOut(BaseModel):
+    module: str
+    to_enable: list[str]
+    violations: list[str]
+    applied: bool
+
+
+class DisablePlanOut(BaseModel):
+    module: str
+    to_disable: list[str]
+    blocked_by: list[str]
+    applied: bool
+
+
+class PurgeRequest(BaseModel):
+    # The Owner types "DELETE <module>" to confirm.
+    confirm: str = Field(max_length=80)
+
+
+class PurgeOut(BaseModel):
+    module: str
+    status: PurgeStatus
+    run_after: datetime
+
+
+class GrantIn(BaseModel):
+    permission_key: str = Field(min_length=1, max_length=120)
+    scope: GrantScope = "all"
+
+
+class RoleV2Create(BaseModel):
+    name: str = Field(min_length=1, max_length=60)
+    description: str = Field(default="", max_length=300)
+    grants: list[GrantIn] = Field(default_factory=list, max_length=500)
+
+
+class RoleV2Update(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=60)
+    description: str | None = Field(default=None, max_length=300)
+
+
+class RoleCopy(BaseModel):
+    name: str = Field(min_length=1, max_length=60)
+
+
+class GrantsPut(BaseModel):
+    grants: list[GrantIn] = Field(max_length=500)
+
+
+class RoleIdsPut(BaseModel):
+    role_ids: list[str] = Field(max_length=50)
+
+
+class RoleSummary(BaseModel):
+    id: str
+    name: str
+    description: str
+    is_system: bool
+    template_key: str | None
+    user_count: int
+
+
+class RoleDetail(RoleSummary):
+    grants: list[GrantIn]
+    inherits: list[str]
+
+
+class CatalogKey(BaseModel):
+    key: str
+    resource: str
+    action: str
+    scoped: bool                     # own/team/branch apply; otherwise only 'all'
+    legacy: list[str]                # the (section, action) it maps from
+
+
+class CatalogModule(BaseModel):
+    module: str
+    label: str
+    keys: list[CatalogKey]
+
+
+class TeamCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    lead_user_id: str | None = None
+
+
+class TeamOut(BaseModel):
+    id: str
+    name: str
+    lead_user_id: str | None
+    member_ids: list[str]
+
+
+class TeamMembersPut(BaseModel):
+    user_ids: list[str] = Field(max_length=500)

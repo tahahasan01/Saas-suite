@@ -43,6 +43,10 @@ ENUM_COLUMNS = {
     ("timeline_events", "kind"): models.TIMELINE_KINDS,
     ("scheduled_jobs", "status"): models.JOB_STATUSES,
     ("job_runs", "status"): models.JOB_RUN_STATUSES,
+    ("tenant_modules", "state"): models.MODULE_STATES,
+    ("tenant_modules", "reason"): models.MODULE_REASONS,
+    ("module_purges", "status"): models.PURGE_STATUSES,
+    ("role_grants", "scope"): models.GRANT_SCOPES,
 }
 
 

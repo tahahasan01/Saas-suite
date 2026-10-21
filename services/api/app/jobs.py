@@ -27,6 +27,7 @@ import logging
 from typing import Any, Awaitable, Callable
 
 from . import alerts, attendance, audit, context, db, email, fbr_submit, monitor, notifications, obs
+from .modules import service as modules_service
 from .routers.pos import _VELOCITY_SQL
 
 log = logging.getLogger("jobs")
@@ -155,6 +156,7 @@ HANDLERS: dict[str, Callable[[], Awaitable[Any]]] = {
     "audit.retention": run_audit_retention,
     "audit.detach": run_audit_detach,
     "hrms.finalise_open_days": run_finalise_open_days,
+    "modules.purge": modules_service.run_due_purges,
 }
 
 
