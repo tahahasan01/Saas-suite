@@ -174,11 +174,14 @@ async def detail(conn: asyncpg.Connection, invoice_id: Any) -> InvoiceDetail:
 async def _contact_for(conn: asyncpg.Connection, contact_id: Any, lead_id: Any) -> Any:
     """The contact billed: the one named, else the lead's (a lead not yet
     qualified is a 422). Archived contacts can't be billed."""
-    if contact_id is None and lead_id is not None:
+    if lead_id is not None:
+        # Always looked up under RLS: a foreign key alone would accept another
+        # tenant's lead named beside our own contact.
         lead = await conn.fetchrow("select contact_id from crm_leads where id = $1", lead_id)
         if lead is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Lead not found")
-        contact_id = lead["contact_id"]
+        if contact_id is None:
+            contact_id = lead["contact_id"]
     if contact_id is None:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
                             "Choose who to bill: a contact, or a lead that has been qualified")
@@ -351,6 +354,9 @@ async def credit(conn: asyncpg.Connection, tenant_id: str, user_id: str, invoice
 
 async def void(conn: asyncpg.Connection, user_id: str, invoice_id: str, reason: str) -> None:
     cur = await lock(conn, invoice_id)
+    if cur["kind"] == "credit_note":
+        # The credited invoice counts it; voiding it would leave that credit standing.
+        raise _conflict("A credit note can't be voided")
     if cur["status"] in ("void", "paid", "partially_paid") or cur["paid_minor"] or cur["credited_minor"]:
         raise _conflict("Only an invoice with nothing paid or credited against it can be voided")
     await conn.execute(

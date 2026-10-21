@@ -199,3 +199,20 @@ async def test_the_pdf_prints_urdu_names_the_rupee_sign_and_dashes(client, crm_t
     assert r.status_code == 200 and r.content.startswith(b"%PDF")
     draft = await _draft(client, cid)
     assert (await client.get(f"/invoices/{draft['id']}/pdf")).status_code == 409
+
+
+async def test_a_credit_note_cannot_be_voided(client, crm_tenant):
+    """Voiding it would leave the invoice credited for a cancelled document."""
+    inv = await _issued(client, await _contact(client))
+    cn = (await client.post(f"/invoices/{inv['id']}/credit-notes", json={"reason": "x", "amount_minor": 100})).json()
+    assert (await client.post(f"/invoices/{cn['id']}/void", json={"reason": "oops"})).status_code == 409
+    assert (await client.get(f"/invoices/{inv['id']}")).json()["credited_minor"] == 100
+
+
+async def test_a_lead_named_beside_a_contact_must_be_this_tenants(client, crm_tenant):
+    other = (await _owner(
+        """select l.id from crm_leads l where l.tenant_id <> $1 limit 1""", uuid.UUID(crm_tenant.tenant_id)))
+    foreign_lead = str(other[0]["id"]) if other else str(uuid.uuid4())
+    r = await client.post("/invoices", json={"contact_id": await _contact(client), "lead_id": foreign_lead,
+                                             "lines": [{"description": "x", "qty": 1, "unit_price_minor": 1}]})
+    assert r.status_code == 404
