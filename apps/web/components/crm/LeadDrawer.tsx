@@ -1,24 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import {
-  INTERACTION_CHANNELS,
-  INTERACTION_OUTCOMES,
-  type FulfillmentSchema,
-  type Invoice,
-  type Lead,
-  type LeadDetail,
-  type Stage,
-} from "@business-os/types";
+import type { Activity, FulfillmentSchema, Invoice, Lead, LeadDetail, Stage } from "@business-os/types";
 import { api, apiUrl } from "@/lib/api";
-import { money, relativeDate } from "@/lib/format";
+import { formatDay, money } from "@/lib/format";
 import { errorText, useAction } from "@/lib/useAction";
+import { useCan } from "@/lib/can";
 import { Sheet } from "@/components/Dialog";
-import { Badge, Button, ErrorState, Field, Input, LoadingRows, Select, Textarea } from "@/components/ui";
+import { Badge, Button, ErrorState, Field, Input, LoadingRows, Select } from "@/components/ui";
+import { ActivityActions, LostDialog, PriorityPicker, ScheduleActivity, TypeIcon } from "./bits";
+import { TimelineList } from "./Timeline";
 
 const invTone = { pending: "warning", approved: "success", rejected: "danger" } as const;
-
-const emptyLog = { channel: "call", outcome: "", note: "", follow: "" };
+const stateTone = { overdue: "danger", today: "warning", planned: "neutral", done: "success", cancelled: "neutral" } as const;
 
 /** Lead details in a right-hand sheet. `name` comes from the board so the
  *  sheet is announced by the lead's name before its details have loaded. */
@@ -34,6 +28,9 @@ export function LeadDrawer({ leadId, name, stages, onMove, onClose, onChanged }:
   const [loadError, setLoadError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [moving, setMoving] = useState(false);
+  const [losing, setLosing] = useState(false);
+  const can = useCan();
+  const mayEdit = can("crm.lead.update");
 
   const load = useCallback(() => {
     setLoadError(null);
@@ -44,86 +41,229 @@ export function LeadDrawer({ leadId, name, stages, onMove, onClose, onChanged }:
   }, [leadId]);
   useEffect(load, [load]);
 
+  const refresh = useCallback(() => { load(); onChanged(); }, [load, onChanged]);
+
   async function changeStage(stageId: string) {
     if (!data || stageId === data.lead.stage_id) return;
     setMoving(true);
     setData({ ...data, lead: { ...data.lead, stage_id: stageId } }); // optimistic; the board does the same
     await onMove(leadId, stageId); // the board toasts a failure
     setMoving(false);
-    load(); // picks up stage_kind (a won lead grows the fulfilment form), or reverts on failure
+    load(); // picks up the status (a won lead grows the fulfilment form), or reverts on failure
   }
 
+  const win = useAction(() => api(`/crm/leads/${leadId}/won`, { method: "POST" }),
+    { success: "Marked as won", failure: "Couldn't mark it won" });
+  const restore = useAction(() => api(`/crm/leads/${leadId}/restore`, { method: "POST" }),
+    { success: "Restored", failure: "Couldn't restore it" });
+
+  const lead = data?.lead;
   return (
     <Sheet
       open
       onOpenChange={(o) => !o && onClose()}
       side="right"
-      title={data?.lead.name ?? name}
-      description={data?.lead.company || undefined}
+      title={lead?.name ?? name}
+      description={lead?.company || undefined}
     >
       <div className="p-5">
-        {!data ? (
+        {!data || !lead ? (
           loadError ? <ErrorState message={loadError} onRetry={load} /> : <LoadingRows rows={4} label="Loading lead" />
         ) : (
           <>
+            <StatusBar
+              lead={lead}
+              mayEdit={mayEdit}
+              busy={win.busy || restore.busy}
+              onWon={async () => { if ((await win.run()) !== undefined) refresh(); }}
+              onLost={() => setLosing(true)}
+              onRestore={async () => { if ((await restore.run()) !== undefined) refresh(); }}
+            />
+
             {/* Moving without dragging: works by touch, keyboard and screen reader. */}
             <div className="mb-5">
               <Field label="Move to stage">
-                <Select value={data.lead.stage_id} disabled={moving} onChange={(e) => changeStage(e.target.value)}>
+                <Select value={lead.stage_id} disabled={moving || !mayEdit} onChange={(e) => changeStage(e.target.value)}>
                   {stages.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}{s.kind !== "active" ? ` (${s.kind})` : ""}</option>
+                    <option key={s.id} value={s.id}>{s.name}{s.is_won ? " (won)" : ""}</option>
                   ))}
                 </Select>
               </Field>
+              {stages.find((s) => s.id === lead.stage_id)?.requirements && (
+                <p className="mt-1 text-xs text-fg-muted">
+                  {stages.find((s) => s.id === lead.stage_id)?.requirements}
+                </p>
+              )}
             </div>
 
             {editing ? (
               <EditLead
-                lead={data.lead}
+                lead={lead}
                 onCancel={() => setEditing(false)}
-                onSaved={() => { setEditing(false); load(); onChanged(); }}
+                onSaved={() => { setEditing(false); refresh(); }}
               />
             ) : (
               <>
                 <dl className="mb-2 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                  <Info label="Phone" value={data.lead.phone || "—"} />
-                  <Info label="Email" value={data.lead.email || "—"} />
-                  <Info label="Value" value={money(data.lead.value_minor, data.lead.currency)} />
-                  <Info label="Source" value={data.lead.source} />
+                  <Info label="Phone" value={lead.phone || "—"} />
+                  <Info label="Email" value={lead.email || "—"} />
+                  <Info label="Value" value={money(lead.value_minor, lead.currency)} />
+                  <Info label="Source" value={lead.source} />
                 </dl>
-                <div className="mb-6">
-                  <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>Edit details</Button>
-                </div>
+                {mayEdit && (
+                  <div className="mb-4">
+                    <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>Edit details</Button>
+                  </div>
+                )}
               </>
             )}
 
-            {data.lead.stage_kind === "won" && <Fulfillment leadId={leadId} />}
+            <DealFields lead={lead} disabled={!mayEdit} onSaved={refresh} />
+
+            {lead.status === "won" && <Fulfillment leadId={leadId} />}
 
             <Invoices leadId={leadId} onChanged={onChanged} />
 
-            <LogInteraction leadId={leadId} onLogged={() => { load(); onChanged(); }} />
+            <ActivitiesPanel leadId={leadId} items={data.activities} onChanged={refresh} canPlan={can("crm.activity.manage")} />
 
-            <h3 className="mb-2 text-xs font-semibold text-fg-muted">Timeline</h3>
-            <ul className="space-y-3">
-              {data.interactions.length === 0 && <li className="text-sm text-fg-subtle">No interactions yet.</li>}
-              {data.interactions.map((i) => (
-                <li key={i.id} className="border-l-2 border-line pl-3 text-sm">
-                  <p className="text-fg">
-                    <span className="font-medium capitalize">{i.channel}</span>
-                    {i.outcome && <span className="text-brand"> · {i.outcome.replace("_", " ")}</span>}
-                  </p>
-                  {i.note && <p className="break-words text-fg-muted">{i.note}</p>}
-                  <p className="text-xs text-fg-subtle">
-                    {relativeDate(i.created_at)}
-                    {i.next_follow_up_at && ` · follow-up ${relativeDate(i.next_follow_up_at)}`}
-                  </p>
-                </li>
-              ))}
-            </ul>
+            <TimelineList leadId={leadId} first={data.timeline} onNoted={load} />
+
+            <LostDialog
+              leadId={leadId}
+              name={lead.name}
+              open={losing}
+              onClose={() => setLosing(false)}
+              onDone={() => { setLosing(false); refresh(); }}
+            />
           </>
         )}
       </div>
     </Sheet>
+  );
+}
+
+function StatusBar({ lead, mayEdit, busy, onWon, onLost, onRestore }: {
+  lead: Lead; mayEdit: boolean; busy: boolean;
+  onWon: () => void; onLost: () => void; onRestore: () => void;
+}) {
+  return (
+    <div className="mb-5 rounded-lg border border-line p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="flex items-center gap-2 text-sm">
+          <span className="text-fg-muted">Status</span>
+          <Badge tone={lead.status === "won" ? "success" : lead.status === "lost" ? "danger" : "brand"}>
+            {lead.status === "open" ? "Open" : lead.status === "won" ? "Won" : "Lost"}
+          </Badge>
+        </span>
+        {mayEdit && (
+          <span className="flex gap-2">
+            {lead.status === "open" && (
+              <Button size="sm" disabled={busy} onClick={onWon}>Won</Button>
+            )}
+            {lead.status !== "lost" && (
+              <Button size="sm" variant="subtle" disabled={busy} onClick={onLost}>Lost</Button>
+            )}
+            {lead.status === "lost" && (
+              <Button size="sm" variant="subtle" disabled={busy} onClick={onRestore}>Restore</Button>
+            )}
+          </span>
+        )}
+      </div>
+      {lead.status === "lost" && (
+        <div className="mt-2 text-xs text-fg-muted">
+          <p>{lead.lost_reason ?? "No reason given"}{lead.lost_at && ` · ${formatDay(lead.lost_at.slice(0, 10))}`}</p>
+          {lead.lost_note && <p className="mt-1 whitespace-pre-line break-words">{lead.lost_note}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Probability (auto from the stage, or set by hand), expected close and priority. */
+function DealFields({ lead, disabled, onSaved }: { lead: Lead; disabled: boolean; onSaved: () => void }) {
+  const [prob, setProb] = useState(lead.probability?.toString() ?? "");
+  useEffect(() => setProb(lead.probability?.toString() ?? ""), [lead.probability]);
+  const save = useAction(
+    (patch: Record<string, unknown>) => api(`/crm/leads/${lead.id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+    { failure: "Couldn't save that" },
+  );
+  async function patch(p: Record<string, unknown>) {
+    if ((await save.run(p)) !== undefined) onSaved();
+  }
+  return (
+    <section className="mb-6 space-y-3 rounded-lg border border-line p-3" aria-label="Deal">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label="Probability (%)">
+          <span className="flex items-center gap-2">
+            <Input
+              type="number" inputMode="numeric" min={0} max={100} className="w-20"
+              value={prob} disabled={disabled}
+              onChange={(e) => setProb(e.target.value)}
+              onBlur={() => {
+                if (prob === "" || Number(prob) === lead.probability) return;
+                const n = Math.max(0, Math.min(100, Math.round(Number(prob))));
+                patch({ probability: n });
+              }}
+            />
+            {lead.probability_is_manual ? (
+              <Button size="sm" variant="ghost" type="button" disabled={disabled} onClick={() => patch({ probability_auto: true })}>
+                Use stage default
+              </Button>
+            ) : (
+              <span className="text-xs text-fg-subtle">Auto</span>
+            )}
+          </span>
+        </Field>
+        <Field label="Expected close">
+          <Input
+            type="date" disabled={disabled}
+            value={lead.expected_close_date ?? ""}
+            onChange={(e) => patch({ expected_close_date: e.target.value || null })}
+          />
+        </Field>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+        <span className="flex items-center gap-2">
+          <span className="text-xs text-fg-muted">Priority</span>
+          <PriorityPicker value={lead.priority} disabled={disabled} onChange={(v) => patch({ priority: v })} />
+        </span>
+        <span className="text-xs text-fg-muted">
+          Weighted value <span className="font-medium tabular-nums text-fg">{money(lead.weighted_value_minor, lead.currency)}</span>
+        </span>
+      </div>
+    </section>
+  );
+}
+
+function ActivitiesPanel({ leadId, items, onChanged, canPlan }: {
+  leadId: string; items: Activity[]; onChanged: () => void; canPlan: boolean;
+}) {
+  return (
+    <section className="mb-6 space-y-3 rounded-lg border border-line p-3" aria-labelledby={`act-${leadId}`}>
+      <h3 id={`act-${leadId}`} className="text-xs font-semibold text-fg">Activities</h3>
+      {items.length === 0 ? (
+        <p className="text-sm text-fg-subtle">Nothing planned. Schedule the next step so it shows up in My day.</p>
+      ) : (
+        <ul className="space-y-2">
+          {items.map((a) => (
+            <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+              <span className="flex min-w-0 items-center gap-2">
+                <TypeIcon icon={a.type_icon} />
+                <span className="min-w-0">
+                  <span className="block truncate" title={a.summary}>{a.summary}</span>
+                  <span className="flex items-center gap-1.5 text-xs text-fg-subtle">
+                    <Badge tone={stateTone[a.state]}>{a.state === "planned" ? formatDay(a.due_date) : a.state}</Badge>
+                    {a.assigned_name && <span>{a.assigned_name}</span>}
+                  </span>
+                </span>
+              </span>
+              {canPlan && <ActivityActions activity={a} onChanged={onChanged} />}
+            </li>
+          ))}
+        </ul>
+      )}
+      {canPlan && <ScheduleActivity entityId={leadId} onSaved={onChanged} compact />}
+    </section>
   );
 }
 
@@ -253,56 +393,6 @@ function Invoices({ leadId, onChanged }: { leadId: string; onChanged: () => void
         </div>
       ))}
     </section>
-  );
-}
-
-function LogInteraction({ leadId, onLogged }: { leadId: string; onLogged: () => void }) {
-  const [log, setLog] = useState(emptyLog);
-  const save = useAction(
-    () => api(`/crm/leads/${leadId}/interactions`, {
-      method: "POST",
-      body: JSON.stringify({
-        channel: log.channel,
-        outcome: log.outcome || null,
-        note: log.note,
-        next_follow_up_at: log.follow ? new Date(log.follow).toISOString() : null,
-      }),
-    }),
-    { success: "Interaction logged", failure: "Couldn't log it" },
-  );
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    const ok = await save.run();
-    if (ok === undefined) return; // failed or already running: keep the notes
-    setLog(emptyLog);
-    onLogged();
-  }
-
-  return (
-    <form onSubmit={submit} className="mb-6 space-y-3 rounded-lg border border-line p-3">
-      <h3 className="text-xs font-semibold text-fg">Log interaction</h3>
-      <div className="grid grid-cols-2 gap-2">
-        <Field label="Channel">
-          <Select value={log.channel} onChange={(e) => setLog({ ...log, channel: e.target.value })}>
-            {INTERACTION_CHANNELS.map((c) => <option key={c} value={c}>{c}</option>)}
-          </Select>
-        </Field>
-        <Field label="Outcome">
-          <Select value={log.outcome} onChange={(e) => setLog({ ...log, outcome: e.target.value })}>
-            <option value="">—</option>
-            {INTERACTION_OUTCOMES.map((o) => <option key={o} value={o}>{o.replace("_", " ")}</option>)}
-          </Select>
-        </Field>
-      </div>
-      <Field label="Notes">
-        <Textarea placeholder="Call notes…" value={log.note} onChange={(e) => setLog({ ...log, note: e.target.value })} rows={2} />
-      </Field>
-      <Field label="Next follow-up">
-        <Input type="datetime-local" value={log.follow} onChange={(e) => setLog({ ...log, follow: e.target.value })} />
-      </Field>
-      <Button type="submit" disabled={save.busy} className="w-full">{save.busy ? "Saving…" : "Log"}</Button>
-    </form>
   );
 }
 

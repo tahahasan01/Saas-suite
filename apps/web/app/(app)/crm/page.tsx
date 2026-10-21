@@ -5,23 +5,38 @@ import type { Lead, Pipeline, Stage } from "@business-os/types";
 import { api } from "@/lib/api";
 import { formatDate, money, moneyCompact } from "@/lib/format";
 import { useSession } from "@/lib/session";
-import { errorText } from "@/lib/useAction";
+import { useCan } from "@/lib/can";
+import { errorText, useAction } from "@/lib/useAction";
 import { useToast } from "@/components/Toast";
-import { Button, EmptyState, ErrorState, Input, LoadingRows, Select } from "@/components/ui";
+import { Badge, Button, EmptyState, ErrorState, Input, LoadingRows, Select } from "@/components/ui";
 import { DataTable, type Column } from "@/components/DataTable";
 import { AddLeadForm } from "@/components/crm/AddLeadForm";
 import { ImportCsv } from "@/components/ImportCsv";
 import { LeadDrawer } from "@/components/crm/LeadDrawer";
 import { ScorePill } from "@/components/crm/ScorePill";
+import { ActivityDot, Stars } from "@/components/crm/bits";
 
 type View = "board" | "list";
-type Sort = "newest" | "value" | "score";
+type Sort = "newest" | "value" | "score" | "priority";
+/** The board shows live deals; lost ones have their own list (with Restore). */
+type Show = "active" | "lost";
+
+const PIPELINE_KEY = "bos.crm.pipeline";
+
+function savedPipeline(): string | null {
+  try { return window.localStorage.getItem(PIPELINE_KEY); } catch { return null; }
+}
+function savePipeline(id: string) {
+  try { window.localStorage.setItem(PIPELINE_KEY, id); } catch { /* private mode: fine */ }
+}
 
 export default function CrmBoard() {
   const { t } = useSession();
   const toast = useToast();
-  // undefined = still loading, null = this tenant has no pipeline at all.
-  const [pipeline, setPipeline] = useState<Pipeline | null | undefined>(undefined);
+  const can = useCan();
+  // undefined = still loading, [] = this tenant has no pipeline at all.
+  const [pipelines, setPipelines] = useState<Pipeline[] | undefined>(undefined);
+  const [pipelineId, setPipelineId] = useState<string | null>(null);
   const [pipelineError, setPipelineError] = useState<string | null>(null);
   // null = loading. "No leads yet" while the list was still in flight told
   // people their data was gone.
@@ -31,44 +46,54 @@ export default function CrmBoard() {
   const [adding, setAdding] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const [view, setView] = useState<View>("board");
+  const [show, setShow] = useState<Show>("active");
   const [q, setQ] = useState("");
   const [source, setSource] = useState("");
   const [sort, setSort] = useState<Sort>("newest");
 
-  const loadLeads = useCallback((pid: string) => {
+  const pipeline = pipelines?.find((p) => p.id === pipelineId) ?? null;
+
+  const loadLeads = useCallback((pid: string, which: Show) => {
     setLeadsError(null);
-    api<Lead[]>(`/crm/leads?pipeline_id=${pid}`)
+    api<Lead[]>(`/crm/leads?pipeline_id=${pid}&status=${which === "lost" ? "lost" : "open,won"}`)
       .then(setLeads)
       .catch((e) => setLeadsError(errorText(e, `Couldn't load your ${t("leads").toLowerCase()}.`)));
   }, [t]);
 
-  const loadPipeline = useCallback(() => {
+  const loadPipelines = useCallback(() => {
     setPipelineError(null);
-    setPipeline(undefined);
+    setPipelines(undefined);
     api<Pipeline[]>("/crm/pipelines")
       .then((ps) => {
-        const p = ps[0] ?? null;
-        setPipeline(p);
-        if (p) loadLeads(p.id);
+        setPipelines(ps);
+        const keep = savedPipeline();
+        const p = ps.find((x) => x.id === keep) ?? ps.find((x) => x.is_default) ?? ps[0];
+        setPipelineId(p?.id ?? null);
       })
       .catch((e) => setPipelineError(errorText(e, "Couldn't load the pipeline.")));
-  }, [loadLeads]);
+  }, []);
 
-  useEffect(loadPipeline, [loadPipeline]);
+  useEffect(loadPipelines, [loadPipelines]);
+  useEffect(() => {
+    if (pipelineId) { setLeads(null); loadLeads(pipelineId, show); }
+  }, [pipelineId, show, loadLeads]);
+
+  const reload = useCallback(() => { if (pipelineId) loadLeads(pipelineId, show); }, [pipelineId, show, loadLeads]);
 
   /** The one way a lead changes stage — drag, the drawer's select and the list
    *  view all call this. Resolves false when the server refused. */
   const moveLead = useCallback(async (id: string, stageId: string) => {
     setLeads((cur) => cur && cur.map((l) => (l.id === id ? { ...l, stage_id: stageId } : l))); // optimistic
     try {
-      await api(`/crm/leads/${id}`, { method: "PATCH", body: JSON.stringify({ stage_id: stageId }) });
+      const updated = await api<Lead>(`/crm/leads/${id}`, { method: "PATCH", body: JSON.stringify({ stage_id: stageId }) });
+      setLeads((cur) => cur && cur.map((l) => (l.id === id ? updated : l)));
       return true;
     } catch (e) {
       toast.error(`Couldn't move it: ${errorText(e)}`);
-      if (pipeline) loadLeads(pipeline.id); // revert to what the server has
+      reload(); // revert to what the server has
       return false;
     }
-  }, [pipeline, loadLeads, toast]);
+  }, [reload, toast]);
 
   // Sources that actually occur, not the theoretical enum — a filter offering
   // options with zero hits is noise.
@@ -85,17 +110,18 @@ export default function CrmBoard() {
     return [...out].sort((a, b) =>
       sort === "value" ? b.value_minor - a.value_minor
       : sort === "score" ? (b.score ?? 0) - (a.score ?? 0)
+      : sort === "priority" ? b.priority - a.priority || +new Date(b.created_at) - +new Date(a.created_at)
       : +new Date(b.created_at) - +new Date(a.created_at));
   }, [leads, q, source, sort]);
 
-  if (pipelineError) return <ErrorState message={pipelineError} onRetry={loadPipeline} />;
-  if (pipeline === undefined) return <LoadingRows label="Loading pipeline" />;
-  if (pipeline === null) {
+  if (pipelineError) return <ErrorState message={pipelineError} onRetry={loadPipelines} />;
+  if (pipelines === undefined) return <LoadingRows label="Loading pipeline" />;
+  if (!pipeline) {
     return (
       <EmptyState
         title="No pipeline set up yet"
         hint={`A pipeline is the list of stages a ${t("lead").toLowerCase()} moves through. Ask an admin to set one up, then try again.`}
-        action={<Button variant="subtle" onClick={loadPipeline}>Try again</Button>}
+        action={<Button variant="subtle" onClick={loadPipelines}>Try again</Button>}
       />
     );
   }
@@ -110,8 +136,8 @@ export default function CrmBoard() {
           Drag a card to another stage, or open it and choose <span className="font-medium text-fg">Move to stage</span>.
         </p>
         <div className="flex flex-wrap items-center gap-3">
-          <ImportCsv path="/crm/leads" onDone={() => loadLeads(pipeline.id)} />
-          <Button onClick={() => setAdding(true)}>+ New {t("lead")}</Button>
+          <ImportCsv path="/crm/leads" onDone={reload} />
+          {can("crm.lead.create") && <Button onClick={() => setAdding(true)}>+ New {t("lead")}</Button>}
         </div>
       </div>
 
@@ -121,6 +147,17 @@ export default function CrmBoard() {
           Tailwind resolves the conflict by stylesheet order, so a w-56 on the
           element itself silently loses. */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
+        {pipelines.length > 1 && (
+          <div className="w-44">
+            <Select
+              value={pipeline.id}
+              onChange={(e) => { setPipelineId(e.target.value); savePipeline(e.target.value); }}
+              aria-label="Pipeline"
+            >
+              {pipelines.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </Select>
+          </div>
+        )}
         <div className="w-full sm:w-56">
           <Input
             value={q}
@@ -142,18 +179,27 @@ export default function CrmBoard() {
             <option value="newest">Newest first</option>
             <option value="value">Highest value</option>
             <option value="score">Best score</option>
+            <option value="priority">Priority</option>
+          </Select>
+        </div>
+        <div className="w-32">
+          <Select value={show} onChange={(e) => setShow(e.target.value as Show)} aria-label="Show">
+            <option value="active">Open and won</option>
+            <option value="lost">Lost</option>
           </Select>
         </div>
         {(q || source) && leads && (
           <span className="text-xs text-fg-subtle">{shown.length} of {leads.length}</span>
         )}
-        <ViewToggle view={view} onChange={setView} />
+        {show === "active" && <ViewToggle view={view} onChange={setView} />}
       </div>
 
       {leadsError ? (
-        <ErrorState message={leadsError} onRetry={() => loadLeads(pipeline.id)} />
+        <ErrorState message={leadsError} onRetry={reload} />
       ) : leads === null ? (
         <LoadingRows label={`Loading ${t("leads").toLowerCase()}`} />
+      ) : show === "lost" ? (
+        <LostList leads={shown} onOpen={setOpenLead} onRestored={reload} />
       ) : leads.length === 0 ? (
         <div className="grid place-items-center rounded-xl border border-dashed border-line px-4 py-16 text-center">
           <div className="mb-3 grid h-12 w-12 place-items-center rounded-full bg-elevated text-xl" aria-hidden>✦</div>
@@ -179,7 +225,7 @@ export default function CrmBoard() {
       {adding && (
         <AddLeadForm
           onClose={() => setAdding(false)}
-          onCreated={(l) => { setLeads((c) => [l, ...(c ?? [])]); setAdding(false); }}
+          onCreated={(l) => { if (l.pipeline_id === pipeline.id) setLeads((c) => [l, ...(c ?? [])]); setAdding(false); }}
         />
       )}
       {openLead && (
@@ -189,7 +235,7 @@ export default function CrmBoard() {
           stages={pipeline.stages}
           onMove={moveLead}
           onClose={() => setOpenLead(null)}
-          onChanged={() => loadLeads(pipeline.id)}
+          onChanged={reload}
         />
       )}
     </>
@@ -198,7 +244,7 @@ export default function CrmBoard() {
 
 function ViewToggle({ view, onChange }: { view: View; onChange: (v: View) => void }) {
   return (
-    <div className="ml-auto flex rounded-lg border border-line p-0.5" role="tablist" aria-label="View">
+    <div className="ms-auto flex rounded-lg border border-line p-0.5" role="tablist" aria-label="View">
       {(["board", "list"] as View[]).map((v) => (
         <button
           key={v}
@@ -226,6 +272,8 @@ function Board({ stages, leads, dragId, setDragId, onOpen, onMove }: {
   onOpen: (id: string) => void;
   onMove: (id: string, stageId: string) => void;
 }) {
+  // Folded stages start as narrow strips; a click opens one for this visit.
+  const [unfolded, setUnfolded] = useState<Set<string>>(new Set());
   return (
     // `relative` makes this the containing block for the sr-only text inside
     // the cards; without it those absolutely-positioned spans escape the
@@ -234,6 +282,28 @@ function Board({ stages, leads, dragId, setDragId, onOpen, onMove }: {
       {stages.map((stage) => {
         const cards = leads.filter((l) => l.stage_id === stage.id);
         const total = cards.reduce((sum, l) => sum + l.value_minor, 0);
+        const weighted = cards.reduce((sum, l) => sum + l.weighted_value_minor, 0);
+        if (stage.fold && !unfolded.has(stage.id)) {
+          return (
+            <section
+              key={stage.id}
+              aria-label={stage.name}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={() => dragId && onMove(dragId, stage.id)}
+              className="flex w-12 shrink-0 flex-col items-center rounded-lg border border-line bg-surface py-3"
+            >
+              <button
+                type="button"
+                onClick={() => setUnfolded(new Set(unfolded).add(stage.id))}
+                className="flex flex-col items-center gap-2 text-xs text-fg-muted hover:text-fg"
+                aria-label={`Show ${stage.name} (${cards.length})`}
+              >
+                <span className="tabular-nums">{cards.length}</span>
+                <span className="[writing-mode:vertical-rl]">{stage.name}</span>
+              </button>
+            </section>
+          );
+        }
         return (
           // A named region per stage, so a screen reader can jump between columns.
           <section
@@ -243,21 +313,28 @@ function Board({ stages, leads, dragId, setDragId, onOpen, onMove }: {
             onDrop={() => dragId && onMove(dragId, stage.id)}
             className="flex w-64 shrink-0 flex-col rounded-lg border border-line bg-surface"
           >
-            {/* Count and value live in the header — the column's worth is what
-                you scan for, not something to hunt at the bottom. */}
-            <div className="flex items-baseline justify-between gap-2 border-b border-line p-3">
-              <h2 className={`relative min-w-0 truncate text-sm font-medium ${kindColor(stage.kind)}`} title={stage.name}>
-                {stage.name}
-                {stage.kind !== "active" && <span className="sr-only"> ({stage.kind})</span>}
-              </h2>
-              <span className="shrink-0 text-xs tabular-nums text-fg-subtle">
-                {cards.length}{total > 0 && ` · ${moneyCompact(total)}`}
-              </span>
+            {/* Count, value and weighted value live in the header — the
+                column's worth is what you scan for. */}
+            <div className="border-b border-line p-3">
+              <div className="flex items-baseline justify-between gap-2">
+                <h2 className={`relative min-w-0 truncate text-sm font-medium ${stage.is_won ? "text-success" : "text-fg"}`} title={stage.name}>
+                  {stage.name}
+                  {stage.is_won && <span className="sr-only"> (won)</span>}
+                </h2>
+                <span className="shrink-0 text-xs tabular-nums text-fg-subtle">
+                  {cards.length}{total > 0 && ` · ${moneyCompact(total)}`}
+                </span>
+              </div>
+              {!stage.is_won && weighted > 0 && (
+                <p className="mt-0.5 text-end text-[11px] tabular-nums text-fg-subtle" title="Value × probability">
+                  ≈ {moneyCompact(weighted)} weighted
+                </p>
+              )}
             </div>
             <ul className="min-h-16 flex-1 space-y-2 p-2">
               {cards.map((l) => (
                 <li key={l.id}>
-                  <LeadCard lead={l} onOpen={onOpen} setDragId={setDragId} />
+                  <LeadCard lead={l} stage={stage} onOpen={onOpen} setDragId={setDragId} />
                 </li>
               ))}
             </ul>
@@ -268,11 +345,17 @@ function Board({ stages, leads, dragId, setDragId, onOpen, onMove }: {
   );
 }
 
+function isStale(lead: Lead, stage: Stage): boolean {
+  if (!stage.rotting_days || stage.is_won || !lead.stage_entered_at) return false;
+  return Date.now() - +new Date(lead.stage_entered_at) > stage.rotting_days * 86_400_000;
+}
+
 /** A real button: Tab reaches it, Enter/Space open it, and it works by touch.
  *  Drag stays for the mouse; the drawer's "Move to stage" is the way for
  *  everyone else. */
-function LeadCard({ lead: l, onOpen, setDragId }: {
+function LeadCard({ lead: l, stage, onOpen, setDragId }: {
   lead: Lead;
+  stage: Stage;
   onOpen: (id: string) => void;
   setDragId: (id: string | null) => void;
 }) {
@@ -286,17 +369,27 @@ function LeadCard({ lead: l, onOpen, setDragId }: {
       onClick={() => onOpen(l.id)}
       aria-label={`Open ${l.name}`}
       aria-describedby={detailsId}
-      className="block w-full cursor-pointer rounded-md border border-line bg-elevated p-3 text-left transition-colors hover:border-brand/50"
+      className="block w-full cursor-pointer rounded-md border border-line bg-elevated p-3 text-start transition-colors hover:border-brand/50"
     >
       <span className="flex items-start justify-between gap-2">
-        <span className="min-w-0 truncate text-sm font-medium" title={l.name}>{l.name}</span>
+        <span className="flex min-w-0 items-center gap-1.5">
+          <ActivityDot state={l.activity_state} />
+          <span className="min-w-0 truncate text-sm font-medium" title={l.name}>{l.name}</span>
+        </span>
         {l.score != null && <ScorePill score={l.score} />}
       </span>
       <span id={detailsId} className="block">
         {l.company && <span className="block truncate text-xs text-fg-subtle" title={l.company}>{l.company}</span>}
         <span className="mt-2 flex items-center justify-between gap-2">
-          <span className="text-xs font-medium tabular-nums">{money(l.value_minor, l.currency)}</span>
+          <span className="flex items-center gap-1.5">
+            <span className="text-xs font-medium tabular-nums">{money(l.value_minor, l.currency)}</span>
+            {l.probability != null && l.status === "open" && (
+              <span className="text-[10px] tabular-nums text-fg-subtle" title="Probability">{l.probability}%</span>
+            )}
+          </span>
           <span className="flex items-center gap-1.5 text-[10px] text-fg-subtle">
+            <Stars value={l.priority} />
+            {isStale(l, stage) && <Badge tone="warning">stale</Badge>}
             <span className="rounded bg-surface px-1.5 py-0.5">{l.source}</span>
             <span title={formatDate(l.created_at)}>{age(l.created_at)}</span>
           </span>
@@ -307,6 +400,15 @@ function LeadCard({ lead: l, onOpen, setDragId }: {
 }
 
 // ── List ────────────────────────────────────────────────────────────────────
+function nameCell(l: Lead) {
+  return (
+    <span className="block max-w-64">
+      <span className="block truncate font-medium" title={l.name}>{l.name}</span>
+      {l.company && <span className="block truncate text-xs font-normal text-fg-subtle" title={l.company}>{l.company}</span>}
+    </span>
+  );
+}
+
 function ListView({ stages, leads, onOpen, onMove }: {
   stages: Stage[];
   leads: Lead[];
@@ -314,19 +416,10 @@ function ListView({ stages, leads, onOpen, onMove }: {
   onMove: (id: string, stageId: string) => void;
 }) {
   const columns: Column<Lead>[] = [
-    {
-      key: "name",
-      header: "Name",
-      primary: true,
-      cell: (l) => (
-        <span className="block max-w-64">
-          <span className="block truncate font-medium" title={l.name}>{l.name}</span>
-          {l.company && <span className="block truncate text-xs font-normal text-fg-subtle" title={l.company}>{l.company}</span>}
-        </span>
-      ),
-    },
+    { key: "name", header: "Name", primary: true, cell: nameCell },
     { key: "score", header: "Score", align: "right", cell: (l) => (l.score != null ? <ScorePill score={l.score} /> : "—") },
     { key: "value", header: "Value", align: "right", cell: (l) => money(l.value_minor, l.currency) },
+    { key: "prob", header: "Prob.", align: "right", cell: (l) => (l.probability != null ? `${l.probability}%` : "—") },
     { key: "source", header: "Source", cell: (l) => <span className="text-fg-muted">{l.source}</span> },
     {
       key: "contact",
@@ -368,16 +461,40 @@ function ListView({ stages, leads, onOpen, onMove }: {
   );
 }
 
+/** Lost leads: why, when, and a way back. */
+function LostList({ leads, onOpen, onRestored }: { leads: Lead[]; onOpen: (id: string) => void; onRestored: () => void }) {
+  const can = useCan();
+  const restore = useAction((id: string) => api(`/crm/leads/${id}/restore`, { method: "POST" }),
+    { success: "Restored", failure: "Couldn't restore it" });
+  const columns: Column<Lead>[] = [
+    { key: "name", header: "Name", primary: true, cell: nameCell },
+    { key: "value", header: "Value", align: "right", cell: (l) => money(l.value_minor, l.currency) },
+    { key: "reason", header: "Reason", cell: (l) => <span className="text-fg-muted">{l.lost_reason ?? "No reason given"}</span> },
+    { key: "when", header: "Lost", align: "right", cell: (l) => <span className="text-xs text-fg-subtle">{l.lost_at ? formatDate(l.lost_at) : "—"}</span> },
+  ];
+  return (
+    <DataTable
+      columns={columns}
+      rows={leads}
+      rowKey={(l) => l.id}
+      onRowClick={(l) => onOpen(l.id)}
+      rowLabel={(l) => `Open ${l.name}`}
+      caption="Lost leads"
+      empty={<EmptyState title="No lost leads" hint="Leads you mark as lost show up here, with the reason." />}
+      actions={(l) => can("crm.lead.update") ? (
+        <Button size="sm" variant="subtle" disabled={restore.busy} aria-label={`Restore ${l.name}`}
+                onClick={async () => { if ((await restore.run(l.id)) !== undefined) onRestored(); }}>
+          Restore
+        </Button>
+      ) : null}
+    />
+  );
+}
+
 // ── Shared bits ─────────────────────────────────────────────────────────────
 function age(iso: string) {
   const days = Math.floor((Date.now() - +new Date(iso)) / 86_400_000);
   if (days === 0) return "today";
   if (days < 30) return `${days}d`;
   return `${Math.floor(days / 30)}mo`;
-}
-
-function kindColor(kind: string) {
-  if (kind === "won") return "text-success";
-  if (kind === "lost") return "text-danger";
-  return "text-fg";
 }
