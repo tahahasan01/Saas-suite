@@ -163,3 +163,31 @@ async def test_a_service_does_not_track_stock(client, pos_tenant):
     assert (await _sell(client, haircut["id"], 3)).status_code == 201
     stock = next(x for x in (await client.get("/pos/products")).json() if x["id"] == haircut["id"])["stock_qty"]
     assert stock == 0
+
+
+async def test_editing_stock_on_the_product_needs_the_adjust_key_and_respects_negative(client, pos_tenant):
+    p = await _product(client, stock_qty=10)
+    clerk_role = await _role(client, [{"permission_key": k, "scope": "all"} for k in
+                                      ("products.product.read", "products.product.update")])
+    clerk, _, _ = await _user_on(client, [clerk_role])
+    try:
+        assert (await clerk.patch(f"/pos/products/{p['id']}", json={"stock_qty": 99})).status_code == 403
+        assert (await clerk.patch(f"/pos/products/{p['id']}", json={"name": "Renamed"})).status_code == 200
+    finally:
+        await clerk.aclose()
+    assert (await client.patch(f"/pos/products/{p['id']}", json={"stock_qty": -4})).status_code == 409
+
+
+async def test_a_csv_import_with_costs_needs_the_cost_key(client, pos_tenant):
+    clerk_role = await _role(client, [{"permission_key": k, "scope": "all"} for k in
+                                      ("products.product.read", "products.product.create", "products.product.import")])
+    clerk, _, _ = await _user_on(client, [clerk_role])
+    try:
+        csv = "name,price,cost,stock\nImported Thing,100,60,5\n"
+        r = await clerk.post("/pos/products/import", content=csv.encode(), headers={"content-type": "text/csv"})
+        assert r.status_code == 403
+        r = await clerk.post("/pos/products/import", content=b"name,price,stock\nNo Cost Thing,100,5\n",
+                             headers={"content-type": "text/csv"})
+        assert r.status_code == 200, r.text
+    finally:
+        await clerk.aclose()

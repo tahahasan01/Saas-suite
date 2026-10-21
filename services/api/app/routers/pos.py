@@ -169,8 +169,11 @@ async def update_product(product_id: str, body: ProductUpdate,
                 conn, auth.tenant_id, category_id=fields.get("category_id"), name=fields.get("category"))
         if "group_id" in fields:
             await catalog.ensure_group(conn, fields["group_id"])
-        # Setting stock on hand is a count: it goes through the ledger.
+        # Setting stock on hand is a count: it goes through the ledger and
+        # needs the same key as any other adjustment.
         counted = fields.pop("stock_qty", None)
+        if counted is not None and "products.stock.adjust" not in held:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Requires products.stock.adjust to change stock")
         if fields:
             cols = ", ".join(f"{k}=${i+2}" for i, k in enumerate(fields))
             row = await conn.fetchrow(
@@ -182,7 +185,7 @@ async def update_product(product_id: str, body: ProductUpdate,
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Product not found")
         if counted is not None and row["track_stock"]:
             await catalog.move(conn, auth.tenant_id, product_id, Decimal(str(counted)) - Decimal(row["stock_qty"]),
-                               "count", note="Stock set on the product", user_id=auth.user_id, allow_negative=True)
+                               "count", note="Stock set on the product", user_id=auth.user_id)
             row = await conn.fetchrow("select * from pos_products where id=$1", product_id)
     return _product(row, held)
 
@@ -598,10 +601,14 @@ async def drawer_history(auth: AuthContext = Depends(require("pos", "read"))):
 # ── CSV import / export ─────────────────────────────────────────────────────
 @router.post("/products/import", response_model=ImportResult)
 async def import_products(request: Request, skip_duplicates: bool = True,
-                          auth: AuthContext = Depends(require("pos", "write"))) -> ImportResult:
+                          auth: AuthContext = Depends(perm("products.product.import"))) -> ImportResult:
     """Bulk-load the catalog from CSV. A shop's stock list almost always already
     exists in Excel — retyping 500 SKUs by hand is how trials die."""
     rows = csv_io.read_rows(await request.body(), csv_io.PRODUCT_HEADERS)
+    if any((r.get("cost") or "").strip() for r in rows):
+        # The cost column is a guarded field like any other write of it.
+        async with db.tenant_conn(auth.tenant_id) as conn:
+            field_guards.check_write("products.product", ["cost_minor"], await _held(conn, auth))
 
     created = skipped = 0
     errors: list[ImportRowError] = []
