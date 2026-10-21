@@ -71,6 +71,8 @@ APP_USER: dict[str, set[str]] = {
     "hrms_shifts":          {S, I},
     "hrms_shift_assignments": {S, I, U},        # the next assignment closes an open one
     "hrms_punches":         {S, I},             # append-only: the attendance evidence
+    # payroll (3F)
+    "hrms_compensation":    {S, I},             # salary history: never edited in place (0069)
     # AI views: app_user reaches them only through `set local role ai_reader`
     "ai_v_leads":           set(),
     "ai_v_interactions":    set(),

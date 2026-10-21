@@ -1047,3 +1047,12 @@ class WeekRow(BaseModel):
 class WeekOut(BaseModel):
     days: list[date]
     employees: list[WeekRow]
+
+
+# ─── Payroll, Phase 3 (3F) ───────────────────────────────────────────────────
+# Request/response models live in app/payroll_models.py; the enum-like values
+# are here so tests/core/test_enum_checks.py finds them with the rest.
+CompensationReason = Literal["joining", "increment", "promotion", "correction", "adjustment"]
+COMPENSATION_REASONS = list(get_args(CompensationReason))
+PaymentMode = Literal["bank", "cash", "cheque"]
+PAYMENT_MODES = list(get_args(PaymentMode))

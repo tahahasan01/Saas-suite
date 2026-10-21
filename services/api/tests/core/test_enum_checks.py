@@ -43,6 +43,9 @@ ENUM_COLUMNS = {
     ("timeline_events", "kind"): models.TIMELINE_KINDS,
     ("scheduled_jobs", "status"): models.JOB_STATUSES,
     ("job_runs", "status"): models.JOB_RUN_STATUSES,
+    # payroll (3F)
+    ("hrms_compensation", "reason"): models.COMPENSATION_REASONS,
+    ("hrms_employees", "payment_mode"): models.PAYMENT_MODES,
 }
 
 
