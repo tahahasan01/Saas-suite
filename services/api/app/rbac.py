@@ -25,7 +25,7 @@ from typing import Literal
 
 from fastapi import Depends, HTTPException, status
 
-from . import db, modules
+from . import db, modules, scopes
 from .config import settings
 from .deps import AuthContext, current_auth
 from .models import SECTIONS
@@ -268,15 +268,26 @@ class Principal:
         if not self.module_open(key):
             return None
         legacy: Scope | None = "all" if _carries(p, self.legacy) else None
-        return self.decide(key, legacy, scope_in(self.v2, key))
+        return self.decide(key, legacy, self.v2_scope(key))
+
+    def v2_scope(self, key: str) -> Scope | None:
+        """The widest v2 grant on `key`. A narrower-than-'all' grant counts
+        only where every route applies the scope predicate (scopes.WIRED);
+        anywhere else it would quietly mean 'all', so it means nothing."""
+        s = scope_in(self.v2, key)
+        if s is not None and s != "all" and not scopes.narrowable(key):
+            return None
+        return s
 
     def allows_section(self, section: str, action: str) -> bool:
         """The old `require(section, action)` question, answered by whichever
-        model decides. v2 says yes if any key mapped to that grant is held."""
+        model decides. v2 must hold EVERY key mapped to exactly that grant, at
+        'all' (the old routes apply no record scope) — never just one of them,
+        or one narrow key would open a whole section."""
         legacy: Scope | None = (
             "all" if (section, action) in self.legacy or (section, "admin") in self.legacy else None)
-        v2 = widest(s for k, p in PERMISSIONS.items() if p.section == section and p.action == action
-                    for s in [scope_in(self.v2, k)] if s is not None)
+        mapped = [k for k, p in PERMISSIONS.items() if p.section == section and p.action == action]
+        v2: Scope | None = "all" if mapped and all(scope_in(self.v2, k) == "all" for k in mapped) else None
         return self.decide(f"{section}:{action}", legacy, v2) is not None
 
     def permissions(self) -> dict[str, Scope]:
@@ -376,6 +387,7 @@ def perm(key: str):
             raise HTTPException(status.HTTP_403_FORBIDDEN, f"Requires {key}")
         return auth
 
+    guard.perm_key = key  # type: ignore[attr-defined]  # read by the scope-wiring test
     return guard
 
 
@@ -386,7 +398,7 @@ async def holds(conn, role_id: str | None, key: str) -> bool:
         return False
     principal = await load_principal(conn, user_id=None, role_id=role_id)
     legacy: Scope | None = "all" if _carries(p, principal.legacy) else None
-    return principal.decide(key, legacy, scope_in(principal.v2, key)) is not None
+    return principal.decide(key, legacy, principal.v2_scope(key)) is not None
 
 
 async def holds_key(conn, auth: AuthContext, key: str) -> bool:
@@ -409,3 +421,53 @@ def require_key(key: str, section: str):
         return auth
 
     return guard
+
+
+# ── Owner-template holders ('*') ─────────────────────────────────────────────
+# Only a '*' holder may change a '*' holder's roles or hand out '*', and no
+# change may leave a tenant without an active '*' holder (security review).
+_STAR_HOLDERS = """
+    with recursive reach(user_id, role_id) as (
+        select ur.user_id, ur.role_id from user_roles ur join users u on u.id = ur.user_id
+         where u.status = 'active'
+        union
+        select reach.user_id, ri.inherits_id from role_inherits ri join reach on ri.role_id = reach.role_id)
+    select distinct reach.user_id from reach
+      join role_grants g on g.role_id = reach.role_id and g.permission_key = '*'"""
+
+_ROLE_HAS_STAR = """
+    with recursive up(id) as (
+        select unnest($1::uuid[]) union
+        select ri.inherits_id from role_inherits ri join up on ri.role_id = up.id)
+    select exists(select 1 from role_grants g join up on g.role_id = up.id where g.permission_key = '*')"""
+
+
+async def star_holders(conn) -> set[str]:
+    """Active users of the tenant in context who hold '*' (through any role)."""
+    return {str(r["user_id"]) for r in await conn.fetch(_STAR_HOLDERS)}
+
+
+async def holds_star(conn, user_id: str) -> bool:
+    return user_id in await star_holders(conn)
+
+
+async def roles_grant_star(conn, role_ids: list[str]) -> bool:
+    """Whether any of `role_ids` grants '*', directly or by inheritance."""
+    return bool(role_ids) and bool(await conn.fetchval(_ROLE_HAS_STAR, role_ids))
+
+
+async def guard_star_change(conn, caller_id: str, *, target_id: str | None = None,
+                            role_ids: list[str] | None = None) -> None:
+    """403 unless the caller holds '*' when the change touches a '*' holder
+    (`target_id`) or hands out a role that grants '*' (`role_ids`)."""
+    touches = (target_id is not None and await holds_star(conn, target_id)) or \
+        await roles_grant_star(conn, role_ids or [])
+    if touches and not await holds_star(conn, caller_id):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only an owner can change owners or give owner access")
+
+
+async def ensure_an_owner_remains(conn) -> None:
+    """409, rolling the caller's transaction back, if no active '*' holder is left."""
+    if not await star_holders(conn):
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            "This would leave the workspace without an owner; give someone else owner access first")

@@ -13,7 +13,7 @@ import uuid
 import asyncpg
 from httpx import ASGITransport, AsyncClient
 
-from app import rbac
+from app import rbac, scopes
 from app.config import settings
 from app.main import app
 from app.security import SESSION_COOKIE
@@ -131,32 +131,43 @@ async def test_v2_mode_enforces_the_new_grants(client, crm_tenant, monkeypatch):
         await mate.aclose()
 
 
+CRM_READ = [{"permission_key": k, "scope": "all"} for k in sorted(rbac.legacy_grants("crm", "read"))]
+
+
 async def test_legacy_mode_ignores_v2_only_roles(client, crm_tenant, monkeypatch):
-    rid = await _role(client, [{"permission_key": "crm.lead.read", "scope": "all"}])
+    rid = await _role(client, CRM_READ)
     mate, _, _ = await _user_on(client, [rid])
     try:
-        assert (await mate.get("/crm/leads")).status_code == 200
+        assert (await mate.get("/crm/pipelines")).status_code == 200
         monkeypatch.setattr(settings, "rbac_mode", "legacy")
-        assert (await mate.get("/crm/leads")).status_code == 403
+        assert (await mate.get("/crm/pipelines")).status_code == 403
     finally:
         await mate.aclose()
 
 
 # ── v2 roles end to end ─────────────────────────────────────────────────────
-async def test_a_v2_role_passes_old_section_guards_only_for_what_it_grants(client, crm_tenant):
+async def test_a_v2_role_passes_an_old_section_guard_only_with_every_key_it_mapped(client, crm_tenant):
+    """An old `require("crm", "read")` route needs every key (crm, read) mapped
+    to, at 'all' — one narrow key never opens the whole section."""
     rid = await _role(client, [{"permission_key": "crm.lead.read", "scope": "all"}])
     mate, _, _ = await _user_on(client, [rid])
     try:
-        assert (await mate.get("/crm/leads")).status_code == 200
+        assert (await mate.get("/crm/pipelines")).status_code == 403
+        assert (await mate.get("/auth/me")).json()["permissions"] == {"crm.lead.read": "all"}
+    finally:
+        await mate.aclose()
+    rid = await _role(client, CRM_READ)
+    mate, _, _ = await _user_on(client, [rid])
+    try:
+        assert (await mate.get("/crm/pipelines")).status_code == 200
         r = await mate.post("/crm/leads", json={"name": "Nope", "phone": "03001234567"})
         assert r.status_code == 403
-        perms = (await mate.get("/auth/me")).json()["permissions"]
-        assert perms == {"crm.lead.read": "all"}
     finally:
         await mate.aclose()
 
 
-async def test_several_roles_add_up_and_the_widest_scope_wins(client, crm_tenant):
+async def test_several_roles_add_up_and_the_widest_scope_wins(client, crm_tenant, monkeypatch):
+    monkeypatch.setitem(scopes.WIRED, "crm.lead.read", ("test",))   # narrowable for this test
     a = await _role(client, [{"permission_key": "crm.lead.read", "scope": "own"}])
     b = await _role(client, [{"permission_key": "crm.lead.read", "scope": "team"},
                              {"permission_key": "invoicing.invoice.read", "scope": "all"}])
@@ -203,7 +214,8 @@ async def test_roles_inherit_roles_without_cycles(client, crm_tenant):
         await mate.aclose()
 
 
-async def test_grant_validation(client, crm_tenant):
+async def test_grant_validation(client, crm_tenant, monkeypatch):
+    monkeypatch.setitem(scopes.WIRED, "crm.lead.read", ("test",))
     rid = await _role(client, [])
     bad = [
         [{"permission_key": "crm.lead.teleport", "scope": "all"}],     # not in the catalog
@@ -220,7 +232,8 @@ async def test_grant_validation(client, crm_tenant):
     assert {(g["permission_key"], g["scope"]) for g in detail["grants"]} == {("crm.*", "all"), ("crm.lead.read", "own")}
 
 
-async def test_system_roles_are_copied_not_edited(client, crm_tenant):
+async def test_system_roles_are_copied_not_edited(client, crm_tenant, monkeypatch):
+    monkeypatch.setitem(scopes.WIRED, "crm.lead.read", ("test",))
     roles = (await client.get("/roles")).json()
     owner = next(r for r in roles if r["name"] == "Owner")
     assert owner["is_system"]
@@ -248,7 +261,8 @@ async def test_role_crud_and_in_use_protection(client, crm_tenant):
     assert (await client.delete(f"/roles/{rid}")).status_code == 204
 
 
-async def test_the_catalog_lists_keys_by_module_with_scope_support(client, crm_tenant):
+async def test_the_catalog_lists_keys_by_module_with_scope_support(client, crm_tenant, monkeypatch):
+    monkeypatch.setitem(scopes.WIRED, "crm.lead.read", ("test",))
     r = await client.get("/permissions/catalog")
     assert r.status_code == 200
     mods = {m["module"]: m for m in r.json()}
@@ -285,7 +299,8 @@ async def test_roles_are_tenant_private(client, crm_tenant):
 
 
 # ── Teams (what "team" scope means) ─────────────────────────────────────────
-async def test_teams_and_members(client, crm_tenant):
+async def test_teams_and_members(client, crm_tenant, monkeypatch):
+    monkeypatch.setitem(scopes.WIRED, "crm.lead.read", ("test",))
     rid = await _role(client, [{"permission_key": "crm.lead.read", "scope": "team"}])
     a, a_id, _ = await _user_on(client, [rid])
     await a.aclose()

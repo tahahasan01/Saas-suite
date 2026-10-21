@@ -27,14 +27,22 @@ Each scoped resource names its ownership column in its module manifest
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import HTTPException, status
 
 from .modules import MODULES
-from .rbac import Scope
+
+Scope = Literal["own", "team", "branch", "all"]
 
 OWNERSHIP: dict[str, str] = {res: col for m in MODULES.values() for res, col in m.scoped.items()}
+
+# Keys whose EVERY route applies `where()` -> those routes ("METHOD /path").
+# Only these keys may be granted, or count, at a scope narrower than 'all'
+# (app/rbac.py treats a narrow grant on any other key as not held), and
+# tests/core/test_scope_wiring.py checks that every route guarded by one of
+# them is listed here. Wiring a new route = apply where() and add it here.
+WIRED: dict[str, tuple[str, ...]] = {}
 
 _ACTOR = "nullif(current_setting('app.actor_id', true), '')::uuid"
 _IDENT = re.compile(r"^[a-z_][a-z0-9_]*$")
@@ -46,8 +54,15 @@ def resource_of(key: str) -> str:
 
 
 def is_scoped(key_or_resource: str) -> bool:
+    """The resource has an ownership column (it *can* be scoped)."""
     r = key_or_resource if key_or_resource in OWNERSHIP else resource_of(key_or_resource)
     return r in OWNERSHIP
+
+
+def narrowable(key: str) -> bool:
+    """A scope narrower than 'all' means something for `key` today: every
+    route it guards applies the predicate."""
+    return key in WIRED and is_scoped(key)
 
 
 def where(resource: str, scope: Scope | None, alias: str) -> str:

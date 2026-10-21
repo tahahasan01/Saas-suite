@@ -7,14 +7,14 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from .. import audit, billing, db, email, refs
 from ..deps import AuthContext
 from ..models import InviteRequest, RoleCreate, RoleIdsPut, RoleOut, RoleRef, TeamUser, UserCreate, UserUpdate
-from ..rbac import legacy_grants, perm, require
+from ..rbac import ensure_an_owner_remains, guard_star_change, legacy_grants, perm
 from ..security import hash_password
 
 router = APIRouter(prefix="/team", tags=["team"])
 
 
 @router.get("/users", response_model=list[TeamUser])
-async def list_users(auth: AuthContext = Depends(require("settings", "read"))):
+async def list_users(auth: AuthContext = Depends(perm("settings.team.read"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
         rows = await conn.fetch(
             """select u.id, u.email, u.name, u.status, r.name as role,
@@ -44,6 +44,7 @@ async def set_user_roles(user_id: str, body: RoleIdsPut,
         await refs.ensure_visible(conn, "users", user_id)
         for rid in role_ids:
             await refs.ensure_visible(conn, "roles", rid)
+        await guard_star_change(conn, auth.user_id, target_id=user_id, role_ids=role_ids)
         before = sorted(str(r["role_id"]) for r in await conn.fetch(
             "select role_id from user_roles where user_id=$1", user_id))
         # Primary first (the users trigger keeps it in user_roles), then the set.
@@ -54,6 +55,7 @@ async def set_user_roles(user_id: str, body: RoleIdsPut,
             await conn.execute(
                 "insert into user_roles (tenant_id, user_id, role_id) values ($1,$2,$3) on conflict do nothing",
                 auth.tenant_id, user_id, rid)
+        await ensure_an_owner_remains(conn)
         if before != sorted(role_ids):
             await conn.execute("update users set auth_epoch = auth_epoch + 1 where id=$1", user_id)
         await audit.event(conn, "user.roles", "user", user_id, changes={"roles": [before, sorted(role_ids)]})
@@ -68,9 +70,10 @@ async def set_user_roles(user_id: str, body: RoleIdsPut,
 
 
 @router.post("/users", response_model=TeamUser, status_code=status.HTTP_201_CREATED)
-async def create_user(body: UserCreate, auth: AuthContext = Depends(require("settings", "admin"))):
+async def create_user(body: UserCreate, auth: AuthContext = Depends(perm("settings.team.manage"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
         await refs.ensure_visible(conn, "roles", body.role_id)
+        await guard_star_change(conn, auth.user_id, role_ids=[body.role_id])
         await billing.check_seat_limit(conn)
         try:
             user_id = await conn.fetchval(
@@ -87,7 +90,7 @@ async def create_user(body: UserCreate, auth: AuthContext = Depends(require("set
 
 
 @router.patch("/users/{user_id}", response_model=TeamUser)
-async def update_user(user_id: str, body: UserUpdate, auth: AuthContext = Depends(require("settings", "admin"))):
+async def update_user(user_id: str, body: UserUpdate, auth: AuthContext = Depends(perm("settings.team.manage"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
         current = await conn.fetchrow("select role_id, status from users where id=$1", user_id)
         if current is None:
@@ -95,10 +98,13 @@ async def update_user(user_id: str, body: UserUpdate, auth: AuthContext = Depend
         await refs.ensure_visible(conn, "roles", body.role_id)
         role_id = body.role_id if "role_id" in body.model_fields_set else current["role_id"]
         new_status = body.status or current["status"]
+        await guard_star_change(conn, auth.user_id, target_id=user_id,
+                                role_ids=[str(role_id)] if role_id and role_id != current["role_id"] else [])
         # A role or status change bumps the user's auth_epoch (users trigger,
         # 0033), so the sessions they hold get 401 on their next request.
         await conn.execute("update users set role_id=$1, status=$2, updated_at=now() where id=$3",
                            role_id, new_status, user_id)
+        await ensure_an_owner_remains(conn)
         row = await conn.fetchrow(
             """select u.id,u.email,u.name,u.status,r.name as role
                from users u left join roles r on r.id=u.role_id where u.id=$1""", user_id)
@@ -110,7 +116,7 @@ async def update_user(user_id: str, body: UserUpdate, auth: AuthContext = Depend
 
 @router.post("/invite", status_code=status.HTTP_204_NO_CONTENT)
 async def invite_member(body: InviteRequest, response: Response, background: BackgroundTasks,
-                        auth: AuthContext = Depends(require("settings", "admin"))) -> Response:
+                        auth: AuthContext = Depends(perm("settings.team.manage"))) -> Response:
     """204 once the invite is recorded. The email is queued in the same
     transaction and sent after commit, so a mail outage can't fail it."""
     async with db.tenant_conn(auth.tenant_id) as conn:
@@ -118,6 +124,7 @@ async def invite_member(body: InviteRequest, response: Response, background: Bac
         role = await conn.fetchval("select name from roles where id=$1", body.role_id)
         if role is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Role not found")
+        await guard_star_change(conn, auth.user_id, role_ids=[body.role_id])
         tenant_name = await conn.fetchval("select name from tenants where id=$1", auth.tenant_id)
         await audit.event(conn, "user.invite", "user", data={"email": body.email, "role": role})
         mail = await email.queue_invite(conn, auth.tenant_id, body.email, tenant_name, body.role_id)
@@ -127,14 +134,14 @@ async def invite_member(body: InviteRequest, response: Response, background: Bac
 
 
 @router.get("/roles", response_model=list[RoleOut])
-async def list_roles(auth: AuthContext = Depends(require("settings", "read"))):
+async def list_roles(auth: AuthContext = Depends(perm("settings.team.read"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
         rows = await conn.fetch("select id, name, is_system from roles order by is_system desc, name")
     return [RoleOut(id=str(r["id"]), name=r["name"], is_system=r["is_system"]) for r in rows]
 
 
 @router.post("/roles", response_model=RoleOut, status_code=status.HTTP_201_CREATED)
-async def create_role(body: RoleCreate, auth: AuthContext = Depends(require("settings", "admin"))):
+async def create_role(body: RoleCreate, auth: AuthContext = Depends(perm("settings.roles.manage"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
         try:
             role_id = await conn.fetchval(

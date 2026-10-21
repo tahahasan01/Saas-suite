@@ -28,7 +28,7 @@ from ..models import (
     TeamOut,
 )
 from ..modules import MODULES, owner_of
-from ..rbac import MODULE_KEYS, PERMISSIONS, perm
+from ..rbac import MODULE_KEYS, PERMISSIONS, ensure_an_owner_remains, guard_star_change, perm
 
 router = APIRouter(tags=["roles"])
 
@@ -45,7 +45,7 @@ async def catalog(auth: AuthContext = Depends(_ROLES)) -> list[CatalogModule]:
         mod = owner_of(key) or p.module
         resource, action = key.rsplit(".", 1)
         groups.setdefault(mod, []).append(CatalogKey(
-            key=key, resource=resource, action=action, scoped=scopes.is_scoped(key),
+            key=key, resource=resource, action=action, scoped=scopes.narrowable(key),
             legacy=[p.section, p.action]))
     order = list(MODULES) + sorted(set(groups) - set(MODULES))
     return [CatalogModule(module=m, label=MODULES[m].label if m in MODULES else m.title(), keys=groups[m])
@@ -69,9 +69,11 @@ def _check_grants(grants: list[GrantIn], *, keep_all: bool = False) -> list[Gran
                 raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"No permissions under {k}")
         elif k not in PERMISSIONS:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"Unknown permission {k}")
-        elif g.scope != "all" and not scopes.is_scoped(k):
+        elif g.scope != "all" and not scopes.narrowable(k):
+            # Only keys whose every route applies the scope predicate may be
+            # narrowed; anywhere else a narrow grant would silently mean 'all'.
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
-                                f"{k} has no records to narrow; its scope must be 'all'")
+                                f"{k} can't be limited to some records yet; its scope must be 'all'")
         seen[k] = g
     return list(seen.values())
 
@@ -179,8 +181,12 @@ async def put_grants(role_id: str, body: GrantsPut, auth: AuthContext = Depends(
         await _editable(conn, role_id)
         before = [dict(r) for r in await conn.fetch(
             "select permission_key, scope from role_grants where role_id=$1 order by 1", role_id)]
+        # Editing a role that grants owner access is an owner's job, and may
+        # never leave the workspace without an owner.
+        await guard_star_change(conn, auth.user_id, role_ids=[role_id])
         grants = _check_grants(body.grants, keep_all=any(b["permission_key"] == "*" for b in before))
         await _set_grants(conn, auth.tenant_id, role_id, grants)
+        await ensure_an_owner_remains(conn)
         await audit.event(conn, "role.grants", "role", role_id, changes={
             "grants": [before, [g.model_dump() for g in grants]]})
         return await _detail(conn, role_id)
@@ -200,12 +206,14 @@ async def put_inherits(role_id: str, body: RoleIdsPut, auth: AuthContext = Depen
                            select ri.inherits_id from role_inherits ri join up on ri.role_id = up.id)
                        select exists(select 1 from up where id = $2::uuid)""", pid, role_id):
                 raise HTTPException(status.HTTP_409_CONFLICT, "A role can't include itself, even indirectly")
+        await guard_star_change(conn, auth.user_id, role_ids=[role_id, *parents])
         await conn.execute("delete from role_inherits where role_id=$1", role_id)
         for pid in parents:
             await conn.execute(
                 "insert into role_inherits (tenant_id, role_id, inherits_id) values ($1,$2,$3)",
                 auth.tenant_id, role_id, pid)
         await conn.execute("update roles set rbac_v2 = true where id=$1", role_id)
+        await ensure_an_owner_remains(conn)
         await audit.event(conn, "role.inherits", "role", role_id, data={"inherits": parents})
         return await _detail(conn, role_id)
 
@@ -216,6 +224,7 @@ async def copy_role(role_id: str, body: RoleCopy, auth: AuthContext = Depends(_R
     (the Owner's '*' too) and inheritance, and is freely editable."""
     async with db.tenant_conn(auth.tenant_id) as conn:
         await refs.ensure_visible(conn, "roles", role_id)
+        await guard_star_change(conn, auth.user_id, role_ids=[role_id])   # copying '*' is handing it out
         try:
             new_id = str(await conn.fetchval(
                 """insert into roles (tenant_id, name, description, rbac_v2)
