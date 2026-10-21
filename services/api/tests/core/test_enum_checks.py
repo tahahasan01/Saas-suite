@@ -97,6 +97,22 @@ ENUM_COLUMNS = {
     ("hrms_leave_requests", "approval_step"): models.LEAVE_STEPS,
     ("hrms_leave_approvals", "step"): models.APPROVAL_STEPS,
     ("hrms_leave_approvals", "decision"): models.APPROVAL_DECISIONS,
+    # payroll (3F)
+    ("hrms_compensation", "reason"): models.COMPENSATION_REASONS,
+    ("hrms_employees", "payment_mode"): models.PAYMENT_MODES,
+    ("pay_components", "kind"): models.COMPONENT_KINDS,
+    ("pay_components", "calc"): models.COMPONENT_CALCS,
+    ("pay_one_offs", "kind"): models.COMPONENT_KINDS,
+    ("pay_one_offs", "status"): models.ONE_OFF_STATUSES,
+    ("pay_advances", "status"): models.ADVANCE_STATUSES,
+    ("payroll_runs", "kind"): models.RUN_KINDS,
+    ("payroll_runs", "purpose"): models.RUN_PURPOSES,
+    ("payroll_runs", "status"): models.RUN_STATUSES,
+    ("payroll_run_events", "from_status"): models.RUN_STATUSES,
+    ("payroll_run_events", "to_status"): models.RUN_STATUSES,
+    ("payslip_lines", "kind"): models.PAYSLIP_LINE_KINDS,
+    ("statutory_schemes", "authority"): models.STATUTORY_AUTHORITIES,
+    ("statutory_rates", "base_kind"): models.STATUTORY_BASE_KINDS,
 }
 
 

@@ -1451,8 +1451,9 @@ export interface paths {
         };
         /**
          * Run Payroll
-         * @description Monthly payslips: gross − absence deduction − FBR tax. `month` = YYYY-MM.
-         *     Everyone's pay is on it, so it needs a payroll key, not hrms:read (D-42).
+         * @description A month's payroll as it would be calculated now — saved nowhere (saved
+         *     runs are /payroll/runs). Everyone's pay is on it, so it needs a payroll
+         *     key, not hrms:read (D-42).
          */
         get: operations["run_payroll_hrms_payroll_get"];
         put?: never;
@@ -1489,23 +1490,6 @@ export interface paths {
         };
         /** My Attendance */
         get: operations["my_attendance_me_attendance_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/me/payslips": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** My Payslips */
-        get: operations["my_payslips_me_payslips_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3547,6 +3531,603 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/payroll/employees/{employee_id}/compensation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Compensation */
+        get: operations["list_compensation_payroll_employees__employee_id__compensation_get"];
+        put?: never;
+        /**
+         * Add Compensation
+         * @description A raise, promotion or correction is a new dated row; history is never
+         *     rewritten, so a locked payslip can't move (D-40, D-42).
+         */
+        post: operations["add_compensation_payroll_employees__employee_id__compensation_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payroll/employees/{employee_id}/details": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Details
+         * @description For the employee profile's payroll card. HR sees it masked; payroll
+         *     readers see the real values.
+         */
+        get: operations["get_details_payroll_employees__employee_id__details_get"];
+        /** Update Details */
+        put: operations["update_details_payroll_employees__employee_id__details_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payroll/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Runs */
+        get: operations["list_runs_payroll_runs_get"];
+        put?: never;
+        /** Create Run */
+        post: operations["create_run_payroll_runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payroll/runs/recompute-tax-year": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Recompute */
+        post: operations["create_recompute_payroll_runs_recompute_tax_year_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payroll/runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Run */
+        get: operations["get_run_payroll_runs__run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payroll/runs/{run_id}/payslips/{payslip_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Payslip */
+        get: operations["get_payslip_payroll_runs__run_id__payslips__payslip_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payroll/runs/{run_id}/calculate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Calculate
+         * @description Queues the calculation for the worker (batches of 100) and answers at
+         *     once; poll the run for progress.
+         */
+        post: operations["calculate_payroll_runs__run_id__calculate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payroll/runs/{run_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve */
+        post: operations["approve_payroll_runs__run_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payroll/runs/{run_id}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reopen */
+        post: operations["reopen_payroll_runs__run_id__reopen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payroll/runs/{run_id}/mark-paid": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark Paid */
+        post: operations["mark_paid_payroll_runs__run_id__mark_paid_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payroll/runs/{run_id}/lock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Lock */
+        post: operations["lock_payroll_runs__run_id__lock_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payroll/runs/{run_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel */
+        post: operations["cancel_payroll_runs__run_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payroll/runs/{run_id}/payslips/{payslip_id}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Payslip Pdf Admin */
+        get: operations["payslip_pdf_admin_payroll_runs__run_id__payslips__payslip_id__pdf_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payroll/runs/{run_id}/exports/wht.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Wht */
+        get: operations["export_wht_payroll_runs__run_id__exports_wht_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payroll/runs/{run_id}/exports/eobi.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Eobi */
+        get: operations["export_eobi_payroll_runs__run_id__exports_eobi_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payroll/runs/{run_id}/exports/social-security.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Social Security */
+        get: operations["export_social_security_payroll_runs__run_id__exports_social_security_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payroll/runs/{run_id}/exports/bank.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Bank */
+        get: operations["export_bank_payroll_runs__run_id__exports_bank_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payroll/runs/{run_id}/exports/bank-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bank Check
+         * @description Before downloading the bank file: who it pays, who it can't, and why.
+         */
+        get: operations["bank_check_payroll_runs__run_id__exports_bank_check_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payroll/reports/salary-certificate.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Salary Certificate Data */
+        get: operations["salary_certificate_data_payroll_reports_salary_certificate_json_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payroll/reports/salary-certificate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Salary Certificate Pdf */
+        get: operations["salary_certificate_pdf_payroll_reports_salary_certificate_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/payslips": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My Payslips
+         * @description Stored payslips of approved, paid or locked runs — newest first, or
+         *     one month's (regular and any adjustments) with `month=YYYY-MM`.
+         */
+        get: operations["my_payslips_me_payslips_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/payslips/{payslip_id}/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * My Payslip Link
+         * @description A 5-minute download link for one of the caller's own final payslips
+         *     (St03 risk 14: a signed short-lived link, not a CNIC-derived password).
+         */
+        post: operations["my_payslip_link_me_payslips__payslip_id__link_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payslips/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Payslip
+         * @description No session needed: the unexpired token is the credential.
+         */
+        get: operations["download_payslip_payslips_download_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payroll/components": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Components */
+        get: operations["list_components_payroll_components_get"];
+        put?: never;
+        /** Create Component */
+        post: operations["create_component_payroll_components_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payroll/components/{component_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Component */
+        patch: operations["update_component_payroll_components__component_id__patch"];
+        trace?: never;
+    };
+    "/payroll/structures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Structures */
+        get: operations["list_structures_payroll_structures_get"];
+        put?: never;
+        /** Create Structure */
+        post: operations["create_structure_payroll_structures_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payroll/structures/{structure_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Structure */
+        put: operations["update_structure_payroll_structures__structure_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payroll/one-offs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List One Offs */
+        get: operations["list_one_offs_payroll_one_offs_get"];
+        put?: never;
+        /** Create One Off */
+        post: operations["create_one_off_payroll_one_offs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payroll/one-offs/{one_off_id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Void One Off */
+        post: operations["void_one_off_payroll_one_offs__one_off_id__void_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payroll/advances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Advances */
+        get: operations["list_advances_payroll_advances_get"];
+        put?: never;
+        /** Create Advance */
+        post: operations["create_advance_payroll_advances_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payroll/advances/{advance_id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Void Advance
+         * @description Stops further recovery; what was already recovered stays on its payslips.
+         */
+        post: operations["void_advance_payroll_advances__advance_id__void_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payroll/statutory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Statutory */
+        get: operations["get_statutory_payroll_statutory_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payroll/statutory/{scheme_code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Register Scheme */
+        put: operations["register_scheme_payroll_statutory__scheme_code__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3832,6 +4413,45 @@ export interface components {
             postal_code?: string | null;
             /** Is Default */
             is_default?: boolean | null;
+        };
+        /** AdvanceIn */
+        AdvanceIn: {
+            /** Employee Id */
+            employee_id: string;
+            /** Principal Minor */
+            principal_minor: number;
+            /** Installment Minor */
+            installment_minor: number;
+            /** Start Month */
+            start_month: string;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /** AdvanceOut */
+        AdvanceOut: {
+            /** Id */
+            id: string;
+            /** Employee Id */
+            employee_id: string;
+            /** Employee Name */
+            employee_name: string;
+            /** Principal Minor */
+            principal_minor: number;
+            /** Installment Minor */
+            installment_minor: number;
+            /** Recovered Minor */
+            recovered_minor: number;
+            /** Outstanding Minor */
+            outstanding_minor: number;
+            /** Start Month */
+            start_month: string;
+            /** Status */
+            status: string;
+            /** Note */
+            note: string;
         };
         /** Alert */
         Alert: {
@@ -4219,6 +4839,185 @@ export interface components {
             timezone?: string | null;
             /** Fy Start Month */
             fy_start_month?: number | null;
+        };
+        /** CompensationCreate */
+        CompensationCreate: {
+            /**
+             * Effective From
+             * Format: date
+             */
+            effective_from: string;
+            /** Base Minor */
+            base_minor: number;
+            /**
+             * Reason
+             * @default increment
+             * @enum {string}
+             */
+            reason: "joining" | "increment" | "promotion" | "correction" | "adjustment";
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+            /** Structure Id */
+            structure_id?: string | null;
+        };
+        /** CompensationOut */
+        CompensationOut: {
+            /** Id */
+            id: string;
+            /** Employee Id */
+            employee_id: string;
+            /**
+             * Effective From
+             * Format: date
+             */
+            effective_from: string;
+            /** Base Minor */
+            base_minor: number;
+            /** Reason */
+            reason: string;
+            /** Note */
+            note: string;
+            /** Structure Id */
+            structure_id?: string | null;
+            /** Structure Name */
+            structure_name?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** ComponentIn */
+        ComponentIn: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /**
+             * Kind
+             * @default earning
+             * @enum {string}
+             */
+            kind: "earning" | "deduction";
+            /**
+             * Calc
+             * @default fixed
+             * @enum {string}
+             */
+            calc: "fixed" | "percent" | "formula";
+            /**
+             * Amount Minor
+             * @default 0
+             */
+            amount_minor: number;
+            /** Percent */
+            percent?: number | null;
+            /**
+             * Percent Of
+             * @default BASE
+             */
+            percent_of: string;
+            /**
+             * Formula
+             * @default
+             */
+            formula: string;
+            /**
+             * Taxable
+             * @default true
+             */
+            taxable: boolean;
+            /**
+             * Prorate
+             * @default true
+             */
+            prorate: boolean;
+            /**
+             * Sort
+             * @default 0
+             */
+            sort: number;
+        };
+        /** ComponentOut */
+        ComponentOut: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /**
+             * Kind
+             * @default earning
+             * @enum {string}
+             */
+            kind: "earning" | "deduction";
+            /**
+             * Calc
+             * @default fixed
+             * @enum {string}
+             */
+            calc: "fixed" | "percent" | "formula";
+            /**
+             * Amount Minor
+             * @default 0
+             */
+            amount_minor: number;
+            /** Percent */
+            percent?: number | null;
+            /**
+             * Percent Of
+             * @default BASE
+             */
+            percent_of: string;
+            /**
+             * Formula
+             * @default
+             */
+            formula: string;
+            /**
+             * Taxable
+             * @default true
+             */
+            taxable: boolean;
+            /**
+             * Prorate
+             * @default true
+             */
+            prorate: boolean;
+            /**
+             * Sort
+             * @default 0
+             */
+            sort: number;
+            /** Id */
+            id: string;
+            /** Active */
+            active: boolean;
+        };
+        /** ComponentUpdate */
+        ComponentUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Calc */
+            calc?: ("fixed" | "percent" | "formula") | null;
+            /** Amount Minor */
+            amount_minor?: number | null;
+            /** Percent */
+            percent?: number | null;
+            /** Percent Of */
+            percent_of?: string | null;
+            /** Formula */
+            formula?: string | null;
+            /** Taxable */
+            taxable?: boolean | null;
+            /** Prorate */
+            prorate?: boolean | null;
+            /** Sort */
+            sort?: number | null;
+            /** Active */
+            active?: boolean | null;
         };
         /** ContactBrief */
         ContactBrief: {
@@ -6096,6 +6895,26 @@ export interface components {
              */
             created_at: string;
         };
+        /** LineOut */
+        LineOut: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Kind */
+            kind: string;
+            /** Amount Minor */
+            amount_minor: number;
+            /**
+             * Taxable
+             * @default false
+             */
+            taxable: boolean;
+            /** Explain */
+            explain?: {
+                [key: string]: unknown;
+            };
+        };
         /**
          * LocaleOut
          * @description How to render for this caller (12-trd §5.2 `locale`).
@@ -6403,6 +7222,22 @@ export interface components {
             /** Total Minor */
             total_minor: number;
         };
+        /** MinimumWageOut */
+        MinimumWageOut: {
+            /** Province */
+            province: string;
+            /**
+             * Effective From
+             * Format: date
+             */
+            effective_from: string;
+            /** Monthly Minor */
+            monthly_minor: number;
+            /** Source Ref */
+            source_ref: string;
+            /** Verified */
+            verified: boolean;
+        };
         /** ModuleOut */
         ModuleOut: {
             /** Key */
@@ -6476,6 +7311,65 @@ export interface components {
             /** Items */
             items: components["schemas"]["ForecastItem"][];
         };
+        /** OneOffIn */
+        OneOffIn: {
+            /** Employee Id */
+            employee_id: string;
+            /** Month */
+            month: string;
+            /**
+             * Code
+             * @default ONE_OFF
+             */
+            code: string;
+            /** Name */
+            name: string;
+            /**
+             * Kind
+             * @default earning
+             * @enum {string}
+             */
+            kind: "earning" | "deduction";
+            /** Amount Minor */
+            amount_minor: number;
+            /**
+             * Taxable
+             * @default true
+             */
+            taxable: boolean;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /** OneOffOut */
+        OneOffOut: {
+            /** Id */
+            id: string;
+            /** Employee Id */
+            employee_id: string;
+            /** Employee Name */
+            employee_name: string;
+            /** Month */
+            month: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Kind */
+            kind: string;
+            /** Amount Minor */
+            amount_minor: number;
+            /** Taxable */
+            taxable: boolean;
+            /** Note */
+            note: string;
+            /** Status */
+            status: string;
+            /** Run Id */
+            run_id: string | null;
+        };
         /** PasswordChange */
         PasswordChange: {
             /** Current Password */
@@ -6498,33 +7392,137 @@ export interface components {
                 [key: string]: unknown;
             };
         };
-        /** PayrollOut */
-        PayrollOut: {
-            /** Month */
-            month: string;
-            /** Working Days */
-            working_days: number;
-            /** Payslips */
-            payslips: components["schemas"]["Payslip"][];
+        /** PayrollDetailsOut */
+        PayrollDetailsOut: {
+            /** Employee Id */
+            employee_id: string;
+            /** Bank Name */
+            bank_name: string;
+            /** Iban */
+            iban: string;
+            /** Iban Valid */
+            iban_valid: boolean;
+            /** Ntn */
+            ntn: string;
+            /** Eobi Number */
+            eobi_number: string;
+            /** Ss Number */
+            ss_number: string;
+            /** Payment Mode */
+            payment_mode: string;
+            /** Eobi Applicable */
+            eobi_applicable: boolean | null;
+            /** Ss Applicable */
+            ss_applicable: boolean | null;
+            /** Statutory Note */
+            statutory_note: string;
+            /** Masked */
+            masked: boolean;
+            /** Current Base Minor */
+            current_base_minor: number | null;
+            /** Work Province */
+            work_province?: string | null;
             /**
-             * Tax Year
+             * Work Province Source
              * @default
              */
-            tax_year: string;
-            /**
-             * Tax Rates Verified
-             * @default true
-             */
-            tax_rates_verified: boolean;
+            work_province_source: string;
         };
-        /** Payslip */
-        Payslip: {
+        /** PayrollDetailsUpdate */
+        PayrollDetailsUpdate: {
+            /** Bank Name */
+            bank_name?: string | null;
+            /** Iban */
+            iban?: string | null;
+            /** Ntn */
+            ntn?: string | null;
+            /** Eobi Number */
+            eobi_number?: string | null;
+            /** Ss Number */
+            ss_number?: string | null;
+            /** Payment Mode */
+            payment_mode?: ("bank" | "cash" | "cheque") | null;
+            /** Eobi Applicable */
+            eobi_applicable?: boolean | null;
+            /** Ss Applicable */
+            ss_applicable?: boolean | null;
+            /** Statutory Note */
+            statutory_note?: string | null;
+            /**
+             * Eobi Auto
+             * @default false
+             */
+            eobi_auto: boolean;
+            /**
+             * Ss Auto
+             * @default false
+             */
+            ss_auto: boolean;
+        };
+        /** PayslipDetail */
+        PayslipDetail: {
+            /** Id */
+            id: string;
             /** Employee Id */
             employee_id: string;
             /** Name */
             name: string;
             /** Gross Minor */
             gross_minor: number;
+            /** Deductions Minor */
+            deductions_minor: number;
+            /** Tax Minor */
+            tax_minor: number;
+            /** Net Minor */
+            net_minor: number;
+            /** Employer Cost Minor */
+            employer_cost_minor: number;
+            /** Tax Verified */
+            tax_verified: boolean;
+            /** Statutory Verified */
+            statutory_verified: boolean;
+            /** Warnings */
+            warnings?: string[];
+            /**
+             * Error
+             * @default
+             */
+            error: string;
+            /** Run Id */
+            run_id: string;
+            /** Run Number */
+            run_number: string;
+            /** Run Kind */
+            run_kind: string;
+            /** Run Status */
+            run_status: string;
+            /**
+             * Period Start
+             * Format: date
+             */
+            period_start: string;
+            /**
+             * Period End
+             * Format: date
+             */
+            period_end: string;
+            /**
+             * Pay Date
+             * Format: date
+             */
+            pay_date: string;
+            /** Tax Year */
+            tax_year: string;
+            /** Snapshot */
+            snapshot: {
+                [key: string]: unknown;
+            };
+            /** Period Days */
+            period_days: number;
+            /** Employed Days */
+            employed_days: number;
+            /** Working Days */
+            working_days: number;
             /** Present Days */
             present_days: number;
             /** Paid Leave Days */
@@ -6535,27 +7533,62 @@ export interface components {
             wfh_days: number;
             /** Absent Days */
             absent_days: number;
-            /**
-             * Half Days
-             * @default 0
-             */
+            /** Half Days */
             half_days: number;
-            /** Absence Deduction Minor */
-            absence_deduction_minor: number;
+            /** Taxable Minor */
+            taxable_minor: number;
+            /** Taxable Ytd Minor */
+            taxable_ytd_minor: number;
+            /** Tax Ytd Minor */
+            tax_ytd_minor: number;
+            /** Projected Annual Taxable Minor */
+            projected_annual_taxable_minor: number;
+            /** Annual Tax Minor */
+            annual_tax_minor: number;
+            /** Notes */
+            notes?: string[];
+            /** Lines */
+            lines?: components["schemas"]["LineOut"][];
+        };
+        /** PayslipLink */
+        PayslipLink: {
+            /** Url */
+            url: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+        };
+        /** PayslipSummary */
+        PayslipSummary: {
+            /** Id */
+            id: string;
+            /** Employee Id */
+            employee_id: string;
+            /** Name */
+            name: string;
+            /** Gross Minor */
+            gross_minor: number;
+            /** Deductions Minor */
+            deductions_minor: number;
             /** Tax Minor */
             tax_minor: number;
             /** Net Minor */
             net_minor: number;
+            /** Employer Cost Minor */
+            employer_cost_minor: number;
+            /** Tax Verified */
+            tax_verified: boolean;
+            /** Statutory Verified */
+            statutory_verified: boolean;
+            /** Warnings */
+            warnings?: string[];
             /**
-             * Tax Year
+             * Error
              * @default
              */
-            tax_year: string;
-            /**
-             * Tax Rates Verified
-             * @default true
-             */
-            tax_rates_verified: boolean;
+            error: string;
         };
         /** PipelineCreate */
         PipelineCreate: {
@@ -6680,6 +7713,108 @@ export interface components {
             sales_today_count: number;
             /** Sales Today Total Minor */
             sales_today_total_minor: number;
+        };
+        /** PreviewOut */
+        PreviewOut: {
+            /** Month */
+            month: string;
+            /** Working Days */
+            working_days: number;
+            /** Payslips */
+            payslips: components["schemas"]["PreviewPayslip"][];
+            /**
+             * Tax Year
+             * @default
+             */
+            tax_year: string;
+            /**
+             * Tax Rates Verified
+             * @default true
+             */
+            tax_rates_verified: boolean;
+            /**
+             * Rates Verified
+             * @default true
+             */
+            rates_verified: boolean;
+            /** Unverified */
+            unverified?: string[];
+        };
+        /**
+         * PreviewPayslip
+         * @description The legacy preview payslip plus the full calculation.
+         */
+        PreviewPayslip: {
+            /** Employee Id */
+            employee_id: string;
+            /** Name */
+            name: string;
+            /** Gross Minor */
+            gross_minor: number;
+            /** Present Days */
+            present_days: number;
+            /** Paid Leave Days */
+            paid_leave_days: number;
+            /** Unpaid Leave Days */
+            unpaid_leave_days: number;
+            /** Wfh Days */
+            wfh_days: number;
+            /** Absent Days */
+            absent_days: number;
+            /**
+             * Half Days
+             * @default 0
+             */
+            half_days: number;
+            /** Absence Deduction Minor */
+            absence_deduction_minor: number;
+            /** Tax Minor */
+            tax_minor: number;
+            /** Net Minor */
+            net_minor: number;
+            /**
+             * Tax Year
+             * @default
+             */
+            tax_year: string;
+            /**
+             * Tax Rates Verified
+             * @default true
+             */
+            tax_rates_verified: boolean;
+            /**
+             * Period Days
+             * @default 0
+             */
+            period_days: number;
+            /**
+             * Employed Days
+             * @default 0
+             */
+            employed_days: number;
+            /**
+             * Deductions Minor
+             * @default 0
+             */
+            deductions_minor: number;
+            /**
+             * Employer Cost Minor
+             * @default 0
+             */
+            employer_cost_minor: number;
+            /**
+             * Statutory Verified
+             * @default true
+             */
+            statutory_verified: boolean;
+            /** Warnings */
+            warnings?: string[];
+            /** Notes */
+            notes?: string[];
+            /** Error */
+            error?: string | null;
+            /** Lines */
+            lines?: components["schemas"]["LineOut"][];
         };
         /** ProductCreate */
         ProductCreate: {
@@ -6902,6 +8037,23 @@ export interface components {
             force: boolean;
         };
         /**
+         * RecomputeCreate
+         * @description The one-time "recompute this tax year" run (St03 risk 2).
+         */
+        RecomputeCreate: {
+            /** Tax Year */
+            tax_year: string;
+            /** Through Month */
+            through_month: string;
+            /** Pay Date */
+            pay_date?: string | null;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /**
          * RefundableLine
          * @description A returnable line plus the two figures a refund is computed from
          *     (pricing.refund_for), so the Returns screen previews what will actually be
@@ -6947,6 +8099,21 @@ export interface components {
             kind: "province" | "territory";
             /** Pst Authority */
             pst_authority: string;
+        };
+        /** RegistrationIn */
+        RegistrationIn: {
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /**
+             * Registration No
+             * @default
+             */
+            registration_no: string;
+            /** Effective From */
+            effective_from?: string | null;
         };
         /** ResetRequest */
         ResetRequest: {
@@ -7140,6 +8307,176 @@ export interface components {
             name?: string | null;
             /** Description */
             description?: string | null;
+        };
+        /** RunAction */
+        RunAction: {
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /** RunCreate */
+        RunCreate: {
+            /** Month */
+            month: string;
+            /** Pay Date */
+            pay_date?: string | null;
+            /**
+             * Kind
+             * @default regular
+             * @enum {string}
+             */
+            kind: "regular" | "adjustment";
+            /** Employee Ids */
+            employee_ids?: string[] | null;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /** RunDetail */
+        RunDetail: {
+            /** Id */
+            id: string;
+            /** Number */
+            number: string;
+            /** Kind */
+            kind: string;
+            /** Purpose */
+            purpose: string;
+            /**
+             * Period Start
+             * Format: date
+             */
+            period_start: string;
+            /**
+             * Period End
+             * Format: date
+             */
+            period_end: string;
+            /**
+             * Pay Date
+             * Format: date
+             */
+            pay_date: string;
+            /** Tax Year */
+            tax_year: string;
+            /** Status */
+            status: string;
+            /** Progress Done */
+            progress_done: number;
+            /** Progress Total */
+            progress_total: number;
+            /** Totals */
+            totals: {
+                [key: string]: unknown;
+            };
+            /** Error */
+            error: string;
+            /** Note */
+            note: string;
+            /** Cancel Reason */
+            cancel_reason: string;
+            /** Adjusts Run Id */
+            adjusts_run_id: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Calculated At */
+            calculated_at: string | null;
+            /** Approved At */
+            approved_at: string | null;
+            /** Paid At */
+            paid_at: string | null;
+            /** Locked At */
+            locked_at: string | null;
+            /** Payslips */
+            payslips: components["schemas"]["PayslipSummary"][];
+            /** Events */
+            events: components["schemas"]["RunEventOut"][];
+            /** Rates Verified */
+            rates_verified: boolean;
+            /** Unverified */
+            unverified: string[];
+        };
+        /** RunEventOut */
+        RunEventOut: {
+            /** From Status */
+            from_status: string | null;
+            /** To Status */
+            to_status: string;
+            /** Actor Name */
+            actor_name: string | null;
+            /** Note */
+            note: string;
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+        };
+        /** RunOut */
+        RunOut: {
+            /** Id */
+            id: string;
+            /** Number */
+            number: string;
+            /** Kind */
+            kind: string;
+            /** Purpose */
+            purpose: string;
+            /**
+             * Period Start
+             * Format: date
+             */
+            period_start: string;
+            /**
+             * Period End
+             * Format: date
+             */
+            period_end: string;
+            /**
+             * Pay Date
+             * Format: date
+             */
+            pay_date: string;
+            /** Tax Year */
+            tax_year: string;
+            /** Status */
+            status: string;
+            /** Progress Done */
+            progress_done: number;
+            /** Progress Total */
+            progress_total: number;
+            /** Totals */
+            totals: {
+                [key: string]: unknown;
+            };
+            /** Error */
+            error: string;
+            /** Note */
+            note: string;
+            /** Cancel Reason */
+            cancel_reason: string;
+            /** Adjusts Run Id */
+            adjusts_run_id: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Calculated At */
+            calculated_at: string | null;
+            /** Approved At */
+            approved_at: string | null;
+            /** Paid At */
+            paid_at: string | null;
+            /** Locked At */
+            locked_at: string | null;
         };
         /** SaleCreate */
         SaleCreate: {
@@ -7629,6 +8966,85 @@ export interface components {
             default_probability?: number | null;
             /** Requirements */
             requirements?: string | null;
+        };
+        /** StatutoryOut */
+        StatutoryOut: {
+            /** Schemes */
+            schemes: components["schemas"]["StatutorySchemeOut"][];
+            /** Minimum Wages */
+            minimum_wages: components["schemas"]["MinimumWageOut"][];
+            /** Rates Verified */
+            rates_verified: boolean;
+        };
+        /** StatutoryRateOut */
+        StatutoryRateOut: {
+            /** Province */
+            province: string | null;
+            /**
+             * Effective From
+             * Format: date
+             */
+            effective_from: string;
+            /** Base Kind */
+            base_kind: string;
+            /** Base Minor */
+            base_minor: number | null;
+            /** Employee Rate */
+            employee_rate: number;
+            /** Employer Rate */
+            employer_rate: number;
+            /** Coverage Wage Ceiling Minor */
+            coverage_wage_ceiling_minor: number | null;
+            /** Source Ref */
+            source_ref: string;
+            /** Verified */
+            verified: boolean;
+        };
+        /** StatutorySchemeOut */
+        StatutorySchemeOut: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Authority */
+            authority: string;
+            /** Province */
+            province: string | null;
+            /** Available */
+            available: boolean;
+            /** Enabled */
+            enabled: boolean;
+            /** Registration No */
+            registration_no: string;
+            /** Effective From */
+            effective_from: string | null;
+            /** Rates */
+            rates: components["schemas"]["StatutoryRateOut"][];
+        };
+        /** StructureIn */
+        StructureIn: {
+            /** Name */
+            name: string;
+            /** Component Ids */
+            component_ids?: string[];
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+        };
+        /** StructureOut */
+        StructureOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Active */
+            active: boolean;
+            /** Components */
+            components: components["schemas"]["ComponentOut"][];
+            /** Order */
+            order: string[];
         };
         /** SupplierCreate */
         SupplierCreate: {
@@ -11101,7 +12517,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PayrollOut"];
+                    "application/json": components["schemas"]["PreviewOut"];
                 };
             };
             /** @description Validation Error */
@@ -11164,39 +12580,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AttendanceOut"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    my_payslips_me_payslips_get: {
-        parameters: {
-            query?: {
-                month?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: {
-                bos_session?: string | null;
-            };
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Payslip"][];
                 };
             };
             /** @description Validation Error */
@@ -16053,6 +17436,1377 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LeaveOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_compensation_payroll_employees__employee_id__compensation_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employee_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompensationOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_compensation_payroll_employees__employee_id__compensation_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employee_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompensationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompensationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_details_payroll_employees__employee_id__details_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employee_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayrollDetailsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_details_payroll_employees__employee_id__details_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employee_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PayrollDetailsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayrollDetailsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_runs_payroll_runs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_run_payroll_runs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_recompute_payroll_runs_recompute_tax_year_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecomputeCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_payroll_runs__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_payslip_payroll_runs__run_id__payslips__payslip_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+                payslip_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayslipDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    calculate_payroll_runs__run_id__calculate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_payroll_runs__run_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RunAction"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reopen_payroll_runs__run_id__reopen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunAction"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_paid_payroll_runs__run_id__mark_paid_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RunAction"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    lock_payroll_runs__run_id__lock_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RunAction"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_payroll_runs__run_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RunAction"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    payslip_pdf_admin_payroll_runs__run_id__payslips__payslip_id__pdf_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+                payslip_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_wht_payroll_runs__run_id__exports_wht_csv_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_eobi_payroll_runs__run_id__exports_eobi_csv_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_social_security_payroll_runs__run_id__exports_social_security_csv_get: {
+        parameters: {
+            query?: {
+                scheme?: string;
+            };
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_bank_payroll_runs__run_id__exports_bank_csv_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bank_check_payroll_runs__run_id__exports_bank_check_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    salary_certificate_data_payroll_reports_salary_certificate_json_get: {
+        parameters: {
+            query: {
+                employee_id: string;
+                tax_year: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    salary_certificate_pdf_payroll_reports_salary_certificate_get: {
+        parameters: {
+            query: {
+                employee_id: string;
+                tax_year: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_payslips_me_payslips_get: {
+        parameters: {
+            query?: {
+                month?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayslipDetail"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_payslip_link_me_payslips__payslip_id__link_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payslip_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayslipLink"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_payslip_payslips_download_get: {
+        parameters: {
+            query?: {
+                token?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_components_payroll_components_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComponentOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_component_payroll_components_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ComponentIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComponentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_component_payroll_components__component_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                component_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ComponentUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComponentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_structures_payroll_structures_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StructureOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_structure_payroll_structures_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StructureIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StructureOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_structure_payroll_structures__structure_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                structure_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StructureIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StructureOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_one_offs_payroll_one_offs_get: {
+        parameters: {
+            query?: {
+                month?: string | null;
+                employee_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OneOffOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_one_off_payroll_one_offs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OneOffIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OneOffOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    void_one_off_payroll_one_offs__one_off_id__void_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                one_off_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OneOffOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_advances_payroll_advances_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdvanceOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_advance_payroll_advances_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdvanceIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdvanceOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    void_advance_payroll_advances__advance_id__void_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                advance_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdvanceOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_statutory_payroll_statutory_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatutoryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    register_scheme_payroll_statutory__scheme_code__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scheme_code: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegistrationIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatutoryOut"];
                 };
             };
             /** @description Validation Error */

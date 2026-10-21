@@ -5214,7 +5214,7 @@
           "hrms"
         ],
         "summary": "Run Payroll",
-        "description": "Monthly payslips: gross − absence deduction − FBR tax. `month` = YYYY-MM.\nEveryone's pay is on it, so it needs a payroll key, not hrms:read (D-42).",
+        "description": "A month's payroll as it would be calculated now — saved nowhere (saved\nruns are /payroll/runs). Everyone's pay is on it, so it needs a payroll\nkey, not hrms:read (D-42).",
         "operationId": "run_payroll_hrms_payroll_get",
         "parameters": [
           {
@@ -5256,7 +5256,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PayrollOut"
+                  "$ref": "#/components/schemas/PreviewOut"
                 }
               }
             }
@@ -5359,75 +5359,6 @@
                     "$ref": "#/components/schemas/AttendanceOut"
                   },
                   "title": "Response My Attendance Me Attendance Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/me/payslips": {
-      "get": {
-        "tags": [
-          "portal"
-        ],
-        "summary": "My Payslips",
-        "operationId": "my_payslips_me_payslips_get",
-        "parameters": [
-          {
-            "name": "month",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Month"
-            }
-          },
-          {
-            "name": "bos_session",
-            "in": "cookie",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Bos Session"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Payslip"
-                  },
-                  "title": "Response My Payslips Me Payslips Get"
                 }
               }
             }
@@ -14465,6 +14396,2488 @@
           }
         }
       }
+    },
+    "/payroll/employees/{employee_id}/compensation": {
+      "get": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "List Compensation",
+        "operationId": "list_compensation_payroll_employees__employee_id__compensation_get",
+        "parameters": [
+          {
+            "name": "employee_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Employee Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CompensationOut"
+                  },
+                  "title": "Response List Compensation Payroll Employees  Employee Id  Compensation Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Add Compensation",
+        "description": "A raise, promotion or correction is a new dated row; history is never\nrewritten, so a locked payslip can't move (D-40, D-42).",
+        "operationId": "add_compensation_payroll_employees__employee_id__compensation_post",
+        "parameters": [
+          {
+            "name": "employee_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Employee Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompensationCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompensationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/employees/{employee_id}/details": {
+      "get": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Get Details",
+        "description": "For the employee profile's payroll card. HR sees it masked; payroll\nreaders see the real values.",
+        "operationId": "get_details_payroll_employees__employee_id__details_get",
+        "parameters": [
+          {
+            "name": "employee_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Employee Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayrollDetailsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Update Details",
+        "operationId": "update_details_payroll_employees__employee_id__details_put",
+        "parameters": [
+          {
+            "name": "employee_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Employee Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PayrollDetailsUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayrollDetailsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/runs": {
+      "get": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "List Runs",
+        "operationId": "list_runs_payroll_runs_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RunOut"
+                  },
+                  "title": "Response List Runs Payroll Runs Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Create Run",
+        "operationId": "create_run_payroll_runs_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/runs/recompute-tax-year": {
+      "post": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Create Recompute",
+        "operationId": "create_recompute_payroll_runs_recompute_tax_year_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecomputeCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/runs/{run_id}": {
+      "get": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Get Run",
+        "operationId": "get_run_payroll_runs__run_id__get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/runs/{run_id}/payslips/{payslip_id}": {
+      "get": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Get Payslip",
+        "operationId": "get_payslip_payroll_runs__run_id__payslips__payslip_id__get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "payslip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Payslip Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayslipDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/runs/{run_id}/calculate": {
+      "post": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Calculate",
+        "description": "Queues the calculation for the worker (batches of 100) and answers at\nonce; poll the run for progress.",
+        "operationId": "calculate_payroll_runs__run_id__calculate_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/runs/{run_id}/approve": {
+      "post": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Approve",
+        "operationId": "approve_payroll_runs__run_id__approve_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RunAction"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/runs/{run_id}/reopen": {
+      "post": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Reopen",
+        "operationId": "reopen_payroll_runs__run_id__reopen_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunAction"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/runs/{run_id}/mark-paid": {
+      "post": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Mark Paid",
+        "operationId": "mark_paid_payroll_runs__run_id__mark_paid_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RunAction"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/runs/{run_id}/lock": {
+      "post": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Lock",
+        "operationId": "lock_payroll_runs__run_id__lock_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RunAction"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/runs/{run_id}/cancel": {
+      "post": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Cancel",
+        "operationId": "cancel_payroll_runs__run_id__cancel_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RunAction"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/runs/{run_id}/payslips/{payslip_id}/pdf": {
+      "get": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Payslip Pdf Admin",
+        "operationId": "payslip_pdf_admin_payroll_runs__run_id__payslips__payslip_id__pdf_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "payslip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Payslip Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/runs/{run_id}/exports/wht.csv": {
+      "get": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Export Wht",
+        "operationId": "export_wht_payroll_runs__run_id__exports_wht_csv_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/runs/{run_id}/exports/eobi.csv": {
+      "get": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Export Eobi",
+        "operationId": "export_eobi_payroll_runs__run_id__exports_eobi_csv_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/runs/{run_id}/exports/social-security.csv": {
+      "get": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Export Social Security",
+        "operationId": "export_social_security_payroll_runs__run_id__exports_social_security_csv_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "scheme",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "PESSI",
+              "title": "Scheme"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/runs/{run_id}/exports/bank.csv": {
+      "get": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Export Bank",
+        "operationId": "export_bank_payroll_runs__run_id__exports_bank_csv_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/runs/{run_id}/exports/bank-check": {
+      "get": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Bank Check",
+        "description": "Before downloading the bank file: who it pays, who it can't, and why.",
+        "operationId": "bank_check_payroll_runs__run_id__exports_bank_check_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Bank Check Payroll Runs  Run Id  Exports Bank Check Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/reports/salary-certificate.json": {
+      "get": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Salary Certificate Data",
+        "operationId": "salary_certificate_data_payroll_reports_salary_certificate_json_get",
+        "parameters": [
+          {
+            "name": "employee_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Employee Id"
+            }
+          },
+          {
+            "name": "tax_year",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Tax Year"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Salary Certificate Data Payroll Reports Salary Certificate Json Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/reports/salary-certificate": {
+      "get": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Salary Certificate Pdf",
+        "operationId": "salary_certificate_pdf_payroll_reports_salary_certificate_get",
+        "parameters": [
+          {
+            "name": "employee_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Employee Id"
+            }
+          },
+          {
+            "name": "tax_year",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Tax Year"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/payslips": {
+      "get": {
+        "tags": [
+          "portal"
+        ],
+        "summary": "My Payslips",
+        "description": "Stored payslips of approved, paid or locked runs — newest first, or\none month's (regular and any adjustments) with `month=YYYY-MM`.",
+        "operationId": "my_payslips_me_payslips_get",
+        "parameters": [
+          {
+            "name": "month",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Month"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PayslipDetail"
+                  },
+                  "title": "Response My Payslips Me Payslips Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/payslips/{payslip_id}/link": {
+      "post": {
+        "tags": [
+          "portal"
+        ],
+        "summary": "My Payslip Link",
+        "description": "A 5-minute download link for one of the caller's own final payslips\n(St03 risk 14: a signed short-lived link, not a CNIC-derived password).",
+        "operationId": "my_payslip_link_me_payslips__payslip_id__link_post",
+        "parameters": [
+          {
+            "name": "payslip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Payslip Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayslipLink"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payslips/download": {
+      "get": {
+        "tags": [
+          "portal"
+        ],
+        "summary": "Download Payslip",
+        "description": "No session needed: the unexpired token is the credential.",
+        "operationId": "download_payslip_payslips_download_get",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/components": {
+      "get": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "List Components",
+        "operationId": "list_components_payroll_components_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ComponentOut"
+                  },
+                  "title": "Response List Components Payroll Components Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Create Component",
+        "operationId": "create_component_payroll_components_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComponentIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComponentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/components/{component_id}": {
+      "patch": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Update Component",
+        "operationId": "update_component_payroll_components__component_id__patch",
+        "parameters": [
+          {
+            "name": "component_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Component Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComponentUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComponentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/structures": {
+      "get": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "List Structures",
+        "operationId": "list_structures_payroll_structures_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StructureOut"
+                  },
+                  "title": "Response List Structures Payroll Structures Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Create Structure",
+        "operationId": "create_structure_payroll_structures_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StructureIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StructureOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/structures/{structure_id}": {
+      "put": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Update Structure",
+        "operationId": "update_structure_payroll_structures__structure_id__put",
+        "parameters": [
+          {
+            "name": "structure_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Structure Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StructureIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StructureOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/one-offs": {
+      "get": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "List One Offs",
+        "operationId": "list_one_offs_payroll_one_offs_get",
+        "parameters": [
+          {
+            "name": "month",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Month"
+            }
+          },
+          {
+            "name": "employee_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Employee Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OneOffOut"
+                  },
+                  "title": "Response List One Offs Payroll One Offs Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Create One Off",
+        "operationId": "create_one_off_payroll_one_offs_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OneOffIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OneOffOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/one-offs/{one_off_id}/void": {
+      "post": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Void One Off",
+        "operationId": "void_one_off_payroll_one_offs__one_off_id__void_post",
+        "parameters": [
+          {
+            "name": "one_off_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "One Off Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OneOffOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/advances": {
+      "get": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "List Advances",
+        "operationId": "list_advances_payroll_advances_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdvanceOut"
+                  },
+                  "title": "Response List Advances Payroll Advances Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Create Advance",
+        "operationId": "create_advance_payroll_advances_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdvanceIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvanceOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/advances/{advance_id}/void": {
+      "post": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Void Advance",
+        "description": "Stops further recovery; what was already recovered stays on its payslips.",
+        "operationId": "void_advance_payroll_advances__advance_id__void_post",
+        "parameters": [
+          {
+            "name": "advance_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Advance Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvanceOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/statutory": {
+      "get": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Get Statutory",
+        "operationId": "get_statutory_payroll_statutory_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatutoryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/statutory/{scheme_code}": {
+      "put": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Register Scheme",
+        "operationId": "register_scheme_payroll_statutory__scheme_code__put",
+        "parameters": [
+          {
+            "name": "scheme_code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Scheme Code"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrationIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatutoryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -15294,6 +17707,103 @@
         "additionalProperties": false,
         "type": "object",
         "title": "AddressUpdate"
+      },
+      "AdvanceIn": {
+        "properties": {
+          "employee_id": {
+            "type": "string",
+            "title": "Employee Id"
+          },
+          "principal_minor": {
+            "type": "integer",
+            "maximum": 1000000000000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Principal Minor"
+          },
+          "installment_minor": {
+            "type": "integer",
+            "maximum": 1000000000000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Installment Minor"
+          },
+          "start_month": {
+            "type": "string",
+            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+            "title": "Start Month"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "employee_id",
+          "principal_minor",
+          "installment_minor",
+          "start_month"
+        ],
+        "title": "AdvanceIn"
+      },
+      "AdvanceOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "employee_id": {
+            "type": "string",
+            "title": "Employee Id"
+          },
+          "employee_name": {
+            "type": "string",
+            "title": "Employee Name"
+          },
+          "principal_minor": {
+            "type": "integer",
+            "title": "Principal Minor"
+          },
+          "installment_minor": {
+            "type": "integer",
+            "title": "Installment Minor"
+          },
+          "recovered_minor": {
+            "type": "integer",
+            "title": "Recovered Minor"
+          },
+          "outstanding_minor": {
+            "type": "integer",
+            "title": "Outstanding Minor"
+          },
+          "start_month": {
+            "type": "string",
+            "title": "Start Month"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "employee_id",
+          "employee_name",
+          "principal_minor",
+          "installment_minor",
+          "recovered_minor",
+          "outstanding_minor",
+          "start_month",
+          "status",
+          "note"
+        ],
+        "title": "AdvanceOut"
       },
       "Alert": {
         "properties": {
@@ -16547,6 +19057,436 @@
         "type": "object",
         "title": "CompanyUpdate",
         "description": "Every field optional; an empty string clears NTN, STRN and province."
+      },
+      "CompensationCreate": {
+        "properties": {
+          "effective_from": {
+            "type": "string",
+            "format": "date",
+            "title": "Effective From"
+          },
+          "base_minor": {
+            "type": "integer",
+            "maximum": 1000000000000.0,
+            "minimum": 0.0,
+            "title": "Base Minor"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "joining",
+              "increment",
+              "promotion",
+              "correction",
+              "adjustment"
+            ],
+            "title": "Reason",
+            "default": "increment"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Note",
+            "default": ""
+          },
+          "structure_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Structure Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "effective_from",
+          "base_minor"
+        ],
+        "title": "CompensationCreate"
+      },
+      "CompensationOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "employee_id": {
+            "type": "string",
+            "title": "Employee Id"
+          },
+          "effective_from": {
+            "type": "string",
+            "format": "date",
+            "title": "Effective From"
+          },
+          "base_minor": {
+            "type": "integer",
+            "title": "Base Minor"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          },
+          "structure_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Structure Id"
+          },
+          "structure_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Structure Name"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "employee_id",
+          "effective_from",
+          "base_minor",
+          "reason",
+          "note",
+          "created_at"
+        ],
+        "title": "CompensationOut"
+      },
+      "ComponentIn": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{0,23}$",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "earning",
+              "deduction"
+            ],
+            "title": "Kind",
+            "default": "earning"
+          },
+          "calc": {
+            "type": "string",
+            "enum": [
+              "fixed",
+              "percent",
+              "formula"
+            ],
+            "title": "Calc",
+            "default": "fixed"
+          },
+          "amount_minor": {
+            "type": "integer",
+            "maximum": 1000000000000.0,
+            "minimum": 0.0,
+            "title": "Amount Minor",
+            "default": 0
+          },
+          "percent": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Percent"
+          },
+          "percent_of": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{0,23}$",
+            "title": "Percent Of",
+            "default": "BASE"
+          },
+          "formula": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Formula",
+            "default": ""
+          },
+          "taxable": {
+            "type": "boolean",
+            "title": "Taxable",
+            "default": true
+          },
+          "prorate": {
+            "type": "boolean",
+            "title": "Prorate",
+            "default": true
+          },
+          "sort": {
+            "type": "integer",
+            "title": "Sort",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "ComponentIn"
+      },
+      "ComponentOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{0,23}$",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "earning",
+              "deduction"
+            ],
+            "title": "Kind",
+            "default": "earning"
+          },
+          "calc": {
+            "type": "string",
+            "enum": [
+              "fixed",
+              "percent",
+              "formula"
+            ],
+            "title": "Calc",
+            "default": "fixed"
+          },
+          "amount_minor": {
+            "type": "integer",
+            "maximum": 1000000000000.0,
+            "minimum": 0.0,
+            "title": "Amount Minor",
+            "default": 0
+          },
+          "percent": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Percent"
+          },
+          "percent_of": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{0,23}$",
+            "title": "Percent Of",
+            "default": "BASE"
+          },
+          "formula": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Formula",
+            "default": ""
+          },
+          "taxable": {
+            "type": "boolean",
+            "title": "Taxable",
+            "default": true
+          },
+          "prorate": {
+            "type": "boolean",
+            "title": "Prorate",
+            "default": true
+          },
+          "sort": {
+            "type": "integer",
+            "title": "Sort",
+            "default": 0
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name",
+          "id",
+          "active"
+        ],
+        "title": "ComponentOut"
+      },
+      "ComponentUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "calc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "fixed",
+                  "percent",
+                  "formula"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calc"
+          },
+          "amount_minor": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Minor"
+          },
+          "percent": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Percent"
+          },
+          "percent_of": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Z][A-Z0-9_]{0,23}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Percent Of"
+          },
+          "formula": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Formula"
+          },
+          "taxable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Taxable"
+          },
+          "prorate": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prorate"
+          },
+          "sort": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sort"
+          },
+          "active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active"
+          }
+        },
+        "type": "object",
+        "title": "ComponentUpdate"
       },
       "ContactBrief": {
         "properties": {
@@ -21940,6 +24880,44 @@
         ],
         "title": "LedgerEntryOut"
       },
+      "LineOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "amount_minor": {
+            "type": "integer",
+            "title": "Amount Minor"
+          },
+          "taxable": {
+            "type": "boolean",
+            "title": "Taxable",
+            "default": false
+          },
+          "explain": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Explain"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name",
+          "kind",
+          "amount_minor"
+        ],
+        "title": "LineOut"
+      },
       "LocaleOut": {
         "properties": {
           "locale": {
@@ -22863,6 +25841,40 @@
         ],
         "title": "MethodTotal"
       },
+      "MinimumWageOut": {
+        "properties": {
+          "province": {
+            "type": "string",
+            "title": "Province"
+          },
+          "effective_from": {
+            "type": "string",
+            "format": "date",
+            "title": "Effective From"
+          },
+          "monthly_minor": {
+            "type": "integer",
+            "title": "Monthly Minor"
+          },
+          "source_ref": {
+            "type": "string",
+            "title": "Source Ref"
+          },
+          "verified": {
+            "type": "boolean",
+            "title": "Verified"
+          }
+        },
+        "type": "object",
+        "required": [
+          "province",
+          "effective_from",
+          "monthly_minor",
+          "source_ref",
+          "verified"
+        ],
+        "title": "MinimumWageOut"
+      },
       "ModuleOut": {
         "properties": {
           "key": {
@@ -23078,6 +26090,140 @@
         ],
         "title": "OccasionForecast"
       },
+      "OneOffIn": {
+        "properties": {
+          "employee_id": {
+            "type": "string",
+            "title": "Employee Id"
+          },
+          "month": {
+            "type": "string",
+            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+            "title": "Month"
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{0,23}$",
+            "title": "Code",
+            "default": "ONE_OFF"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "earning",
+              "deduction"
+            ],
+            "title": "Kind",
+            "default": "earning"
+          },
+          "amount_minor": {
+            "type": "integer",
+            "maximum": 1000000000000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Amount Minor"
+          },
+          "taxable": {
+            "type": "boolean",
+            "title": "Taxable",
+            "default": true
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "employee_id",
+          "month",
+          "name",
+          "amount_minor"
+        ],
+        "title": "OneOffIn"
+      },
+      "OneOffOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "employee_id": {
+            "type": "string",
+            "title": "Employee Id"
+          },
+          "employee_name": {
+            "type": "string",
+            "title": "Employee Name"
+          },
+          "month": {
+            "type": "string",
+            "title": "Month"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "amount_minor": {
+            "type": "integer",
+            "title": "Amount Minor"
+          },
+          "taxable": {
+            "type": "boolean",
+            "title": "Taxable"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "employee_id",
+          "employee_name",
+          "month",
+          "code",
+          "name",
+          "kind",
+          "amount_minor",
+          "taxable",
+          "note",
+          "status",
+          "run_id"
+        ],
+        "title": "OneOffOut"
+      },
       "PasswordChange": {
         "properties": {
           "current_password": {
@@ -23134,44 +26280,249 @@
         ],
         "title": "PaymentInstructions"
       },
-      "PayrollOut": {
+      "PayrollDetailsOut": {
         "properties": {
-          "month": {
+          "employee_id": {
             "type": "string",
-            "title": "Month"
+            "title": "Employee Id"
           },
-          "working_days": {
-            "type": "integer",
-            "title": "Working Days"
-          },
-          "payslips": {
-            "items": {
-              "$ref": "#/components/schemas/Payslip"
-            },
-            "type": "array",
-            "title": "Payslips"
-          },
-          "tax_year": {
+          "bank_name": {
             "type": "string",
-            "title": "Tax Year",
-            "default": ""
+            "title": "Bank Name"
           },
-          "tax_rates_verified": {
+          "iban": {
+            "type": "string",
+            "title": "Iban"
+          },
+          "iban_valid": {
             "type": "boolean",
-            "title": "Tax Rates Verified",
-            "default": true
+            "title": "Iban Valid"
+          },
+          "ntn": {
+            "type": "string",
+            "title": "Ntn"
+          },
+          "eobi_number": {
+            "type": "string",
+            "title": "Eobi Number"
+          },
+          "ss_number": {
+            "type": "string",
+            "title": "Ss Number"
+          },
+          "payment_mode": {
+            "type": "string",
+            "title": "Payment Mode"
+          },
+          "eobi_applicable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eobi Applicable"
+          },
+          "ss_applicable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ss Applicable"
+          },
+          "statutory_note": {
+            "type": "string",
+            "title": "Statutory Note"
+          },
+          "masked": {
+            "type": "boolean",
+            "title": "Masked"
+          },
+          "current_base_minor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Base Minor"
+          },
+          "work_province": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Work Province"
+          },
+          "work_province_source": {
+            "type": "string",
+            "title": "Work Province Source",
+            "default": ""
           }
         },
         "type": "object",
         "required": [
-          "month",
-          "working_days",
-          "payslips"
+          "employee_id",
+          "bank_name",
+          "iban",
+          "iban_valid",
+          "ntn",
+          "eobi_number",
+          "ss_number",
+          "payment_mode",
+          "eobi_applicable",
+          "ss_applicable",
+          "statutory_note",
+          "masked",
+          "current_base_minor"
         ],
-        "title": "PayrollOut"
+        "title": "PayrollDetailsOut"
       },
-      "Payslip": {
+      "PayrollDetailsUpdate": {
         "properties": {
+          "bank_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bank Name"
+          },
+          "iban": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Iban"
+          },
+          "ntn": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20,
+                "pattern": "^[0-9\\- ]*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ntn"
+          },
+          "eobi_number": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 30
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eobi Number"
+          },
+          "ss_number": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 30
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ss Number"
+          },
+          "payment_mode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "bank",
+                  "cash",
+                  "cheque"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Mode"
+          },
+          "eobi_applicable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eobi Applicable"
+          },
+          "ss_applicable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ss Applicable"
+          },
+          "statutory_note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Statutory Note"
+          },
+          "eobi_auto": {
+            "type": "boolean",
+            "title": "Eobi Auto",
+            "default": false
+          },
+          "ss_auto": {
+            "type": "boolean",
+            "title": "Ss Auto",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "PayrollDetailsUpdate"
+      },
+      "PayslipDetail": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
           "employee_id": {
             "type": "string",
             "title": "Employee Id"
@@ -23183,6 +26534,94 @@
           "gross_minor": {
             "type": "integer",
             "title": "Gross Minor"
+          },
+          "deductions_minor": {
+            "type": "integer",
+            "title": "Deductions Minor"
+          },
+          "tax_minor": {
+            "type": "integer",
+            "title": "Tax Minor"
+          },
+          "net_minor": {
+            "type": "integer",
+            "title": "Net Minor"
+          },
+          "employer_cost_minor": {
+            "type": "integer",
+            "title": "Employer Cost Minor"
+          },
+          "tax_verified": {
+            "type": "boolean",
+            "title": "Tax Verified"
+          },
+          "statutory_verified": {
+            "type": "boolean",
+            "title": "Statutory Verified"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "error": {
+            "type": "string",
+            "title": "Error",
+            "default": ""
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "run_number": {
+            "type": "string",
+            "title": "Run Number"
+          },
+          "run_kind": {
+            "type": "string",
+            "title": "Run Kind"
+          },
+          "run_status": {
+            "type": "string",
+            "title": "Run Status"
+          },
+          "period_start": {
+            "type": "string",
+            "format": "date",
+            "title": "Period Start"
+          },
+          "period_end": {
+            "type": "string",
+            "format": "date",
+            "title": "Period End"
+          },
+          "pay_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Pay Date"
+          },
+          "tax_year": {
+            "type": "string",
+            "title": "Tax Year"
+          },
+          "snapshot": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Snapshot"
+          },
+          "period_days": {
+            "type": "integer",
+            "title": "Period Days"
+          },
+          "employed_days": {
+            "type": "integer",
+            "title": "Employed Days"
+          },
+          "working_days": {
+            "type": "integer",
+            "title": "Working Days"
           },
           "present_days": {
             "type": "integer",
@@ -23206,12 +26645,121 @@
           },
           "half_days": {
             "type": "integer",
-            "title": "Half Days",
-            "default": 0
+            "title": "Half Days"
           },
-          "absence_deduction_minor": {
+          "taxable_minor": {
             "type": "integer",
-            "title": "Absence Deduction Minor"
+            "title": "Taxable Minor"
+          },
+          "taxable_ytd_minor": {
+            "type": "integer",
+            "title": "Taxable Ytd Minor"
+          },
+          "tax_ytd_minor": {
+            "type": "integer",
+            "title": "Tax Ytd Minor"
+          },
+          "projected_annual_taxable_minor": {
+            "type": "integer",
+            "title": "Projected Annual Taxable Minor"
+          },
+          "annual_tax_minor": {
+            "type": "integer",
+            "title": "Annual Tax Minor"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notes"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/LineOut"
+            },
+            "type": "array",
+            "title": "Lines"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "employee_id",
+          "name",
+          "gross_minor",
+          "deductions_minor",
+          "tax_minor",
+          "net_minor",
+          "employer_cost_minor",
+          "tax_verified",
+          "statutory_verified",
+          "run_id",
+          "run_number",
+          "run_kind",
+          "run_status",
+          "period_start",
+          "period_end",
+          "pay_date",
+          "tax_year",
+          "snapshot",
+          "period_days",
+          "employed_days",
+          "working_days",
+          "present_days",
+          "paid_leave_days",
+          "unpaid_leave_days",
+          "wfh_days",
+          "absent_days",
+          "half_days",
+          "taxable_minor",
+          "taxable_ytd_minor",
+          "tax_ytd_minor",
+          "projected_annual_taxable_minor",
+          "annual_tax_minor"
+        ],
+        "title": "PayslipDetail"
+      },
+      "PayslipLink": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url",
+          "expires_at"
+        ],
+        "title": "PayslipLink"
+      },
+      "PayslipSummary": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "employee_id": {
+            "type": "string",
+            "title": "Employee Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "gross_minor": {
+            "type": "integer",
+            "title": "Gross Minor"
+          },
+          "deductions_minor": {
+            "type": "integer",
+            "title": "Deductions Minor"
           },
           "tax_minor": {
             "type": "integer",
@@ -23221,32 +26769,45 @@
             "type": "integer",
             "title": "Net Minor"
           },
-          "tax_year": {
-            "type": "string",
-            "title": "Tax Year",
-            "default": ""
+          "employer_cost_minor": {
+            "type": "integer",
+            "title": "Employer Cost Minor"
           },
-          "tax_rates_verified": {
+          "tax_verified": {
             "type": "boolean",
-            "title": "Tax Rates Verified",
-            "default": true
+            "title": "Tax Verified"
+          },
+          "statutory_verified": {
+            "type": "boolean",
+            "title": "Statutory Verified"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "error": {
+            "type": "string",
+            "title": "Error",
+            "default": ""
           }
         },
         "type": "object",
         "required": [
+          "id",
           "employee_id",
           "name",
           "gross_minor",
-          "present_days",
-          "paid_leave_days",
-          "unpaid_leave_days",
-          "wfh_days",
-          "absent_days",
-          "absence_deduction_minor",
+          "deductions_minor",
           "tax_minor",
-          "net_minor"
+          "net_minor",
+          "employer_cost_minor",
+          "tax_verified",
+          "statutory_verified"
         ],
-        "title": "Payslip"
+        "title": "PayslipSummary"
       },
       "PipelineCreate": {
         "properties": {
@@ -23606,6 +27167,190 @@
           "sales_today_total_minor"
         ],
         "title": "PosSummary"
+      },
+      "PreviewOut": {
+        "properties": {
+          "month": {
+            "type": "string",
+            "title": "Month"
+          },
+          "working_days": {
+            "type": "integer",
+            "title": "Working Days"
+          },
+          "payslips": {
+            "items": {
+              "$ref": "#/components/schemas/PreviewPayslip"
+            },
+            "type": "array",
+            "title": "Payslips"
+          },
+          "tax_year": {
+            "type": "string",
+            "title": "Tax Year",
+            "default": ""
+          },
+          "tax_rates_verified": {
+            "type": "boolean",
+            "title": "Tax Rates Verified",
+            "default": true
+          },
+          "rates_verified": {
+            "type": "boolean",
+            "title": "Rates Verified",
+            "default": true
+          },
+          "unverified": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Unverified"
+          }
+        },
+        "type": "object",
+        "required": [
+          "month",
+          "working_days",
+          "payslips"
+        ],
+        "title": "PreviewOut"
+      },
+      "PreviewPayslip": {
+        "properties": {
+          "employee_id": {
+            "type": "string",
+            "title": "Employee Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "gross_minor": {
+            "type": "integer",
+            "title": "Gross Minor"
+          },
+          "present_days": {
+            "type": "integer",
+            "title": "Present Days"
+          },
+          "paid_leave_days": {
+            "type": "integer",
+            "title": "Paid Leave Days"
+          },
+          "unpaid_leave_days": {
+            "type": "integer",
+            "title": "Unpaid Leave Days"
+          },
+          "wfh_days": {
+            "type": "integer",
+            "title": "Wfh Days"
+          },
+          "absent_days": {
+            "type": "integer",
+            "title": "Absent Days"
+          },
+          "half_days": {
+            "type": "integer",
+            "title": "Half Days",
+            "default": 0
+          },
+          "absence_deduction_minor": {
+            "type": "integer",
+            "title": "Absence Deduction Minor"
+          },
+          "tax_minor": {
+            "type": "integer",
+            "title": "Tax Minor"
+          },
+          "net_minor": {
+            "type": "integer",
+            "title": "Net Minor"
+          },
+          "tax_year": {
+            "type": "string",
+            "title": "Tax Year",
+            "default": ""
+          },
+          "tax_rates_verified": {
+            "type": "boolean",
+            "title": "Tax Rates Verified",
+            "default": true
+          },
+          "period_days": {
+            "type": "integer",
+            "title": "Period Days",
+            "default": 0
+          },
+          "employed_days": {
+            "type": "integer",
+            "title": "Employed Days",
+            "default": 0
+          },
+          "deductions_minor": {
+            "type": "integer",
+            "title": "Deductions Minor",
+            "default": 0
+          },
+          "employer_cost_minor": {
+            "type": "integer",
+            "title": "Employer Cost Minor",
+            "default": 0
+          },
+          "statutory_verified": {
+            "type": "boolean",
+            "title": "Statutory Verified",
+            "default": true
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notes"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/LineOut"
+            },
+            "type": "array",
+            "title": "Lines"
+          }
+        },
+        "type": "object",
+        "required": [
+          "employee_id",
+          "name",
+          "gross_minor",
+          "present_days",
+          "paid_leave_days",
+          "unpaid_leave_days",
+          "wfh_days",
+          "absent_days",
+          "absence_deduction_minor",
+          "tax_minor",
+          "net_minor"
+        ],
+        "title": "PreviewPayslip",
+        "description": "The legacy preview payslip plus the full calculation."
       },
       "ProductCreate": {
         "properties": {
@@ -24146,6 +27891,45 @@
         "title": "QualifyRequest",
         "description": "Link the lead to an existing contact, or create one from the lead."
       },
+      "RecomputeCreate": {
+        "properties": {
+          "tax_year": {
+            "type": "string",
+            "pattern": "^TY\\d{4}$",
+            "title": "Tax Year"
+          },
+          "through_month": {
+            "type": "string",
+            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+            "title": "Through Month"
+          },
+          "pay_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pay Date"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "tax_year",
+          "through_month"
+        ],
+        "title": "RecomputeCreate",
+        "description": "The one-time \"recompute this tax year\" run (St03 risk 2)."
+      },
       "RefundableLine": {
         "properties": {
           "sale_item_id": {
@@ -24257,6 +28041,35 @@
           "pst_authority"
         ],
         "title": "RegionOut"
+      },
+      "RegistrationIn": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": true
+          },
+          "registration_no": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Registration No",
+            "default": ""
+          },
+          "effective_from": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective From"
+          }
+        },
+        "type": "object",
+        "title": "RegistrationIn"
       },
       "ResetRequest": {
         "properties": {
@@ -24790,6 +28603,465 @@
         },
         "type": "object",
         "title": "RoleV2Update"
+      },
+      "RunAction": {
+        "properties": {
+          "note": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "RunAction"
+      },
+      "RunCreate": {
+        "properties": {
+          "month": {
+            "type": "string",
+            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+            "title": "Month"
+          },
+          "pay_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pay Date"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "regular",
+              "adjustment"
+            ],
+            "title": "Kind",
+            "default": "regular"
+          },
+          "employee_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array",
+                "maxItems": 5000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employee Ids"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "month"
+        ],
+        "title": "RunCreate"
+      },
+      "RunDetail": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "number": {
+            "type": "string",
+            "title": "Number"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "purpose": {
+            "type": "string",
+            "title": "Purpose"
+          },
+          "period_start": {
+            "type": "string",
+            "format": "date",
+            "title": "Period Start"
+          },
+          "period_end": {
+            "type": "string",
+            "format": "date",
+            "title": "Period End"
+          },
+          "pay_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Pay Date"
+          },
+          "tax_year": {
+            "type": "string",
+            "title": "Tax Year"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "progress_done": {
+            "type": "integer",
+            "title": "Progress Done"
+          },
+          "progress_total": {
+            "type": "integer",
+            "title": "Progress Total"
+          },
+          "totals": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Totals"
+          },
+          "error": {
+            "type": "string",
+            "title": "Error"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          },
+          "cancel_reason": {
+            "type": "string",
+            "title": "Cancel Reason"
+          },
+          "adjusts_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adjusts Run Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "calculated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calculated At"
+          },
+          "approved_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved At"
+          },
+          "paid_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid At"
+          },
+          "locked_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locked At"
+          },
+          "payslips": {
+            "items": {
+              "$ref": "#/components/schemas/PayslipSummary"
+            },
+            "type": "array",
+            "title": "Payslips"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/RunEventOut"
+            },
+            "type": "array",
+            "title": "Events"
+          },
+          "rates_verified": {
+            "type": "boolean",
+            "title": "Rates Verified"
+          },
+          "unverified": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Unverified"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "number",
+          "kind",
+          "purpose",
+          "period_start",
+          "period_end",
+          "pay_date",
+          "tax_year",
+          "status",
+          "progress_done",
+          "progress_total",
+          "totals",
+          "error",
+          "note",
+          "cancel_reason",
+          "adjusts_run_id",
+          "created_at",
+          "calculated_at",
+          "approved_at",
+          "paid_at",
+          "locked_at",
+          "payslips",
+          "events",
+          "rates_verified",
+          "unverified"
+        ],
+        "title": "RunDetail"
+      },
+      "RunEventOut": {
+        "properties": {
+          "from_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Status"
+          },
+          "to_status": {
+            "type": "string",
+            "title": "To Status"
+          },
+          "actor_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Name"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "from_status",
+          "to_status",
+          "actor_name",
+          "note",
+          "at"
+        ],
+        "title": "RunEventOut"
+      },
+      "RunOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "number": {
+            "type": "string",
+            "title": "Number"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "purpose": {
+            "type": "string",
+            "title": "Purpose"
+          },
+          "period_start": {
+            "type": "string",
+            "format": "date",
+            "title": "Period Start"
+          },
+          "period_end": {
+            "type": "string",
+            "format": "date",
+            "title": "Period End"
+          },
+          "pay_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Pay Date"
+          },
+          "tax_year": {
+            "type": "string",
+            "title": "Tax Year"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "progress_done": {
+            "type": "integer",
+            "title": "Progress Done"
+          },
+          "progress_total": {
+            "type": "integer",
+            "title": "Progress Total"
+          },
+          "totals": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Totals"
+          },
+          "error": {
+            "type": "string",
+            "title": "Error"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          },
+          "cancel_reason": {
+            "type": "string",
+            "title": "Cancel Reason"
+          },
+          "adjusts_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adjusts Run Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "calculated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calculated At"
+          },
+          "approved_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved At"
+          },
+          "paid_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid At"
+          },
+          "locked_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locked At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "number",
+          "kind",
+          "purpose",
+          "period_start",
+          "period_end",
+          "pay_date",
+          "tax_year",
+          "status",
+          "progress_done",
+          "progress_total",
+          "totals",
+          "error",
+          "note",
+          "cancel_reason",
+          "adjusts_run_id",
+          "created_at",
+          "calculated_at",
+          "approved_at",
+          "paid_at",
+          "locked_at"
+        ],
+        "title": "RunOut"
       },
       "SaleCreate": {
         "properties": {
@@ -25957,6 +30229,248 @@
         },
         "type": "object",
         "title": "StageUpdate"
+      },
+      "StatutoryOut": {
+        "properties": {
+          "schemes": {
+            "items": {
+              "$ref": "#/components/schemas/StatutorySchemeOut"
+            },
+            "type": "array",
+            "title": "Schemes"
+          },
+          "minimum_wages": {
+            "items": {
+              "$ref": "#/components/schemas/MinimumWageOut"
+            },
+            "type": "array",
+            "title": "Minimum Wages"
+          },
+          "rates_verified": {
+            "type": "boolean",
+            "title": "Rates Verified"
+          }
+        },
+        "type": "object",
+        "required": [
+          "schemes",
+          "minimum_wages",
+          "rates_verified"
+        ],
+        "title": "StatutoryOut"
+      },
+      "StatutoryRateOut": {
+        "properties": {
+          "province": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Province"
+          },
+          "effective_from": {
+            "type": "string",
+            "format": "date",
+            "title": "Effective From"
+          },
+          "base_kind": {
+            "type": "string",
+            "title": "Base Kind"
+          },
+          "base_minor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Minor"
+          },
+          "employee_rate": {
+            "type": "number",
+            "title": "Employee Rate"
+          },
+          "employer_rate": {
+            "type": "number",
+            "title": "Employer Rate"
+          },
+          "coverage_wage_ceiling_minor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage Wage Ceiling Minor"
+          },
+          "source_ref": {
+            "type": "string",
+            "title": "Source Ref"
+          },
+          "verified": {
+            "type": "boolean",
+            "title": "Verified"
+          }
+        },
+        "type": "object",
+        "required": [
+          "province",
+          "effective_from",
+          "base_kind",
+          "base_minor",
+          "employee_rate",
+          "employer_rate",
+          "coverage_wage_ceiling_minor",
+          "source_ref",
+          "verified"
+        ],
+        "title": "StatutoryRateOut"
+      },
+      "StatutorySchemeOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "authority": {
+            "type": "string",
+            "title": "Authority"
+          },
+          "province": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Province"
+          },
+          "available": {
+            "type": "boolean",
+            "title": "Available"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "registration_no": {
+            "type": "string",
+            "title": "Registration No"
+          },
+          "effective_from": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective From"
+          },
+          "rates": {
+            "items": {
+              "$ref": "#/components/schemas/StatutoryRateOut"
+            },
+            "type": "array",
+            "title": "Rates"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name",
+          "authority",
+          "province",
+          "available",
+          "enabled",
+          "registration_no",
+          "effective_from",
+          "rates"
+        ],
+        "title": "StatutorySchemeOut"
+      },
+      "StructureIn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "component_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 40,
+            "title": "Component Ids"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "StructureIn"
+      },
+      "StructureOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          },
+          "components": {
+            "items": {
+              "$ref": "#/components/schemas/ComponentOut"
+            },
+            "type": "array",
+            "title": "Components"
+          },
+          "order": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Order"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "active",
+          "components",
+          "order"
+        ],
+        "title": "StructureOut"
       },
       "SupplierCreate": {
         "properties": {

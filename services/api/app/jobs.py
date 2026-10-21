@@ -28,6 +28,7 @@ from typing import Any, Awaitable, Callable
 
 from . import activities, alerts, attendance, audit, context, db, email, fbr_submit, leave, monitor, notifications, obs
 from .modules import service as modules_service
+from . import payroll_runs
 from .routers.pos import _VELOCITY_SQL
 from . import files  # org data (3A): files.gc
 
@@ -239,6 +240,7 @@ HANDLERS: dict[str, Callable[[], Awaitable[Any]]] = {
     "modules.purge": modules_service.run_due_purges,
     "hrms.auto_checkout": run_auto_checkout,
     "hrms.leave_entitlements": run_leave_entitlements,
+    "payroll.calculate": payroll_runs.run_due_calculations,   # 0070; batches of 100 (St03 risk 9)
 }
 
 

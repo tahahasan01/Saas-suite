@@ -98,7 +98,16 @@ async def test_portal_requests_leave_for_itself_only(portal, tenant):
     assert r.json()["employee_id"] == tenant.employee_id
 
 
-async def test_portal_sees_only_its_own_payslip(portal, tenant):
+async def test_portal_sees_only_its_own_payslip(client, portal, tenant):
+    # Payslips are stored by payroll runs now (St03 §4): nothing to show
+    # until a run is approved, then exactly the caller's own.
+    assert (await portal.get("/me/payslips")).json() == []
+    run = (await client.post("/payroll/runs", json={"month": "2026-09"})).json()
+    await client.post(f"/payroll/runs/{run['id']}/calculate")
+    from app import jobs
+    await jobs.HANDLERS["payroll.calculate"]()
+    assert (await portal.get("/me/payslips")).json() == []          # in review: not yet the employee's
+    assert (await client.post(f"/payroll/runs/{run['id']}/approve")).status_code == 200
     slips = (await portal.get("/me/payslips")).json()
     assert len(slips) == 1
     assert slips[0]["employee_id"] == tenant.employee_id

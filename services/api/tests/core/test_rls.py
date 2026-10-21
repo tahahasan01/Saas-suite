@@ -28,7 +28,9 @@ GLOBAL_TABLES = {"terminology", "occasion_calendar", "schema_migrations",
                  # the worker's job tables (0043): platform-owned, owner connection only
                  "scheduled_jobs", "job_triggers", "job_runs",
                  # org data reference tables (0055, 0058): global, select-only
-                 "pk_regions", "tax_rates", "tax_categories"}
+                 "pk_regions", "tax_rates", "tax_categories",
+                 # statutory reference data (0071): platform-owned, read-only for the app
+                 "statutory_schemes", "statutory_rates", "minimum_wages"}
 
 _TENANT_TABLES_SQL = """
     select c.relname,
@@ -141,6 +143,7 @@ _SHAPED = {
     "sequence_counters": {"period_key": lambda: "-"},
     "files": {"sha256": lambda: uuid.uuid4().hex * 2},
     "hrms_leave_types": {"code": lambda: "rls_" + uuid.uuid4().hex[:12]},   # a lower-case code (0068)
+    "pay_components": {"code": lambda: "RLS_" + uuid.uuid4().hex[:8].upper()},
 }
 
 

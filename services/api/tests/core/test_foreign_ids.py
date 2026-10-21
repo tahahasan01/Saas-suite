@@ -45,10 +45,14 @@ KIND_OF = {
     "manager_id": "employee", "head_employee_id": "employee", "doc_id": "document",
     "kiosk_id": "kiosk", "correction_id": "correction", "calendar_id": "calendar",
     "blackout_id": "blackout", "leave_type_id": "leave_type",
+    # payroll (3F)
+    "run_id": "payroll_run", "payslip_id": "payslip", "component_id": "pay_component",
+    "structure_id": "pay_structure", "one_off_id": "one_off", "advance_id": "advance",
 }
 
-# Path parameters that are not ids: a fixed, valid value.
-PLAIN_PARAMS = {"section": "crm", "decision": "approve", "key": "crm"}
+# Path parameters that are not ids: a fixed, valid value. (scheme_code names
+# platform reference data — EOBI, PESSI — shared by every tenant.)
+PLAIN_PARAMS = {"section": "crm", "decision": "approve", "key": "crm", "scheme_code": "EOBI"}
 
 # The /me/* portal never takes an id from the caller — it acts on the logged-in
 # employee only (tests/hrms/test_employee_portal.py proves the forcing).
@@ -107,6 +111,14 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
                 where id=$1 returning id""", uuid.UUID(employee["id"]))
     finally:
         await owner.close()
+    run = (await c.post("/payroll/runs", json={"month": "2026-09"})).json()
+    component = (await c.post("/payroll/components", json={"code": "FUEL", "name": "Fuel"})).json()
+    structure = (await c.post("/payroll/structures", json={"name": "Probe",
+                                                           "component_ids": [component["id"]]})).json()
+    one_off = (await c.post("/payroll/one-offs", json={"employee_id": employee["id"], "month": "2026-09",
+                                                       "name": "Bonus", "amount_minor": 100})).json()
+    advance = (await c.post("/payroll/advances", json={"employee_id": employee["id"], "principal_minor": 100,
+                                                       "installment_minor": 100, "start_month": "2026-09"})).json()
     return {
         "activity_type": activity_type["id"], "activity": activity["id"],
         "lost_reason": (await c.get("/crm/lost-reasons")).json()[0]["id"],
@@ -116,6 +128,10 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
         "department": dept["id"], "job_title": title["id"], "location": loc["id"], "document": doc["id"],
         "kiosk": kiosk["id"], "calendar": calendar["id"], "blackout": blackout["id"],
         "leave_type": leave_type["id"], "correction": str(correction),
+        "payroll_run": run["id"], "pay_component": component["id"], "pay_structure": structure["id"],
+        "one_off": one_off["id"], "advance": advance["id"],
+        # No payslip exists before a run is calculated; any id stands in (it must still 404).
+        "payslip": str(uuid.uuid4()),
         "role": (await c.get("/team/roles")).json()[0]["id"],
         "user": (await c.get("/auth/me")).json()["user"]["id"],
         "pipeline": pipeline["id"], "stage": pipeline["stages"][0]["id"], "lead": lead["id"],

@@ -794,6 +794,45 @@ export interface Payslip {
   tax_rates_verified: boolean;
 }
 
+/** One line of a calculated payslip, with how it was worked out. */
+export interface PayslipLine {
+  code: string;
+  name: string;
+  kind: "earning" | "deduction" | "employer_contribution" | "info";
+  amount_minor: number;
+  taxable: boolean;
+  explain: Record<string, unknown>;
+}
+
+/** A payslip stored by a payroll run (Phase 3, D-40): /me/payslips and run drill-downs. */
+export interface StoredPayslip {
+  id: string;
+  employee_id: string;
+  name: string;
+  run_id: string;
+  run_number: string;
+  run_kind: "regular" | "adjustment";
+  run_status: string;
+  period_start: string;
+  period_end: string;
+  pay_date: string;
+  tax_year: string;
+  gross_minor: number;
+  deductions_minor: number;
+  tax_minor: number;
+  net_minor: number;
+  employer_cost_minor: number;
+  tax_verified: boolean;
+  statutory_verified: boolean;
+  present_days: number;
+  absent_days: number;
+  unpaid_leave_days: number;
+  employed_days: number;
+  period_days: number;
+  warnings: string[];
+  lines: PayslipLine[];
+}
+
 export interface Holiday {
   id: string;
   holiday_date: string;

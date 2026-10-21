@@ -2328,3 +2328,32 @@ class LedgerAdjust(BaseModel):
         if round(self.days * 2) != self.days * 2:
             raise ValueError("Adjust in whole or half days")
         return self
+
+
+# ─── Payroll, Phase 3 (3F) ───────────────────────────────────────────────────
+# Request/response models live in app/payroll_models.py; the enum-like values
+# are here so tests/core/test_enum_checks.py finds them with the rest.
+CompensationReason = Literal["joining", "increment", "promotion", "correction", "adjustment"]
+COMPENSATION_REASONS = list(get_args(CompensationReason))
+PaymentMode = Literal["bank", "cash", "cheque"]
+PAYMENT_MODES = list(get_args(PaymentMode))
+ComponentKind = Literal["earning", "deduction"]
+COMPONENT_KINDS = list(get_args(ComponentKind))
+ComponentCalc = Literal["fixed", "percent", "formula"]
+COMPONENT_CALCS = list(get_args(ComponentCalc))
+PayslipLineKind = Literal["earning", "deduction", "employer_contribution", "info"]
+PAYSLIP_LINE_KINDS = list(get_args(PayslipLineKind))
+RunKind = Literal["regular", "adjustment"]
+RUN_KINDS = list(get_args(RunKind))
+RunPurpose = Literal["payroll", "correction", "recompute_tax_year"]
+RUN_PURPOSES = list(get_args(RunPurpose))
+RunStatus = Literal["draft", "calculating", "review", "approved", "paid", "locked", "cancelled", "failed"]
+RUN_STATUSES = list(get_args(RunStatus))
+OneOffStatus = Literal["pending", "applied", "void"]
+ONE_OFF_STATUSES = list(get_args(OneOffStatus))
+AdvanceStatus = Literal["active", "closed", "void"]
+ADVANCE_STATUSES = list(get_args(AdvanceStatus))
+StatutoryAuthority = Literal["federal", "punjab", "sindh", "kp", "balochistan"]
+STATUTORY_AUTHORITIES = list(get_args(StatutoryAuthority))
+StatutoryBaseKind = Literal["fixed_base", "min_wage", "actual_wage", "actual_wage_capped"]
+STATUTORY_BASE_KINDS = list(get_args(StatutoryBaseKind))
