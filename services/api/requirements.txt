@@ -11,5 +11,6 @@ anthropic>=0.40
 redis==6.4.0
 sentry-sdk[fastapi]>=2.0
 fpdf2>=2.8
+uharfbuzz>=0.40     # fpdf2 text shaping: Urdu names on payslip PDFs join right to left
 sqlglot>=30.23,<31
 cryptography>=50,<51
