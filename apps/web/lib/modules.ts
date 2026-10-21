@@ -109,6 +109,9 @@ export const MODULES: Module[] = [
       { href: "/settings/sections", label: "Modules" },
       { href: "/settings/billing", label: "Billing" },
       { href: "/settings/fbr", label: "FBR invoicing", requires: "pos" },
+      // org data (3A, p3-orgdata)
+      { href: "/settings/company", label: "Company" },
+      { href: "/settings/profile", label: "My profile" },
     ],
   },
   // crm v2 (3B): the day's follow-ups, with a due-count badge.

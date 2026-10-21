@@ -34,6 +34,37 @@ class ActorContext:
     request_id: str
     actor_kind: ActorKind = "system"
     actor_id: str | None = None
+    # The branches this request asked for (X-Branch-Ids, D-03), already
+    # parsed to canonical uuids; the database intersects them with the
+    # user's own (db.tenant_conn -> bos_session_branches).
+    branch_ids: tuple[str, ...] = ()
+
+
+BRANCH_IDS_HEADER = "X-Branch-Ids"
+_MAX_BRANCH_IDS = 50
+
+
+def parse_branch_ids(value: str) -> tuple[str, ...]:
+    """X-Branch-Ids is a comma-separated list of branch uuids. Anything that
+    isn't a uuid is dropped, never an error and never a widening."""
+    out: list[str] = []
+    for part in value.split(",")[:_MAX_BRANCH_IDS]:
+        try:
+            canonical = str(uuid.UUID(part.strip()))
+        except ValueError:
+            continue
+        if canonical not in out:
+            out.append(canonical)
+    return tuple(out)
+
+
+def branch_request() -> tuple[str | None, list[str]]:
+    """(user id or None, requested branch ids) for the branch GUC. None means
+    no user is acting (a job, a script, signup): every branch."""
+    ctx = _current.get()
+    if ctx is None or ctx.actor_kind != "user" or not ctx.actor_id:
+        return None, []
+    return ctx.actor_id, list(ctx.branch_ids)
 
 
 _current: ContextVar[ActorContext | None] = ContextVar("bos_actor_context", default=None)
@@ -93,9 +124,11 @@ class RequestContextMiddleware:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
-        supplied = dict(scope.get("headers") or []).get(REQUEST_ID_HEADER.lower().encode(), b"").decode("latin-1")
+        headers = dict(scope.get("headers") or [])
+        supplied = headers.get(REQUEST_ID_HEADER.lower().encode(), b"").decode("latin-1")
         rid = supplied if _SAFE_ID.match(supplied) else uuid.uuid4().hex
-        token = _current.set(ActorContext(request_id=rid))
+        branches = parse_branch_ids(headers.get(BRANCH_IDS_HEADER.lower().encode(), b"").decode("latin-1"))
+        token = _current.set(ActorContext(request_id=rid, branch_ids=branches))
 
         async def send_with_id(message: Message) -> None:
             if message["type"] == "http.response.start":

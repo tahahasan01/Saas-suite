@@ -2442,6 +2442,237 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/org/regions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Regions */
+        get: operations["regions_org_regions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/org/company": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Company */
+        get: operations["get_company_org_company_get"];
+        /** Update Company */
+        put: operations["update_company_org_company_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/org/branches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Branches */
+        get: operations["list_branches_org_branches_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/org/branches/{branch_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Branch */
+        patch: operations["update_branch_org_branches__branch_id__patch"];
+        trace?: never;
+    };
+    "/org/branding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Branding
+         * @description Everyone in the tenant reads it: the shell and documents render with it.
+         */
+        get: operations["get_branding_org_branding_get"];
+        /** Update Branding */
+        put: operations["update_branding_org_branding_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sequences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Sequences */
+        get: operations["list_sequences_sequences_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sequences/{sequence_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Set Next */
+        patch: operations["set_next_sequences__sequence_id__patch"];
+        trace?: never;
+    };
+    "/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload */
+        post: operations["upload_files_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/files/_local/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Local Blob
+         * @description Serves the local backend's signed links. Signed, so no session: an
+         *     <img> or a download follows it like an S3 link.
+         */
+        get: operations["local_blob_files__local__key__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/files/{file_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download */
+        get: operations["download_files__file_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tax/rates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Rates */
+        get: operations["rates_tax_rates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tax/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Categories */
+        get: operations["categories_tax_categories_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Profile */
+        get: operations["get_profile_profile_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Profile */
+        patch: operations["update_profile_profile_patch"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2843,6 +3074,112 @@ export interface components {
             /** Sections Used */
             sections_used: number;
         };
+        /** BranchOut */
+        BranchOut: {
+            /** Id */
+            id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Address */
+            address: string;
+            /** Phone */
+            phone: string;
+            /** Region Code */
+            region_code: ("PB" | "SD" | "KP" | "BA" | "ICT" | "GB" | "AJK") | null;
+            /** Timezone */
+            timezone: string | null;
+            /** Fbr Pos Id */
+            fbr_pos_id: string | null;
+            /** Receipt Header */
+            receipt_header: string | null;
+            /** Is Default */
+            is_default: boolean;
+            /** Active */
+            active: boolean;
+        };
+        /** BranchUpdate */
+        BranchUpdate: {
+            /** Code */
+            code?: string | null;
+            /** Name */
+            name?: string | null;
+            /** Address */
+            address?: string | null;
+            /** Phone */
+            phone?: string | null;
+            /** Region Code */
+            region_code?: ("PB" | "SD" | "KP" | "BA" | "ICT" | "GB" | "AJK") | null;
+            /** Timezone */
+            timezone?: string | null;
+            /** Fbr Pos Id */
+            fbr_pos_id?: string | null;
+            /** Receipt Header */
+            receipt_header?: string | null;
+            /** Active */
+            active?: boolean | null;
+        };
+        /** BrandingOut */
+        BrandingOut: {
+            /** Logo File Id */
+            logo_file_id: string | null;
+            /** Primary Color */
+            primary_color: string | null;
+            /** Accent Color */
+            accent_color: string | null;
+            /** Receipt Header */
+            receipt_header: string;
+            /** Receipt Footer */
+            receipt_footer: string;
+            /** Invoice Header */
+            invoice_header: string;
+            /** Invoice Footer */
+            invoice_footer: string;
+            /** Payslip Header */
+            payslip_header: string;
+            /** Receipt Width Mm */
+            receipt_width_mm: number;
+            /**
+             * Layout
+             * @enum {string}
+             */
+            layout: "classic" | "compact" | "bold";
+            /** Version */
+            version: number;
+            /** Tokens */
+            tokens: {
+                [key: string]: string;
+            };
+        };
+        /** BrandingUpdate */
+        BrandingUpdate: {
+            /** Logo File Id */
+            logo_file_id?: string | null;
+            /**
+             * Clear Logo
+             * @default false
+             */
+            clear_logo: boolean;
+            /** Primary Color */
+            primary_color?: string | null;
+            /** Accent Color */
+            accent_color?: string | null;
+            /** Receipt Header */
+            receipt_header?: string | null;
+            /** Receipt Footer */
+            receipt_footer?: string | null;
+            /** Invoice Header */
+            invoice_header?: string | null;
+            /** Invoice Footer */
+            invoice_footer?: string | null;
+            /** Payslip Header */
+            payslip_header?: string | null;
+            /** Receipt Width Mm */
+            receipt_width_mm?: number | null;
+            /** Layout */
+            layout?: ("classic" | "compact" | "bold") | null;
+        };
         /** CheckInRequest */
         CheckInRequest: {
             /** Employee Id */
@@ -2862,6 +3199,61 @@ export interface components {
              * @default false
              */
             mock_gps: boolean;
+        };
+        /** CompanyOut */
+        CompanyOut: {
+            /** Name */
+            name: string;
+            /** Legal Name */
+            legal_name: string;
+            /** Ntn */
+            ntn: string | null;
+            /** Strn */
+            strn: string | null;
+            /** Address */
+            address: string;
+            /** City */
+            city: string;
+            /** Phone */
+            phone: string;
+            /** Email */
+            email: string;
+            /** Region Code */
+            region_code: ("PB" | "SD" | "KP" | "BA" | "ICT" | "GB" | "AJK") | null;
+            /** Timezone */
+            timezone: string;
+            /** Fy Start Month */
+            fy_start_month: number;
+            /** Logo File Id */
+            logo_file_id?: string | null;
+        };
+        /**
+         * CompanyUpdate
+         * @description Every field optional; an empty string clears NTN, STRN and province.
+         */
+        CompanyUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Legal Name */
+            legal_name?: string | null;
+            /** Ntn */
+            ntn?: string | null;
+            /** Strn */
+            strn?: string | null;
+            /** Address */
+            address?: string | null;
+            /** City */
+            city?: string | null;
+            /** Phone */
+            phone?: string | null;
+            /** Email */
+            email?: string | null;
+            /** Region Code */
+            region_code?: string | null;
+            /** Timezone */
+            timezone?: string | null;
+            /** Fy Start Month */
+            fy_start_month?: number | null;
         };
         /** ContactBrief */
         ContactBrief: {
@@ -3398,6 +3790,8 @@ export interface components {
             prices_include_tax: boolean;
             /** Token Set */
             token_set: boolean;
+            /** Seller Region Code */
+            seller_region_code?: string | null;
         };
         /** FbrSettingsUpdate */
         FbrSettingsUpdate: {
@@ -3417,6 +3811,24 @@ export interface components {
             prices_include_tax?: boolean | null;
             /** Token */
             token?: string | null;
+            /** Seller Region Code */
+            seller_region_code?: string | null;
+        };
+        /** FileOut */
+        FileOut: {
+            /** Id */
+            id: string;
+            /**
+             * Mime
+             * @enum {string}
+             */
+            mime: "image/png" | "image/jpeg" | "image/webp" | "application/pdf" | "text/csv" | "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            /** Size Bytes */
+            size_bytes: number;
+            /** Sha256 */
+            sha256: string;
+            /** Original Name */
+            original_name: string;
         };
         /** ForecastItem */
         ForecastItem: {
@@ -4426,6 +4838,24 @@ export interface components {
             /** Fbr Uom */
             fbr_uom?: string | null;
         };
+        /** ProfileOut */
+        ProfileOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Email */
+            email: string;
+            /** Locale */
+            locale: string;
+        };
+        /** ProfileUpdate */
+        ProfileUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Locale */
+            locale?: string | null;
+        };
         /**
          * QualifyRequest
          * @description Link the lead to an existing contact, or create one from the lead.
@@ -4476,6 +4906,27 @@ export interface components {
             paid_minor: number;
             /** Refunded Minor */
             refunded_minor: number;
+        };
+        /** RegionOut */
+        RegionOut: {
+            /**
+             * Code
+             * @enum {string}
+             */
+            code: "PB" | "SD" | "KP" | "BA" | "ICT" | "GB" | "AJK";
+            /** Name */
+            name: string;
+            /** Name Ur */
+            name_ur: string;
+            /** Fbr Name */
+            fbr_name: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "province" | "territory";
+            /** Pst Authority */
+            pst_authority: string;
         };
         /** ResetRequest */
         ResetRequest: {
@@ -4780,6 +5231,43 @@ export interface components {
              * @enum {string}
              */
             payment_method: "cash" | "card" | "jazzcash" | "easypaisa" | "bank";
+        };
+        /** SequenceOut */
+        SequenceOut: {
+            /** Id */
+            id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Branch Id */
+            branch_id: string | null;
+            /** Register Id */
+            register_id: string | null;
+            /** Pattern */
+            pattern: string;
+            /** Padding */
+            padding: number;
+            /**
+             * Reset
+             * @enum {string}
+             */
+            reset: "never" | "fiscal_year" | "calendar_year" | "month";
+            /** Gapless */
+            gapless: boolean;
+            /** Period Key */
+            period_key: string;
+            /** Next Value */
+            next_value: number;
+            /** Preview */
+            preview: string;
+        };
+        /** SequenceUpdate */
+        SequenceUpdate: {
+            /** Next Value */
+            next_value: number;
+            /** Period Key */
+            period_key?: string | null;
         };
         /** ShiftAssign */
         ShiftAssign: {
@@ -5087,6 +5575,65 @@ export interface components {
             name?: string | null;
             /** Color */
             color?: ("slate" | "teal" | "amber" | "rose" | "violet" | "sky" | "lime") | null;
+        };
+        /** TaxCategoryOut */
+        TaxCategoryOut: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description: string;
+            /** Rate Codes */
+            rate_codes: string[];
+        };
+        /** TaxRateOut */
+        TaxRateOut: {
+            /** Id */
+            id: string;
+            /** Code */
+            code: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "gst" | "pst" | "further" | "extra" | "fed" | "wht";
+            /** Name */
+            name: string;
+            /** Region Code */
+            region_code: ("PB" | "SD" | "KP" | "BA" | "ICT" | "GB" | "AJK") | null;
+            /** Rate Pct */
+            rate_pct: number;
+            /**
+             * Applies To
+             * @enum {string}
+             */
+            applies_to: "sale" | "purchase" | "both";
+            /** Included In Price */
+            included_in_price: boolean | null;
+            /**
+             * Effective From
+             * Format: date
+             */
+            effective_from: string;
+            /** Effective To */
+            effective_to: string | null;
+            /** Verified */
+            verified: boolean;
+            /** Source Ref */
+            source_ref: string;
+        };
+        /** TaxRatesOut */
+        TaxRatesOut: {
+            /**
+             * On
+             * Format: date
+             */
+            on: string;
+            /** Rates */
+            rates: components["schemas"]["TaxRateOut"][];
+            /** Unverified In Use */
+            unverified_in_use: boolean;
         };
         /** TeamUser */
         TeamUser: {
@@ -10739,6 +11286,539 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    regions_org_regions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_company_org_company_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_company_org_company_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompanyUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_branches_org_branches_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BranchOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_branch_org_branches__branch_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                branch_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BranchUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BranchOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_branding_org_branding_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrandingOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_branding_org_branding_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BrandingUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrandingOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_sequences_sequences_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SequenceOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_next_sequences__sequence_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sequence_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SequenceUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SequenceOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_files_post: {
+        parameters: {
+            query: {
+                name: string;
+                purpose?: "attachment" | "logo";
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    local_blob_files__local__key__get: {
+        parameters: {
+            query: {
+                exp: number;
+                ct: string;
+                cd: string;
+                sig: string;
+            };
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_files__file_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                file_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rates_tax_rates_get: {
+        parameters: {
+            query?: {
+                on?: string | null;
+                region?: ("PB" | "SD" | "KP" | "BA" | "ICT" | "GB" | "AJK") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxRatesOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    categories_tax_categories_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxCategoryOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_profile_profile_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_profile_profile_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileOut"];
+                };
             };
             /** @description Validation Error */
             422: {

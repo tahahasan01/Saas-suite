@@ -25,6 +25,8 @@ coverage/
 
 # python
 .venv/
+# local file storage (STORAGE_BACKEND=local)
+services/api/.files/
 __pycache__/
 *.pyc
 .pytest_cache/

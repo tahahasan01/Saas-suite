@@ -55,6 +55,15 @@ ENUM_COLUMNS = {
     ("record_tags", "entity_type"): models.TAGGABLE_ENTITIES,
     ("contact_review_items", "reason"): models.REVIEW_REASONS,
     ("contact_review_items", "status"): models.REVIEW_STATUSES,
+    # org data (3A, p3-orgdata)
+    ("pk_regions", "code"): models.REGION_CODES,
+    ("pk_regions", "kind"): models.REGION_KINDS,
+    ("sequences", "reset"): models.SEQUENCE_RESETS,
+    ("files", "mime"): models.FILE_MIMES,
+    ("files", "visibility"): models.FILE_VISIBILITIES,
+    ("tenant_branding", "layout"): models.BRANDING_LAYOUTS,
+    ("tax_rates", "kind"): models.TAX_KINDS,
+    ("tax_rates", "applies_to"): models.TAX_APPLIES_TO,
 }
 
 

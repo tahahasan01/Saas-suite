@@ -141,6 +141,15 @@ export const PERMISSION_KEYS = [
   "contacts.contact.archive",
   "contacts.contact.merge",
   "contacts.tag.manage",
+  // org data (3A): company, branches, sequences, branding
+  "settings.company.read",
+  "settings.company.manage",
+  "settings.branches.read",
+  "settings.branches.manage",
+  "settings.branches.all",
+  "settings.sequences.read",
+  "settings.sequences.manage",
+  "settings.branding.manage",
 ] as const;
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];
 
@@ -486,6 +495,8 @@ export interface FbrSettings {
   prices_include_tax: boolean;
   /** The token itself is write-only and never returned. */
   token_set: boolean;
+  /** pk_regions code behind seller_province (which holds FBR's spelling). */
+  seller_region_code?: string | null;
 }
 
 export interface FbrInvoice {

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
+import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from .. import audit, crypto, db, fbr, fbr_submit
@@ -25,7 +26,8 @@ def _out(row) -> FbrSettingsOut:
         seller_province=row["seller_province"], seller_address=row["seller_address"],
         prices_include_tax=row["prices_include_tax"],
         # Write-only: a 5-year bearer token must not be readable back out of the API.
-        token_set=bool(row["token_enc"]))
+        token_set=bool(row["token_enc"]),
+        seller_region_code=row["seller_region_code"])
 
 
 async def _ensure(conn, tenant_id: str):
@@ -79,9 +81,15 @@ async def update_settings(body: FbrSettingsUpdate,
                     f"{no_hs} active product(s) have no HS code. Add one to each before turning FBR on.")
 
         cols = ", ".join(f"{k}=${i + 2}" for i, k in enumerate(fields))
-        row = await conn.fetchrow(
-            f"update fbr_settings set {cols}, updated_at=now() where tenant_id=$1 returning *",
-            auth.tenant_id, *fields.values())
+        try:
+            async with conn.transaction():
+                row = await conn.fetchrow(
+                    f"update fbr_settings set {cols}, updated_at=now() where tenant_id=$1 returning *",
+                    auth.tenant_id, *fields.values())
+        except (asyncpg.CheckViolationError, asyncpg.ForeignKeyViolationError):
+            # The province must be one of pk_regions (0055): FBR rejects anything else.
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+                                "Pick a province from the list (Punjab, Sindh, KP, Balochistan, ICT, GB or AJK).")
         # Audited by the fbr_settings trigger (0044/0048), the token masked there.
     return _out(row)
 

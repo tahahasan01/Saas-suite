@@ -63,12 +63,23 @@ async def owner_conn() -> AsyncIterator[asyncpg.Connection]:
 async def _use_tenant_clock(conn: asyncpg.Connection) -> None:
     """Run this transaction in the tenant's timezone (D-11): current_date,
     now()::date and timestamp-to-date casts become the tenant's local day.
-    Reads the tenant row through RLS, so app.tenant_id must already be set."""
+    Reads the tenant row through RLS, so app.tenant_id must already be set.
+
+    Also sets `app.branch_ids` for the restrictive branch policy (D-03,
+    migration 0055): '*' when no user is acting (jobs, scripts, signup), else
+    the user's branches narrowed by X-Branch-Ids. Same statement, no extra
+    round trip."""
+    user_id, requested = context.branch_request()
     await conn.execute(
         """select set_config('TimeZone',
                   coalesce((select timezone from tenants
                              where id = current_setting('app.tenant_id', true)::uuid),
-                           'Asia/Karachi'), true)""")
+                           'Asia/Karachi'), true),
+                  set_config('app.branch_ids',
+                  case when $1::uuid is null then '*'
+                       else bos_session_branches(current_setting('app.tenant_id', true)::uuid,
+                                                 $1::uuid, $2::text[]) end, true)""",
+        user_id, requested)
 
 
 _SET_CONTEXT = """
