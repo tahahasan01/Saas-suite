@@ -50,6 +50,8 @@ ENUM_COLUMNS = {
     ("files", "mime"): models.FILE_MIMES,
     ("files", "visibility"): models.FILE_VISIBILITIES,
     ("tenant_branding", "layout"): models.BRANDING_LAYOUTS,
+    ("tax_rates", "kind"): models.TAX_KINDS,
+    ("tax_rates", "applies_to"): models.TAX_APPLIES_TO,
 }
 
 

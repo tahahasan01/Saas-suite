@@ -90,6 +90,8 @@ APP_USER: dict[str, set[str]] = {
     "sequence_counters":    {S, I, U},          # upsert allocates; never delete (reissue)
     "files":                {S, I, U},          # attach/detach; deletes are the GC's (owner)
     "tenant_branding":      {S, I, U},          # upsert from the company screen
+    "tax_rates":            {S},                # global reference data, migrations write it
+    "tax_categories":       {S},                # global reference data
 }
 
 # Column-level grants don't appear in role_table_grants, so they are pinned

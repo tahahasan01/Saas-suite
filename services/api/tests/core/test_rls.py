@@ -28,7 +28,7 @@ GLOBAL_TABLES = {"terminology", "occasion_calendar", "schema_migrations",
                  # the worker's job tables (0043): platform-owned, owner connection only
                  "scheduled_jobs", "job_triggers", "job_runs",
                  # org data reference tables (0055, 0058): global, select-only
-                 "pk_regions"}
+                 "pk_regions", "tax_rates", "tax_categories"}
 
 _TENANT_TABLES_SQL = """
     select c.relname,

@@ -59,6 +59,9 @@ module = [
     "app.storage",
     "app.routers.files",
     "app.branding",
+    "app.tax",
+    "app.routers.tax",
+    "app.routers.profile",
 ]
 # `strict` itself is global-only in mypy, so its per-module parts are spelled out.
 disallow_untyped_defs = true
