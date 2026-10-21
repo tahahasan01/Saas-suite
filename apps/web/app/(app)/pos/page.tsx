@@ -14,6 +14,7 @@ import { Sheet } from "@/components/Dialog";
 import { keepFocus, ProductGrid } from "@/components/pos/ProductGrid";
 import { CartPanel, chargeLabel, type Line, type Quote, type QuoteState } from "@/components/pos/CartPanel";
 import { Receipt } from "@/components/pos/Receipt";
+import { CustomerPicker, type Customer } from "@/components/contacts/CustomerPicker";
 
 interface DrawerLite {
   expected_minor: number;
@@ -53,6 +54,7 @@ export default function PosBilling() {
   const [discount, setDiscount] = useState("0");
   const [paid, setPaid] = useState("");
   const [method, setMethod] = useState("cash");
+  const [customer, setCustomer] = useState<Customer | null>(null); // null = walk-in
   const [receipt, setReceipt] = useState<Sale | null>(null);
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false); // the bottom sheet, below lg
@@ -244,6 +246,7 @@ export default function PosBilling() {
   const paidMinor = Math.round(Number(paid || 0) * 100);
 
   const clearCart = useCallback(() => {
+    setCustomer(null);
     if (inFlight.current) return; // the outcome of the charge decides the cart
     setCart([]);
     setChargeError(null);
@@ -269,6 +272,7 @@ export default function PosBilling() {
           discount_minor: discountMinor,
           paid_minor: paidMinor, // 0 = exact amount tendered; the server prices the sale
           payment_method: method,
+          contact_id: customer?.id ?? null,
         }),
       });
       inFlight.current = false;
@@ -397,6 +401,7 @@ export default function PosBilling() {
           would leave Charge unreachable once the catalog scrolls. */}
       <aside aria-label="Cart" className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto lg:overscroll-contain lg:rounded-xl">
         <Card>
+          <CustomerPicker value={customer} onChange={setCustomer} />
           <CartPanel {...panel} paidRef={sidePaidRef} />
         </Card>
       </aside>
@@ -454,6 +459,7 @@ export default function PosBilling() {
         }
       >
         <CartPanel {...panel} paidRef={sheetPaidRef} showCharge={false} inSheet />
+        <div className="px-5 pb-4"><CustomerPicker value={customer} onChange={setCustomer} /></div>
       </Sheet>
 
       <Receipt

@@ -10,6 +10,7 @@ import { Sheet } from "@/components/Dialog";
 import { Badge, Button, ErrorState, Field, Input, LoadingRows, Select } from "@/components/ui";
 import { ActivityActions, LostDialog, PriorityPicker, ScheduleActivity, TypeIcon } from "./bits";
 import { TimelineList } from "./Timeline";
+import { LeadContactCard } from "@/components/contacts/LeadContactCard";
 
 const invTone = { pending: "warning", approved: "success", rejected: "danger" } as const;
 const stateTone = { overdue: "danger", today: "warning", planned: "neutral", done: "success", cancelled: "neutral" } as const;
@@ -117,6 +118,8 @@ export function LeadDrawer({ leadId, name, stages, onMove, onClose, onChanged }:
                 )}
               </>
             )}
+
+            <LeadContactCard lead={lead} onChanged={refresh} />
 
             <DealFields lead={lead} disabled={!mayEdit} onSaved={refresh} />
 

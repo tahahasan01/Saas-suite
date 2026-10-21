@@ -46,7 +46,7 @@ export default function InvoicesPage() {
       body: (
         <>
           <span className="font-medium text-fg">{money(inv.total_minor)}</span> for{" "}
-          <span className="font-medium text-fg">{inv.lead_name}</span>
+          <span className="font-medium text-fg">{inv.bill_to}</span>
           {inv.discount_pct > 0 && ` (after a ${inv.discount_pct}% discount)`}. Once approved it can be
           downloaded and sent to the client.
         </>
@@ -62,7 +62,7 @@ export default function InvoicesPage() {
   }
 
   const columns: Column<Invoice>[] = [
-    { key: "client", header: "Client", primary: true, cell: (i) => <span className="font-medium">{i.lead_name}</span> },
+    { key: "client", header: "Client", primary: true, cell: (i) => <span className="font-medium">{i.bill_to}</span> },
     { key: "total", header: "Total", align: "right", cell: (i) => money(i.total_minor) },
     { key: "discount", header: "Discount", align: "right", cell: (i) => <span className="text-fg-muted">{i.discount_pct}%</span> },
     { key: "status", header: "Status", cell: (i) => <Badge tone={tone[i.status]}>{i.status}</Badge> },
@@ -97,7 +97,7 @@ export default function InvoicesPage() {
               {inv.status === "approved" && (
                 <a href={apiUrl(`/crm/invoices/${inv.id}/pdf`)} target="_blank" rel="noreferrer"
                    className="relative inline-flex items-center text-xs text-brand hover:underline pointer-coarse:min-h-11">
-                  Download PDF<span className="sr-only"> for {inv.lead_name}</span>
+                  Download PDF<span className="sr-only"> for {inv.bill_to}</span>
                 </a>
               )}
             </>

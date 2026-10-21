@@ -52,6 +52,12 @@ APP_USER: dict[str, set[str]] = {
     "crm_lost_reasons":     {S, I, U, D},       # delete only when unused, else retired (0062)
     "activity_types":       {S, I, U},          # retired, never deleted (0063)
     "activities":           {S, I, U},          # done or cancelled, never deleted (0063)
+    # contacts (0059): archived and merged, never deleted
+    "contacts":             {S, I, U},          # select … for update on merge
+    "contact_addresses":    {S, I, U, D},
+    "tags":                 {S, I, U, D},
+    "record_tags":          {S, I, D},
+    "contact_review_items": {S, I, U},          # the leads backfill's queue (0060)
     # pos
     "pos_products":         {S, I, U},
     "pos_sales":            {S, I, U},          # select … for update on refunds

@@ -8152,6 +8152,1583 @@
           }
         }
       }
+    },
+    "/contacts": {
+      "get": {
+        "tags": [
+          "contacts"
+        ],
+        "summary": "List Contacts",
+        "description": "One page; `X-Total-Count` is how many match. A phone typed in any\nformat matches its E.164 key.",
+        "operationId": "list_contacts_contacts_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "person",
+                    "company"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "customer",
+                    "supplier",
+                    "patient",
+                    "student",
+                    "parent",
+                    "partner"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Role"
+            }
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tag"
+            }
+          },
+          {
+            "name": "owner",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Owner"
+            }
+          },
+          {
+            "name": "include_archived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Archived"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ContactOut"
+                  },
+                  "title": "Response List Contacts Contacts Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "contacts"
+        ],
+        "summary": "Create Contact",
+        "description": "With contacts.contact.create: any field, and a 409 naming the likely\nduplicates. From the till (pos.sale.create only): name, phone and email,\nand a duplicate answer that names no one — matched on phone alone and\nreported as a count — so adding a customer can't be used to read the\ncontact book. The cashier then finds them with lookup by phone.",
+        "operationId": "create_contact_contacts_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContactCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/contacts/lookup": {
+      "get": {
+        "tags": [
+          "contacts"
+        ],
+        "summary": "Lookup",
+        "description": "Exact E.164 lookup for the till (and the WhatsApp inbox later). Every\nlive holder comes back: a shared number is the cashier's pick, never an\nautomatic match.",
+        "operationId": "lookup_contacts_lookup_get",
+        "parameters": [
+          {
+            "name": "phone",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Phone"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactLookup"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/contacts/merge": {
+      "post": {
+        "tags": [
+          "contacts"
+        ],
+        "summary": "Merge Contacts",
+        "description": "Merge up to four contacts into one, in one transaction (soft merge).",
+        "operationId": "merge_contacts_contacts_merge_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MergeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MergeResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/contacts/merge/preview": {
+      "post": {
+        "tags": [
+          "contacts"
+        ],
+        "summary": "Merge Preview",
+        "description": "Side by side: the records, the fields that differ, and how many\nrecords would move from each (sales only for those who can read POS).",
+        "operationId": "merge_preview_contacts_merge_preview_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MergePreviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MergePreview"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/contacts/review": {
+      "get": {
+        "tags": [
+          "contacts"
+        ],
+        "summary": "Review Queue",
+        "description": "Open items, each with the contacts holding the clashing key.",
+        "operationId": "review_queue_contacts_review_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReviewItem"
+                  },
+                  "title": "Response Review Queue Contacts Review Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/contacts/{contact_id}": {
+      "get": {
+        "tags": [
+          "contacts"
+        ],
+        "summary": "Get Contact",
+        "description": "Contact 360: the record, its company or people, addresses, and what\nthe other modules hold for it.",
+        "operationId": "get_contact_contacts__contact_id__get",
+        "parameters": [
+          {
+            "name": "contact_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Contact Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "contacts"
+        ],
+        "summary": "Update Contact",
+        "operationId": "update_contact_contacts__contact_id__patch",
+        "parameters": [
+          {
+            "name": "contact_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Contact Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContactUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "contacts"
+        ],
+        "summary": "Archive Contact",
+        "description": "Archive, never delete: sales, invoices and old receipts keep pointing here.",
+        "operationId": "archive_contact_contacts__contact_id__delete",
+        "parameters": [
+          {
+            "name": "contact_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Contact Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/contacts/{contact_id}/restore": {
+      "post": {
+        "tags": [
+          "contacts"
+        ],
+        "summary": "Restore Contact",
+        "operationId": "restore_contact_contacts__contact_id__restore_post",
+        "parameters": [
+          {
+            "name": "contact_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Contact Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/contacts/{contact_id}/duplicates": {
+      "get": {
+        "tags": [
+          "contacts"
+        ],
+        "summary": "Contact Duplicates",
+        "description": "Other contacts holding this one's phone, email or NTN (archived ones\ntoo); keys shared by more than the threshold are listed, not matched.",
+        "operationId": "contact_duplicates_contacts__contact_id__duplicates_get",
+        "parameters": [
+          {
+            "name": "contact_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Contact Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactDuplicates"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/contacts/{contact_id}/timeline": {
+      "get": {
+        "tags": [
+          "contacts"
+        ],
+        "summary": "Contact Timeline",
+        "description": "Everything that happened to this contact or to a record rolled up to\nit, newest first, limited to the record types the caller may read\n(TIMELINE_ENTITY_KEYS). Contacts merged into this one bring their\nhistory: the timeline is append-only, so reads follow merged_into_id\ninstead of rewriting old events (contact_merge registry, \"follow\").",
+        "operationId": "contact_timeline_contacts__contact_id__timeline_get",
+        "parameters": [
+          {
+            "name": "contact_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Contact Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TimelineItem"
+                  },
+                  "title": "Response Contact Timeline Contacts  Contact Id  Timeline Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/contacts/{contact_id}/notes": {
+      "post": {
+        "tags": [
+          "contacts"
+        ],
+        "summary": "Add Note",
+        "operationId": "add_note_contacts__contact_id__notes_post",
+        "parameters": [
+          {
+            "name": "contact_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Contact Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContactNoteCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Add Note Contacts  Contact Id  Notes Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/contacts/{contact_id}/addresses": {
+      "post": {
+        "tags": [
+          "contacts"
+        ],
+        "summary": "Add Address",
+        "operationId": "add_address_contacts__contact_id__addresses_post",
+        "parameters": [
+          {
+            "name": "contact_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Contact Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddressCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddressOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/contacts/{contact_id}/addresses/{address_id}": {
+      "patch": {
+        "tags": [
+          "contacts"
+        ],
+        "summary": "Update Address",
+        "operationId": "update_address_contacts__contact_id__addresses__address_id__patch",
+        "parameters": [
+          {
+            "name": "contact_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Contact Id"
+            }
+          },
+          {
+            "name": "address_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Address Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddressUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddressOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "contacts"
+        ],
+        "summary": "Delete Address",
+        "operationId": "delete_address_contacts__contact_id__addresses__address_id__delete",
+        "parameters": [
+          {
+            "name": "contact_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Contact Id"
+            }
+          },
+          {
+            "name": "address_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Address Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tags": {
+      "get": {
+        "tags": [
+          "contacts"
+        ],
+        "summary": "List Tags",
+        "operationId": "list_tags_tags_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TagOut"
+                  },
+                  "title": "Response List Tags Tags Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "contacts"
+        ],
+        "summary": "Create Tag",
+        "operationId": "create_tag_tags_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tags/{tag_id}": {
+      "patch": {
+        "tags": [
+          "contacts"
+        ],
+        "summary": "Update Tag",
+        "operationId": "update_tag_tags__tag_id__patch",
+        "parameters": [
+          {
+            "name": "tag_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Tag Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "contacts"
+        ],
+        "summary": "Delete Tag",
+        "operationId": "delete_tag_tags__tag_id__delete",
+        "parameters": [
+          {
+            "name": "tag_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Tag Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/leads/{lead_id}/contact": {
+      "get": {
+        "tags": [
+          "contacts"
+        ],
+        "summary": "Lead Contact",
+        "description": "The contact a lead is qualified to, or null.",
+        "operationId": "lead_contact_crm_leads__lead_id__contact_get",
+        "parameters": [
+          {
+            "name": "lead_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Lead Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ContactOut"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Lead Contact Crm Leads  Lead Id  Contact Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/leads/{lead_id}/qualify": {
+      "post": {
+        "tags": [
+          "contacts"
+        ],
+        "summary": "Qualify Lead",
+        "description": "Link the lead to a contact, or create the contact from the lead. A\ncreate that finds a contact with the same phone or email answers 409\nwith them, so the user links instead of duplicating (unless `force`).",
+        "operationId": "qualify_lead_crm_leads__lead_id__qualify_post",
+        "parameters": [
+          {
+            "name": "lead_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Lead Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QualifyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadContact"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/contacts/backfill": {
+      "post": {
+        "tags": [
+          "contacts"
+        ],
+        "summary": "Run Backfill",
+        "description": "Create contacts for this tenant's leads (option b). Safe to rerun.",
+        "operationId": "run_backfill_contacts_backfill_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackfillReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/contacts/review/{item_id}/dismiss": {
+      "post": {
+        "tags": [
+          "contacts"
+        ],
+        "summary": "Dismiss Review",
+        "description": "Leave the lead without a contact; the backfill won't queue it again.",
+        "operationId": "dismiss_review_contacts_review__item_id__dismiss_post",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Item Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -8785,6 +10362,203 @@
         "type": "object",
         "title": "ActivityUpdate"
       },
+      "AddressCreate": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "billing",
+              "shipping",
+              "other"
+            ],
+            "title": "Kind",
+            "default": "billing"
+          },
+          "line1": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Line1"
+          },
+          "line2": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Line2",
+            "default": ""
+          },
+          "city": {
+            "type": "string",
+            "maxLength": 80,
+            "title": "City",
+            "default": ""
+          },
+          "province": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Province",
+            "default": ""
+          },
+          "postal_code": {
+            "type": "string",
+            "maxLength": 12,
+            "title": "Postal Code",
+            "default": ""
+          },
+          "is_default": {
+            "type": "boolean",
+            "title": "Is Default",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "line1"
+        ],
+        "title": "AddressCreate"
+      },
+      "AddressOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "line1": {
+            "type": "string",
+            "title": "Line1"
+          },
+          "line2": {
+            "type": "string",
+            "title": "Line2"
+          },
+          "city": {
+            "type": "string",
+            "title": "City"
+          },
+          "province": {
+            "type": "string",
+            "title": "Province"
+          },
+          "postal_code": {
+            "type": "string",
+            "title": "Postal Code"
+          },
+          "is_default": {
+            "type": "boolean",
+            "title": "Is Default"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "line1",
+          "line2",
+          "city",
+          "province",
+          "postal_code",
+          "is_default"
+        ],
+        "title": "AddressOut"
+      },
+      "AddressUpdate": {
+        "properties": {
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "billing",
+                  "shipping",
+                  "other"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "line1": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line1"
+          },
+          "line2": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line2"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "province": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Province"
+          },
+          "postal_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 12
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Postal Code"
+          },
+          "is_default": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Default"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "AddressUpdate"
+      },
       "Alert": {
         "properties": {
           "text": {
@@ -8961,6 +10735,44 @@
         ],
         "title": "AttendanceOut"
       },
+      "BackfillReport": {
+        "properties": {
+          "leads_seen": {
+            "type": "integer",
+            "title": "Leads Seen"
+          },
+          "contacts_created": {
+            "type": "integer",
+            "title": "Contacts Created"
+          },
+          "leads_linked": {
+            "type": "integer",
+            "title": "Leads Linked"
+          },
+          "queued": {
+            "type": "integer",
+            "title": "Queued"
+          },
+          "invalid_phones": {
+            "type": "integer",
+            "title": "Invalid Phones"
+          },
+          "invoices_linked": {
+            "type": "integer",
+            "title": "Invoices Linked",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "leads_seen",
+          "contacts_created",
+          "leads_linked",
+          "queued",
+          "invalid_phones"
+        ],
+        "title": "BackfillReport"
+      },
       "BillingOut": {
         "properties": {
           "plan": {
@@ -9079,6 +10891,904 @@
           "employee_id"
         ],
         "title": "CheckInRequest"
+      },
+      "ContactBrief": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "phone": {
+            "type": "string",
+            "title": "Phone"
+          },
+          "phone_e164": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone E164"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          },
+          "archived": {
+            "type": "boolean",
+            "title": "Archived"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "name",
+          "phone",
+          "phone_e164",
+          "email",
+          "company_name",
+          "archived"
+        ],
+        "title": "ContactBrief"
+      },
+      "ContactCreate": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "person",
+              "company"
+            ],
+            "title": "Kind",
+            "default": "person"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "company_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Id"
+          },
+          "company_name": {
+            "type": "string",
+            "maxLength": 160,
+            "title": "Company Name",
+            "default": ""
+          },
+          "job_title": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Job Title",
+            "default": ""
+          },
+          "phone": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Phone",
+            "default": ""
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "title": "Email",
+            "default": ""
+          },
+          "ntn": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Ntn",
+            "default": ""
+          },
+          "strn": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Strn",
+            "default": ""
+          },
+          "city": {
+            "type": "string",
+            "maxLength": 80,
+            "title": "City",
+            "default": ""
+          },
+          "roles": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "customer",
+                "supplier",
+                "patient",
+                "student",
+                "parent",
+                "partner"
+              ]
+            },
+            "type": "array",
+            "title": "Roles"
+          },
+          "source": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Source",
+            "default": ""
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 4000,
+            "title": "Notes",
+            "default": ""
+          },
+          "owner_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Id"
+          },
+          "tag_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Tag Ids"
+          },
+          "force": {
+            "type": "boolean",
+            "title": "Force",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "ContactCreate"
+      },
+      "ContactDeal": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "stage": {
+            "type": "string",
+            "title": "Stage"
+          },
+          "stage_kind": {
+            "type": "string",
+            "title": "Stage Kind"
+          },
+          "value_minor": {
+            "type": "integer",
+            "title": "Value Minor"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "stage",
+          "stage_kind",
+          "value_minor",
+          "created_at"
+        ],
+        "title": "ContactDeal"
+      },
+      "ContactDetail": {
+        "properties": {
+          "contact": {
+            "$ref": "#/components/schemas/ContactOut"
+          },
+          "company": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContactBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "people": {
+            "items": {
+              "$ref": "#/components/schemas/ContactBrief"
+            },
+            "type": "array",
+            "title": "People"
+          },
+          "addresses": {
+            "items": {
+              "$ref": "#/components/schemas/AddressOut"
+            },
+            "type": "array",
+            "title": "Addresses"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/ContactStats"
+          },
+          "deals": {
+            "items": {
+              "$ref": "#/components/schemas/ContactDeal"
+            },
+            "type": "array",
+            "title": "Deals"
+          },
+          "sales": {
+            "items": {
+              "$ref": "#/components/schemas/ContactSale"
+            },
+            "type": "array",
+            "title": "Sales"
+          },
+          "invoices": {
+            "items": {
+              "$ref": "#/components/schemas/ContactInvoice"
+            },
+            "type": "array",
+            "title": "Invoices"
+          }
+        },
+        "type": "object",
+        "required": [
+          "contact",
+          "company",
+          "people",
+          "addresses",
+          "stats",
+          "deals",
+          "sales",
+          "invoices"
+        ],
+        "title": "ContactDetail"
+      },
+      "ContactDuplicate": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "phone_e164": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone E164"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "ntn": {
+            "type": "string",
+            "title": "Ntn"
+          },
+          "archived": {
+            "type": "boolean",
+            "title": "Archived"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "phone",
+              "email",
+              "ntn"
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "phone_e164",
+          "email",
+          "ntn",
+          "archived",
+          "reason"
+        ],
+        "title": "ContactDuplicate"
+      },
+      "ContactDuplicates": {
+        "properties": {
+          "duplicates": {
+            "items": {
+              "$ref": "#/components/schemas/ContactDuplicate"
+            },
+            "type": "array",
+            "title": "Duplicates"
+          },
+          "shared_keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Shared Keys"
+          }
+        },
+        "type": "object",
+        "required": [
+          "duplicates"
+        ],
+        "title": "ContactDuplicates"
+      },
+      "ContactInvoice": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "total_minor": {
+            "type": "integer",
+            "title": "Total Minor"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "total_minor",
+          "status",
+          "created_at"
+        ],
+        "title": "ContactInvoice"
+      },
+      "ContactLookup": {
+        "properties": {
+          "phone_e164": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone E164"
+          },
+          "shared": {
+            "type": "boolean",
+            "title": "Shared"
+          },
+          "matches": {
+            "items": {
+              "$ref": "#/components/schemas/ContactBrief"
+            },
+            "type": "array",
+            "title": "Matches"
+          }
+        },
+        "type": "object",
+        "required": [
+          "phone_e164",
+          "shared",
+          "matches"
+        ],
+        "title": "ContactLookup"
+      },
+      "ContactNoteCreate": {
+        "properties": {
+          "body": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Body"
+          }
+        },
+        "type": "object",
+        "required": [
+          "body"
+        ],
+        "title": "ContactNoteCreate"
+      },
+      "ContactOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "company_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Id"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          },
+          "job_title": {
+            "type": "string",
+            "title": "Job Title"
+          },
+          "phone": {
+            "type": "string",
+            "title": "Phone"
+          },
+          "phone_e164": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone E164"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "ntn": {
+            "type": "string",
+            "title": "Ntn"
+          },
+          "strn": {
+            "type": "string",
+            "title": "Strn"
+          },
+          "effective_ntn": {
+            "type": "string",
+            "title": "Effective Ntn"
+          },
+          "city": {
+            "type": "string",
+            "title": "City"
+          },
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Roles"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "notes": {
+            "type": "string",
+            "title": "Notes"
+          },
+          "owner_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Id"
+          },
+          "tags": {
+            "items": {
+              "$ref": "#/components/schemas/TagOut"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "archived_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived At"
+          },
+          "merged_into_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merged Into Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "name",
+          "company_id",
+          "company_name",
+          "job_title",
+          "phone",
+          "phone_e164",
+          "email",
+          "ntn",
+          "strn",
+          "effective_ntn",
+          "city",
+          "roles",
+          "source",
+          "notes",
+          "owner_id",
+          "archived_at",
+          "merged_into_id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ContactOut"
+      },
+      "ContactSale": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "total_minor": {
+            "type": "integer",
+            "title": "Total Minor"
+          },
+          "item_count": {
+            "type": "integer",
+            "title": "Item Count"
+          },
+          "payment_method": {
+            "type": "string",
+            "title": "Payment Method"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "total_minor",
+          "item_count",
+          "payment_method",
+          "created_at"
+        ],
+        "title": "ContactSale"
+      },
+      "ContactStats": {
+        "properties": {
+          "open_deals": {
+            "type": "integer",
+            "title": "Open Deals"
+          },
+          "won_value_minor": {
+            "type": "integer",
+            "title": "Won Value Minor"
+          },
+          "sales_count": {
+            "type": "integer",
+            "title": "Sales Count"
+          },
+          "lifetime_spend_minor": {
+            "type": "integer",
+            "title": "Lifetime Spend Minor"
+          },
+          "last_visit_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Visit At"
+          },
+          "invoiced_minor": {
+            "type": "integer",
+            "title": "Invoiced Minor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "open_deals",
+          "won_value_minor",
+          "sales_count",
+          "lifetime_spend_minor",
+          "last_visit_at",
+          "invoiced_minor"
+        ],
+        "title": "ContactStats"
+      },
+      "ContactUpdate": {
+        "properties": {
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "person",
+                  "company"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "company_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Id"
+          },
+          "company_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Name"
+          },
+          "job_title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Title"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 254
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "ntn": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ntn"
+          },
+          "strn": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strn"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "roles": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "customer",
+                    "supplier",
+                    "patient",
+                    "student",
+                    "parent",
+                    "partner"
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Roles"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "owner_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Id"
+          },
+          "tag_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "type": "array",
+                "maxItems": 20
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag Ids"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ContactUpdate"
       },
       "CrmSummary": {
         "properties": {
@@ -10235,8 +12945,28 @@
       },
       "InvoiceCreate": {
         "properties": {
+          "contact_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Id"
+          },
           "lead_id": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Lead Id"
           },
           "amount_minor": {
@@ -10259,7 +12989,6 @@
         },
         "type": "object",
         "required": [
-          "lead_id",
           "amount_minor"
         ],
         "title": "InvoiceCreate"
@@ -10271,12 +13000,52 @@
             "title": "Id"
           },
           "lead_id": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Lead Id"
           },
           "lead_name": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Lead Name"
+          },
+          "contact_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Id"
+          },
+          "contact_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Name"
+          },
+          "bill_to": {
+            "type": "string",
+            "title": "Bill To"
           },
           "amount_minor": {
             "type": "integer",
@@ -10321,6 +13090,9 @@
           "id",
           "lead_id",
           "lead_name",
+          "contact_id",
+          "contact_name",
+          "bill_to",
           "amount_minor",
           "discount_pct",
           "total_minor",
@@ -10374,6 +13146,23 @@
           "href"
         ],
         "title": "Kpi"
+      },
+      "LeadContact": {
+        "properties": {
+          "lead_id": {
+            "type": "string",
+            "title": "Lead Id"
+          },
+          "contact": {
+            "$ref": "#/components/schemas/ContactOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lead_id",
+          "contact"
+        ],
+        "title": "LeadContact"
       },
       "LeadCreate": {
         "properties": {
@@ -11311,6 +14100,143 @@
           "locale"
         ],
         "title": "MeResponse"
+      },
+      "MergeCounts": {
+        "properties": {
+          "leads": {
+            "type": "integer",
+            "title": "Leads"
+          },
+          "sales": {
+            "type": "integer",
+            "title": "Sales"
+          },
+          "invoices": {
+            "type": "integer",
+            "title": "Invoices"
+          },
+          "people": {
+            "type": "integer",
+            "title": "People"
+          }
+        },
+        "type": "object",
+        "required": [
+          "leads",
+          "sales",
+          "invoices",
+          "people"
+        ],
+        "title": "MergeCounts"
+      },
+      "MergePreview": {
+        "properties": {
+          "contacts": {
+            "items": {
+              "$ref": "#/components/schemas/ContactOut"
+            },
+            "type": "array",
+            "title": "Contacts"
+          },
+          "differing_fields": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Differing Fields"
+          },
+          "counts": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/MergeCounts"
+            },
+            "type": "object",
+            "title": "Counts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "contacts",
+          "differing_fields",
+          "counts"
+        ],
+        "title": "MergePreview"
+      },
+      "MergePreviewRequest": {
+        "properties": {
+          "ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "minItems": 2,
+            "title": "Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ids"
+        ],
+        "title": "MergePreviewRequest"
+      },
+      "MergeRequest": {
+        "properties": {
+          "winner_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Winner Id"
+          },
+          "loser_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Loser Ids"
+          },
+          "field_choices": {
+            "additionalProperties": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "object",
+            "title": "Field Choices"
+          }
+        },
+        "type": "object",
+        "required": [
+          "winner_id",
+          "loser_ids"
+        ],
+        "title": "MergeRequest"
+      },
+      "MergeResult": {
+        "properties": {
+          "winner": {
+            "$ref": "#/components/schemas/ContactOut"
+          },
+          "merged_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Merged Ids"
+          },
+          "moved": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Moved"
+          }
+        },
+        "type": "object",
+        "required": [
+          "winner",
+          "merged_ids",
+          "moved"
+        ],
+        "title": "MergeResult"
       },
       "MethodTotal": {
         "properties": {
@@ -12293,6 +15219,58 @@
         "type": "object",
         "title": "ProductUpdate"
       },
+      "QualifyRequest": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "link",
+              "create"
+            ],
+            "title": "Mode"
+          },
+          "contact_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Id"
+          },
+          "company_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Id"
+          },
+          "create_company": {
+            "type": "boolean",
+            "title": "Create Company",
+            "default": false
+          },
+          "force": {
+            "type": "boolean",
+            "title": "Force",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "mode"
+        ],
+        "title": "QualifyRequest",
+        "description": "Link the lead to an existing contact, or create one from the lead."
+      },
       "RefundableLine": {
         "properties": {
           "sale_item_id": {
@@ -12566,6 +15544,63 @@
         ],
         "title": "ReturnOut"
       },
+      "ReviewItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "lead_id": {
+            "type": "string",
+            "title": "Lead Id"
+          },
+          "lead_name": {
+            "type": "string",
+            "title": "Lead Name"
+          },
+          "lead_phone": {
+            "type": "string",
+            "title": "Lead Phone"
+          },
+          "lead_email": {
+            "type": "string",
+            "title": "Lead Email"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "match_key": {
+            "type": "string",
+            "title": "Match Key"
+          },
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/ContactBrief"
+            },
+            "type": "array",
+            "title": "Candidates"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "lead_id",
+          "lead_name",
+          "lead_phone",
+          "lead_email",
+          "reason",
+          "match_key",
+          "candidates",
+          "created_at"
+        ],
+        "title": "ReviewItem"
+      },
       "RoleCreate": {
         "properties": {
           "name": {
@@ -12659,6 +15694,18 @@
             ],
             "title": "Payment Method",
             "default": "cash"
+          },
+          "contact_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Id"
           }
         },
         "type": "object",
@@ -12797,6 +15844,17 @@
             ],
             "title": "Fbr Status"
           },
+          "contact_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Id"
+          },
           "returnable": {
             "items": {
               "$ref": "#/components/schemas/RefundableLine"
@@ -12906,6 +15964,17 @@
               }
             ],
             "title": "Fbr Status"
+          },
+          "contact_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Id"
           }
         },
         "type": "object",
@@ -13632,6 +16701,98 @@
         ],
         "title": "SupplierOut"
       },
+      "TagCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "color": {
+            "type": "string",
+            "enum": [
+              "slate",
+              "teal",
+              "amber",
+              "rose",
+              "violet",
+              "sky",
+              "lime"
+            ],
+            "title": "Color",
+            "default": "slate"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "TagCreate"
+      },
+      "TagOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "color": {
+            "type": "string",
+            "title": "Color"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "color"
+        ],
+        "title": "TagOut"
+      },
+      "TagUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "slate",
+                  "teal",
+                  "amber",
+                  "rose",
+                  "violet",
+                  "sky",
+                  "lime"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "TagUpdate"
+      },
       "TeamUser": {
         "properties": {
           "id": {
@@ -13857,6 +17018,89 @@
           "occurred_at"
         ],
         "title": "TimelineEventOut"
+      },
+      "TimelineItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "entity_type": {
+            "type": "string",
+            "title": "Entity Type"
+          },
+          "entity_id": {
+            "type": "string",
+            "title": "Entity Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "changes": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Changes"
+          },
+          "actor_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Id"
+          },
+          "actor_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Name"
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Occurred At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "entity_type",
+          "entity_id",
+          "kind",
+          "body",
+          "changes",
+          "actor_id",
+          "actor_name",
+          "occurred_at"
+        ],
+        "title": "TimelineItem"
       },
       "TimelinePage": {
         "properties": {

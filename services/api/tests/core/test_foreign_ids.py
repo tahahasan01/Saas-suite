@@ -32,6 +32,8 @@ KIND_OF = {
     # crm v2 (0062-0064)
     "activity_id": "activity", "type_id": "activity_type", "reason_id": "lost_reason",
     "lost_reason_id": "lost_reason", "entity_id": "lead", "assigned_to": "user",
+    "contact_id": "contact", "company_id": "company", "address_id": "address", "tag_id": "tag",
+    "item_id": "review_item", "winner_id": "contact",
 }
 
 # Path parameters that are not ids: a fixed, valid value.
@@ -62,12 +64,23 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
     workflow = (await c.post("/workflows", json={"name": "Probe", "trigger": "lead.created"})).json()
     payment = (await c.post("/billing/upgrade", json={"plan": "growth"})).json()
     shift = (await c.post("/hrms/shifts", json={"name": "Day"})).json()
+    company = (await c.post("/contacts", json={"kind": "company", "name": "Probe Co"})).json()
+    contact = (await c.post("/contacts", json={"name": "Probe Person", "company_id": company["id"],
+                                               "force": True})).json()
+    address = (await c.post(f"/contacts/{contact['id']}/addresses", json={"line1": "1 Probe Street"})).json()
+    tag = (await c.post("/tags", json={"name": "Probe"})).json()
+    for i in range(6):  # a shared landline puts its leads on the contacts review queue
+        await c.post("/crm/leads", json={"name": f"Caller {i}", "phone": "021-34000000", "force": True})
+    await c.post("/contacts/backfill")
+    review_item = (await c.get("/contacts/review")).json()[0]
     activity_type = (await c.get("/activity-types")).json()[0]
     activity = (await c.post("/activities", json={"entity_type": "lead", "entity_id": lead["id"],
                                                   "type_id": activity_type["id"], "due_date": "2027-04-05"})).json()
     return {
         "activity_type": activity_type["id"], "activity": activity["id"],
         "lost_reason": (await c.get("/crm/lost-reasons")).json()[0]["id"],
+        "contact": contact["id"], "company": company["id"], "address": address["id"], "tag": tag["id"],
+        "review_item": review_item["id"],
         "shift": shift["id"],
         "role": (await c.get("/team/roles")).json()[0]["id"],
         "user": (await c.get("/auth/me")).json()["user"]["id"],

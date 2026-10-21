@@ -7,7 +7,7 @@
  * always available. `label` may use the industry terminology engine (`t`).
  */
 import {
-  Banknote, BarChart3, Boxes, CalendarCheck, CalendarDays, ClipboardList, Clock, FileText, Gauge,
+  Banknote, BarChart3, BookUser, Boxes, CalendarCheck, CalendarDays, ClipboardList, Clock, FileText, Gauge,
   HandCoins, KanbanSquare, LayoutGrid, type LucideIcon, Palmtree, Receipt, RotateCcw,
   Settings, ShoppingCart, Sparkles, Store, Truck, UserRound, Users, Wallet, Workflow,
 } from "lucide-react";
@@ -54,6 +54,17 @@ export const MODULES: Module[] = [
       { href: "/crm", label: "Pipeline" },
       { href: "/crm/reports", label: "Reports" },
       { href: "/crm/settings", label: "Settings" },
+    ],
+  },
+  {
+    // Contacts (D-30) supports CRM, POS and invoicing; until the module
+    // registry lands it shows with CRM. Labels: Customers, Students, Patients…
+    key: "contacts",
+    label: (t) => (t("contacts") === "contacts" ? "Contacts" : t("contacts")),
+    icon: BookUser, color: "--color-mod-crm", href: "/contacts", group: "sell", requires: "crm",
+    tabs: [
+      { href: "/contacts", label: "All" },
+      { href: "/contacts/review", label: "Review" },
     ],
   },
   {

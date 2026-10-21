@@ -150,6 +150,18 @@ register("crm", {
     "crm.settings.manage": ("crm", "admin"),
     "crm.report.read": ("crm", "read"),
 })
+# Contacts (D-30) is a supporting module of CRM, POS and invoicing. Until the
+# module registry lands its keys ride on the `crm` grant; the till reaches
+# lookup and quick-add through `pos.sale.create` (routers/contacts.py).
+# Merging re-points records across modules, so it is admin.
+register("contacts", {
+    "contacts.contact.read": ("crm", "read"),
+    "contacts.contact.create": ("crm", "write"),
+    "contacts.contact.update": ("crm", "write"),
+    "contacts.contact.archive": ("crm", "write"),
+    "contacts.contact.merge": ("crm", "admin"),
+    "contacts.tag.manage": ("crm", "write"),
+})
 
 
 def _grants(rows) -> set[tuple[str, str]]:

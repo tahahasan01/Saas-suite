@@ -21,16 +21,22 @@ def _total(amount_minor: int, discount_pct: float) -> int:
     return round(amount_minor * (1 - float(discount_pct) / 100))
 
 
+invoice_total = _total  # Contact 360 shows the same figure
+
+
 def _out(r) -> InvoiceOut:
     return InvoiceOut(
-        id=str(r["id"]), lead_id=str(r["lead_id"]), lead_name=r["lead_name"],
+        id=str(r["id"]), lead_id=str(r["lead_id"]) if r["lead_id"] else None, lead_name=r["lead_name"],
+        contact_id=str(r["contact_id"]) if r["contact_id"] else None, contact_name=r["contact_name"],
+        bill_to=r["contact_name"] or r["lead_name"] or "",
         amount_minor=r["amount_minor"], discount_pct=float(r["discount_pct"]),
         total_minor=_total(r["amount_minor"], r["discount_pct"]), notes=r["notes"],
         status=r["status"], created_at=r["created_at"], decided_at=r["decided_at"])
 
 
-_SELECT = """select i.*, l.name as lead_name from crm_invoice_requests i
-             join crm_leads l on l.id = i.lead_id"""
+_SELECT = """select i.*, l.name as lead_name, c.name as contact_name from crm_invoice_requests i
+             left join crm_leads l on l.id = i.lead_id
+             left join contacts c on c.id = i.contact_id"""
 
 
 @router.get("", response_model=list[InvoiceOut])
@@ -44,15 +50,35 @@ async def list_invoices(status_filter: str | None = None,
     return [_out(r) for r in rows]
 
 
+async def _bill_to(conn, body: InvoiceCreate):
+    """The contact this request bills: the one named, else the lead's."""
+    lead_contact = None
+    if body.lead_id is not None:
+        lead = await conn.fetchrow("select contact_id from crm_leads where id=$1", body.lead_id)
+        if lead is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Lead not found")
+        lead_contact = lead["contact_id"]
+    contact_id = body.contact_id or lead_contact
+    if contact_id is None:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+                            "Qualify the lead (link or create its contact) before invoicing, or choose a contact")
+    contact = await conn.fetchrow("select archived_at from contacts where id=$1", contact_id)
+    if contact is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Contact not found")
+    if contact["archived_at"] is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "That contact is archived")
+    return contact_id
+
+
 @router.post("", response_model=InvoiceOut, status_code=status.HTTP_201_CREATED)
 async def create_invoice(body: InvoiceCreate, auth: AuthContext = Depends(require("crm", "write"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
-        if not await conn.fetchval("select 1 from crm_leads where id=$1", body.lead_id):
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "Lead not found")
+        contact_id = await _bill_to(conn, body)
         rid = await conn.fetchval(
-            """insert into crm_invoice_requests (tenant_id, lead_id, requested_by, amount_minor, discount_pct, notes)
-               values ($1,$2,$3,$4,$5,$6) returning id""",
-            auth.tenant_id, body.lead_id, auth.user_id, body.amount_minor, body.discount_pct, body.notes)
+            """insert into crm_invoice_requests (tenant_id, lead_id, contact_id, requested_by, amount_minor,
+                                                 discount_pct, notes)
+               values ($1,$2,$3,$4,$5,$6,$7) returning id""",
+            auth.tenant_id, body.lead_id, contact_id, auth.user_id, body.amount_minor, body.discount_pct, body.notes)
         # Notify the accounts approver (the Owner) that a ticket is waiting.
         approver = await conn.fetchval(
             "select u.id from users u join roles r on r.id=u.role_id where r.name='Owner' limit 1")
@@ -105,7 +131,7 @@ async def invoice_pdf(invoice_id: str, auth: AuthContext = Depends(require("crm"
     if row["status"] != "approved":
         raise HTTPException(status.HTTP_409_CONFLICT, "Invoice is not approved yet")
     pdf = invoices_pdf.build_invoice_pdf(
-        company=company, lead_name=row["lead_name"], number=str(row["id"])[:8].upper(),
+        company=company, lead_name=row["contact_name"] or row["lead_name"] or "", number=str(row["id"])[:8].upper(),
         date_str=row["created_at"].strftime("%d %b %Y"), amount_minor=row["amount_minor"],
         discount_pct=float(row["discount_pct"]), total_minor=_total(row["amount_minor"], row["discount_pct"]),
         notes=row["notes"])

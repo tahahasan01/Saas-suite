@@ -23,6 +23,7 @@ REQUEST_ID = "req-audit-test-0001"
 AUDITED_TABLES = {
     "pos_sales", "pos_returns", "pos_products", "hrms_employees", "hrms_leave_requests",
     "crm_invoice_requests", "subscriptions", "payment_requests", "fbr_settings",
+    "contacts",
 }
 
 

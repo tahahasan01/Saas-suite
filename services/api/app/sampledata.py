@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncpg
 
-from . import pipelines
+from . import contacts_backfill, pipelines
 
 # name, company, phone, email, source, stage_index, value_minor, score
 _LEADS = [
@@ -55,6 +55,8 @@ async def seed(conn: asyncpg.Connection, tenant_id: str, user_id: str, sections:
                            case when $12 = 'won' then now() end, $13, now())""",
                 tenant_id, pid, stage_ids[si], user_id, name, company, phone, email, source, value, score,
                 "won" if is_won else "open", prob)
+        # The demo starts with contacts, made the way real leads get them.
+        await contacts_backfill.backfill(conn, tenant_id)
 
     if "pos" in sections:
         for name, barcode, price, stock, low in _PRODUCTS:

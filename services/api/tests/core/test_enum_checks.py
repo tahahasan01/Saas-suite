@@ -48,6 +48,13 @@ ENUM_COLUMNS = {
     ("activities", "outcome"): models.INTERACTION_OUTCOMES,
     ("activity_types", "icon"): models.ACTIVITY_ICONS,
     ("activity_types", "code"): models.ACTIVITY_TYPE_CODES,
+    ("contacts", "kind"): models.CONTACT_KINDS,
+    ("contacts", "roles"): models.CONTACT_ROLES,
+    ("contact_addresses", "kind"): models.ADDRESS_KINDS,
+    ("tags", "color"): models.TAG_COLORS,
+    ("record_tags", "entity_type"): models.TAGGABLE_ENTITIES,
+    ("contact_review_items", "reason"): models.REVIEW_REASONS,
+    ("contact_review_items", "status"): models.REVIEW_STATUSES,
 }
 
 
