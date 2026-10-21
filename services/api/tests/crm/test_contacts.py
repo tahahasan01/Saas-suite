@@ -214,6 +214,68 @@ async def test_a_cashier_can_look_up_and_add_a_customer_but_not_browse_contacts(
     assert (await cashier.get(f"/contacts/{r.json()['id']}")).status_code == 403
 
 
+async def test_a_till_only_duplicate_answer_reveals_no_one(client, crm_tenant, cashier):
+    """A cashier may add a customer, but the duplicate check must not become
+    a way to read the contact book: phone only, a count, no names, emails
+    or tax numbers (security review, MEDIUM)."""
+    await client.patch("/entitlements/pos", json={"enabled": True})
+    await _new(client, name="Secret Name", phone="03457770001", email="secret@hidden.pk", ntn="7654321-0")
+    r = await cashier.post("/contacts", json={"name": "Probe", "phone": "0345-7770001"})
+    assert r.status_code == 409
+    text = r.text
+    assert "Secret Name" not in text and "secret@hidden.pk" not in text and "7654321" not in text
+    assert r.json()["detail"]["match_count"] == 1
+    assert "duplicates" not in r.json()["detail"]
+    # Email and NTN aren't matched for the till, so probing them says nothing.
+    r = await cashier.post("/contacts", json={"name": "Probe 2", "email": "secret@hidden.pk"})
+    assert r.status_code == 201
+
+
+async def test_a_till_only_caller_sets_only_name_phone_and_email(client, crm_tenant, cashier):
+    await client.patch("/entitlements/pos", json={"enabled": True})
+    co = await _new(client, kind="company", name="Some Co")
+    tag = (await client.post("/tags", json={"name": "Till probe"})).json()
+    me = (await client.get("/auth/me")).json()["user"]["id"]
+    for extra in ({"company_id": co["id"]}, {"tag_ids": [tag["id"]]}, {"owner_id": me},
+                  {"kind": "company"}, {"ntn": "1234567-1"}, {"notes": "x"}, {"roles": ["supplier"]}):
+        r = await cashier.post("/contacts", json={"name": "Limited", **extra})
+        assert r.status_code == 403, (extra, r.text)
+    r = await cashier.post("/contacts", json={"name": "Allowed", "phone": "03457770002", "email": "a@b.pk"})
+    assert r.status_code == 201, r.text
+
+
+async def test_contact_360_shows_sales_only_to_those_who_can_read_pos(client, crm_tenant):
+    """Contacts read is not POS read: sales and spend stay hidden without it."""
+    await client.patch("/entitlements/pos", json={"enabled": True})
+    c = await _new(client, name="Big Spender", phone="03457770003")
+    product = (await client.post("/pos/products", json={"name": "Widget", "price_minor": 1000})).json()
+    sale = await client.post("/pos/sales", json={"items": [{"product_id": product["id"], "qty": 1}],
+                                                 "contact_id": c["id"]})
+    assert sale.status_code == 201
+    sales_rep = await _login_with_role(client, "Sales rep", {"crm": ["read"]})
+    try:
+        d = (await sales_rep.get(f"/contacts/{c['id']}")).json()
+    finally:
+        await sales_rep.aclose()
+    assert d["sales"] == []
+    assert d["stats"]["sales_count"] == 0 and d["stats"]["lifetime_spend_minor"] == 0
+    assert d["stats"]["last_visit_at"] is None
+    owner_view = (await client.get(f"/contacts/{c['id']}")).json()
+    assert len(owner_view["sales"]) == 1
+
+
+def test_timeline_entities_follow_their_modules_read_keys():
+    from app.routers.contacts import visible_entity_types
+
+    everything = {"contacts.contact.read", "crm.lead.read", "invoicing.invoice.read", "pos.sale.read"}
+    assert {"contact", "lead", "invoice_request", "pos_sale"} <= visible_entity_types(everything)
+    only_contacts = visible_entity_types({"contacts.contact.read"})
+    assert "contact" in only_contacts
+    assert not {"lead", "invoice_request", "pos_sale"} & only_contacts
+    # An entity type nobody registered is hidden, not shown by default.
+    assert "payslip" not in visible_entity_types(everything)
+
+
 async def test_without_crm_or_pos_access_contacts_are_403(client, tenant):
     # An HRMS-only tenant: neither CRM nor POS is switched on.
     assert (await client.get("/contacts")).status_code == 403

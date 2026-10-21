@@ -279,7 +279,10 @@ class FulfillmentData(BaseModel):
 
 
 class InvoiceCreate(BaseModel):
-    lead_id: str
+    # Who is billed (required, 0061). Given only a lead, the lead's contact is
+    # billed; a lead that isn't qualified yet is a 422.
+    contact_id: UUID | None = None
+    lead_id: UUID | None = None
     amount_minor: int = Field(ge=0)
     discount_pct: float = Field(default=0, ge=0, le=100)
     notes: str = ""
@@ -287,8 +290,11 @@ class InvoiceCreate(BaseModel):
 
 class InvoiceOut(BaseModel):
     id: str
-    lead_id: str
-    lead_name: str
+    lead_id: str | None
+    lead_name: str | None
+    contact_id: str | None   # null only on requests raised before 0061 whose lead has no contact
+    contact_name: str | None
+    bill_to: str             # the contact's name, else the lead's
     amount_minor: int
     discount_pct: float
     total_minor: int

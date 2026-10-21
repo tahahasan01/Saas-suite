@@ -36,15 +36,20 @@ async def _queue(conn: asyncpg.Connection, tenant_id: str, lead_id: Any, reason:
            on conflict (tenant_id, lead_id) do nothing""", tenant_id, lead_id, reason, key)
 
 
-async def link_lead(conn: asyncpg.Connection, lead_id: Any, contact_id: Any, *, body: str | None = None) -> None:
+async def link_lead(conn: asyncpg.Connection, lead_id: Any, contact_id: Any, *, body: str | None = None) -> int:
     """Point a lead at a contact. With `body`, say so on the lead's timeline
     (rolled up to the contact): Qualify does, the bulk backfill doesn't, so
     a migration doesn't write an event on every old lead."""
     # updated_at stays: the lost-stage migration (§7.1) reads it as lost_at.
     await conn.execute("update crm_leads set contact_id = $2 where id = $1", lead_id, contact_id)
+    # Requests raised on the lead before it had a contact now bill it (0061).
+    moved = await conn.execute(
+        "update crm_invoice_requests set contact_id = $2 where lead_id = $1 and contact_id is null",
+        lead_id, contact_id)
     if body is not None:
         await audit.track(conn, entity_type="lead", entity_id=str(lead_id), contact_id=str(contact_id),
                           kind="system", body=body)
+    return int(moved.split()[-1])
 
 
 async def backfill(conn: asyncpg.Connection, tenant_id: str) -> BackfillReport:
@@ -59,7 +64,7 @@ async def backfill(conn: asyncpg.Connection, tenant_id: str) -> BackfillReport:
               and not exists (select 1 from contact_review_items q where q.lead_id = l.id)
               and (l.phone <> '' or l.email <> '' or s.kind = 'won')
             order by l.created_at, l.id""")
-    created = linked = queued = invalid = 0
+    created = linked = queued = invalid = invoices = 0
     for lead in leads:
         phone_key, email_key = normalize_phone(lead["phone"]), normalize_email(lead["email"])
         if lead["phone"].strip() and phone_key is None:
@@ -92,7 +97,7 @@ async def backfill(conn: asyncpg.Connection, tenant_id: str) -> BackfillReport:
                 created_by_migration=True)
             contact_id = row["id"]
             created += 1
-        await link_lead(conn, lead["id"], contact_id)
+        invoices += await link_lead(conn, lead["id"], contact_id)
         linked += 1
     return BackfillReport(leads_seen=len(leads), contacts_created=created, leads_linked=linked,
-                          queued=queued, invalid_phones=invalid)
+                          queued=queued, invalid_phones=invalid, invoices_linked=invoices)

@@ -24,6 +24,7 @@ from ..models import (
     ContactDeal,
     ContactDetail,
     ContactDuplicates,
+    ContactInvoice,
     ContactKind,
     ContactLookup,
     ContactNoteCreate,
@@ -41,6 +42,7 @@ from ..models import (
     TimelineItem,
 )
 from ..phone import normalize_phone
+from .invoices import invoice_total
 from ..rbac import perm
 
 router = APIRouter(tags=["contacts"])
@@ -79,6 +81,21 @@ def all_keys(*keys: str) -> Callable[..., Awaitable[AuthContext]]:
 
 
 READ = perm("contacts.contact.read")
+# What the till may fill in when it holds only pos.sale.create.
+TILL_CREATE_FIELDS = frozenset({"name", "phone", "email", "force"})
+# Which read key shows a timeline event of each entity type on Contact 360.
+# An entity type missing here is hidden: a module adding events that roll up
+# to contacts registers its type and key (e.g. CRM activities).
+TIMELINE_ENTITY_KEYS: dict[str, str] = {
+    "contact": "contacts.contact.read",
+    "lead": "crm.lead.read",
+    "invoice_request": "invoicing.invoice.read",
+    "pos_sale": "pos.sale.read",
+}
+
+
+def visible_entity_types(held: set[str] | dict[str, Any]) -> set[str]:
+    return {entity for entity, key in TIMELINE_ENTITY_KEYS.items() if key in held}
 UPDATE = perm("contacts.contact.update")
 CREATE_OR_TILL = any_key("contacts.contact.create", "pos.sale.create")
 LOOKUP = any_key("contacts.contact.read", "pos.sale.create")
@@ -175,17 +192,36 @@ async def lookup(phone: str, auth: AuthContext = Depends(LOOKUP)) -> ContactLook
 
 @router.post("/contacts", response_model=ContactOut, status_code=status.HTTP_201_CREATED)
 async def create_contact(body: ContactCreate, auth: AuthContext = Depends(CREATE_OR_TILL)) -> ContactOut:
+    """With contacts.contact.create: any field, and a 409 naming the likely
+    duplicates. From the till (pos.sale.create only): name, phone and email,
+    and a duplicate answer that names no one — matched on phone alone and
+    reported as a count — so adding a customer can't be used to read the
+    contact book. The cashier then finds them with lookup by phone."""
     async with db.tenant_conn(auth.tenant_id) as conn:
+        held = await rbac.effective_permissions(conn, auth.tenant_id, auth.role_id)
+        till_only = "contacts.contact.create" not in held
+        if till_only:
+            extra = sorted(body.model_fields_set - TILL_CREATE_FIELDS)
+            if extra:
+                raise HTTPException(status.HTTP_403_FORBIDDEN,
+                                    f"Requires contacts.contact.create to set {', '.join(extra)}")
         await _check_company(conn, body.kind, body.company_id)
         await refs.ensure_visible(conn, "users", body.owner_id)
         if not body.force:
             phone_e164, email_normalized = contacts.keys_for(body.phone, body.email)
-            dups, shared = await contacts.find_duplicates(
-                conn, phone_e164=phone_e164, email_normalized=email_normalized, ntn=body.ntn)
-            if dups:
-                raise HTTPException(status.HTTP_409_CONFLICT, detail={
-                    "message": "Possible duplicate", "duplicates": [d.model_dump() for d in dups],
-                    "shared_keys": shared})
+            if till_only:
+                dups, _ = await contacts.find_duplicates(conn, phone_e164=phone_e164, email_normalized=None, ntn=None)
+                if dups:
+                    raise HTTPException(status.HTTP_409_CONFLICT, detail={
+                        "message": "A customer with this phone number already exists",
+                        "match_count": len(dups)})
+            else:
+                dups, shared = await contacts.find_duplicates(
+                    conn, phone_e164=phone_e164, email_normalized=email_normalized, ntn=body.ntn)
+                if dups:
+                    raise HTTPException(status.HTTP_409_CONFLICT, detail={
+                        "message": "Possible duplicate", "duplicates": [d.model_dump() for d in dups],
+                        "shared_keys": shared})
         row = await contacts.insert(
             conn, auth.tenant_id, name=body.name, kind=body.kind, company_id=body.company_id,
             company_name=body.company_name, job_title=body.job_title, phone=body.phone, email=body.email,
@@ -246,38 +282,52 @@ async def get_contact(contact_id: str, auth: AuthContext = Depends(READ)) -> Con
         people = await conn.fetch(
             contacts.SELECT + " where c.company_id = $1 and c.merged_into_id is null order by c.name", contact_id)
         addresses = await _addresses(conn, contact_id)
-        related = await _related(conn, contact_id)
+        held = await rbac.effective_permissions(conn, auth.tenant_id, auth.role_id)
+        related = await _related(conn, contact_id, set(held))
     return ContactDetail(contact=contact, company=company, people=[contacts.brief(p) for p in people],
                          addresses=addresses, **related)
 
 
-async def _related(conn: asyncpg.Connection, contact_id: str) -> dict[str, Any]:
-    """What CRM and POS hold for this contact: its deals, its sales, and the
-    figures for the KPI strip (St02 §6.2). Activities come from CRM later."""
-    deals = await conn.fetch(
-        """select l.id, l.name, l.value_minor, l.created_at, s.name as stage, s.kind as stage_kind
-             from crm_leads l join crm_stages s on s.id = l.stage_id
-            where l.contact_id = $1 order by l.created_at desc limit 50""", contact_id)
-    sales = await conn.fetch(
-        """select id, total_minor, item_count, payment_method, created_at from pos_sales
-            where contact_id = $1 order by created_at desc limit 50""", contact_id)
-    totals = await conn.fetchrow(
-        """select count(*) as n, coalesce(sum(total_minor), 0) as spend, max(created_at) as last_at
-             from pos_sales where contact_id = $1""", contact_id)
-    lead_totals = await conn.fetchrow(
-        """select count(*) filter (where s.kind = 'active') as open,
-                  coalesce(sum(l.value_minor) filter (where s.kind = 'won'), 0) as won
-             from crm_leads l join crm_stages s on s.id = l.stage_id where l.contact_id = $1""", contact_id)
-    return {
-        "stats": ContactStats(open_deals=lead_totals["open"], won_value_minor=lead_totals["won"],
-                              sales_count=totals["n"], lifetime_spend_minor=totals["spend"],
-                              last_visit_at=totals["last_at"], invoiced_minor=0),
-        "deals": [ContactDeal(id=str(d["id"]), name=d["name"], stage=d["stage"], stage_kind=d["stage_kind"],
-                              value_minor=d["value_minor"], created_at=d["created_at"]) for d in deals],
-        "sales": [ContactSale(id=str(s["id"]), total_minor=s["total_minor"], item_count=s["item_count"],
-                              payment_method=s["payment_method"], created_at=s["created_at"]) for s in sales],
-        "invoices": [],
-    }
+async def _related(conn: asyncpg.Connection, contact_id: str, held: set[str]) -> dict[str, Any]:
+    """What CRM, POS and invoicing hold for this contact, and the KPI strip
+    figures (St02 §6.2). Each module's part shows only to callers holding
+    its read key: contacts read is not POS or invoice read. Activities come
+    from CRM later."""
+    stats = ContactStats(open_deals=0, won_value_minor=0, sales_count=0, lifetime_spend_minor=0,
+                         last_visit_at=None, invoiced_minor=0)
+    deals: list[ContactDeal] = []
+    sales: list[ContactSale] = []
+    invoices: list[ContactInvoice] = []
+    if "crm.lead.read" in held:
+        rows = await conn.fetch(
+            """select l.id, l.name, l.value_minor, l.created_at, s.name as stage, s.kind as stage_kind
+                 from crm_leads l join crm_stages s on s.id = l.stage_id
+                where l.contact_id = $1 order by l.created_at desc limit 50""", contact_id)
+        deals = [ContactDeal(id=str(d["id"]), name=d["name"], stage=d["stage"], stage_kind=d["stage_kind"],
+                             value_minor=d["value_minor"], created_at=d["created_at"]) for d in rows]
+        t = await conn.fetchrow(
+            """select count(*) filter (where s.kind = 'active') as open,
+                      coalesce(sum(l.value_minor) filter (where s.kind = 'won'), 0)::bigint as won
+                 from crm_leads l join crm_stages s on s.id = l.stage_id where l.contact_id = $1""", contact_id)
+        stats.open_deals, stats.won_value_minor = t["open"], t["won"]
+    if "pos.sale.read" in held:
+        rows = await conn.fetch(
+            """select id, total_minor, item_count, payment_method, created_at from pos_sales
+                where contact_id = $1 order by created_at desc limit 50""", contact_id)
+        sales = [ContactSale(id=str(s["id"]), total_minor=s["total_minor"], item_count=s["item_count"],
+                             payment_method=s["payment_method"], created_at=s["created_at"]) for s in rows]
+        t = await conn.fetchrow(
+            """select count(*) as n, coalesce(sum(total_minor), 0)::bigint as spend, max(created_at) as last_at
+                 from pos_sales where contact_id = $1""", contact_id)
+        stats.sales_count, stats.lifetime_spend_minor, stats.last_visit_at = t["n"], t["spend"], t["last_at"]
+    if "invoicing.invoice.read" in held:
+        rows = await conn.fetch(
+            """select id, amount_minor, discount_pct, status, created_at from crm_invoice_requests
+                where contact_id = $1 order by created_at desc limit 50""", contact_id)
+        invoices = [ContactInvoice(id=str(i["id"]), total_minor=invoice_total(i["amount_minor"], i["discount_pct"]),
+                                   status=i["status"], created_at=i["created_at"]) for i in rows]
+        stats.invoiced_minor = sum(i.total_minor for i in invoices if i.status != "rejected")
+    return {"stats": stats, "deals": deals, "sales": sales, "invoices": invoices}
 
 
 @router.patch("/contacts/{contact_id}", response_model=ContactOut)
@@ -367,19 +417,23 @@ async def contact_duplicates(contact_id: str, auth: AuthContext = Depends(READ))
 async def contact_timeline(contact_id: str, limit: int = Query(100, ge=1, le=500),
                            auth: AuthContext = Depends(READ)) -> list[TimelineItem]:
     """Everything that happened to this contact or to a record rolled up to
-    it, newest first. Contacts merged into this one bring their history: the
-    timeline is append-only, so reads follow merged_into_id instead of
-    rewriting old events (contact_merge registry, strategy "follow")."""
+    it, newest first, limited to the record types the caller may read
+    (TIMELINE_ENTITY_KEYS). Contacts merged into this one bring their
+    history: the timeline is append-only, so reads follow merged_into_id
+    instead of rewriting old events (contact_merge registry, "follow")."""
     async with db.tenant_conn(auth.tenant_id) as conn:
         if not await conn.fetchval("select 1 from contacts where id = $1", contact_id):
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Contact not found")
+        held = await rbac.effective_permissions(conn, auth.tenant_id, auth.role_id)
         rows = await conn.fetch(
             """with chain as (select $1::uuid as id union select id from contacts where merged_into_id = $1)
                select e.*, u.name as actor_name from timeline_events e
                  left join users u on u.id = e.actor_id
-                where e.contact_id in (select id from chain)
-                   or (e.entity_type = 'contact' and e.entity_id in (select id from chain))
-                order by e.occurred_at desc, e.id desc limit $2""", contact_id, limit)
+                where (e.contact_id in (select id from chain)
+                       or (e.entity_type = 'contact' and e.entity_id in (select id from chain)))
+                  and e.entity_type = any($3::text[])
+                order by e.occurred_at desc, e.id desc limit $2""",
+            contact_id, limit, sorted(visible_entity_types(held)))
     return [TimelineItem(id=str(r["id"]), entity_type=r["entity_type"], entity_id=str(r["entity_id"]),
                          kind=r["kind"], body=r["body"], changes=r["changes"],
                          actor_id=str(r["actor_id"]) if r["actor_id"] else None, actor_name=r["actor_name"],
