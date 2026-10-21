@@ -247,10 +247,10 @@ async def update_employee_job(employee_id: str, body: EmployeeJobUpdate,
     fields = _set(body)
     if fields.get("employment_type", "x") is None:
         fields.pop("employment_type")
-    if not fields:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Nothing to update")
     async with db.tenant_conn(auth.tenant_id) as conn:
         await refs.ensure_visible(conn, "hrms_employees", employee_id)
+        if not fields:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Nothing to update")
         # One org change per employee at a time, so two edits can't together
         # build a loop each one alone wouldn't.
         await conn.execute("select 1 from hrms_employees where id=$1 for update", employee_id)

@@ -26,7 +26,7 @@ import asyncio
 import logging
 from typing import Any, Awaitable, Callable
 
-from . import alerts, attendance, audit, context, db, email, fbr_submit, monitor, notifications, obs
+from . import alerts, attendance, audit, context, db, email, fbr_submit, leave, monitor, notifications, obs
 from .routers.pos import _VELOCITY_SQL
 
 log = logging.getLogger("jobs")
@@ -166,6 +166,22 @@ async def run_auto_checkout() -> dict[str, int]:
     return {"tenants": len(tenants), "closed": closed, "failed": failed}
 
 
+async def run_leave_entitlements() -> dict[str, int]:
+    """Daily (0068): leave grants at the start of each leave year, the
+    monthly accrual, carry-forward and expiry. Idempotent per tenant."""
+    employees = failed = 0
+    run_id = context.job_run_id()
+    tenants = await _hrms_tenants()
+    for tid in tenants:
+        try:
+            async with db.job_conn(tid, "hrms.leave_entitlements", run_id=run_id) as conn:
+                employees += await leave.run_entitlements(conn)
+        except Exception:  # noqa: BLE001 — one bad tenant must not stop the rest
+            failed += 1
+            log.exception("leave entitlements failed for tenant %s", tid)
+    return {"tenants": len(tenants), "employees": employees, "failed": failed}
+
+
 # code -> handler. Every row in scheduled_jobs has one here and vice versa
 # (tests/core/test_worker.py); a new job is a seed row in a migration plus a
 # line here.
@@ -181,6 +197,7 @@ HANDLERS: dict[str, Callable[[], Awaitable[Any]]] = {
     "audit.detach": run_audit_detach,
     "hrms.finalise_open_days": run_finalise_open_days,
     "hrms.auto_checkout": run_auto_checkout,
+    "hrms.leave_entitlements": run_leave_entitlements,
 }
 
 

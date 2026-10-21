@@ -79,6 +79,13 @@ APP_USER: dict[str, set[str]] = {
     # attendance v2 (0066)
     "hrms_kiosks":          {S, I, U},          # revoke; last_seen_at is written by the owner
     "hrms_attendance_corrections": {S, I, U},   # decided in place, audited by trigger
+    # holiday calendars (0067)
+    "hrms_holiday_calendars": {S, I, U, D},     # a calendar is removed with its days
+    "hrms_blackout_days":   {S, I, D},
+    # leave v2 (0068)
+    "hrms_leave_types":     {S, I, U},
+    "hrms_leave_ledger":    {S, I},             # append-only: balance = sum(days)
+    "hrms_leave_approvals": {S, I},             # append-only
     # AI views: app_user reaches them only through `set local role ai_reader`
     "ai_v_leads":           set(),
     "ai_v_interactions":    set(),

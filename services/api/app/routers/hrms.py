@@ -3,13 +3,12 @@ Guarded by the 'hrms' section. Mobile face-match/biometric plug into attendance 
 from __future__ import annotations
 
 import calendar
-from typing import Literal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
 
 from datetime import date, datetime, timedelta
 
-from .. import attendance, audit, db, email, hrorg, payroll, refs
+from .. import attendance, db, email, hrorg, payroll, refs
 from ..deps import AuthContext, current_auth, current_employee
 from ..models import (
     AttendanceOut,
@@ -17,17 +16,9 @@ from ..models import (
     EmployeeCreate,
     EmployeeOut,
     EmployeeUpdate,
-    HolidayCreate,
-    HolidayOut,
     HrmsSummary,
-    LeaveBalance,
-    LeaveCreate,
-    LeaveOut,
-    LeavePolicyOut,
-    LeavePolicyUpdate,
     PayrollOut,
     Payslip,
-    RequestType,
     ShiftAssign,
     ShiftAssignmentOut,
     ShiftCreate,
@@ -464,196 +455,7 @@ async def list_shift_assignments(employee_id: str | None = None,
     return [_assignment(r) for r in rows]
 
 
-# ── Leave ───────────────────────────────────────────────────────────────────
-_LEAVE_SELECT = """select l.*, e.name as employee_name from hrms_leave_requests l
-                   join hrms_employees e on e.id = l.employee_id"""
-
-
-def _leave(r) -> LeaveOut:
-    return LeaveOut(
-        id=str(r["id"]), employee_id=str(r["employee_id"]), employee_name=r["employee_name"],
-        request_type=r["request_type"], leave_type=r["leave_type"], from_date=r["from_date"],
-        to_date=r["to_date"], reason=r["reason"], status=r["status"])
-
-
-@router.get("/leave", response_model=list[LeaveOut])
-async def list_leave(request_type: RequestType | None = None,
-                     auth: AuthContext = Depends(require("hrms", "read"))):
-    async with db.tenant_conn(auth.tenant_id) as conn:
-        rows = await conn.fetch(
-            _LEAVE_SELECT + " where ($1::text is null or l.request_type = $1) order by l.created_at desc",
-            request_type)
-    return [_leave(r) for r in rows]
-
-
-@router.post("/leave", response_model=LeaveOut, status_code=status.HTTP_201_CREATED)
-async def create_leave(body: LeaveCreate, auth: AuthContext = Depends(require("hrms", "write"))):
-    if body.to_date < body.from_date:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "to_date cannot be before from_date")
-    # A WFH day is worked, so it carries no leave subtype — storing one would
-    # let it be mistaken for unpaid leave and deducted.
-    leave_type = "annual" if body.request_type == "wfh" else body.leave_type
-    async with db.tenant_conn(auth.tenant_id) as conn:
-        await refs.ensure_visible(conn, "hrms_employees", body.employee_id)
-        # One person cannot be in two states on the same day — a pending or
-        # approved request already covering any of these dates blocks a new one.
-        clash = await conn.fetchrow(
-            """select from_date, to_date from hrms_leave_requests
-                where employee_id=$1 and status in ('pending','approved')
-                  and from_date <= $3 and to_date >= $2 limit 1""",
-            body.employee_id, body.from_date, body.to_date)
-        if clash:
-            raise HTTPException(status.HTTP_409_CONFLICT,
-                                f"Overlaps an existing request ({clash['from_date']} → {clash['to_date']}).")
-        rid = await conn.fetchval(
-            """insert into hrms_leave_requests (tenant_id, employee_id, request_type, leave_type,
-                                                from_date, to_date, reason)
-               values ($1,$2,$3,$4,$5,$6,$7) returning id""",
-            auth.tenant_id, body.employee_id, body.request_type, leave_type,
-            body.from_date, body.to_date, body.reason)
-        rec = await conn.fetchrow(_LEAVE_SELECT + " where l.id=$1", rid)
-    return _leave(rec)
-
-
-# Working days in a date range — same calendar the payroll uses (weekly off +
-# holidays), so a Friday-to-Monday request costs 2 days, not 4.
-_RANGE_DAYS = """
-select count(*) from generate_series($1::date, $2::date, interval '1 day') d
- where not (extract(dow from d)::int = any($3::int[]))
-   and not exists (select 1 from hrms_holidays h where h.holiday_date = d::date)
-"""
-
-# Approved working days per leave type within the calendar year, clamped to it.
-_USED_BY_TYPE = """
-select l.leave_type, coalesce(sum(wd.n), 0)::int as used
-  from hrms_leave_requests l,
-  lateral (
-    select count(*) as n
-      from generate_series(greatest(l.from_date, $2::date),
-                           least(l.to_date, $3::date), interval '1 day') d
-     where not (extract(dow from d)::int = any($4::int[]))
-       and not exists (select 1 from hrms_holidays h where h.holiday_date = d::date)
-  ) wd
- where l.employee_id = $1 and l.status = 'approved' and l.request_type = 'leave'
-   and l.from_date <= $3::date and l.to_date >= $2::date
- group by l.leave_type
-"""
-
-
-_POLICY_SELECT = "select * from hrms_leave_policies where tenant_id=$1"
-
-
-async def _policy(conn, tenant_id: str):
-    """The tenant's leave policy, created with defaults on first use.
-
-    Signup creates the row; this covers tenants from before that. Concurrent
-    first uses race, so the insert is `on conflict do nothing` — a select-then-
-    insert lets two requests both see "missing" and the loser 500s on the pkey.
-    The re-select sees the winner's row: under READ COMMITTED a conflicting
-    insert waits for the other transaction and each statement takes a fresh
-    snapshot.
-    """
-    row = await conn.fetchrow(_POLICY_SELECT, tenant_id)
-    if row is None:
-        await conn.execute(
-            "insert into hrms_leave_policies (tenant_id) values ($1) on conflict (tenant_id) do nothing",
-            tenant_id)
-        row = await conn.fetchrow(_POLICY_SELECT, tenant_id)
-    return row
-
-
-async def _balances(conn, tenant_id: str, employee_id: str) -> list[LeaveBalance]:
-    policy = await _policy(conn, tenant_id)
-    off = list(await conn.fetchval("select weekly_off_days from tenants where id=$1", tenant_id) or [0])
-    today = await conn.fetchval("select current_date")  # the tenant's local day
-    year_start = date(today.year, 1, 1)
-    year_end = date(today.year, 12, 31)
-    used = {r["leave_type"]: r["used"]
-            for r in await conn.fetch(_USED_BY_TYPE, employee_id, year_start, year_end, off)}
-    out = []
-    for lt, quota in (("annual", policy["annual_days"]), ("sick", policy["sick_days"]),
-                      ("casual", policy["casual_days"])):
-        u = used.get(lt, 0)
-        out.append(LeaveBalance(leave_type=lt, quota=quota, used=u, remaining=max(0, quota - u)))
-    return out
-
-
-@router.get("/leave/policy", response_model=LeavePolicyOut)
-async def get_leave_policy(auth: AuthContext = Depends(require("hrms", "read"))):
-    async with db.tenant_conn(auth.tenant_id) as conn:
-        p = await _policy(conn, auth.tenant_id)
-    return LeavePolicyOut(annual_days=p["annual_days"], sick_days=p["sick_days"], casual_days=p["casual_days"])
-
-
-@router.put("/leave/policy", response_model=LeavePolicyOut)
-async def update_leave_policy(body: LeavePolicyUpdate,
-                              auth: AuthContext = Depends(require("hrms", "admin"))):
-    fields = body.model_dump(exclude_none=True)
-    if not fields:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Nothing to update")
-    async with db.tenant_conn(auth.tenant_id) as conn:
-        await _policy(conn, auth.tenant_id)
-        cols = ", ".join(f"{k}=${i + 2}" for i, k in enumerate(fields))
-        p = await conn.fetchrow(
-            f"update hrms_leave_policies set {cols}, updated_at=now() where tenant_id=$1 returning *",
-            auth.tenant_id, *fields.values())
-    return LeavePolicyOut(annual_days=p["annual_days"], sick_days=p["sick_days"], casual_days=p["casual_days"])
-
-
-@router.get("/leave/balances", response_model=list[LeaveBalance])
-async def leave_balances(employee_id: str, auth: AuthContext = Depends(require("hrms", "read"))):
-    async with db.tenant_conn(auth.tenant_id) as conn:
-        return await _balances(conn, auth.tenant_id, employee_id)
-
-
-@router.post("/leave/{leave_id}/{decision}", response_model=LeaveOut)
-async def decide_leave(leave_id: str, decision: str,
-                       auth: AuthContext = Depends(require("hrms", "admin"))):
-    """Approval needs hrms:admin — with plain write, anyone who could request
-    leave could approve their own (the audit's separation-of-duties finding)."""
-    if decision not in ("approve", "reject"):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "decision must be approve or reject")
-    new_status: Literal["approved", "rejected"] = "approved" if decision == "approve" else "rejected"
-    async with db.tenant_conn(auth.tenant_id) as conn:
-        # Locked so two approvers can't both decide it.
-        req = await conn.fetchrow("select * from hrms_leave_requests where id=$1 for update", leave_id)
-        if req is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "Leave request not found")
-        if req["status"] != "pending":
-            raise HTTPException(status.HTTP_409_CONFLICT, f"This request was already {req['status']}.")
-        # Decisions for one employee run one at a time: two requests that each
-        # fit the remaining quota must not both pass the balance check below.
-        await conn.execute("select 1 from hrms_employees where id=$1 for update", req["employee_id"])
-        requester = await conn.fetchval(
-            "select user_id from hrms_employees where id=$1", req["employee_id"])
-        if requester is not None and str(requester) == auth.user_id:
-            raise HTTPException(status.HTTP_403_FORBIDDEN,
-                                "You can't decide your own leave — another approver must.")
-
-        # Quota applies to paid leave only: unpaid is already deducted from pay,
-        # and WFH is worked time.
-        if (decision == "approve" and req["request_type"] == "leave"
-                and req["leave_type"] != "unpaid"):
-            balance = next(b for b in await _balances(conn, auth.tenant_id, str(req["employee_id"]))
-                           if b.leave_type == req["leave_type"])
-            off = list(await conn.fetchval(
-                "select weekly_off_days from tenants where id=$1", auth.tenant_id) or [0])
-            requested = await conn.fetchval(_RANGE_DAYS, req["from_date"], req["to_date"], off)
-            if requested > balance.remaining:
-                raise HTTPException(
-                    status.HTTP_409_CONFLICT,
-                    f"That's {requested} working days of {req['leave_type']} leave, but only "
-                    f"{balance.remaining} of {balance.quota} remain this year.")
-
-        await conn.execute(
-            "update hrms_leave_requests set status=$1, decided_by=$2 where id=$3",
-            new_status, auth.user_id, leave_id)
-        # The row diff is audited by trigger; the decision is a semantic event
-        # and an entry on the request's timeline.
-        await audit.track(conn, entity_type="leave_request", entity_id=leave_id, kind=new_status,
-                          event=f"hrms.leave.{decision}")
-        rec = await conn.fetchrow(_LEAVE_SELECT + " where l.id=$1", leave_id)
-    return _leave(rec)
+# Leave (types, requests, the ledger, approvals) is in routers/hrms_leave.py (0068).
 
 
 @router.get("/summary", response_model=HrmsSummary)
@@ -670,36 +472,7 @@ async def summary(auth: AuthContext = Depends(require("hrms", "read"))):
                        on_leave_today=row["on_leave"], pending_leaves=row["pending"])
 
 
-# ── Holidays ────────────────────────────────────────────────────────────────
-@router.get("/holidays", response_model=list[HolidayOut])
-async def list_holidays(auth: AuthContext = Depends(require("hrms", "read"))):
-    async with db.tenant_conn(auth.tenant_id) as conn:
-        rows = await conn.fetch("select * from hrms_holidays order by holiday_date")
-    return [HolidayOut(id=str(r["id"]), holiday_date=r["holiday_date"], name=r["name"]) for r in rows]
-
-
-@router.post("/holidays", response_model=HolidayOut, status_code=status.HTTP_201_CREATED)
-async def create_holiday(body: HolidayCreate, auth: AuthContext = Depends(require("hrms", "write"))):
-    async with db.tenant_conn(auth.tenant_id) as conn:
-        row = await conn.fetchrow(
-            """insert into hrms_holidays (tenant_id, holiday_date, name) values ($1,$2,$3)
-               on conflict (tenant_id, holiday_date) do update set name = excluded.name
-               returning *""",
-            auth.tenant_id, body.holiday_date, body.name)
-    return HolidayOut(id=str(row["id"]), holiday_date=row["holiday_date"], name=row["name"])
-
-
-@router.delete("/holidays/{holiday_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_holiday(holiday_id: str, response: Response,
-                         auth: AuthContext = Depends(require("hrms", "write"))) -> Response:
-    async with db.tenant_conn(auth.tenant_id) as conn:
-        # 404, not a silent 204, for an id this tenant can't see.
-        if await conn.fetchval("delete from hrms_holidays where id=$1 returning id", holiday_id) is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "Holiday not found")
-    # Must set the code on the injected response, as logout/read-all do —
-    # returning it unset yields no status at all.
-    response.status_code = status.HTTP_204_NO_CONTENT
-    return response
+# Holidays and holiday calendars are in routers/hrms_holidays.py (0067).
 
 
 def _payslip(r, month_days: int, pay_date: date, ty: payroll.TaxYear) -> Payslip:
@@ -785,33 +558,7 @@ async def my_attendance(auth: AuthContext = Depends(current_auth),
 # routers/hrms_attendance.py: they run the server-side geofence (D-43).
 
 
-@portal.get("/leave", response_model=list[LeaveOut])
-async def my_leave(auth: AuthContext = Depends(current_auth),
-                   employee_id: str = Depends(current_employee)):
-    async with db.tenant_conn(auth.tenant_id) as conn:
-        rows = await conn.fetch(_LEAVE_SELECT + " where l.employee_id=$1 order by l.created_at desc",
-                                employee_id)
-    return [_leave(r) for r in rows]
-
-
-@portal.get("/leave/balances", response_model=list[LeaveBalance])
-async def my_balances(auth: AuthContext = Depends(current_auth),
-                      employee_id: str = Depends(current_employee)):
-    async with db.tenant_conn(auth.tenant_id) as conn:
-        return await _balances(conn, auth.tenant_id, employee_id)
-
-
-@portal.post("/leave", response_model=LeaveOut, status_code=status.HTTP_201_CREATED)
-async def my_request_leave(body: LeaveCreate, auth: AuthContext = Depends(current_auth),
-                           employee_id: str = Depends(current_employee)):
-    """An employee requests their own leave. The employee_id in the body is
-    ignored — it is forced to the caller, so nobody can file against someone
-    else. Approval still belongs to an admin (hrms:admin)."""
-    # Direct call, not the HTTP route: this bypasses the hrms:write guard on
-    # purpose (the employee has no such permission) — /me is guarded by
-    # current_employee instead. The employee_id is forced to the caller.
-    forced = body.model_copy(update={"employee_id": employee_id})
-    return await create_leave(forced, auth)
+# The employee's own leave (/me/leave…) is in routers/hrms_leave.py (0068).
 
 
 @portal.get("/payslips", response_model=list[Payslip])

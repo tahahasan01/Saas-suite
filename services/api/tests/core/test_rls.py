@@ -133,6 +133,7 @@ def _value(typ: str) -> str:
 _SHAPED = {
     "auth_tokens": {"token_hash": lambda: uuid.uuid4().hex * 2},
     "outbox": {"kind": lambda: "rls.test_" + uuid.uuid4().hex[:8].translate(str.maketrans("0123456789", "ghijklmnop"))},
+    "hrms_leave_types": {"code": lambda: "rls_" + uuid.uuid4().hex[:12]},   # a lower-case code (0068)
 }
 
 

@@ -36,13 +36,14 @@ async def update_shift_policy(shift_id: str, body: ShiftPolicyUpdate,
     """Auto check-out and overtime threshold. Like the rest of a shift's
     rules they move pay, so this is hrms admin (hrms.shift.manage)."""
     fields = body.model_dump(exclude_none=True)
-    if not fields:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Nothing to update")
-    cols = ", ".join(f"{k}=${i + 2}" for i, k in enumerate(fields))
     async with db.tenant_conn(auth.tenant_id) as conn:
+        # 404 for a shift this tenant can't see, before anything else.
+        if await conn.fetchval("select 1 from hrms_shifts where id=$1", shift_id) is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Shift not found")
+        if not fields:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Nothing to update")
+        cols = ", ".join(f"{k}=${i + 2}" for i, k in enumerate(fields))
         row = await conn.fetchrow(f"update hrms_shifts set {cols} where id=$1 returning *", shift_id, *fields.values())
-    if row is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Shift not found")
     return _shift_out(row)
 
 

@@ -19,7 +19,7 @@ from .routers import (
     ai, auth, billing, crm, dashboard, entitlements, fbr, hrms, invoices, meta, notifications, pos,
     team, terminology, workflows,
 )
-from .routers import hrms_attendance, hrms_kiosk, hrms_org
+from .routers import hrms_attendance, hrms_holidays, hrms_kiosk, hrms_leave, hrms_org
 
 # JSON logs with request/tenant context and PII redaction; Sentry if SENTRY_DSN (app/obs.py).
 obs.setup_logging("api")
@@ -87,6 +87,9 @@ app.include_router(hrms_attendance.router)
 app.include_router(hrms_attendance.portal)
 app.include_router(hrms_kiosk.router)
 app.include_router(hrms_kiosk.device)
+app.include_router(hrms_holidays.router)
+app.include_router(hrms_leave.router)
+app.include_router(hrms_leave.portal)
 
 
 @app.exception_handler(asyncpg.DataError)
