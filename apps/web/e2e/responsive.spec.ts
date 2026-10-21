@@ -9,6 +9,8 @@ const ROUTES = [
   "/hrms", "/hrms/attendance", "/hrms/leave", "/hrms/holidays", "/hrms/payroll",
   "/settings/team", "/settings/sections", "/settings/billing", "/settings/fbr",
   "/", "/pricing",
+  // crm v2 (3B)
+  "/my-day", "/crm/reports", "/crm/settings",
 ];
 // No app shell on these, so ready() waits for their heading instead of #main.
 const PUBLIC = new Set(["/", "/pricing"]);
