@@ -13,11 +13,12 @@ import { formatDay } from "@/lib/format";
 import { errorText, useAction } from "@/lib/useAction";
 import { useConfirm } from "@/components/Confirm";
 import { ExpiryBadge } from "@/components/hrms/ExpiryBadge";
+import { PayrollDetailsCard } from "@/components/hrms/PayrollDetailsCard";
 import { Badge, Button, Card, ErrorState, Field, Input, LoadingRows, Select } from "@/components/ui";
 
 /* One employee: details, their place in the org, kiosk PIN, documents with
-   expiry, and leave balances. Payroll identity (bank, IBAN, NTN, EOBI and
-   social security numbers) is payroll's card, mounted below at integration. */
+   expiry, leave balances and payroll identity (bank, IBAN, NTN, EOBI and
+   social security numbers, masked for HR without pay access). */
 
 const TYPE_LABEL: Record<(typeof EMPLOYMENT_TYPES)[number], string> = {
   permanent: "Permanent", contract: "Contract", probation: "On probation", daily_wage: "Daily wage", intern: "Intern",
@@ -58,7 +59,7 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
         <div className="space-y-5">
           <Balances employeeId={p.id} />
           <Can perm="hrms.employee.update"><KioskPin p={p} onSaved={load} /></Can>
-          {/* PayrollDetailsCard (bank, IBAN, NTN, EOBI, SS numbers) mounts here at integration. */}
+          <PayrollDetailsCard employeeId={p.id} />
         </div>
       </div>
     </div>
