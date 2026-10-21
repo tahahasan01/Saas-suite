@@ -28,8 +28,17 @@ FINAL = ("approved", "paid", "locked")   # run statuses whose payslips count as 
 # check-in and no approved leave. (Moved here unchanged from routers/hrms.py.)
 # $1 = first day of the month, $2 = the tenant's weekly rest days (ISO dow),
 # $3 = employee ids (null = every active employee).
+# Paid, unpaid and WFH come from the request's leave type (0068: tenants define
+# their own types); only a request without a type falls back to the old codes.
 _ABSENCE = """
-with working_days as (
+with leave as (
+  select l.employee_id, l.from_date, l.to_date,
+         coalesce(lt.counts_as = 'wfh', l.request_type = 'wfh') as is_wfh,
+         coalesce(lt.paid, l.leave_type <> 'unpaid') as is_paid
+    from hrms_leave_requests l left join hrms_leave_types lt on lt.id = l.leave_type_id
+   where l.status = 'approved'
+),
+working_days as (
   select d::date as day
     from generate_series($1::date,
                          ($1::date + interval '1 month' - interval '1 day')::date,
@@ -57,28 +66,25 @@ select e.id,
        (select count(distinct a.work_date) from hrms_attendance a
          where a.employee_id = e.id and a.status = 'half_day'
            and a.work_date in (select day from working_days)
-           and not exists (select 1 from hrms_leave_requests l
-                            where l.employee_id = e.id and l.status = 'approved'
+           and not exists (select 1 from leave l
+                            where l.employee_id = e.id
                               and a.work_date between l.from_date and l.to_date)) as half_days,
        (select count(*) from working_days w
          where w.day < current_date
-           and exists (select 1 from hrms_leave_requests l
-                        where l.employee_id = e.id and l.status = 'approved'
-                          and l.request_type = 'leave' and l.leave_type <> 'unpaid'
+           and exists (select 1 from leave l
+                        where l.employee_id = e.id and not l.is_wfh and l.is_paid
                           and w.day between l.from_date and l.to_date)) as paid_leave_days,
        (select count(*) from working_days w
          where w.day < current_date
-           and exists (select 1 from hrms_leave_requests l
-                        where l.employee_id = e.id and l.status = 'approved'
-                          and l.request_type = 'leave' and l.leave_type = 'unpaid'
+           and exists (select 1 from leave l
+                        where l.employee_id = e.id and not l.is_wfh and not l.is_paid
                           and w.day between l.from_date and l.to_date)) as unpaid_leave_days,
        -- Approved WFH is time worked. It counts toward presence and is never
-       -- deducted; the `request_type` filters above keep it out of leave.
+       -- deducted; the `is_wfh` filters above keep it out of leave.
        (select count(*) from working_days w
          where w.day < current_date
-           and exists (select 1 from hrms_leave_requests l
-                        where l.employee_id = e.id and l.status = 'approved'
-                          and l.request_type = 'wfh'
+           and exists (select 1 from leave l
+                        where l.employee_id = e.id and l.is_wfh
                           and w.day between l.from_date and l.to_date)) as wfh_days
   from hrms_employees e
  where e.status = 'active' and ($3::uuid[] is null or e.id = any($3::uuid[]))

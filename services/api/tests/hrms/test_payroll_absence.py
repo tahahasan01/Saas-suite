@@ -132,3 +132,26 @@ async def test_week_matrix_marks_today_pending_not_absent(client, tenant):
     # The last column is today; nobody has checked in, but the day isn't over.
     for emp in week["employees"]:
         assert emp["cells"][-1] in ("pending", "off", "holiday", "none")
+
+
+async def test_a_tenants_own_unpaid_leave_type_is_deducted(client, tenant):
+    """Leave v2 (0068) lets a tenant define its own types: whether a day is
+    paid comes from the type's `paid` flag, never from its code being 'unpaid'."""
+    day = date.today() - timedelta(days=1)
+    while day.weekday() == 6:  # the default weekly off
+        day -= timedelta(days=1)
+    if day.month != date.today().month:
+        return  # no completed working day yet this month to judge
+    r = await client.post("/hrms/leave-types", json={
+        "code": "lwp", "name": "Leave without pay", "paid": False, "requires_balance": False,
+        "approval": "none"})
+    assert r.status_code == 201, r.text
+    r = await client.post("/hrms/leave", json={"employee_id": tenant.employee_id, "leave_type": "lwp",
+                                               "from_date": day.isoformat(), "to_date": day.isoformat()})
+    assert r.status_code == 201, r.text
+    assert r.json()["status"] == "approved"
+
+    slip = await _payslip(client, tenant.employee_id)
+    assert slip["unpaid_leave_days"] == 1
+    assert slip["paid_leave_days"] == 0
+    assert slip["absence_deduction_minor"] > 0
