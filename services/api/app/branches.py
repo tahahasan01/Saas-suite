@@ -26,6 +26,7 @@ TRANSACTIONAL_TABLES: tuple[str, ...] = (
     # Phase 3 Wave 1 (0073)
     "activities", "hrms_attendance_corrections", "payroll_runs",
     "invoices",   # 0074
+    "pos_stock_moves",   # 0075
 )
 # Shared masters: branch_id nullable (null = every branch).
 MASTER_TABLES: tuple[str, ...] = ("pos_products", "hrms_locations", "hrms_departments", "hrms_kiosks")

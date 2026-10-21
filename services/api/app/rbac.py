@@ -104,6 +104,8 @@ register("products", {
     "products.product.export": ("pos", "read"),
     # Cost price is a field guard (TR-SEC-32): who may see margins.
     "products.cost.read": ("pos", "admin"),
+    "products.cost.update": ("pos", "admin"),     # change what was paid, not just see it (0075)
+    "products.stock.adjust": ("pos", "admin"),    # shrinkage and counts are a manager's call
 })
 register("purchasing", {
     "purchasing.po.read": ("pos", "read"),

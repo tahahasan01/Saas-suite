@@ -44,17 +44,18 @@ async def _sell(client, product_id: str, qty: float = 1):
 
 # ── Categories ───────────────────────────────────────────────────────────────
 async def test_categories_are_records_and_a_name_finds_or_creates_one(client, pos_tenant):
-    r = await client.post("/pos/categories", json={"name": "Beverages"})
+    r = await client.post("/pos/categories", json={"name": "Frozen Foods"})
     assert r.status_code == 201, r.text
     cat = r.json()
     p = await _product(client, category_id=cat["id"])
-    assert p["category_id"] == cat["id"] and p["category"] == "Beverages"
+    assert p["category_id"] == cat["id"] and p["category"] == "Frozen Foods"
     # The till's old free-text category lands on the same record.
-    q = await _product(client, category="beverages")
+    q = await _product(client, category="frozen foods")
     assert q["category_id"] == cat["id"]
     listed = (await client.get(f"/pos/products?category_id={cat['id']}")).json()
     assert {x["id"] for x in listed} == {p["id"], q["id"]}
-    assert any(c["name"] == "Beverages" for c in (await client.get("/pos/categories")).json())
+    assert any(c["name"] == "Frozen Foods" for c in (await client.get("/pos/categories")).json())
+    assert (await client.post("/pos/categories", json={"name": "frozen foods"})).status_code == 409
 
 
 async def test_existing_text_categories_became_records(client, pos_tenant):

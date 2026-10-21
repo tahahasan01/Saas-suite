@@ -3267,6 +3267,22 @@
             }
           },
           {
+            "name": "category_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category Id"
+            }
+          },
+          {
             "name": "limit",
             "in": "query",
             "required": false,
@@ -3403,6 +3419,7 @@
           "pos"
         ],
         "summary": "Lookup",
+        "description": "What the scanner read: the product and how much one scan counts as (a\ncarton barcode, or a weight/price label from a scale).",
         "operationId": "lookup_pos_products_lookup_get",
         "parameters": [
           {
@@ -17336,6 +17353,746 @@
           }
         }
       }
+    },
+    "/pos/categories": {
+      "get": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "List Categories",
+        "operationId": "list_categories_pos_categories_get",
+        "parameters": [
+          {
+            "name": "include_retired",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Retired"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CategoryOut"
+                  },
+                  "title": "Response List Categories Pos Categories Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Create Category",
+        "operationId": "create_category_pos_categories_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CategoryIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pos/categories/{category_id}": {
+      "patch": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Update Category",
+        "operationId": "update_category_pos_categories__category_id__patch",
+        "parameters": [
+          {
+            "name": "category_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Category Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CategoryUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pos/products/{product_id}/variants": {
+      "get": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Variants",
+        "description": "The product's group: the group's first product and everything pointing at it.",
+        "operationId": "variants_pos_products__product_id__variants_get",
+        "parameters": [
+          {
+            "name": "product_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Product Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProductOut"
+                  },
+                  "title": "Response Variants Pos Products  Product Id  Variants Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pos/products/{product_id}/barcodes": {
+      "get": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "List Barcodes",
+        "operationId": "list_barcodes_pos_products__product_id__barcodes_get",
+        "parameters": [
+          {
+            "name": "product_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Product Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BarcodeOut"
+                  },
+                  "title": "Response List Barcodes Pos Products  Product Id  Barcodes Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Add Barcode",
+        "operationId": "add_barcode_pos_products__product_id__barcodes_post",
+        "parameters": [
+          {
+            "name": "product_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Product Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BarcodeIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BarcodeOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pos/products/{product_id}/barcodes/{barcode_id}": {
+      "delete": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Remove Barcode",
+        "operationId": "remove_barcode_pos_products__product_id__barcodes__barcode_id__delete",
+        "parameters": [
+          {
+            "name": "product_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Product Id"
+            }
+          },
+          {
+            "name": "barcode_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Barcode Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pos/barcode-rules": {
+      "get": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "List Rules",
+        "operationId": "list_rules_pos_barcode_rules_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RuleOut"
+                  },
+                  "title": "Response List Rules Pos Barcode Rules Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Add Rule",
+        "operationId": "add_rule_pos_barcode_rules_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pos/barcode-rules/{rule_id}": {
+      "delete": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Remove Rule",
+        "operationId": "remove_rule_pos_barcode_rules__rule_id__delete",
+        "parameters": [
+          {
+            "name": "rule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Rule Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pos/stock/adjustments": {
+      "post": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Adjust",
+        "operationId": "adjust_pos_stock_adjustments_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdjustmentIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdjustmentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pos/stock/moves": {
+      "get": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Moves",
+        "operationId": "moves_pos_stock_moves_get",
+        "parameters": [
+          {
+            "name": "product_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Product Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MoveOut"
+                  },
+                  "title": "Response Moves Pos Stock Moves Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -18166,6 +18923,61 @@
         "type": "object",
         "title": "AddressUpdate"
       },
+      "AdjustmentIn": {
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Product Id"
+          },
+          "qty_delta": {
+            "type": "number",
+            "maximum": 1000000.0,
+            "minimum": -1000000.0,
+            "title": "Qty Delta"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "adjustment",
+              "damage",
+              "count"
+            ],
+            "title": "Reason"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "product_id",
+          "qty_delta",
+          "reason"
+        ],
+        "title": "AdjustmentIn"
+      },
+      "AdjustmentOut": {
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "title": "Product Id"
+          },
+          "stock_qty": {
+            "type": "number",
+            "title": "Stock Qty"
+          }
+        },
+        "type": "object",
+        "required": [
+          "product_id",
+          "stock_qty"
+        ],
+        "title": "AdjustmentOut"
+      },
       "AdvanceIn": {
         "properties": {
           "employee_id": {
@@ -18538,6 +19350,61 @@
           "invalid_phones"
         ],
         "title": "BackfillReport"
+      },
+      "BarcodeIn": {
+        "properties": {
+          "barcode": {
+            "type": "string",
+            "pattern": "^[0-9A-Za-z-]{3,40}$",
+            "title": "Barcode"
+          },
+          "qty": {
+            "type": "number",
+            "maximum": 100000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Qty",
+            "default": 1
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 60,
+            "title": "Label",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "barcode"
+        ],
+        "title": "BarcodeIn"
+      },
+      "BarcodeOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "barcode": {
+            "type": "string",
+            "title": "Barcode"
+          },
+          "qty": {
+            "type": "number",
+            "title": "Qty"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "barcode",
+          "qty",
+          "label"
+        ],
+        "title": "BarcodeOut"
       },
       "BillingOut": {
         "properties": {
@@ -19223,6 +20090,100 @@
           "keys"
         ],
         "title": "CatalogModule"
+      },
+      "CategoryIn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "position": {
+            "type": "integer",
+            "title": "Position",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "CategoryIn"
+      },
+      "CategoryOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "position": {
+            "type": "integer",
+            "title": "Position"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          },
+          "product_count": {
+            "type": "integer",
+            "title": "Product Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "position",
+          "active",
+          "product_count"
+        ],
+        "title": "CategoryOut"
+      },
+      "CategoryUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          },
+          "active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active"
+          }
+        },
+        "type": "object",
+        "title": "CategoryUpdate"
       },
       "CheckInRequest": {
         "properties": {
@@ -26998,6 +27959,74 @@
         ],
         "title": "ModuleOut"
       },
+      "MoveOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "product_id": {
+            "type": "string",
+            "title": "Product Id"
+          },
+          "product_name": {
+            "type": "string",
+            "title": "Product Name"
+          },
+          "qty_delta": {
+            "type": "number",
+            "title": "Qty Delta"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "ref_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ref Id"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          },
+          "user_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Name"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "product_id",
+          "product_name",
+          "qty_delta",
+          "reason",
+          "ref_id",
+          "note",
+          "user_name",
+          "created_at"
+        ],
+        "title": "MoveOut"
+      },
       "NoteCreate": {
         "properties": {
           "body": {
@@ -28531,6 +29560,43 @@
             "type": "string",
             "title": "Fbr Uom",
             "default": "Numbers, pieces, units"
+          },
+          "category_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
+          },
+          "track_stock": {
+            "type": "boolean",
+            "title": "Track Stock",
+            "default": true
+          },
+          "group_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Id"
+          },
+          "attributes": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "maxProperties": 10,
+            "title": "Attributes"
           }
         },
         "type": "object",
@@ -28570,7 +29636,14 @@
             "title": "Price Minor"
           },
           "cost_minor": {
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Cost Minor"
           },
           "stock_qty": {
@@ -28599,6 +29672,51 @@
             "type": "string",
             "title": "Fbr Uom",
             "default": "Numbers, pieces, units"
+          },
+          "category_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
+          },
+          "track_stock": {
+            "type": "boolean",
+            "title": "Track Stock",
+            "default": true
+          },
+          "group_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Id"
+          },
+          "attributes": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Attributes"
+          },
+          "scan_qty": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scan Qty"
           }
         },
         "type": "object",
@@ -28765,6 +29883,56 @@
               }
             ],
             "title": "Fbr Uom"
+          },
+          "category_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
+          },
+          "track_stock": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Track Stock"
+          },
+          "group_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Id"
+          },
+          "attributes": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object",
+                "maxProperties": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attributes"
           }
         },
         "additionalProperties": false,
@@ -29728,6 +30896,81 @@
         },
         "type": "object",
         "title": "RoleV2Update"
+      },
+      "RuleIn": {
+        "properties": {
+          "prefix": {
+            "type": "string",
+            "pattern": "^2[0-9]$",
+            "title": "Prefix"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "weight",
+              "price"
+            ],
+            "title": "Kind"
+          },
+          "value_decimals": {
+            "type": "integer",
+            "maximum": 3.0,
+            "minimum": 0.0,
+            "title": "Value Decimals",
+            "default": 3
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "prefix",
+          "kind"
+        ],
+        "title": "RuleIn"
+      },
+      "RuleOut": {
+        "properties": {
+          "prefix": {
+            "type": "string",
+            "pattern": "^2[0-9]$",
+            "title": "Prefix"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "weight",
+              "price"
+            ],
+            "title": "Kind"
+          },
+          "value_decimals": {
+            "type": "integer",
+            "maximum": 3.0,
+            "minimum": 0.0,
+            "title": "Value Decimals",
+            "default": 3
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active",
+            "default": true
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "prefix",
+          "kind",
+          "id"
+        ],
+        "title": "RuleOut"
       },
       "RunAction": {
         "properties": {

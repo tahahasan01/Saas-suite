@@ -10,7 +10,7 @@ from decimal import Decimal
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 
-from .. import audit, csv_io, db, fbr, fbr_submit, pricing, refs
+from .. import audit, catalog, csv_io, db, fbr, fbr_submit, field_guards, pricing, rbac, refs
 from ..deps import AuthContext
 from ..models import (
     DrawerClose,
@@ -62,12 +62,21 @@ where p.active
 router = APIRouter(prefix="/pos", tags=["pos"])
 
 
-def _product(r: asyncpg.Record) -> ProductOut:
-    return ProductOut(
-        id=str(r["id"]), name=r["name"], sku=r["sku"], barcode=r["barcode"], category=r["category"],
-        unit=r["unit"], price_minor=r["price_minor"], cost_minor=r["cost_minor"],
-        stock_qty=float(r["stock_qty"]), low_stock_at=float(r["low_stock_at"]), active=r["active"],
-        hs_code=r["hs_code"], tax_rate=float(r["tax_rate"]), fbr_uom=r["fbr_uom"])
+def _product(r: asyncpg.Record, held: dict[str, str], scan_qty: float | None = None) -> ProductOut:
+    """A product as the caller may see it: cost only with products.cost.read."""
+    out = field_guards.redact("products.product", {
+        "id": str(r["id"]), "name": r["name"], "sku": r["sku"], "barcode": r["barcode"], "category": r["category"],
+        "unit": r["unit"], "price_minor": r["price_minor"], "cost_minor": r["cost_minor"],
+        "stock_qty": float(r["stock_qty"]), "low_stock_at": float(r["low_stock_at"]), "active": r["active"],
+        "hs_code": r["hs_code"], "tax_rate": float(r["tax_rate"]), "fbr_uom": r["fbr_uom"],
+        "category_id": str(r["category_id"]) if r["category_id"] else None, "track_stock": r["track_stock"],
+        "group_id": str(r["group_id"]) if r["group_id"] else None, "attributes": dict(r["attributes"] or {}),
+    }, held)
+    return ProductOut(**{"cost_minor": None, **out}, scan_qty=scan_qty)
+
+
+async def _held(conn, auth: AuthContext) -> dict[str, str]:
+    return dict(await rbac.effective_permissions(conn, auth.tenant_id, auth.role_id, auth.user_id))
 
 
 # Search: name/SKU/barcode/HS code fragments. The barcode equality keeps the
@@ -80,9 +89,10 @@ _PRODUCT_WHERE = """(active or $1)
 
 @router.get("/products", response_model=list[ProductOut])
 async def list_products(response: Response, q: str | None = None, include_archived: bool = False,
+                        category_id: str | None = None,
                         limit: int | None = Query(None, ge=1, le=500),
                         offset: int = Query(0, ge=0),
-                        auth: AuthContext = Depends(require("pos", "read"))):
+                        auth: AuthContext = Depends(perm("products.product.read"))):
     """One page of the catalog; `X-Total-Count` is how many match in all.
 
     Archived products stay listable behind a flag — otherwise archiving is a
@@ -98,49 +108,83 @@ async def list_products(response: Response, q: str | None = None, include_archiv
         limit = 50 if q else 200
     async with db.tenant_conn(auth.tenant_id) as conn:
         total = await conn.fetchval(
-            f"select count(*) from pos_products where {_PRODUCT_WHERE}", include_archived, q)
+            f"""select count(*) from pos_products
+                 where {_PRODUCT_WHERE} and ($3::uuid is null or category_id = $3)""",
+            include_archived, q, category_id)
         rows = await conn.fetch(
-            f"""select * from pos_products where {_PRODUCT_WHERE}
+            f"""select * from pos_products where {_PRODUCT_WHERE} and ($5::uuid is null or category_id = $5)
                 order by active desc, name, id limit $3 offset $4""",
-            include_archived, q, limit, offset)
+            include_archived, q, limit, offset, category_id)
+        held = await _held(conn, auth)
     response.headers["X-Total-Count"] = str(total)
-    return [_product(r) for r in rows]
+    return [_product(r, held) for r in rows]
 
 
 @router.get("/products/lookup", response_model=ProductOut)
-async def lookup(barcode: str, auth: AuthContext = Depends(require("pos", "read"))):
+async def lookup(barcode: str, auth: AuthContext = Depends(perm("products.product.read"))):
+    """What the scanner read: the product and how much one scan counts as (a
+    carton barcode, or a weight/price label from a scale)."""
     async with db.tenant_conn(auth.tenant_id) as conn:
-        row = await conn.fetchrow("select * from pos_products where barcode=$1 and active", barcode)
-    if row is None:
+        found = await catalog.scan(conn, barcode)
+        held = await _held(conn, auth)
+    if found is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No product with that barcode")
-    return _product(row)
+    row, qty = found
+    return _product(row, held, scan_qty=float(qty))
 
 
 @router.post("/products", response_model=ProductOut, status_code=status.HTTP_201_CREATED)
-async def create_product(body: ProductCreate, auth: AuthContext = Depends(require("pos", "write"))):
+async def create_product(body: ProductCreate, auth: AuthContext = Depends(perm("products.product.create"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
+        held = await _held(conn, auth)
+        if body.cost_minor:
+            field_guards.check_write("products.product", ["cost_minor"], held)
+        category_id, label = await catalog.category_for(conn, auth.tenant_id, category_id=body.category_id,
+                                                        name=body.category)
+        await catalog.ensure_group(conn, body.group_id)
         row = await conn.fetchrow(
             """insert into pos_products (tenant_id, name, sku, barcode, category, unit, price_minor,
-                                         cost_minor, stock_qty, low_stock_at, hs_code, tax_rate, fbr_uom)
-               values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) returning *""",
-            auth.tenant_id, body.name, body.sku, body.barcode, body.category, body.unit,
-            body.price_minor, body.cost_minor, body.stock_qty, body.low_stock_at,
-            body.hs_code, body.tax_rate, body.fbr_uom)
-    return _product(row)
+                                         cost_minor, stock_qty, low_stock_at, hs_code, tax_rate, fbr_uom,
+                                         category_id, track_stock, group_id, attributes)
+               values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) returning *""",
+            auth.tenant_id, body.name, body.sku, body.barcode, label, body.unit,
+            body.price_minor, body.cost_minor, body.stock_qty if body.track_stock else 0, body.low_stock_at,
+            body.hs_code, body.tax_rate, body.fbr_uom, category_id, body.track_stock, body.group_id,
+            body.attributes)
+        await catalog.opening(conn, auth.tenant_id, row["id"], body.stock_qty, auth.user_id)
+    return _product(row, held)
 
 
 @router.patch("/products/{product_id}", response_model=ProductOut)
-async def update_product(product_id: str, body: ProductUpdate, auth: AuthContext = Depends(require("pos", "write"))):
+async def update_product(product_id: str, body: ProductUpdate,
+                         auth: AuthContext = Depends(perm("products.product.update"))):
     fields = body.model_dump(exclude_none=True)
     if not fields:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Nothing to update")
     async with db.tenant_conn(auth.tenant_id) as conn:
-        cols = ", ".join(f"{k}=${i+2}" for i, k in enumerate(fields))
-        row = await conn.fetchrow(
-            f"update pos_products set {cols}, updated_at=now() where id=$1 returning *", product_id, *fields.values())
+        held = await _held(conn, auth)
+        field_guards.check_write("products.product", fields, held)
+        if "category_id" in fields or "category" in fields:
+            fields["category_id"], fields["category"] = await catalog.category_for(
+                conn, auth.tenant_id, category_id=fields.get("category_id"), name=fields.get("category"))
+        if "group_id" in fields:
+            await catalog.ensure_group(conn, fields["group_id"])
+        # Setting stock on hand is a count: it goes through the ledger.
+        counted = fields.pop("stock_qty", None)
+        if fields:
+            cols = ", ".join(f"{k}=${i+2}" for i, k in enumerate(fields))
+            row = await conn.fetchrow(
+                f"update pos_products set {cols}, updated_at=now() where id=$1 returning *", product_id,
+                *fields.values())
+        else:
+            row = await conn.fetchrow("select * from pos_products where id=$1", product_id)
         if row is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Product not found")
-    return _product(row)
+        if counted is not None and row["track_stock"]:
+            await catalog.move(conn, auth.tenant_id, product_id, Decimal(str(counted)) - Decimal(row["stock_qty"]),
+                               "count", note="Stock set on the product", user_id=auth.user_id, allow_negative=True)
+            row = await conn.fetchrow("select * from pos_products where id=$1", product_id)
+    return _product(row, held)
 
 
 def _fingerprint(body: SaleCreate) -> str:
@@ -298,7 +342,8 @@ async def _record_sale(body: SaleCreate, auth: AuthContext, fingerprint: str) ->
                 pl.excl_minor, p["hs_code"] or "", p["fbr_uom"],
                 # The rate that applied: none while tax is off, whatever the product says.
                 (p["tax_rate"] or 0) if fbr_on else 0, inclusive)
-            await conn.execute("update pos_products set stock_qty = stock_qty - $1 where id=$2", qty, p["id"])
+            await catalog.move(conn, auth.tenant_id, p["id"], -Decimal(str(qty)), "sale", ref_id=sale_id,
+                               user_id=auth.user_id)
             items.append(SaleItemOut(name=p["name"], qty=qty, price_minor=p["price_minor"],
                                      line_total_minor=pl.gross_minor))
         sale = await conn.fetchrow("select * from pos_sales where id=$1", sale_id)
@@ -424,12 +469,12 @@ async def receive_po(po_id: str, body: PoReceive, auth: AuthContext = Depends(re
             if line["product_id"]:
                 # Last-cost costing: the price you actually just paid.
                 await conn.execute(
-                    """update pos_products
-                          set stock_qty = stock_qty + $1,
-                              cost_minor = case when $2 > 0 then $2 else cost_minor end,
-                              updated_at = now()
-                        where id=$3""",
-                    want.qty, line["cost_minor"], line["product_id"])
+                    """update pos_products set cost_minor = case when $1 > 0 then $1 else cost_minor end,
+                                              updated_at = now()
+                        where id=$2""",
+                    line["cost_minor"], line["product_id"])
+                await catalog.move(conn, auth.tenant_id, line["product_id"], Decimal(str(want.qty)), "purchase",
+                                   ref_id=po_id, user_id=auth.user_id)
 
         done = await conn.fetchval(
             "select bool_and(received_qty >= qty) from pos_po_items where po_id=$1", po_id)
@@ -573,15 +618,17 @@ async def import_products(request: Request, skip_duplicates: bool = True,
                 skipped += 1
                 continue
             tax_rate = min(100.0, max(0.0, csv_io.parse_number(row.get("tax_rate", ""))))
-            await conn.execute(
+            category_id, label = await catalog.category_for(conn, auth.tenant_id, name=row.get("category", ""))
+            stock = csv_io.parse_number(row.get("stock", ""))
+            pid = await conn.fetchval(
                 """insert into pos_products (tenant_id, name, sku, barcode, category, price_minor,
-                                             cost_minor, stock_qty, hs_code, tax_rate)
-                   values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)""",
-                auth.tenant_id, name, sku, barcode, row.get("category", ""),
+                                             cost_minor, stock_qty, hs_code, tax_rate, category_id)
+                   values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning id""",
+                auth.tenant_id, name, sku, barcode, label,
                 csv_io.parse_money_minor(row.get("price", "")),
                 csv_io.parse_money_minor(row.get("cost", "")),
-                csv_io.parse_number(row.get("stock", "")),
-                row.get("hs_code", ""), tax_rate)
+                stock, row.get("hs_code", ""), tax_rate, category_id)
+            await catalog.opening(conn, auth.tenant_id, pid, stock, auth.user_id)
             created += 1
     return ImportResult(created=created, skipped_duplicates=skipped, errors=errors[:50])
 
@@ -731,8 +778,8 @@ async def create_return(sale_id: str, body: ReturnCreate,
                 auth.tenant_id, return_id, row["sale_item_id"], row["product_id"], row["name"], qty, line_refund)
             # Damaged goods come back to the shop but not to the shelf.
             if body.restock and row["product_id"]:
-                await conn.execute("update pos_products set stock_qty = stock_qty + $1 where id=$2",
-                                   qty, row["product_id"])
+                await catalog.move(conn, auth.tenant_id, row["product_id"], Decimal(str(qty)), "return",
+                                   ref_id=return_id, user_id=auth.user_id)
             items.append(ReturnItemOut(name=row["name"], qty=qty, line_refund_minor=line_refund))
 
         outbox_id = None

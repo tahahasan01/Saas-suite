@@ -94,6 +94,8 @@ export const PERMISSION_KEYS = [
   "products.product.import",
   "products.product.export",
   "products.cost.read",
+  "products.cost.update",
+  "products.stock.adjust",
   // purchasing
   "purchasing.po.read",
   "purchasing.po.create",
@@ -501,7 +503,8 @@ export interface Product {
   category: string;
   unit: string;
   price_minor: number;
-  cost_minor: number;
+  /** Null when the caller may not see cost (products.cost.read). */
+  cost_minor: number | null;
   stock_qty: number;
   low_stock_at: number;
   active: boolean;
@@ -511,6 +514,14 @@ export interface Product {
   tax_rate: number;
   /** Unit of measurement from FBR's reference list (distinct from `unit`). */
   fbr_uom: string;
+  category_id: string | null;
+  /** False for a service: it never runs out. */
+  track_stock: boolean;
+  /** Variants share a group: the group's first product. */
+  group_id: string | null;
+  attributes: Record<string, string>;
+  /** Set by a barcode lookup: how much one scan counts as (a carton, a weight). */
+  scan_qty: number | null;
 }
 
 export interface SaleItem {

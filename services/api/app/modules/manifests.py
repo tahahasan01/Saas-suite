@@ -46,7 +46,7 @@ _MANIFESTS = [
         "products", "Products", "Your catalogue, prices and stock.",
         depends=("core",),
         field_guards=(FieldGuard("products.product", "cost_minor", "products.cost.read",
-                                 "products.product.update"),),
+                                 "products.cost.update"),),
     ),
     ModuleSpec(
         "crm", "Sales / CRM", "Leads, pipeline, follow-ups and invoice requests.",

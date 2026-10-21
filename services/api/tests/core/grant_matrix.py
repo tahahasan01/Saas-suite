@@ -145,12 +145,17 @@ APP_USER: dict[str, set[str]] = {
     "invoices":             {S, I, U},
     "invoice_lines":        {S, I, D},          # replaced wholesale while editable
     "invoice_payments":     {S, I},             # append-only
+    # catalog v2 and stock (0075)
+    "pos_categories":       {S, I, U},          # retired, never deleted
+    "pos_product_barcodes": {S, I, D},
+    "pos_barcode_rules":    {S, I, U, D},
+    "pos_stock_moves":      {S, I},             # append-only ledger
 }
 
 # Column-level grants don't appear in role_table_grants, so they are pinned
 # here and checked by tests/core/test_company_settings.py.
 APP_USER_COLUMN_UPDATES: dict[str, set[str]] = {
-    "tenants": {"name", "timezone", "fy_start_month", "updated_at"},
+    "tenants": {"name", "timezone", "fy_start_month", "updated_at", "allow_negative_stock"},
     "crm_invoice_requests": {"contact_id"},     # v1 is read-only; merges re-point (0074)
 }
 

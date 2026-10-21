@@ -101,6 +101,9 @@ ENUM_COLUMNS = {
     ("invoices", "kind"): models.INVOICE_KINDS,
     ("invoices", "status"): models.INVOICE_STATUSES,
     ("invoice_payments", "method"): models.INVOICE_PAYMENT_METHODS,
+    # catalog v2 and stock (0075)
+    ("pos_barcode_rules", "kind"): models.BARCODE_RULE_KINDS,
+    ("pos_stock_moves", "reason"): models.STOCK_MOVE_REASONS,
     # payroll (3F)
     ("hrms_compensation", "reason"): models.COMPENSATION_REASONS,
     ("hrms_employees", "payment_mode"): models.PAYMENT_MODES,

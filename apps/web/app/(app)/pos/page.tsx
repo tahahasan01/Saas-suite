@@ -125,12 +125,13 @@ export default function PosBilling() {
     () => (category && !q ? (results ?? []).filter((p) => p.category === category) : results ?? []),
     [results, category, q]);
 
-  const add = useCallback((p: Product): boolean => {
+  // `by`: what one scan counts as — a carton barcode adds 12, a scale label its weight.
+  const add = useCallback((p: Product, by = 1): boolean => {
     if (lockedRef.current) return false;
     setCart((c) => {
       const i = c.findIndex((l) => l.product.id === p.id);
-      if (i >= 0) return c.map((l, j) => (j === i ? { ...l, qty: l.qty + 1 } : l));
-      return [...c, { product: p, qty: 1 }];
+      if (i >= 0) return c.map((l, j) => (j === i ? { ...l, qty: Math.round((l.qty + by) * 1000) / 1000 } : l));
+      return [...c, { product: p, qty: by }];
     });
     return true;
   }, []);
@@ -149,9 +150,9 @@ export default function PosBilling() {
   }, [refocusAfterTap]);
 
   function addScanned(p: Product, code: string) {
-    if (!add(p)) { setScanMsg(LOCKED_MSG); return; }
+    if (!add(p, p.scan_qty ?? 1)) { setScanMsg(LOCKED_MSG); return; }
     // The item is in the cashier's hand, so the count is what's wrong.
-    setScanMsg(p.stock_qty <= 0 ? `${p.name} shows none in stock — added anyway; check the count.` : null);
+    setScanMsg(p.track_stock && p.stock_qty <= 0 ? `${p.name} shows none in stock; check the count.` : null);
     if (qRef.current.trim() === code) setQ("");
   }
 

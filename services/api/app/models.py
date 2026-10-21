@@ -604,7 +604,8 @@ class ProductOut(BaseModel):
     category: str
     unit: str
     price_minor: int
-    cost_minor: int
+    # None when the caller lacks products.cost.read (field guard, St04 #11).
+    cost_minor: int | None
     stock_qty: float
     low_stock_at: float
     active: bool
@@ -613,6 +614,12 @@ class ProductOut(BaseModel):
     hs_code: str = ""
     tax_rate: float = 0
     fbr_uom: str = FBR_DEFAULT_UOM
+    # Catalog v2 (0075)
+    category_id: str | None = None
+    track_stock: bool = True
+    group_id: str | None = None
+    attributes: dict[str, str] = Field(default_factory=dict)
+    scan_qty: float | None = None      # set by a lookup: what the scanned barcode counts as
 
 
 class ProductCreate(BaseModel):
@@ -628,6 +635,10 @@ class ProductCreate(BaseModel):
     hs_code: str = ""
     tax_rate: float = Field(default=0, ge=0, le=100)
     fbr_uom: str = FBR_DEFAULT_UOM
+    category_id: UUID | None = None
+    track_stock: bool = True
+    group_id: UUID | None = None
+    attributes: dict[str, str] = Field(default_factory=dict, max_length=10)
 
 
 class ProductUpdate(BaseModel):
@@ -649,6 +660,10 @@ class ProductUpdate(BaseModel):
     hs_code: str | None = None
     tax_rate: float | None = Field(default=None, ge=0, le=100)
     fbr_uom: str | None = None
+    category_id: UUID | None = None
+    track_stock: bool | None = None
+    group_id: UUID | None = None
+    attributes: dict[str, str] | None = Field(default=None, max_length=10)
 
 
 class SaleLine(BaseModel):
@@ -2342,3 +2357,12 @@ InvoiceStatus = Literal["draft", "pending_approval", "issued", "partially_paid",
 INVOICE_STATUSES = list(get_args(InvoiceStatus))
 InvoicePaymentMethod = Literal["cash", "bank", "cheque", "card", "jazzcash", "easypaisa", "raast", "wht_adjustment"]
 INVOICE_PAYMENT_METHODS = list(get_args(InvoicePaymentMethod))
+
+
+# ─── Catalog v2 and stock (3C, migration 0075) ──────────────────────────────
+BarcodeRuleKind = Literal["weight", "price"]
+BARCODE_RULE_KINDS = list(get_args(BarcodeRuleKind))
+StockMoveReason = Literal["opening", "sale", "return", "purchase", "adjustment", "damage", "count", "void"]
+STOCK_MOVE_REASONS = list(get_args(StockMoveReason))
+# What a person may record by hand; the rest are written by the documents.
+AdjustReason = Literal["adjustment", "damage", "count"]

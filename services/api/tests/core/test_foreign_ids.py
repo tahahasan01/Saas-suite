@@ -45,6 +45,8 @@ KIND_OF = {
     "manager_id": "employee", "head_employee_id": "employee", "doc_id": "document",
     "kiosk_id": "kiosk", "correction_id": "correction", "calendar_id": "calendar",
     "blackout_id": "blackout", "leave_type_id": "leave_type",
+    # catalog v2 (0075)
+    "category_id": "category", "barcode_id": "barcode", "rule_id": "barcode_rule",
     # payroll (3F)
     "run_id": "payroll_run", "payslip_id": "payslip", "component_id": "pay_component",
     "structure_id": "pay_structure", "one_off_id": "one_off", "advance_id": "advance",
@@ -64,6 +66,10 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
     pipeline = (await c.get("/crm/pipelines")).json()[0]
     lead = (await c.get("/crm/leads")).json()[0]
     product = (await c.get("/pos/products")).json()[0]
+    category = (await c.post("/pos/categories", json={"name": "Probe category"})).json()
+    barcode = (await c.post(f"/pos/products/{product['id']}/barcodes",
+                            json={"barcode": "PROBE" + uuid.uuid4().hex[:8], "qty": 6})).json()
+    rule = (await c.post("/pos/barcode-rules", json={"prefix": "29", "kind": "weight"})).json()
     employee = (await c.get("/hrms/employees")).json()[0]
     supplier = (await c.post("/pos/suppliers", json={"name": "Supplier"})).json()
     po = (await c.post("/pos/purchase-orders", json={
@@ -139,6 +145,7 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
         "pipeline": pipeline["id"], "stage": pipeline["stages"][0]["id"], "lead": lead["id"],
         "workflow": workflow["id"], "invoice": invoice["id"],
         "product": product["id"], "supplier": supplier["id"],
+        "category": category["id"], "barcode": barcode["id"], "barcode_rule": rule["id"],
         "po": po["id"], "po_item": po["items"][0]["id"],
         "sale": sale["id"], "sale_item": detail["returnable"][0]["sale_item_id"],
         "employee": employee["id"], "leave": leave["id"], "holiday": holiday["id"],

@@ -909,7 +909,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Lookup */
+        /**
+         * Lookup
+         * @description What the scanner read: the product and how much one scan counts as (a
+         *     carton barcode, or a weight/price label from a scale).
+         */
         get: operations["lookup_pos_products_lookup_get"];
         put?: never;
         post?: never;
@@ -4214,6 +4218,165 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pos/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Categories */
+        get: operations["list_categories_pos_categories_get"];
+        put?: never;
+        /** Create Category */
+        post: operations["create_category_pos_categories_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/categories/{category_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Category */
+        patch: operations["update_category_pos_categories__category_id__patch"];
+        trace?: never;
+    };
+    "/pos/products/{product_id}/variants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Variants
+         * @description The product's group: the group's first product and everything pointing at it.
+         */
+        get: operations["variants_pos_products__product_id__variants_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/products/{product_id}/barcodes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Barcodes */
+        get: operations["list_barcodes_pos_products__product_id__barcodes_get"];
+        put?: never;
+        /** Add Barcode */
+        post: operations["add_barcode_pos_products__product_id__barcodes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/products/{product_id}/barcodes/{barcode_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove Barcode */
+        delete: operations["remove_barcode_pos_products__product_id__barcodes__barcode_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/barcode-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Rules */
+        get: operations["list_rules_pos_barcode_rules_get"];
+        put?: never;
+        /** Add Rule */
+        post: operations["add_rule_pos_barcode_rules_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/barcode-rules/{rule_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove Rule */
+        delete: operations["remove_rule_pos_barcode_rules__rule_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/stock/adjustments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Adjust */
+        post: operations["adjust_pos_stock_adjustments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/stock/moves": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Moves */
+        get: operations["moves_pos_stock_moves_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4500,6 +4663,33 @@ export interface components {
             /** Is Default */
             is_default?: boolean | null;
         };
+        /** AdjustmentIn */
+        AdjustmentIn: {
+            /**
+             * Product Id
+             * Format: uuid
+             */
+            product_id: string;
+            /** Qty Delta */
+            qty_delta: number;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "adjustment" | "damage" | "count";
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /** AdjustmentOut */
+        AdjustmentOut: {
+            /** Product Id */
+            product_id: string;
+            /** Stock Qty */
+            stock_qty: number;
+        };
         /** AdvanceIn */
         AdvanceIn: {
             /** Employee Id */
@@ -4661,6 +4851,32 @@ export interface components {
              * @default 0
              */
             invoices_linked: number;
+        };
+        /** BarcodeIn */
+        BarcodeIn: {
+            /** Barcode */
+            barcode: string;
+            /**
+             * Qty
+             * @default 1
+             */
+            qty: number;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+        };
+        /** BarcodeOut */
+        BarcodeOut: {
+            /** Id */
+            id: string;
+            /** Barcode */
+            barcode: string;
+            /** Qty */
+            qty: number;
+            /** Label */
+            label: string;
         };
         /** BillingOut */
         BillingOut: {
@@ -4850,6 +5066,38 @@ export interface components {
             label: string;
             /** Keys */
             keys: components["schemas"]["CatalogKey"][];
+        };
+        /** CategoryIn */
+        CategoryIn: {
+            /** Name */
+            name: string;
+            /**
+             * Position
+             * @default 0
+             */
+            position: number;
+        };
+        /** CategoryOut */
+        CategoryOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Position */
+            position: number;
+            /** Active */
+            active: boolean;
+            /** Product Count */
+            product_count: number;
+        };
+        /** CategoryUpdate */
+        CategoryUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Position */
+            position?: number | null;
+            /** Active */
+            active?: boolean | null;
         };
         /** CheckInRequest */
         CheckInRequest: {
@@ -7518,6 +7766,30 @@ export interface components {
             /** Pending Purge At */
             pending_purge_at?: string | null;
         };
+        /** MoveOut */
+        MoveOut: {
+            /** Id */
+            id: string;
+            /** Product Id */
+            product_id: string;
+            /** Product Name */
+            product_name: string;
+            /** Qty Delta */
+            qty_delta: number;
+            /** Reason */
+            reason: string;
+            /** Ref Id */
+            ref_id: string | null;
+            /** Note */
+            note: string;
+            /** User Name */
+            user_name: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** NoteCreate */
         NoteCreate: {
             /** Body */
@@ -8168,6 +8440,19 @@ export interface components {
              * @default Numbers, pieces, units
              */
             fbr_uom: string;
+            /** Category Id */
+            category_id?: string | null;
+            /**
+             * Track Stock
+             * @default true
+             */
+            track_stock: boolean;
+            /** Group Id */
+            group_id?: string | null;
+            /** Attributes */
+            attributes?: {
+                [key: string]: string;
+            };
         };
         /** ProductOut */
         ProductOut: {
@@ -8186,7 +8471,7 @@ export interface components {
             /** Price Minor */
             price_minor: number;
             /** Cost Minor */
-            cost_minor: number;
+            cost_minor: number | null;
             /** Stock Qty */
             stock_qty: number;
             /** Low Stock At */
@@ -8208,6 +8493,21 @@ export interface components {
              * @default Numbers, pieces, units
              */
             fbr_uom: string;
+            /** Category Id */
+            category_id?: string | null;
+            /**
+             * Track Stock
+             * @default true
+             */
+            track_stock: boolean;
+            /** Group Id */
+            group_id?: string | null;
+            /** Attributes */
+            attributes?: {
+                [key: string]: string;
+            };
+            /** Scan Qty */
+            scan_qty?: number | null;
         };
         /** ProductUpdate */
         ProductUpdate: {
@@ -8237,6 +8537,16 @@ export interface components {
             tax_rate?: number | null;
             /** Fbr Uom */
             fbr_uom?: string | null;
+            /** Category Id */
+            category_id?: string | null;
+            /** Track Stock */
+            track_stock?: boolean | null;
+            /** Group Id */
+            group_id?: string | null;
+            /** Attributes */
+            attributes?: {
+                [key: string]: string;
+            } | null;
         };
         /** ProfileOut */
         ProfileOut: {
@@ -8608,6 +8918,48 @@ export interface components {
             name?: string | null;
             /** Description */
             description?: string | null;
+        };
+        /** RuleIn */
+        RuleIn: {
+            /** Prefix */
+            prefix: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "weight" | "price";
+            /**
+             * Value Decimals
+             * @default 3
+             */
+            value_decimals: number;
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+        };
+        /** RuleOut */
+        RuleOut: {
+            /** Prefix */
+            prefix: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "weight" | "price";
+            /**
+             * Value Decimals
+             * @default 3
+             */
+            value_decimals: number;
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /** Id */
+            id: string;
         };
         /** RunAction */
         RunAction: {
@@ -11650,6 +12002,7 @@ export interface operations {
             query?: {
                 q?: string | null;
                 include_archived?: boolean;
+                category_id?: string | null;
                 limit?: number | null;
                 offset?: number;
             };
@@ -19330,6 +19683,412 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StatutoryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_categories_pos_categories_get: {
+        parameters: {
+            query?: {
+                include_retired?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_category_pos_categories_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CategoryIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_category_pos_categories__category_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                category_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CategoryUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    variants_pos_products__product_id__variants_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_barcodes_pos_products__product_id__barcodes_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BarcodeOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_barcode_pos_products__product_id__barcodes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BarcodeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BarcodeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_barcode_pos_products__product_id__barcodes__barcode_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product_id: string;
+                barcode_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_rules_pos_barcode_rules_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_rule_pos_barcode_rules_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuleIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_rule_pos_barcode_rules__rule_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rule_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    adjust_pos_stock_adjustments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdjustmentIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdjustmentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    moves_pos_stock_moves_get: {
+        parameters: {
+            query?: {
+                product_id?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MoveOut"][];
                 };
             };
             /** @description Validation Error */

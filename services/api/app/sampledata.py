@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncpg
 
-from . import contacts_backfill, pipelines
+from . import catalog, contacts_backfill, pipelines
 
 # name, company, phone, email, source, stage_index, value_minor, score
 _LEADS = [
@@ -18,13 +18,13 @@ _LEADS = [
     ("Usman Sheikh", "Sheikh & Sons", "03009998877", "", "facebook", 0, 3_000_00, 55),
     ("Fatima Noor", "Noor Enterprises", "03331112233", "fatima@noor.pk", "referral", 4, 25_000_00, 95),
 ]
-# name, barcode, price_minor, stock, low
+# name, barcode, price_minor, stock, low, category
 _PRODUCTS = [
-    ("Coca-Cola 500ml", "5449000000996", 8000, 120, 24),
-    ("Lays Chips", "1234500001", 5000, 60, 12),
-    ("Fresh Milk 1L", "1234500002", 18000, 40, 10),
-    ("Sunridge Rice 5kg", "1234500003", 220000, 25, 5),
-    ("Dawn Bread", "1234500004", 12000, 30, 8),
+    ("Coca-Cola 500ml", "5449000000996", 8000, 120, 24, "Beverages"),
+    ("Lays Chips", "1234500001", 5000, 60, 12, "Snacks"),
+    ("Fresh Milk 1L", "1234500002", 18000, 40, 10, "Dairy"),
+    ("Sunridge Rice 5kg", "1234500003", 220000, 25, 5, "Grocery"),
+    ("Dawn Bread", "1234500004", 12000, 30, 8, "Bakery"),
 ]
 # name, designation, department, salary_minor
 _EMPLOYEES = [
@@ -59,11 +59,14 @@ async def seed(conn: asyncpg.Connection, tenant_id: str, user_id: str, sections:
         await contacts_backfill.backfill(conn, tenant_id)
 
     if "pos" in sections:
-        for name, barcode, price, stock, low in _PRODUCTS:
-            await conn.execute(
-                """insert into pos_products (tenant_id, name, barcode, price_minor, stock_qty, low_stock_at)
-                   values ($1,$2,$3,$4,$5,$6)""",
-                tenant_id, name, barcode, price, stock, low)
+        for name, barcode, price, stock, low, category in _PRODUCTS:
+            category_id, label = await catalog.category_for(conn, tenant_id, name=category)
+            pid = await conn.fetchval(
+                """insert into pos_products (tenant_id, name, barcode, price_minor, stock_qty, low_stock_at,
+                                             category, category_id)
+                   values ($1,$2,$3,$4,$5,$6,$7,$8) returning id""",
+                tenant_id, name, barcode, price, stock, low, label, category_id)
+            await catalog.opening(conn, tenant_id, pid, stock, user_id)
 
     if "hrms" in sections:
         for name, designation, department, salary in _EMPLOYEES:
