@@ -30,6 +30,8 @@ test.describe("employee profile", () => {
     await page.getByRole("button", { name: "Save employee" }).click();
     await expect(page.getByText("Employee added")).toBeVisible();
     await page.getByRole("link", { name }).first().click();
+    // The first visit compiles the profile route in dev: wait for the navigation itself.
+    await page.waitForURL(/\/hrms\/employees\/[0-9a-f-]{36}$/);
     await expect(page.getByRole("heading", { name })).toBeVisible();
     await expect(page.getByLabel("Phone")).toHaveValue("0300-1234567");
     await expect(page.getByRole("button", { name: "Enable login" })).toBeEnabled();
@@ -104,7 +106,8 @@ test.describe("sites and kiosks", () => {
       await kiosk.getByRole("button", { name: emp.name }).click();
       await kiosk.getByLabel("Your PIN").fill("1111");
       await kiosk.getByRole("button", { name: "OK" }).click();
-      await expect(kiosk.getByRole("alert")).toContainText("PIN");
+      // Next's route announcer is also role=alert: pick the kiosk's own message.
+      await expect(kiosk.getByRole("alert").filter({ hasText: "PIN" })).toBeVisible();
       await kiosk.getByLabel("Your PIN").fill("2468");
       await kiosk.getByRole("button", { name: "OK" }).click();
       await expect(kiosk.getByRole("status")).toContainText("Welcome");
@@ -123,11 +126,12 @@ test.describe("leave v2", () => {
     await expect(page.getByRole("listitem").filter({ hasText: "Casual leave" }).first()).toBeVisible();
 
     await page.getByLabel("Employee").selectOption({ label: emp.name });
-    await page.getByLabel("Type").selectOption({ label: "Casual leave" });
+    // The label wraps its select, so its text includes the options: match the combobox by role.
+    await page.getByRole("combobox", { name: /^Type/ }).selectOption({ label: "Casual leave" });
     // A Monday well ahead, so it's a working day.
     const d = new Date(Date.UTC(2030, 2, 4)).toISOString().slice(0, 10);
-    await page.getByLabel("From").fill(d);
-    await page.getByLabel("Day").selectOption("am");
+    await page.getByRole("textbox", { name: "From", exact: true }).fill(d);
+    await page.getByRole("combobox", { name: /^Day/ }).selectOption("am");
     await page.getByRole("button", { name: "Submit request" }).click();
     const row = page.getByRole("row").filter({ hasText: emp.name }).first();
     await expect(row).toContainText("½ day");
@@ -141,7 +145,9 @@ test.describe("holidays v2", () => {
     await ready(page);
     const year = await page.getByLabel("Year").inputValue();
     const name = `E2E Import ${uniq()}`;
-    await page.getByLabel("CSV", { exact: true }).fill(`Date,Name\n${year}-12-29,${name}\nnope,Broken\n`);
+    // A reused tenant keeps earlier runs' holidays (one per date): pick a fresh day.
+    const day = `${year}-11-${String(1 + Math.floor(Math.random() * 28)).padStart(2, "0")}`;
+    await page.getByLabel("CSV", { exact: true }).fill(`Date,Name\n${day},${name}\nnope,Broken\n`);
     await page.getByRole("button", { name: "Import into this calendar" }).click();
     await expect(page.getByRole("status").filter({ hasText: "added" })).toContainText("Line 3");
     await expect(page.getByRole("listitem").filter({ hasText: name })).toBeVisible();

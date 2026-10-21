@@ -13,7 +13,7 @@ _MANIFESTS = [
         "core", "Workspace", "Team, roles, modules, billing and automations.",
         always_on=True,
         jobs=("email.outbox", "ops.monitor", "ops.prune", "audit.partitions", "audit.retention",
-              "audit.detach", "modules.purge"),
+              "audit.detach", "modules.purge", "files.gc"),
         nav=(
             NavItem("dashboard", "/dashboard", "nav.dashboard", "gauge", "overview"),
             NavItem("automations", "/automations", "nav.automations", "workflow", "admin",
@@ -26,12 +26,21 @@ _MANIFESTS = [
                         NavChild("/settings/sections", "nav.settings.modules", "settings.team.read"),
                         NavChild("/settings/billing", "nav.settings.billing", "settings.team.read"),
                         NavChild("/settings/fbr", "nav.settings.fbr", "fbr.settings.read"),
+                        NavChild("/settings/company", "nav.settings.company", "settings.company.read"),
+                        NavChild("/settings/profile", "nav.settings.profile"),
                     )),
         ),
     ),
     ModuleSpec(
         "contacts", "Customers", "The people and businesses you sell to.",
         depends=("core",),
+        nav=(
+            NavItem("contacts", "/contacts", "nav.contacts", "book-user", "sell", perm="contacts.contact.read",
+                    children=(
+                        NavChild("/contacts", "nav.contacts.all", "contacts.contact.read"),
+                        NavChild("/contacts/review", "nav.contacts.review", "contacts.contact.update"),
+                    )),
+        ),
     ),
     ModuleSpec(
         "products", "Products", "Your catalogue, prices and stock.",
@@ -45,11 +54,16 @@ _MANIFESTS = [
         # Invoice requests are a CRM feature until invoices v2 (3E) moves them.
         claims=("invoicing.invoice.*",),
         scoped={"crm.lead": "owner_id"},
-        jobs=("crm.followup_reminders",),
+        jobs=("crm.followup_reminders", "crm.activity_overdue"),
         purge_tables=("crm_leads",),
         nav=(
             NavItem("crm", "/crm", "nav.crm", "kanban", "sell", perm="crm.lead.read",
-                    children=(NavChild("/crm", "nav.crm.pipeline", "crm.lead.read"),)),
+                    children=(
+                        NavChild("/crm", "nav.crm.pipeline", "crm.lead.read"),
+                        NavChild("/crm/reports", "nav.crm.reports", "crm.report.read"),
+                        NavChild("/crm/settings", "nav.crm.settings", "crm.settings.manage"),
+                    )),
+            NavItem("my-day", "/my-day", "nav.my_day", "calendar-check", "overview", perm="crm.lead.read"),
             NavItem("invoices", "/invoices", "nav.invoices", "file-text", "sell",
                     perm="invoicing.invoice.read"),
         ),
@@ -90,7 +104,7 @@ _MANIFESTS = [
     ModuleSpec(
         "hrms", "Staff / HRMS", "Employees, attendance, shifts and leave.",
         application=True, depends=("core",),
-        jobs=("hrms.finalise_open_days",),
+        jobs=("hrms.finalise_open_days", "hrms.auto_checkout", "hrms.leave_entitlements"),
         field_guards=(
             # CNIC rides on the payroll grant (D-42) until hrms.employee.pii.read lands.
             FieldGuard("hrms.employee", "cnic", "payroll.salary.read", "hrms.employee.update"),
@@ -102,6 +116,9 @@ _MANIFESTS = [
                         NavChild("/hrms/attendance", "nav.hrms.attendance", "hrms.attendance.read"),
                         NavChild("/hrms/leave", "nav.hrms.leave", "hrms.leave.read"),
                         NavChild("/hrms/holidays", "nav.hrms.holidays", "hrms.leave.read"),
+                        NavChild("/hrms/employees/setup", "nav.hrms.org", "hrms.org.manage"),
+                        NavChild("/hrms/employees/documents", "nav.hrms.documents", "hrms.document.read"),
+                        NavChild("/hrms/kiosk", "nav.hrms.kiosks", "hrms.kiosk.manage"),
                     )),
         ),
     ),
@@ -111,6 +128,7 @@ _MANIFESTS = [
         field_guards=(FieldGuard("hrms.employee", "salary_minor", "payroll.salary.read",
                                  "payroll.salary.update"),),
         sequences=("payroll.payslip",),
+        jobs=("payroll.calculate",),
         nav=(NavItem("payroll", "/hrms/payroll", "nav.payroll", "banknote", "people",
                      perm="payroll.run.read"),),
     ),

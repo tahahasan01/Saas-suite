@@ -8,8 +8,10 @@ row; purge is a separate, delayed, typed-confirmation job.
 """
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import asyncpg
 import pytest
@@ -267,3 +269,21 @@ async def test_the_purge_job_waits_for_the_delay_and_reenabling_cancels_it(clien
     assert await service.run_due_purges() == 1
     assert (await _owner("select count(*) as n from crm_leads where tenant_id=$1", tid))[0]["n"] == 0
     assert "modules.purge" in jobs.HANDLERS
+
+
+WEB_MODULES = Path(__file__).resolve().parents[4] / "apps" / "web" / "lib" / "modules.ts"
+
+
+def test_every_web_sidebar_entry_and_tab_has_a_server_nav_entry():
+    """The sidebar shows only what /auth/me's nav lists (visibleModules), so a
+    web module or tab without a manifest entry silently never appears."""
+    src = WEB_MODULES.read_text(encoding="utf-8")
+    block = re.search(r"export const MODULES: Module\[\] = \[(.*?)\n\];", src, re.S)
+    assert block, "MODULES not found in apps/web/lib/modules.ts"
+    web_keys = set(re.findall(r'\bkey: "([a-z-]+)"', block.group(1)))
+    web_hrefs = set(re.findall(r'\bhref: "(/[^"]*)"', block.group(1)))
+    items = [i for m in modules.MODULES.values() for i in m.nav]
+    server_keys = {i.key for i in items}
+    server_hrefs = {i.href for i in items} | {c.href for i in items for c in i.children}
+    assert web_keys <= server_keys, f"no manifest nav for: {sorted(web_keys - server_keys)}"
+    assert web_hrefs <= server_hrefs, f"no manifest nav for: {sorted(web_hrefs - server_hrefs)}"
