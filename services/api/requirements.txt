@@ -13,3 +13,5 @@ sentry-sdk[fastapi]>=2.0
 fpdf2>=2.8
 sqlglot>=30.23,<31
 cryptography>=50,<51
+# Re-encodes uploaded images to strip EXIF (app/files.py); already pulled in by fpdf2.
+pillow>=12

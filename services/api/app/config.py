@@ -72,6 +72,21 @@ class Settings(BaseSettings):
     smtp_user: str = ""
     smtp_password: str = ""
 
+    # File storage (app/storage.py, D-14). 'local' keeps blobs on disk and
+    # serves them through signed API URLs (dev, or one VPS with a volume);
+    # 's3' talks to any S3-compatible store (Cloudflare R2, MinIO, B2) with
+    # 5-minute presigned URLs. Credentials are placeholders until the founder
+    # creates the bucket; never commit real ones.
+    storage_backend: str = "local"             # local | s3
+    files_local_dir: str = ""                  # default: services/api/.files
+    files_public_base: str = "/api"            # how the browser reaches the API (same-origin rewrite)
+    files_url_secret: str = ""                 # signs local download URLs; default derives from secrets
+    s3_endpoint: str = ""                      # e.g. https://<account>.r2.cloudflarestorage.com
+    s3_bucket: str = ""
+    s3_region: str = "auto"                    # R2 uses 'auto'
+    s3_access_key_id: str = ""
+    s3_secret_access_key: str = ""
+
     @property
     def cors_origins(self) -> list[str]:
         return [o.strip() for o in self.web_origin.split(",") if o.strip()]

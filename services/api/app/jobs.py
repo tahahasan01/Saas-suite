@@ -28,6 +28,7 @@ from typing import Any, Awaitable, Callable
 
 from . import alerts, attendance, audit, context, db, email, fbr_submit, monitor, notifications, obs
 from .routers.pos import _VELOCITY_SQL
+from . import files  # org data (3A): files.gc
 
 log = logging.getLogger("jobs")
 
@@ -155,6 +156,8 @@ HANDLERS: dict[str, Callable[[], Awaitable[Any]]] = {
     "audit.retention": run_audit_retention,
     "audit.detach": run_audit_detach,
     "hrms.finalise_open_days": run_finalise_open_days,
+    # org data (3A, p3-orgdata): stale draft uploads and orphan blobs (0057)
+    "files.gc": files.gc,
 }
 
 

@@ -12,9 +12,11 @@ from typing import Any
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from .. import audit, branches, db
+from .. import audit, branches, branding, db
 from ..deps import AuthContext, current_auth
-from ..org_models import BranchOut, BranchUpdate, CompanyOut, CompanyUpdate, RegionOut
+from ..org_models import (
+    BranchOut, BranchUpdate, BrandingOut, BrandingUpdate, CompanyOut, CompanyUpdate, RegionOut,
+)
 from ..rbac import perm
 
 router = APIRouter(prefix="/org", tags=["org"])
@@ -45,9 +47,7 @@ async def _company(conn: asyncpg.Connection, tenant_id: str) -> CompanyOut:
             where t.id = $1""", tenant_id)
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Company not found")
-    logo = await conn.fetchval(
-        "select logo_file_id from tenant_branding where tenant_id = $1", tenant_id) \
-        if await conn.fetchval("select to_regclass('tenant_branding') is not null") else None
+    logo = await conn.fetchval("select logo_file_id from tenant_branding where tenant_id = $1", tenant_id)
     return CompanyOut(**dict(row), logo_file_id=str(logo) if logo else None)
 
 
@@ -129,3 +129,24 @@ async def update_branch(branch_id: str, body: BranchUpdate,
     except (asyncpg.CheckViolationError, asyncpg.ForeignKeyViolationError) as e:
         raise invalid(e)
     return BranchOut(**got[0])
+
+
+# ── Branding (D-12) ─────────────────────────────────────────────────────────
+@router.get("/branding", response_model=BrandingOut)
+async def get_branding(auth: AuthContext = Depends(current_auth)) -> BrandingOut:
+    """Everyone in the tenant reads it: the shell and documents render with it."""
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        return BrandingOut(**await branding.load(conn))
+
+
+@router.put("/branding", response_model=BrandingOut)
+async def update_branding(body: BrandingUpdate,
+                          auth: AuthContext = Depends(perm("settings.branding.manage"))) -> BrandingOut:
+    fields = body.model_dump(exclude_unset=True)
+    try:
+        async with db.tenant_conn(auth.tenant_id) as conn:
+            return BrandingOut(**await branding.save(conn, fields, user_id=auth.user_id))
+    except ValueError as e:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(e))
+    except (asyncpg.CheckViolationError, asyncpg.ForeignKeyViolationError) as e:
+        raise invalid(e)

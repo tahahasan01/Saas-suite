@@ -139,6 +139,7 @@ _SHAPED = {
     "branches": {"code": lambda: "R" + uuid.uuid4().hex[:6].upper()},
     "sequences": {"code": lambda: "rls.test", "pattern": lambda: "{N}"},
     "sequence_counters": {"period_key": lambda: "-"},
+    "files": {"sha256": lambda: uuid.uuid4().hex * 2},
 }
 
 

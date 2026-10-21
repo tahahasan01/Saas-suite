@@ -17,7 +17,13 @@ IMPORT_LIMIT = 5 * MIB
 _IMPORT_PATHS = ("/crm/leads/import", "/pos/products/import")
 
 
+UPLOAD_LIMIT = 10 * MIB  # file uploads (TR-SEC-55); logos are held to 1 MB by the route
+_UPLOAD_PATHS = ("/files",)
+
+
 def limit_for(path: str) -> int:
+    if path in _UPLOAD_PATHS:
+        return UPLOAD_LIMIT
     return IMPORT_LIMIT if path.endswith(_IMPORT_PATHS) else DEFAULT_LIMIT
 
 

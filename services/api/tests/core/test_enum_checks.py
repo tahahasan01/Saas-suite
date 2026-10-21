@@ -47,6 +47,9 @@ ENUM_COLUMNS = {
     ("pk_regions", "code"): models.REGION_CODES,
     ("pk_regions", "kind"): models.REGION_KINDS,
     ("sequences", "reset"): models.SEQUENCE_RESETS,
+    ("files", "mime"): models.FILE_MIMES,
+    ("files", "visibility"): models.FILE_VISIBILITIES,
+    ("tenant_branding", "layout"): models.BRANDING_LAYOUTS,
 }
 
 
