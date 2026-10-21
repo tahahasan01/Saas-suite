@@ -11,9 +11,8 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from .. import audit, db, iban
+from .. import audit, db, iban, payroll_access
 from ..deps import AuthContext
-from .. import payroll_access
 from ..payroll_access import mask_iban, mask_tail
 from ..payroll_models import CompensationCreate, CompensationOut, PayrollDetailsOut, PayrollDetailsUpdate
 from ..payroll_province import resolve_work_provinces

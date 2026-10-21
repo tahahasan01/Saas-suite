@@ -180,7 +180,7 @@ async def _try(op: Callable[[Any], Awaitable[T]]) -> T | _Fallback:
     except Exception as e:  # noqa: BLE001 — connection, timeout, auth: all mean "use memory"
         _down_until = time.monotonic() + _RETRY_REDIS_AFTER_S
         log.warning("Redis unavailable, using in-process counters for %ss: %r", _RETRY_REDIS_AFTER_S, e)
-        from . import alerts   # late: alerts uses this module for its de-dup
+        from . import alerts  # late: alerts uses this module for its de-dup
 
         alerts.emit_soon("redis.unavailable",
                          "Redis is unreachable: rate limits and lockouts are per process until it is back",

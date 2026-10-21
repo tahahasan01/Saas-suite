@@ -8,9 +8,9 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from .models import (
+    CompensationReason,
     ComponentCalc,
     ComponentKind,
-    CompensationReason,
     PaymentMode,
     PayrollOut,
     Payslip,

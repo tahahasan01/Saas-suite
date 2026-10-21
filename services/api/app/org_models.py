@@ -13,7 +13,14 @@ from pydantic import BaseModel, Field, field_validator
 from pydantic_core import PydanticCustomError
 
 from .models import (
-    REGION_CODES, BrandingLayout, FileMime, RegionCode, RegionKind, SequenceReset, TaxAppliesTo, TaxKind,
+    REGION_CODES,
+    BrandingLayout,
+    FileMime,
+    RegionCode,
+    RegionKind,
+    SequenceReset,
+    TaxAppliesTo,
+    TaxKind,
 )
 
 _NTN = re.compile(r"^(\d{7}(-\d)?|\d{13})$")

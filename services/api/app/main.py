@@ -5,7 +5,6 @@ import logging
 from contextlib import asynccontextmanager
 
 import asyncpg
-
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -14,20 +13,45 @@ from . import db, obs, startup_guard
 from .bodylimit import BodyLimitMiddleware
 from .config import settings
 from .context import REQUEST_ID_HEADER, RequestContextMiddleware
-from .secheaders import SecurityHeadersMiddleware
-from .routers import (
-    ai, auth, billing, crm, dashboard, entitlements, fbr, hrms, invoices, meta, notifications, pos,
-    team, terminology, workflows,
+from .routers import activities as activities_router  # crm v2 (3B)
+from .routers import (  # org data (3A, p3-orgdata)
+    ai,
+    auth,
+    billing,
+    crm,
+    crm_pipelines,
+    crm_reports,
+    dashboard,
+    entitlements,
+    fbr,
+    files,
+    hrms,
+    hrms_attendance,
+    hrms_holidays,
+    hrms_kiosk,
+    hrms_leave,
+    hrms_org,
+    invoices,
+    meta,
+    notifications,
+    org,
+    platform,
+    pos,
+    pos_catalog,
+    pos_registers,
+    profile,
+    roles,
+    sequences,
+    tax,
+    team,
+    terminology,
+    workflows,
 )
-from .routers import activities as activities_router, crm_pipelines, crm_reports  # crm v2 (3B)
 from .routers import contacts as contacts_router
-from .routers import files, org, profile, sequences, tax  # org data (3A, p3-orgdata)
-from .routers import platform, roles
-from .routers import hrms_attendance, hrms_holidays, hrms_kiosk, hrms_leave, hrms_org
 from .routers import payroll as payroll_routes  # Phase 3 payroll (3F)
 from .routers import payroll_runs as payroll_run_routes
 from .routers import payroll_settings as payroll_settings_routes
-from .routers import pos_catalog
+from .secheaders import SecurityHeadersMiddleware
 
 # JSON logs with request/tenant context and PII redaction; Sentry if SENTRY_DSN (app/obs.py).
 obs.setup_logging("api")
@@ -116,6 +140,7 @@ app.include_router(payroll_run_routes.portal)
 app.include_router(payroll_run_routes.public)
 app.include_router(payroll_settings_routes.router)
 app.include_router(pos_catalog.router)   # catalog v2 and stock (3C, 0075)
+app.include_router(pos_registers.router)   # registers and sessions (3C, 0076)
 
 
 @app.exception_handler(asyncpg.DataError)

@@ -18,7 +18,7 @@ from app.config import settings
 
 # (table, column) -> the model's list of allowed values.
 ENUM_COLUMNS = {
-    ("pos_sales", "payment_method"): models.PAYMENT_METHODS,
+    ("pos_sales", "payment_method"): models.SALE_PAYMENT_METHODS,
     # leave_type codes are tenant data since 0068 (hrms_leave_types, FK); no fixed list.
     ("hrms_leave_requests", "request_type"): models.REQUEST_TYPES,
     ("hrms_leave_requests", "status"): models.LEAVE_STATUSES,
@@ -35,7 +35,7 @@ ENUM_COLUMNS = {
     ("crm_invoice_requests", "status"): models.INVOICE_REQUEST_STATUSES,
     ("users", "status"): models.USER_STATUSES,
     ("workflows", "trigger"): models.WORKFLOW_TRIGGERS,
-    ("pos_drawers", "status"): models.DRAWER_STATUSES,
+    ("pos_sessions", "status"): models.DRAWER_STATUSES,
     ("pos_purchase_orders", "status"): models.PO_STATUSES,
     ("pos_fbr_invoices", "status"): models.FBR_STATUSES,
     ("fbr_settings", "environment"): models.FBR_ENVIRONMENTS,
@@ -104,6 +104,10 @@ ENUM_COLUMNS = {
     # catalog v2 and stock (0075)
     ("pos_barcode_rules", "kind"): models.BARCODE_RULE_KINDS,
     ("pos_stock_moves", "reason"): models.STOCK_MOVE_REASONS,
+    # registers and sessions (0076)
+    ("pos_payments", "method"): models.TENDER_METHODS,
+    ("pos_returns", "refund_method"): models.TENDER_METHODS,
+    ("pos_cash_moves", "kind"): models.CASH_MOVE_KINDS,
     # payroll (3F)
     ("hrms_compensation", "reason"): models.COMPENSATION_REASONS,
     ("hrms_employees", "payment_mode"): models.PAYMENT_MODES,

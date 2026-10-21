@@ -9,9 +9,8 @@ the event is about, St02 §6.10).
 """
 from __future__ import annotations
 
-from typing import Any
-
 import datetime as dt
+from typing import Any
 
 import asyncpg
 

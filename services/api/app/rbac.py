@@ -94,6 +94,11 @@ register("pos", {
     "pos.session.read": ("pos", "read"),
     "pos.session.open": ("pos", "write"),
     "pos.session.close": ("pos", "write"),
+    # Registers and sessions (0076): a big variance needs a manager; paying
+    # cash in or out of the drawer is the cashier's, with a reason.
+    "pos.session.approve": ("pos", "admin"),
+    "pos.register.manage": ("pos", "admin"),
+    "pos.cash.move": ("pos", "write"),
     "pos.report.sales": ("pos", "read"),
 })
 register("products", {

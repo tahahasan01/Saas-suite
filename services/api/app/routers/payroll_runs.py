@@ -14,11 +14,9 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
-from .. import audit, db, jobs, payroll, payroll_reports, payroll_runs, payslip_pdf
+from .. import audit, db, jobs, payroll, payroll_access, payroll_reports, payroll_runs, payslip_pdf
 from .. import payroll_engine as eng
-from ..security import hash_token
 from ..deps import AuthContext, current_auth, current_employee
-from .. import payroll_access
 from ..payroll_models import (
     LineOut,
     PayslipDetail,
@@ -32,6 +30,7 @@ from ..payroll_models import (
     RunOut,
 )
 from ..rbac import require_key
+from ..security import hash_token
 from .payroll import uuid_or_404
 
 router = APIRouter(prefix="/payroll", tags=["payroll"])

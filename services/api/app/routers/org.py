@@ -15,7 +15,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from .. import audit, branches, branding, db
 from ..deps import AuthContext, current_auth
 from ..org_models import (
-    BranchOut, BranchUpdate, BrandingOut, BrandingUpdate, CompanyOut, CompanyUpdate, RegionOut,
+    BranchOut,
+    BranchUpdate,
+    BrandingOut,
+    BrandingUpdate,
+    CompanyOut,
+    CompanyUpdate,
+    RegionOut,
 )
 from ..rbac import perm
 

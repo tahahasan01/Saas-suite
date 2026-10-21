@@ -26,11 +26,24 @@ import asyncio
 import logging
 from typing import Any, Awaitable, Callable
 
-from . import activities, alerts, attendance, audit, context, db, email, fbr_submit, leave, monitor, notifications, obs
+from . import (
+    activities,
+    alerts,
+    attendance,
+    audit,
+    context,
+    db,
+    email,
+    fbr_submit,
+    files,  # org data (3A): files.gc
+    leave,
+    monitor,
+    notifications,
+    obs,
+    payroll_runs,
+)
 from .modules import service as modules_service
-from . import payroll_runs
 from .routers.pos import _VELOCITY_SQL
-from . import files  # org data (3A): files.gc
 
 log = logging.getLogger("jobs")
 

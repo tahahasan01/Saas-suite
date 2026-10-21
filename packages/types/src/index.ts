@@ -86,6 +86,9 @@ export const PERMISSION_KEYS = [
   "pos.session.read",
   "pos.session.open",
   "pos.session.close",
+  "pos.session.approve",
+  "pos.register.manage",
+  "pos.cash.move",
   "pos.report.sales",
   // products
   "products.product.read",
@@ -493,7 +496,7 @@ export interface FulfillmentSchema {
 }
 
 // ── POS ──────────────────────────────────────────────────────────────────
-export const PAYMENT_METHODS = ["cash", "card", "jazzcash", "easypaisa", "bank"] as const;
+export const PAYMENT_METHODS = ["cash", "card", "jazzcash", "easypaisa", "raast", "bank", "khata"] as const;
 
 export interface Product {
   id: string;

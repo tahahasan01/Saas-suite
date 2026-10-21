@@ -2,13 +2,11 @@
 Guarded by the 'hrms' section. Mobile face-match/biometric plug into attendance later."""
 from __future__ import annotations
 
+from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
 
-from datetime import date, datetime, timedelta
-
-from .. import attendance, db, email, hrorg, refs
-from .. import payroll_preview
+from .. import attendance, db, email, hrorg, payroll_preview, refs
 from ..deps import AuthContext, current_auth, current_employee
 from ..models import (
     AttendanceOut,

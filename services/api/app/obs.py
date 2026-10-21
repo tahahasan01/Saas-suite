@@ -28,8 +28,8 @@ import logging
 import re
 import sys
 import time
-from datetime import datetime, timezone
 from collections.abc import Awaitable
+from datetime import datetime, timezone
 from typing import Any, TypeVar
 
 from starlette.types import ASGIApp, Message, Receive, Scope, Send

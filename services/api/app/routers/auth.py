@@ -10,11 +10,20 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
 
-from .. import audit, context, db, email, ratelimit, rbac, sampledata, tokens
+from .. import (  # /auth/me branches + branding (p3-orgdata)
+    audit,
+    branches,
+    branding,
+    context,
+    db,
+    email,
+    ratelimit,
+    rbac,
+    sampledata,
+    tokens,
+)
 from ..config import settings
 from ..deps import AuthContext, current_auth
-from ..modules import MODULES, is_effective, nav_for
-from ..modules import service as modules_service
 from ..models import (
     INDUSTRIES,
     SECTIONS,
@@ -23,6 +32,7 @@ from ..models import (
     ForgotRequest,
     LocaleOut,
     LoginRequest,
+    MeBranch,
     MeModule,
     MeNavItem,
     MeResponse,
@@ -34,9 +44,9 @@ from ..models import (
     UserOut,
     VerifyRequest,
 )
+from ..modules import MODULES, is_effective, nav_for
+from ..modules import service as modules_service
 from ..ratelimit import client_ip, rate_limit
-from .. import branches, branding  # /auth/me branches + branding (p3-orgdata)
-from ..models import MeBranch
 from ..security import (
     SESSION_COOKIE,
     hash_password,

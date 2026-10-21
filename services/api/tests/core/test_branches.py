@@ -21,7 +21,7 @@ from app.config import settings
 from .test_me_permissions import _member
 
 # Tables that hold transactions: branch_id required, branch policy on.
-TRANSACTIONAL = ["pos_sales", "pos_returns", "pos_drawers", "pos_purchase_orders",
+TRANSACTIONAL = ["pos_sales", "pos_returns", "pos_sessions", "pos_purchase_orders",
                  "hrms_attendance", "hrms_punches", "crm_invoice_requests"]
 # Masters: branch_id nullable (null = shared by every branch).
 MASTERS = ["pos_products"]

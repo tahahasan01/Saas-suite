@@ -64,7 +64,7 @@ APP_USER: dict[str, set[str]] = {
     "pos_sale_items":       {S, I},
     "pos_returns":          {S, I},
     "pos_return_items":     {S, I},
-    "pos_drawers":          {S, I, U},
+    "pos_sessions":         {S, I, U},          # was pos_drawers (0076)
     "pos_suppliers":        {S, I},
     "pos_purchase_orders":  {S, I, U},
     "pos_po_items":         {S, I, U},
@@ -150,6 +150,11 @@ APP_USER: dict[str, set[str]] = {
     "pos_product_barcodes": {S, I, D},
     "pos_barcode_rules":    {S, I, U, D},
     "pos_stock_moves":      {S, I},             # append-only ledger
+    # registers and sessions (0076)
+    "pos_registers":        {S, I, U},
+    "pos_devices":          {S, I, U},
+    "pos_payments":         {S, I},             # part of the sale, never edited
+    "pos_cash_moves":       {S, I},             # append-only
 }
 
 # Column-level grants don't appear in role_table_grants, so they are pinned

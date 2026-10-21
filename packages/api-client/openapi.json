@@ -4129,7 +4129,7 @@
           "pos"
         ],
         "summary": "Close Drawer",
-        "description": "Freezes the expected figure at close: the shift's reconciliation is\nevidence, and a later sale edit must not silently rewrite a signed-off\nvariance.",
+        "description": "Counts the cash only; the register's other methods count as expected.\nFreezes the figures at close (pos_sessions.close).",
         "operationId": "close_drawer_pos_drawer_close_post",
         "parameters": [
           {
@@ -18093,6 +18093,840 @@
           }
         }
       }
+    },
+    "/pos/registers": {
+      "get": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "List Registers",
+        "operationId": "list_registers_pos_registers_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RegisterOut"
+                  },
+                  "title": "Response List Registers Pos Registers Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Create Register",
+        "operationId": "create_register_pos_registers_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pos/registers/{register_id}": {
+      "patch": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Update Register",
+        "operationId": "update_register_pos_registers__register_id__patch",
+        "parameters": [
+          {
+            "name": "register_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Register Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pos/devices": {
+      "get": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "List Devices",
+        "operationId": "list_devices_pos_devices_get",
+        "parameters": [
+          {
+            "name": "register_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Register Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DeviceOut"
+                  },
+                  "title": "Response List Devices Pos Devices Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Add Device",
+        "operationId": "add_device_pos_devices_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pos/devices/{device_id}/heartbeat": {
+      "post": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Heartbeat",
+        "description": "The till says it's alive and how many sales it still holds.",
+        "operationId": "heartbeat_pos_devices__device_id__heartbeat_post",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Device Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeartbeatIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pos/sessions": {
+      "get": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "List Sessions",
+        "operationId": "list_sessions_pos_sessions_get",
+        "parameters": [
+          {
+            "name": "register_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Register Id"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 30,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SessionOut"
+                  },
+                  "title": "Response List Sessions Pos Sessions Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Start Session",
+        "operationId": "start_session_pos_sessions_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionOpen"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pos/sessions/{session_id}": {
+      "get": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Get Session",
+        "operationId": "get_session_pos_sessions__session_id__get",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pos/sessions/{session_id}/cash-moves": {
+      "post": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Cash Move",
+        "operationId": "cash_move_pos_sessions__session_id__cash_moves_post",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CashMoveIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pos/sessions/{session_id}/close": {
+      "post": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Close Session",
+        "operationId": "close_session_pos_sessions__session_id__close_post",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionClose"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pos/sessions/{session_id}/z-report": {
+      "get": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Z Report",
+        "operationId": "z_report_pos_sessions__session_id__z_report_get",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Z Report Pos Sessions  Session Id  Z Report Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pos/pin": {
+      "put": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Set My Pin",
+        "description": "Your own till PIN: what you enter to approve at a till.",
+        "operationId": "set_my_pin_pos_pin_put",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PinIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -20028,6 +20862,38 @@
         },
         "type": "object",
         "title": "BrandingUpdate"
+      },
+      "CashMoveIn": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "pay_in",
+              "pay_out",
+              "drop"
+            ],
+            "title": "Kind"
+          },
+          "amount_minor": {
+            "type": "integer",
+            "maximum": 1000000000000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Amount Minor"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "amount_minor",
+          "reason"
+        ],
+        "title": "CashMoveIn"
       },
       "CatalogKey": {
         "properties": {
@@ -22230,6 +23096,91 @@
         "title": "DepartmentUpdate",
         "description": "An explicit null clears parent or head."
       },
+      "DeviceIn": {
+        "properties": {
+          "register_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Register Id"
+          },
+          "device_code": {
+            "type": "string",
+            "pattern": "^[A-Z0-9]{1,6}$",
+            "title": "Device Code"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 60,
+            "title": "Name",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "register_id",
+          "device_code"
+        ],
+        "title": "DeviceIn"
+      },
+      "DeviceOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "register_id": {
+            "type": "string",
+            "title": "Register Id"
+          },
+          "device_code": {
+            "type": "string",
+            "title": "Device Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "last_seen_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen At"
+          },
+          "outbox_count": {
+            "type": "integer",
+            "title": "Outbox Count"
+          },
+          "oldest_pending_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oldest Pending At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "register_id",
+          "device_code",
+          "name",
+          "last_seen_at",
+          "outbox_count",
+          "oldest_pending_at"
+        ],
+        "title": "DeviceOut"
+      },
       "DisablePlanOut": {
         "properties": {
           "module": {
@@ -23777,6 +24728,33 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HeartbeatIn": {
+        "properties": {
+          "outbox_count": {
+            "type": "integer",
+            "maximum": 100000.0,
+            "minimum": 0.0,
+            "title": "Outbox Count"
+          },
+          "oldest_pending_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oldest Pending At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "outbox_count"
+        ],
+        "title": "HeartbeatIn"
       },
       "HolidayCalendarCreate": {
         "properties": {
@@ -27810,6 +28788,58 @@
         ],
         "title": "MergeResult"
       },
+      "MethodFigures": {
+        "properties": {
+          "method": {
+            "type": "string",
+            "title": "Method"
+          },
+          "taken_minor": {
+            "type": "integer",
+            "title": "Taken Minor"
+          },
+          "refunds_minor": {
+            "type": "integer",
+            "title": "Refunds Minor"
+          },
+          "expected_minor": {
+            "type": "integer",
+            "title": "Expected Minor"
+          },
+          "counted_minor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Counted Minor"
+          },
+          "variance_minor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variance Minor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "method",
+          "taken_minor",
+          "refunds_minor",
+          "expected_minor",
+          "counted_minor",
+          "variance_minor"
+        ],
+        "title": "MethodFigures"
+      },
       "MethodTotal": {
         "properties": {
           "payment_method": {
@@ -28382,6 +29412,39 @@
         ],
         "title": "PaymentInstructions"
       },
+      "PaymentLine": {
+        "properties": {
+          "method": {
+            "type": "string",
+            "title": "Method"
+          },
+          "amount_minor": {
+            "type": "integer",
+            "title": "Amount Minor"
+          },
+          "tendered_minor": {
+            "type": "integer",
+            "title": "Tendered Minor"
+          },
+          "change_minor": {
+            "type": "integer",
+            "title": "Change Minor"
+          },
+          "reference": {
+            "type": "string",
+            "title": "Reference",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "method",
+          "amount_minor",
+          "tendered_minor",
+          "change_minor"
+        ],
+        "title": "PaymentLine"
+      },
       "PaymentOut": {
         "properties": {
           "id": {
@@ -28950,6 +30013,20 @@
           "statutory_verified"
         ],
         "title": "PayslipSummary"
+      },
+      "PinIn": {
+        "properties": {
+          "pin": {
+            "type": "string",
+            "pattern": "^\\d{4,6}$",
+            "title": "Pin"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pin"
+        ],
+        "title": "PinIn"
       },
       "PipelineCreate": {
         "properties": {
@@ -30335,6 +31412,217 @@
         ],
         "title": "RegionOut"
       },
+      "RegisterIn": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^[A-Z0-9]{1,6}$",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "payment_methods": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "cash",
+                "card",
+                "jazzcash",
+                "easypaisa",
+                "raast",
+                "bank",
+                "khata"
+              ]
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Payment Methods"
+          },
+          "cash_rounding_minor": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cash Rounding Minor"
+          },
+          "max_variance_minor": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Max Variance Minor",
+            "default": 50000
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "RegisterIn"
+      },
+      "RegisterOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "payment_methods": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Payment Methods"
+          },
+          "cash_rounding_minor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cash Rounding Minor"
+          },
+          "max_variance_minor": {
+            "type": "integer",
+            "title": "Max Variance Minor"
+          },
+          "config_version": {
+            "type": "integer",
+            "title": "Config Version"
+          },
+          "is_default": {
+            "type": "boolean",
+            "title": "Is Default"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          },
+          "open_session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Open Session Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "name",
+          "payment_methods",
+          "cash_rounding_minor",
+          "max_variance_minor",
+          "config_version",
+          "is_default",
+          "active",
+          "open_session_id"
+        ],
+        "title": "RegisterOut"
+      },
+      "RegisterUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 60,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "payment_methods": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "cash",
+                    "card",
+                    "jazzcash",
+                    "easypaisa",
+                    "raast",
+                    "bank",
+                    "khata"
+                  ]
+                },
+                "type": "array",
+                "minItems": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Methods"
+          },
+          "cash_rounding_minor": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cash Rounding Minor"
+          },
+          "max_variance_minor": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Variance Minor"
+          },
+          "active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active"
+          }
+        },
+        "type": "object",
+        "title": "RegisterUpdate"
+      },
       "RegistrationIn": {
         "properties": {
           "enabled": {
@@ -31472,10 +32760,52 @@
               "card",
               "jazzcash",
               "easypaisa",
-              "bank"
+              "raast",
+              "bank",
+              "khata"
             ],
             "title": "Payment Method",
             "default": "cash"
+          },
+          "payments": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/TenderIn"
+                },
+                "type": "array",
+                "maxItems": 7,
+                "minItems": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payments"
+          },
+          "register_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Register Id"
+          },
+          "device_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Id"
           },
           "contact_id": {
             "anyOf": [
@@ -31637,6 +32967,24 @@
             ],
             "title": "Contact Id"
           },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
+          "payments": {
+            "items": {
+              "$ref": "#/components/schemas/PaymentLine"
+            },
+            "type": "array",
+            "title": "Payments"
+          },
           "returnable": {
             "items": {
               "$ref": "#/components/schemas/RefundableLine"
@@ -31757,6 +33105,24 @@
               }
             ],
             "title": "Contact Id"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
+          "payments": {
+            "items": {
+              "$ref": "#/components/schemas/PaymentLine"
+            },
+            "type": "array",
+            "title": "Payments"
           }
         },
         "type": "object",
@@ -31834,10 +33200,24 @@
               "card",
               "jazzcash",
               "easypaisa",
-              "bank"
+              "raast",
+              "bank",
+              "khata"
             ],
             "title": "Payment Method",
             "default": "cash"
+          },
+          "register_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Register Id"
           }
         },
         "type": "object",
@@ -31960,6 +33340,225 @@
           "next_value"
         ],
         "title": "SequenceUpdate"
+      },
+      "SessionClose": {
+        "properties": {
+          "counted": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "propertyNames": {
+              "enum": [
+                "cash",
+                "card",
+                "jazzcash",
+                "easypaisa",
+                "raast",
+                "bank",
+                "khata"
+              ]
+            },
+            "type": "object",
+            "title": "Counted"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Notes",
+            "default": ""
+          },
+          "device_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Id"
+          },
+          "approver_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approver Id"
+          },
+          "approver_pin": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{4,6}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approver Pin"
+          }
+        },
+        "type": "object",
+        "title": "SessionClose"
+      },
+      "SessionOpen": {
+        "properties": {
+          "register_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Register Id"
+          },
+          "opening_float_minor": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Opening Float Minor",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "SessionOpen"
+      },
+      "SessionOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "register_id": {
+            "type": "string",
+            "title": "Register Id"
+          },
+          "register_code": {
+            "type": "string",
+            "title": "Register Code"
+          },
+          "register_name": {
+            "type": "string",
+            "title": "Register Name"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "opened_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Opened At"
+          },
+          "opened_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opened By"
+          },
+          "closed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At"
+          },
+          "closed_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed By"
+          },
+          "opening_float_minor": {
+            "type": "integer",
+            "title": "Opening Float Minor"
+          },
+          "methods": {
+            "items": {
+              "$ref": "#/components/schemas/MethodFigures"
+            },
+            "type": "array",
+            "title": "Methods"
+          },
+          "pay_in_minor": {
+            "type": "integer",
+            "title": "Pay In Minor"
+          },
+          "pay_out_minor": {
+            "type": "integer",
+            "title": "Pay Out Minor"
+          },
+          "drop_minor": {
+            "type": "integer",
+            "title": "Drop Minor"
+          },
+          "variance_approved_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variance Approved By"
+          },
+          "notes": {
+            "type": "string",
+            "title": "Notes"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "register_id",
+          "register_code",
+          "register_name",
+          "status",
+          "opened_at",
+          "opened_by",
+          "closed_at",
+          "closed_by",
+          "opening_float_minor",
+          "methods",
+          "pay_in_minor",
+          "pay_out_minor",
+          "drop_minor",
+          "variance_approved_by",
+          "notes",
+          "warnings"
+        ],
+        "title": "SessionOut"
       },
       "ShiftAssign": {
         "properties": {
@@ -33321,6 +34920,42 @@
           "status"
         ],
         "title": "TenantOut"
+      },
+      "TenderIn": {
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "cash",
+              "card",
+              "jazzcash",
+              "easypaisa",
+              "raast",
+              "bank",
+              "khata"
+            ],
+            "title": "Method"
+          },
+          "amount_minor": {
+            "type": "integer",
+            "maximum": 1000000000000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Amount Minor"
+          },
+          "reference": {
+            "type": "string",
+            "maxLength": 80,
+            "title": "Reference",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "method",
+          "amount_minor"
+        ],
+        "title": "TenderIn",
+        "description": "One tender of a split payment (0076). For cash, `amount_minor` is what\nwas handed over; the change comes back out of it."
       },
       "TerminologyRef": {
         "properties": {

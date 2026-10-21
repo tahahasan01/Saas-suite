@@ -7,7 +7,9 @@ export const METHOD_LABEL: Record<(typeof PAYMENT_METHODS)[number], string> = {
   card: "Card",
   jazzcash: "JazzCash",
   easypaisa: "Easypaisa",
+  raast: "Raast",
   bank: "Bank transfer",
+  khata: "Khata (on credit)",
 };
 
 export function methodLabel(m: string): string {

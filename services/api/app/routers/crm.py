@@ -11,7 +11,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response,
 
 from .. import activities, audit, csv_io, db, fulfillment, leads, pipelines, refs, scoring, timeline
 from ..deps import AuthContext
-from ..workflow import engine as wf
 from ..models import (
     LEAD_STATUSES,
     CrmSummary,
@@ -33,6 +32,7 @@ from ..models import (
 )
 from ..rbac import perm, require, scope_of
 from ..scopes import where
+from ..workflow import engine as wf
 
 router = APIRouter(prefix="/crm", tags=["crm"])
 

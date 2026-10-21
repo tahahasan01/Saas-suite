@@ -1105,9 +1105,8 @@ export interface paths {
         put?: never;
         /**
          * Close Drawer
-         * @description Freezes the expected figure at close: the shift's reconciliation is
-         *     evidence, and a later sale edit must not silently rewrite a signed-off
-         *     variance.
+         * @description Counts the cash only; the register's other methods count as expected.
+         *     Freezes the figures at close (pos_sessions.close).
          */
         post: operations["close_drawer_pos_drawer_close_post"];
         delete?: never;
@@ -4377,6 +4376,185 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pos/registers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Registers */
+        get: operations["list_registers_pos_registers_get"];
+        put?: never;
+        /** Create Register */
+        post: operations["create_register_pos_registers_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/registers/{register_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Register */
+        patch: operations["update_register_pos_registers__register_id__patch"];
+        trace?: never;
+    };
+    "/pos/devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Devices */
+        get: operations["list_devices_pos_devices_get"];
+        put?: never;
+        /** Add Device */
+        post: operations["add_device_pos_devices_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/devices/{device_id}/heartbeat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Heartbeat
+         * @description The till says it's alive and how many sales it still holds.
+         */
+        post: operations["heartbeat_pos_devices__device_id__heartbeat_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Sessions */
+        get: operations["list_sessions_pos_sessions_get"];
+        put?: never;
+        /** Start Session */
+        post: operations["start_session_pos_sessions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/sessions/{session_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Session */
+        get: operations["get_session_pos_sessions__session_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/sessions/{session_id}/cash-moves": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cash Move */
+        post: operations["cash_move_pos_sessions__session_id__cash_moves_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/sessions/{session_id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Close Session */
+        post: operations["close_session_pos_sessions__session_id__close_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/sessions/{session_id}/z-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Z Report */
+        get: operations["z_report_pos_sessions__session_id__z_report_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/pin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set My Pin
+         * @description Your own till PIN: what you enter to approve at a till.
+         */
+        put: operations["set_my_pin_pos_pin_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -5044,6 +5222,18 @@ export interface components {
             receipt_width_mm?: number | null;
             /** Layout */
             layout?: ("classic" | "compact" | "bold") | null;
+        };
+        /** CashMoveIn */
+        CashMoveIn: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "pay_in" | "pay_out" | "drop";
+            /** Amount Minor */
+            amount_minor: number;
+            /** Reason */
+            reason: string;
         };
         /** CatalogKey */
         CatalogKey: {
@@ -5783,6 +5973,38 @@ export interface components {
             /** Active */
             active?: boolean | null;
         };
+        /** DeviceIn */
+        DeviceIn: {
+            /**
+             * Register Id
+             * Format: uuid
+             */
+            register_id: string;
+            /** Device Code */
+            device_code: string;
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+        };
+        /** DeviceOut */
+        DeviceOut: {
+            /** Id */
+            id: string;
+            /** Register Id */
+            register_id: string;
+            /** Device Code */
+            device_code: string;
+            /** Name */
+            name: string;
+            /** Last Seen At */
+            last_seen_at: string | null;
+            /** Outbox Count */
+            outbox_count: number;
+            /** Oldest Pending At */
+            oldest_pending_at: string | null;
+        };
         /** DisablePlanOut */
         DisablePlanOut: {
             /** Module */
@@ -6304,6 +6526,13 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** HeartbeatIn */
+        HeartbeatIn: {
+            /** Outbox Count */
+            outbox_count: number;
+            /** Oldest Pending At */
+            oldest_pending_at?: string | null;
         };
         /** HolidayCalendarCreate */
         HolidayCalendarCreate: {
@@ -7713,6 +7942,21 @@ export interface components {
                 [key: string]: number;
             };
         };
+        /** MethodFigures */
+        MethodFigures: {
+            /** Method */
+            method: string;
+            /** Taken Minor */
+            taken_minor: number;
+            /** Refunds Minor */
+            refunds_minor: number;
+            /** Expected Minor */
+            expected_minor: number;
+            /** Counted Minor */
+            counted_minor: number | null;
+            /** Variance Minor */
+            variance_minor: number | null;
+        };
         /** MethodTotal */
         MethodTotal: {
             /** Payment Method */
@@ -7936,6 +8180,22 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** PaymentLine */
+        PaymentLine: {
+            /** Method */
+            method: string;
+            /** Amount Minor */
+            amount_minor: number;
+            /** Tendered Minor */
+            tendered_minor: number;
+            /** Change Minor */
+            change_minor: number;
+            /**
+             * Reference
+             * @default
+             */
+            reference: string;
+        };
         /** PaymentOut */
         PaymentOut: {
             /** Id */
@@ -8154,6 +8414,11 @@ export interface components {
              * @default
              */
             error: string;
+        };
+        /** PinIn */
+        PinIn: {
+            /** Pin */
+            pin: string;
         };
         /** PipelineCreate */
         PipelineCreate: {
@@ -8711,6 +8976,58 @@ export interface components {
             /** Pst Authority */
             pst_authority: string;
         };
+        /** RegisterIn */
+        RegisterIn: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Payment Methods */
+            payment_methods?: ("cash" | "card" | "jazzcash" | "easypaisa" | "raast" | "bank" | "khata")[];
+            /** Cash Rounding Minor */
+            cash_rounding_minor?: number | null;
+            /**
+             * Max Variance Minor
+             * @default 50000
+             */
+            max_variance_minor: number;
+        };
+        /** RegisterOut */
+        RegisterOut: {
+            /** Id */
+            id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Payment Methods */
+            payment_methods: string[];
+            /** Cash Rounding Minor */
+            cash_rounding_minor: number | null;
+            /** Max Variance Minor */
+            max_variance_minor: number;
+            /** Config Version */
+            config_version: number;
+            /** Is Default */
+            is_default: boolean;
+            /** Active */
+            active: boolean;
+            /** Open Session Id */
+            open_session_id: string | null;
+        };
+        /** RegisterUpdate */
+        RegisterUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Payment Methods */
+            payment_methods?: ("cash" | "card" | "jazzcash" | "easypaisa" | "raast" | "bank" | "khata")[] | null;
+            /** Cash Rounding Minor */
+            cash_rounding_minor?: number | null;
+            /** Max Variance Minor */
+            max_variance_minor?: number | null;
+            /** Active */
+            active?: boolean | null;
+        };
         /** RegistrationIn */
         RegistrationIn: {
             /**
@@ -9152,7 +9469,13 @@ export interface components {
              * @default cash
              * @enum {string}
              */
-            payment_method: "cash" | "card" | "jazzcash" | "easypaisa" | "bank";
+            payment_method: "cash" | "card" | "jazzcash" | "easypaisa" | "raast" | "bank" | "khata";
+            /** Payments */
+            payments?: components["schemas"]["TenderIn"][] | null;
+            /** Register Id */
+            register_id?: string | null;
+            /** Device Id */
+            device_id?: string | null;
             /** Contact Id */
             contact_id?: string | null;
         };
@@ -9220,6 +9543,10 @@ export interface components {
             fbr_status?: string | null;
             /** Contact Id */
             contact_id?: string | null;
+            /** Session Id */
+            session_id?: string | null;
+            /** Payments */
+            payments?: components["schemas"]["PaymentLine"][];
             /** Returnable */
             returnable?: components["schemas"]["RefundableLine"][];
             /**
@@ -9274,6 +9601,10 @@ export interface components {
             fbr_status?: string | null;
             /** Contact Id */
             contact_id?: string | null;
+            /** Session Id */
+            session_id?: string | null;
+            /** Payments */
+            payments?: components["schemas"]["PaymentLine"][];
         };
         /** SaleQuote */
         SaleQuote: {
@@ -9310,7 +9641,9 @@ export interface components {
              * @default cash
              * @enum {string}
              */
-            payment_method: "cash" | "card" | "jazzcash" | "easypaisa" | "bank";
+            payment_method: "cash" | "card" | "jazzcash" | "easypaisa" | "raast" | "bank" | "khata";
+            /** Register Id */
+            register_id?: string | null;
         };
         /** SequenceOut */
         SequenceOut: {
@@ -9348,6 +9681,74 @@ export interface components {
             next_value: number;
             /** Period Key */
             period_key?: string | null;
+        };
+        /** SessionClose */
+        SessionClose: {
+            /** Counted */
+            counted?: {
+                [key: string]: number;
+            };
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /** Device Id */
+            device_id?: string | null;
+            /** Approver Id */
+            approver_id?: string | null;
+            /** Approver Pin */
+            approver_pin?: string | null;
+        };
+        /** SessionOpen */
+        SessionOpen: {
+            /** Register Id */
+            register_id?: string | null;
+            /**
+             * Opening Float Minor
+             * @default 0
+             */
+            opening_float_minor: number;
+        };
+        /** SessionOut */
+        SessionOut: {
+            /** Id */
+            id: string;
+            /** Register Id */
+            register_id: string;
+            /** Register Code */
+            register_code: string;
+            /** Register Name */
+            register_name: string;
+            /** Status */
+            status: string;
+            /**
+             * Opened At
+             * Format: date-time
+             */
+            opened_at: string;
+            /** Opened By */
+            opened_by: string | null;
+            /** Closed At */
+            closed_at: string | null;
+            /** Closed By */
+            closed_by: string | null;
+            /** Opening Float Minor */
+            opening_float_minor: number;
+            /** Methods */
+            methods: components["schemas"]["MethodFigures"][];
+            /** Pay In Minor */
+            pay_in_minor: number;
+            /** Pay Out Minor */
+            pay_out_minor: number;
+            /** Drop Minor */
+            drop_minor: number;
+            /** Variance Approved By */
+            variance_approved_by: string | null;
+            /** Notes */
+            notes: string;
+            /** Warnings */
+            warnings: string[];
         };
         /** ShiftAssign */
         ShiftAssign: {
@@ -9866,6 +10267,25 @@ export interface components {
             industry_type: string;
             /** Status */
             status: string;
+        };
+        /**
+         * TenderIn
+         * @description One tender of a split payment (0076). For cash, `amount_minor` is what
+         *     was handed over; the change comes back out of it.
+         */
+        TenderIn: {
+            /**
+             * Method
+             * @enum {string}
+             */
+            method: "cash" | "card" | "jazzcash" | "easypaisa" | "raast" | "bank" | "khata";
+            /** Amount Minor */
+            amount_minor: number;
+            /**
+             * Reference
+             * @default
+             */
+            reference: string;
         };
         /**
          * TerminologyRef
@@ -20090,6 +20510,459 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["MoveOut"][];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_registers_pos_registers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegisterOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_register_pos_registers_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegisterOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_register_pos_registers__register_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                register_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegisterOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_devices_pos_devices_get: {
+        parameters: {
+            query?: {
+                register_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_device_pos_devices_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeviceIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    heartbeat_pos_devices__device_id__heartbeat_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                device_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HeartbeatIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_sessions_pos_sessions_get: {
+        parameters: {
+            query?: {
+                register_id?: string | null;
+                status?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_session_pos_sessions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SessionOpen"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_session_pos_sessions__session_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cash_move_pos_sessions__session_id__cash_moves_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CashMoveIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    close_session_pos_sessions__session_id__close_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SessionClose"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    z_report_pos_sessions__session_id__z_report_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_my_pin_pos_pin_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PinIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

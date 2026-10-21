@@ -144,6 +144,11 @@ _SHAPED = {
     "files": {"sha256": lambda: uuid.uuid4().hex * 2},
     "hrms_leave_types": {"code": lambda: "rls_" + uuid.uuid4().hex[:12]},   # a lower-case code (0068)
     "pay_components": {"code": lambda: "RLS_" + uuid.uuid4().hex[:8].upper()},
+    # invoices v2, catalog v2, registers (0074-0076)
+    "invoices": {"legacy_ref": lambda: "RLS"},
+    "pos_barcode_rules": {"prefix": lambda: "2" + str(uuid.uuid4().int % 10), "kind": lambda: "weight"},
+    "pos_registers": {"code": lambda: "Q" + uuid.uuid4().hex[:4].upper()},
+    "pos_devices": {"device_code": lambda: "D" + uuid.uuid4().hex[:4].upper()},
 }
 
 
@@ -165,6 +170,9 @@ async def _plant(conn, table: str, key: str, owner_id: uuid.UUID) -> None:
     allowed = await _allowed_values(conn, table)
     allowed.update({col: make() for col, make in _SHAPED.get(table, {}).items()})
     cols = {name: (typ, allowed.get(name, _value(typ))) for name, typ in await _required_columns(conn, table)}
+    # A shaped optional column (e.g. the legacy_ref an invoice needs without a contact) is set too.
+    for col, make in _SHAPED.get(table, {}).items():
+        cols.setdefault(col, ("text", allowed[col]))
     cols[key] = ("uuid", str(owner_id))
     names = list(cols)
     params = ", ".join(f"${i}::text::{cols[n][0]}" for i, n in enumerate(names, 1))
