@@ -18,6 +18,7 @@ from __future__ import annotations
 import hashlib
 import io
 import logging
+import warnings
 import zipfile
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta, timezone
@@ -34,7 +35,8 @@ log = logging.getLogger("files")
 MIB = 1024 * 1024
 MAX_UPLOAD = 10 * MIB          # TR-SEC-55: attachments and documents
 MAX_LOGO = 1 * MIB             # TR-SEC-55: logos
-MAX_IMAGE_PX = 4096            # TR-SEC-56
+MAX_IMAGE_PX = 4096            # TR-SEC-56: the long side after re-encoding
+MAX_PIXELS = 25_000_000        # pixel budget checked on the header before decoding (~100 MB RGBA)
 DRAFT_TTL = timedelta(hours=24)
 BLOB_GRACE = timedelta(hours=1)  # a blob younger than this may belong to a row still committing
 
@@ -43,8 +45,8 @@ XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 _MARKUP = (b"<html", b"<!doctype", b"<svg", b"<?xml", b"<script", b"<body", b"<iframe", b"<head",
            b"<object", b"<embed", b"<meta")
 
-# Pillow's own decompression-bomb guard, set for our cap (with headroom).
-Image.MAX_IMAGE_PIXELS = 40_000_000
+# Pillow's own guard, a backstop behind MAX_PIXELS (clean() turns its warning into an error).
+Image.MAX_IMAGE_PIXELS = MAX_PIXELS
 
 
 class Rejected(ValueError):
@@ -94,12 +96,27 @@ def clean(data: bytes, mime: str) -> tuple[bytes, str]:
     """Re-encode images without metadata; other types pass through."""
     if mime not in IMAGE_MIMES:
         return data, mime
-    try:
-        img: Image.Image = Image.open(io.BytesIO(data))
-        img.load()
-        img = ImageOps.exif_transpose(img)
-    except (Image.DecompressionBombError, OSError, SyntaxError, ValueError):
-        raise Rejected("That image can't be read")
+    with warnings.catch_warnings():
+        # Pillow only warns between MAX_IMAGE_PIXELS and twice that; here a
+        # warning is a refusal (local filter, not process-wide).
+        warnings.simplefilter("error", Image.DecompressionBombWarning)
+        try:
+            img: Image.Image = Image.open(io.BytesIO(data))
+            # The header's size, before a single pixel is decoded: a small
+            # upload claiming a huge image never reaches load() (security review).
+            w, h = img.size
+            if w * h > MAX_PIXELS:
+                raise TooLarge(f"That image is too large ({w}×{h}); keep it under {MAX_PIXELS // 1_000_000} megapixels")
+            if mime == "image/jpeg":
+                img.draft("RGB", (MAX_IMAGE_PX, MAX_IMAGE_PX))  # decode JPEGs at a reduced scale
+            img.load()
+            img = ImageOps.exif_transpose(img)
+        except TooLarge:
+            raise
+        except (Image.DecompressionBombError, Image.DecompressionBombWarning):
+            raise TooLarge("That image is too large")
+        except (OSError, SyntaxError, ValueError):
+            raise Rejected("That image can't be read")
     if max(img.size) > MAX_IMAGE_PX:
         img.thumbnail((MAX_IMAGE_PX, MAX_IMAGE_PX))
     out = io.BytesIO()

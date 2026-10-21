@@ -113,6 +113,38 @@ def test_images_are_reencoded_without_exif():
     assert not Image.open(io.BytesIO(clean)).getexif()
 
 
+def _png_header_only(w: int, h: int) -> bytes:
+    """A tiny PNG whose header claims w x h pixels (a decompression bomb's shape)."""
+    import struct
+    import zlib
+
+    def chunk(kind: bytes, body: bytes) -> bytes:
+        return struct.pack(">I", len(body)) + kind + body + struct.pack(">I", zlib.crc32(kind + body))
+
+    ihdr = struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)
+    idat = zlib.compress(b"\x00" * 64)
+    return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr) + chunk(b"IDAT", idat) + chunk(b"IEND", b"")
+
+
+@pytest.mark.parametrize("w,h", [(9000, 9000), (20000, 20000), (100000, 300)])
+def test_images_claiming_too_many_pixels_are_refused_before_decoding(w, h, monkeypatch):
+    """Security review: the pixel budget is checked on the header, so a small
+    upload declaring a huge image is never decoded into memory."""
+    data = _png_header_only(w, h)
+    assert len(data) < 200
+
+    def no_decode(*a, **k):
+        raise AssertionError("the image was decoded")
+    monkeypatch.setattr(Image.Image, "load", no_decode)
+    with pytest.raises(files.TooLarge):
+        files.clean(data, "image/png")
+
+
+async def test_a_decompression_bomb_upload_is_a_413(client, crm_tenant):
+    r = await _upload(client, _png_header_only(20000, 20000), "bomb.png")
+    assert r.status_code == 413
+
+
 def test_huge_images_are_scaled_down():
     clean, _ = files.clean(_png(5000, 10), "image/png")
     assert Image.open(io.BytesIO(clean)).width <= files.MAX_IMAGE_PX
