@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { ChevronsLeft, ChevronsRight } from "lucide-react";
 import { useSession } from "@/lib/session";
 import { MODULES, NAV_GROUPS, PORTAL_MODULES, moduleFor, tileStyle, type Module } from "@/lib/modules";
+import { ActivityBadge } from "@/components/crm/ActivityBadge";
 
 /** The bold frame (D-90): deep teal, one colour tile per module, a saffron
  *  marker on the active one. Collapses to an icon rail on desktop.
@@ -101,6 +102,7 @@ function NavItem({ module: m, label, active, collapsed, onNavigate }:
         <Icon size={17} strokeWidth={2.2} aria-hidden />
       </span>
       {!collapsed && <span className="truncate">{label}</span>}
+      {m.badge === "activities" && <ActivityBadge collapsed={collapsed} />}
     </Link>
   );
 }

@@ -7,7 +7,7 @@
  * always available. `label` may use the industry terminology engine (`t`).
  */
 import {
-  Banknote, BarChart3, Boxes, CalendarDays, ClipboardList, Clock, FileText, Gauge,
+  Banknote, BarChart3, Boxes, CalendarCheck, CalendarDays, ClipboardList, Clock, FileText, Gauge,
   HandCoins, KanbanSquare, LayoutGrid, type LucideIcon, Palmtree, Receipt, RotateCcw,
   Settings, ShoppingCart, Sparkles, Store, Truck, UserRound, Users, Wallet, Workflow,
 } from "lucide-react";
@@ -31,6 +31,8 @@ export interface Module {
   group: "overview" | "sell" | "people" | "admin";
   requires?: Section;
   tabs?: ModuleTab[];
+  /** A live count shown on the nav item (e.g. activities due). */
+  badge?: "activities";
 }
 
 export const NAV_GROUPS: { key: Module["group"]; label: string | null }[] = [
@@ -48,7 +50,11 @@ export const MODULES: Module[] = [
   {
     key: "crm", label: (t) => `${t("leads")} & pipeline`, icon: KanbanSquare, color: "--color-mod-crm",
     href: "/crm", group: "sell", requires: "crm",
-    tabs: [{ href: "/crm", label: "Pipeline", prefix: true }],
+    tabs: [
+      { href: "/crm", label: "Pipeline" },
+      { href: "/crm/reports", label: "Reports" },
+      { href: "/crm/settings", label: "Settings" },
+    ],
   },
   {
     key: "pos", label: () => "Point of sale", icon: ShoppingCart, color: "--color-mod-pos",
@@ -93,6 +99,11 @@ export const MODULES: Module[] = [
       { href: "/settings/billing", label: "Billing" },
       { href: "/settings/fbr", label: "FBR invoicing", requires: "pos" },
     ],
+  },
+  // crm v2 (3B): the day's follow-ups, with a due-count badge.
+  {
+    key: "my-day", label: () => "My day", icon: CalendarCheck, color: "--color-mod-crm",
+    href: "/my-day", group: "overview", requires: "crm", badge: "activities",
   },
 ];
 
