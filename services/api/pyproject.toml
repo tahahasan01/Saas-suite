@@ -47,6 +47,7 @@ module = [
     "app.payroll_models",
     "app.payroll_preview",
     "app.payroll_province",
+    "app.payroll_reports",
     "app.payroll_runs",
     "app.payslip_pdf",
     "app.pricing",

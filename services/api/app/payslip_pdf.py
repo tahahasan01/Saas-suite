@@ -60,12 +60,8 @@ def _money(minor: int) -> str:
     return f"{sign}Rs {rupees:,}" + (f".{paisa:02d}" if paisa else "")
 
 
-class _Pdf(FPDF):
-    pass
-
-
-def _new_pdf() -> _Pdf:
-    pdf = _Pdf()
+def _new_pdf() -> FPDF:
+    pdf = FPDF()
     pdf.add_font("NotoSans", "", str(FONTS / "NotoSans-Regular.ttf"))
     pdf.add_font("NotoSans", "B", str(FONTS / "NotoSans-Bold.ttf"))
     pdf.add_font("NotoNaskhArabic", "", str(FONTS / "NotoNaskhArabic-Regular.ttf"))
@@ -77,6 +73,49 @@ def _new_pdf() -> _Pdf:
     pdf.set_auto_page_break(True, margin=15)
     pdf.add_page()
     return pdf
+
+
+def render_certificate(cert: dict[str, Any], company: str, company_ntn: str) -> bytes:
+    """The annual salary and tax certificate (St03 §6.6) — an export the
+    employee files with; we do not submit it anywhere."""
+    pdf = _new_pdf()
+    w = pdf.epw
+    emp = cert["employee"]
+    pdf.set_font("NotoSans", "B", 15)
+    pdf.multi_cell(w, 8, company, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_font("NotoSans", "", 9)
+    if company_ntn:
+        pdf.cell(w, 5, f"NTN {company_ntn}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_font("NotoSans", "B", 12)
+    pdf.cell(w, 9, f"Salary and income tax certificate · {cert['tax_year']}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_font("NotoSans", "", 10)
+    pdf.multi_cell(w, 6, f"Employee: {emp.get('name', '')}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.multi_cell(w, 6, f"CNIC: {mask_tail(str(emp.get('cnic') or ''), 4)}   NTN: {emp.get('ntn') or '—'}",
+                   new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.ln(3)
+    pdf.set_font("NotoSans", "B", 9)
+    for head, width in (("Month", w * 0.31), ("Salary paid", w * 0.23), ("Taxable", w * 0.23), ("Tax deducted", w * 0.23)):
+        pdf.cell(width, 7, head, align="L" if head == "Month" else "R")
+    pdf.ln(7)
+    pdf.set_font("NotoSans", "", 9)
+    for m in cert["months"]:
+        pdf.cell(w * 0.31, 6, m["month"])
+        for k in ("gross_minor", "taxable_minor", "tax_minor"):
+            pdf.cell(w * 0.23, 6, _money(m[k]), align="R")
+        pdf.ln(6)
+    pdf.set_font("NotoSans", "B", 9)
+    pdf.cell(w * 0.31, 7, "Total")
+    for k in ("gross_minor", "taxable_minor", "tax_minor"):
+        pdf.cell(w * 0.23, 7, _money(cert[k]), align="R")
+    pdf.ln(10)
+    pdf.set_font("NotoSans", "", 8)
+    if not cert.get("rates_verified", True):
+        pdf.multi_cell(w, 4.5, "Rates pending verification: the tax slabs used have not yet been checked against the "
+                               "Finance Act Gazette. Treat the tax figures as estimates.",
+                       new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.multi_cell(w, 4.5, "Prepared from the employer's payroll records. Business OS does not file this with FBR.",
+                   new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    return bytes(pdf.output())
 
 
 def render(slip: dict[str, Any]) -> bytes:
