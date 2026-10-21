@@ -43,6 +43,13 @@ ENUM_COLUMNS = {
     ("timeline_events", "kind"): models.TIMELINE_KINDS,
     ("scheduled_jobs", "status"): models.JOB_STATUSES,
     ("job_runs", "status"): models.JOB_RUN_STATUSES,
+    ("contacts", "kind"): models.CONTACT_KINDS,
+    ("contacts", "roles"): models.CONTACT_ROLES,
+    ("contact_addresses", "kind"): models.ADDRESS_KINDS,
+    ("tags", "color"): models.TAG_COLORS,
+    ("record_tags", "entity_type"): models.TAGGABLE_ENTITIES,
+    ("contact_review_items", "reason"): models.REVIEW_REASONS,
+    ("contact_review_items", "status"): models.REVIEW_STATUSES,
 }
 
 

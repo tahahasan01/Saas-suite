@@ -15,42 +15,49 @@ TERMS: dict[str, dict[str, str]] = {
         "product": "Item", "products": "Items",
         "deal": "Order", "deals": "Orders",
         "fulfillment": "Courier Dispatch",
+        "contact": "Customer", "contacts": "Customers",  # 0059 inserts the same rows
     },
     "restaurant": {
         "lead": "Guest", "leads": "Guests",
         "product": "Menu Item", "products": "Menu",
         "deal": "Order", "deals": "Orders",
         "fulfillment": "Kitchen Ticket",
+        "contact": "Guest", "contacts": "Guests",  # 0059 inserts the same rows
     },
     "pharmacy": {
         "lead": "Patient", "leads": "Patients",
         "product": "Medicine", "products": "Medicines",
         "deal": "Sale", "deals": "Sales",
         "fulfillment": "Dispense",
+        "contact": "Patient", "contacts": "Patients",  # 0059 inserts the same rows
     },
     "wholesale": {
         "lead": "Buyer", "leads": "Buyers",
         "product": "SKU", "products": "Catalog",
         "deal": "Order", "deals": "Orders",
         "fulfillment": "Dispatch",
+        "contact": "Customer", "contacts": "Customers",  # 0059 inserts the same rows
     },
     "education": {
         "lead": "Student", "leads": "Students",
         "product": "Course", "products": "Courses",
         "deal": "Admission", "deals": "Admissions",
         "fulfillment": "Batch Start",
+        "contact": "Student", "contacts": "Students",  # 0059 inserts the same rows
     },
     "b2b_software": {
         "lead": "Client", "leads": "Clients",
         "product": "Service", "products": "Services",
         "deal": "Project", "deals": "Projects",
         "fulfillment": "Delivery Date",
+        "contact": "Client", "contacts": "Clients",  # 0059 inserts the same rows
     },
     "real_estate": {
         "lead": "Buyer", "leads": "Buyers",
         "product": "Property", "products": "Properties",
         "deal": "Booking", "deals": "Bookings",
         "fulfillment": "Possession Date",
+        "contact": "Client", "contacts": "Clients",  # 0059 inserts the same rows
     },
 }
 

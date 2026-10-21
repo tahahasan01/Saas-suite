@@ -377,6 +377,7 @@ class SaleCreate(BaseModel):
     discount_minor: int = Field(default=0, ge=0)
     paid_minor: int = Field(default=0, ge=0)
     payment_method: PaymentMethod = "cash"
+    contact_id: UUID | None = None   # the customer; None for a walk-in (St02 P0)
 
 
 class SaleQuoteRequest(BaseModel):
@@ -418,6 +419,7 @@ class SaleOut(BaseModel):
     # Present once FBR has issued a number; None while a submission is queued.
     fbr_invoice_number: str | None = None
     fbr_status: str | None = None       # 'submitted' | 'pending' | None (FBR off)
+    contact_id: str | None = None       # the customer; None for a walk-in
 
 
 class SaleDetail(SaleOut):
@@ -1047,3 +1049,269 @@ class WeekRow(BaseModel):
 class WeekOut(BaseModel):
     days: list[date]
     employees: list[WeekRow]
+
+
+# ─── Contacts (D-30, D-33; migration 0059) ───────────────────────────────────
+ContactKind = Literal["person", "company"]
+CONTACT_KINDS = list(get_args(ContactKind))
+# Roles are labels on one contact, not separate records (St02 §6.2).
+ContactRole = Literal["customer", "supplier", "patient", "student", "parent", "partner"]
+CONTACT_ROLES = list(get_args(ContactRole))
+AddressKind = Literal["billing", "shipping", "other"]
+ADDRESS_KINDS = list(get_args(AddressKind))
+TagColor = Literal["slate", "teal", "amber", "rose", "violet", "sky", "lime"]
+TAG_COLORS = list(get_args(TagColor))
+TaggableEntity = Literal["contact", "lead"]
+TAGGABLE_ENTITIES = list(get_args(TaggableEntity))
+DuplicateReason = Literal["phone", "email", "ntn"]
+
+
+class TagOut(BaseModel):
+    id: str
+    name: str
+    color: str
+
+
+class TagCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=40)
+    color: TagColor = "slate"
+
+
+class TagUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str | None = Field(default=None, min_length=1, max_length=40)
+    color: TagColor | None = None
+
+
+class ContactCreate(BaseModel):
+    kind: ContactKind = "person"
+    name: str = Field(min_length=1, max_length=160)
+    company_id: UUID | None = None
+    company_name: str = Field(default="", max_length=160)
+    job_title: str = Field(default="", max_length=120)
+    phone: str = Field(default="", max_length=40)
+    email: str = Field(default="", max_length=254)
+    ntn: str = Field(default="", max_length=20)
+    strn: str = Field(default="", max_length=20)
+    city: str = Field(default="", max_length=80)
+    roles: list[ContactRole] = Field(default_factory=list)
+    source: str = Field(default="", max_length=40)
+    notes: str = Field(default="", max_length=4000)
+    owner_id: UUID | None = None
+    tag_ids: list[UUID] = Field(default_factory=list, max_length=20)
+    force: bool = False  # create even when a likely duplicate exists
+
+
+class ContactUpdate(BaseModel):
+    # Unknown fields are a 422, not a silent no-op (same reason as ProductUpdate).
+    model_config = ConfigDict(extra="forbid")
+    kind: ContactKind | None = None
+    name: str | None = Field(default=None, min_length=1, max_length=160)
+    # Omitted = unchanged; an explicit null unlinks the company.
+    company_id: UUID | None = None
+    company_name: str | None = Field(default=None, max_length=160)
+    job_title: str | None = Field(default=None, max_length=120)
+    phone: str | None = Field(default=None, max_length=40)
+    email: str | None = Field(default=None, max_length=254)
+    ntn: str | None = Field(default=None, max_length=20)
+    strn: str | None = Field(default=None, max_length=20)
+    city: str | None = Field(default=None, max_length=80)
+    roles: list[ContactRole] | None = None
+    source: str | None = Field(default=None, max_length=40)
+    notes: str | None = Field(default=None, max_length=4000)
+    owner_id: UUID | None = None
+    tag_ids: list[UUID] | None = Field(default=None, max_length=20)
+
+
+class ContactOut(BaseModel):
+    id: str
+    kind: str
+    name: str
+    company_id: str | None
+    company_name: str            # the linked company's name, else the free text
+    job_title: str
+    phone: str                   # as typed
+    phone_e164: str | None       # the matching key; None when it can't be placed
+    email: str
+    ntn: str
+    strn: str
+    effective_ntn: str           # a person under a company reads the company's (St02 §6.2)
+    city: str
+    roles: list[str]
+    source: str
+    notes: str
+    owner_id: str | None
+    tags: list[TagOut] = Field(default_factory=list)
+    archived_at: datetime | None
+    merged_into_id: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class ContactBrief(BaseModel):
+    id: str
+    kind: str
+    name: str
+    phone: str
+    phone_e164: str | None
+    email: str
+    company_name: str
+    archived: bool
+
+
+class ContactDuplicate(BaseModel):
+    id: str
+    name: str
+    kind: str
+    phone_e164: str | None
+    email: str
+    ntn: str
+    archived: bool
+    reason: DuplicateReason
+
+
+class ContactDuplicates(BaseModel):
+    duplicates: list[ContactDuplicate]
+    # Keys held by more than the shared threshold: never used to match.
+    shared_keys: list[str] = Field(default_factory=list)
+
+
+class ContactLookup(BaseModel):
+    phone_e164: str | None
+    shared: bool                 # held by more than the threshold: pick, never auto-attach
+    matches: list[ContactBrief]
+
+
+class AddressCreate(BaseModel):
+    kind: AddressKind = "billing"
+    line1: str = Field(min_length=1, max_length=200)
+    line2: str = Field(default="", max_length=200)
+    city: str = Field(default="", max_length=80)
+    province: str = Field(default="", max_length=40)
+    postal_code: str = Field(default="", max_length=12)
+    is_default: bool = False
+
+
+class AddressUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    kind: AddressKind | None = None
+    line1: str | None = Field(default=None, min_length=1, max_length=200)
+    line2: str | None = Field(default=None, max_length=200)
+    city: str | None = Field(default=None, max_length=80)
+    province: str | None = Field(default=None, max_length=40)
+    postal_code: str | None = Field(default=None, max_length=12)
+    is_default: bool | None = None
+
+
+class AddressOut(BaseModel):
+    id: str
+    kind: str
+    line1: str
+    line2: str
+    city: str
+    province: str
+    postal_code: str
+    is_default: bool
+
+
+class ContactStats(BaseModel):
+    open_deals: int
+    won_value_minor: int
+    sales_count: int
+    lifetime_spend_minor: int
+    last_visit_at: datetime | None
+    # Pending or approved invoice requests (there is no payments model yet).
+    invoiced_minor: int
+
+
+class ContactDeal(BaseModel):
+    id: str
+    name: str
+    stage: str
+    stage_kind: str
+    value_minor: int
+    created_at: datetime
+
+
+class ContactSale(BaseModel):
+    id: str
+    total_minor: int
+    item_count: int
+    payment_method: str
+    created_at: datetime
+
+
+class ContactInvoice(BaseModel):
+    id: str
+    total_minor: int
+    status: str
+    created_at: datetime
+
+
+class ContactDetail(BaseModel):
+    contact: ContactOut
+    company: ContactBrief | None
+    people: list[ContactBrief]
+    addresses: list[AddressOut]
+    stats: ContactStats
+    deals: list[ContactDeal]
+    sales: list[ContactSale]
+    invoices: list[ContactInvoice]
+
+
+class ContactNoteCreate(BaseModel):
+    body: str = Field(min_length=1, max_length=4000)
+
+
+# Leads → contacts (migration 0060, docs §7.1).
+ReviewReason = Literal["shared_phone", "name_mismatch"]
+REVIEW_REASONS = list(get_args(ReviewReason))
+ReviewStatus = Literal["open", "resolved", "dismissed"]
+REVIEW_STATUSES = list(get_args(ReviewStatus))
+
+
+class QualifyRequest(BaseModel):
+    """Link the lead to an existing contact, or create one from the lead."""
+    mode: Literal["link", "create"]
+    contact_id: UUID | None = None   # mode=link
+    company_id: UUID | None = None   # mode=create: put the new person under this company
+    create_company: bool = False     # mode=create: find or create a company from the lead's company name
+    force: bool = False              # mode=create: even if a contact holds the same phone/email
+
+
+class LeadContact(BaseModel):
+    lead_id: str
+    contact: ContactOut
+
+
+class BackfillReport(BaseModel):
+    leads_seen: int
+    contacts_created: int
+    leads_linked: int
+    queued: int
+    invalid_phones: int        # leads whose phone couldn't be placed; contacts keep the raw text
+    invoices_linked: int = 0
+
+
+class ReviewItem(BaseModel):
+    id: str
+    lead_id: str
+    lead_name: str
+    lead_phone: str
+    lead_email: str
+    reason: str
+    match_key: str
+    candidates: list[ContactBrief]
+    created_at: datetime
+
+
+class TimelineItem(BaseModel):
+    id: str
+    entity_type: str
+    entity_id: str
+    kind: str
+    body: str | None
+    changes: dict | None
+    actor_id: str | None
+    actor_name: str | None
+    occurred_at: datetime

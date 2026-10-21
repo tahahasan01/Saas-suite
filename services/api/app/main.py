@@ -19,6 +19,7 @@ from .routers import (
     ai, auth, billing, crm, dashboard, entitlements, fbr, hrms, invoices, meta, notifications, pos,
     team, terminology, workflows,
 )
+from .routers import contacts as contacts_router
 
 # JSON logs with request/tenant context and PII redaction; Sentry if SENTRY_DSN (app/obs.py).
 obs.setup_logging("api")
@@ -80,6 +81,7 @@ app.include_router(fbr.router)
 app.include_router(hrms.router)
 app.include_router(hrms.portal)
 app.include_router(billing.router)
+app.include_router(contacts_router.router)
 
 
 @app.exception_handler(asyncpg.DataError)

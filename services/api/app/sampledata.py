@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import asyncpg
 
+from . import contacts_backfill
+
 _STAGES = [("New", "active"), ("Contacted", "active"), ("Qualified", "active"),
            ("Proposal", "active"), ("Won", "won"), ("Lost", "lost")]
 
@@ -59,6 +61,8 @@ async def seed(conn: asyncpg.Connection, tenant_id: str, user_id: str, sections:
                                        phone, email, source, value_minor, score)
                    values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)""",
                 tenant_id, pid, stage_ids[si], user_id, name, company, phone, email, source, value, score)
+        # The demo starts with contacts, made the way real leads get them.
+        await contacts_backfill.backfill(conn, tenant_id)
 
     if "pos" in sections:
         for name, barcode, price, stock, low in _PRODUCTS:

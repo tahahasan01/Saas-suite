@@ -130,6 +130,13 @@ export const PERMISSION_KEYS = [
   "payroll.salary.update",
   "payroll.report.export",
   "payroll.settings.manage",
+  // contacts
+  "contacts.contact.read",
+  "contacts.contact.create",
+  "contacts.contact.update",
+  "contacts.contact.archive",
+  "contacts.contact.merge",
+  "contacts.tag.manage",
 ] as const;
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];
 

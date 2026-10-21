@@ -150,6 +150,8 @@ def _fingerprint(body: SaleCreate) -> str:
         "paid_minor": body.paid_minor,
         "payment_method": body.payment_method,
     }
+    if body.contact_id is not None:  # only when set, so carts recorded before 0060 replay unchanged
+        canonical["contact_id"] = str(body.contact_id)
     return hashlib.sha256(json.dumps(canonical, sort_keys=True).encode()).hexdigest()
 
 
@@ -180,7 +182,8 @@ async def _replay_sale(tenant_id: str, client_uuid, fingerprint: str) -> SaleOut
         tax_minor=sale["tax_minor"], rounding_minor=sale["rounding_minor"],
         amount_due_minor=sale["total_minor"] + sale["rounding_minor"],
         fbr_invoice_number=fbr_row["fbr_invoice_number"] if fbr_row else None,
-        fbr_status=fbr_row["status"] if fbr_row else None)
+        fbr_status=fbr_row["status"] if fbr_row else None,
+        contact_id=str(sale["contact_id"]) if sale["contact_id"] else None)
 
 
 @router.post("/sales", response_model=SaleOut, status_code=status.HTTP_201_CREATED)
@@ -245,8 +248,18 @@ async def quote_sale(body: SaleQuoteRequest, auth: AuthContext = Depends(require
                      rounding_minor=rounding, amount_due_minor=due)
 
 
+async def _check_customer(conn, contact_id) -> None:
+    """The named customer must be one of this tenant's live contacts."""
+    if contact_id is None:
+        return
+    await refs.ensure_visible(conn, "contacts", contact_id)
+    if await conn.fetchval("select archived_at is not null from contacts where id=$1", contact_id):
+        raise HTTPException(status.HTTP_409_CONFLICT, "That customer is archived")
+
+
 async def _record_sale(body: SaleCreate, auth: AuthContext, fingerprint: str) -> SaleOut:
     async with db.tenant_conn(auth.tenant_id) as conn:
+        await _check_customer(conn, body.contact_id)
         lines, fbr_cfg, priced = await _price_cart(conn, auth.tenant_id, body.items, body.discount_minor)
         total = priced.total_minor
         due, rounding = await _amount_due(conn, total, body.payment_method)
@@ -262,11 +275,11 @@ async def _record_sale(body: SaleCreate, auth: AuthContext, fingerprint: str) ->
         sale_id = await conn.fetchval(
             """insert into pos_sales (tenant_id, cashier_id, subtotal_minor, discount_minor, total_minor,
                                       paid_minor, change_minor, payment_method, item_count, tax_minor,
-                                      client_uuid, payload_sha256, rounding_minor)
-               values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) returning id""",
+                                      client_uuid, payload_sha256, rounding_minor, contact_id)
+               values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) returning id""",
             auth.tenant_id, auth.user_id, priced.subtotal_minor, priced.discount_minor, total,
             paid, change, body.payment_method, len(lines), priced.tax_minor,
-            body.client_uuid, fingerprint, rounding)
+            body.client_uuid, fingerprint, rounding, body.contact_id)
         fbr_on = bool(fbr_cfg and fbr_cfg["enabled"])
         inclusive = bool(fbr_on and fbr_cfg["prices_include_tax"])
         items = []
@@ -308,7 +321,8 @@ async def _record_sale(body: SaleCreate, auth: AuthContext, fingerprint: str) ->
         total_minor=sale["total_minor"], paid_minor=sale["paid_minor"], change_minor=sale["change_minor"],
         payment_method=sale["payment_method"], item_count=sale["item_count"], created_at=sale["created_at"],
         items=items, tax_minor=sale["tax_minor"], rounding_minor=sale["rounding_minor"],
-        amount_due_minor=sale["total_minor"] + sale["rounding_minor"], fbr_invoice_number=fbr_number, fbr_status=fbr_status)
+        amount_due_minor=sale["total_minor"] + sale["rounding_minor"], fbr_invoice_number=fbr_number, fbr_status=fbr_status,
+        contact_id=str(sale["contact_id"]) if sale["contact_id"] else None)
 
 
 # ── Suppliers & purchase orders ──────────────────────────────────────────────
@@ -631,6 +645,7 @@ async def get_sale(sale_id: str, auth: AuthContext = Depends(require("pos", "rea
         amount_due_minor=sale["total_minor"] + sale["rounding_minor"],
         fbr_invoice_number=fbr_row["fbr_invoice_number"] if fbr_row else None,
         fbr_status=fbr_row["status"] if fbr_row else None,
+        contact_id=str(sale["contact_id"]) if sale["contact_id"] else None,
         items=[SaleItemOut(name=r["name"], qty=float(r["qty_sold"]), price_minor=r["price_minor"],
                            line_total_minor=round(r["price_minor"] * float(r["qty_sold"])))
                for r in lines],
