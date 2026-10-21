@@ -20,6 +20,8 @@ from .routers import (
     team, terminology, workflows,
 )
 from .routers import payroll as payroll_routes  # Phase 3 payroll (3F)
+from .routers import payroll_runs as payroll_run_routes
+from .routers import payroll_settings as payroll_settings_routes
 
 # JSON logs with request/tenant context and PII redaction; Sentry if SENTRY_DSN (app/obs.py).
 obs.setup_logging("api")
@@ -82,6 +84,10 @@ app.include_router(hrms.router)
 app.include_router(hrms.portal)
 app.include_router(billing.router)
 app.include_router(payroll_routes.router)
+app.include_router(payroll_run_routes.router)
+app.include_router(payroll_run_routes.portal)
+app.include_router(payroll_run_routes.public)
+app.include_router(payroll_settings_routes.router)
 
 
 @app.exception_handler(asyncpg.DataError)

@@ -446,6 +446,46 @@ def difference(recomputed: PayslipResult, paid: list[PaidLine]) -> PayslipResult
     return out
 
 
+def structure_order(components: list[Component]) -> list[str]:
+    """Validate a structure when it is saved (St03 §6.5): unique codes, no
+    clash with system lines, every formula parses and reads only the inputs
+    and the structure's own codes, and no loop. Returns the evaluation order;
+    raises FormulaError or CycleError (both ValueError)."""
+    codes = [c.code for c in components]
+    dupes = sorted({c for c in codes if codes.count(c) > 1})
+    if dupes:
+        raise formula.FormulaError("Each code may appear once: " + ", ".join(dupes))
+    clash = sorted(set(codes) & (SYSTEM_CODES - {"BASIC"} | set(INPUTS)))
+    if clash:
+        raise formula.FormulaError("Reserved code: " + ", ".join(clash))
+    known = set(INPUTS) | set(codes)
+    deps = {}
+    for c in components:
+        try:
+            deps[c.code] = formula.references(formula.validate(c.expression(), known))
+        except formula.FormulaError as e:
+            raise formula.FormulaError(f"{c.code}: {e}", e.position)
+    return formula.topo_order(deps)
+
+
+def unverified_items(lines: list[tuple[str, dict[str, Any]]]) -> list[str]:
+    """What the "rates pending verification" banner should name, from the
+    explains of the lines in use (never presented as fact, D-45)."""
+    out: list[str] = []
+    for code, ex in lines:
+        if ex.get("verified") is not False:
+            continue
+        if code == "INCOME_TAX":
+            item = f"Income tax slabs ({ex.get('tax_year', '')})"
+        elif ex.get("scheme"):
+            item = f"{ex['scheme']} rate" + (" and minimum wage" if ex.get("base_kind") == "min_wage" else "")
+        else:
+            continue
+        if item not in out:
+            out.append(item)
+    return out
+
+
 def month_bounds(month: str) -> tuple[date, date]:
     """'2026-10' → (1 Oct, 31 Oct). ValueError on anything else."""
     first = date.fromisoformat(f"{month}-01")

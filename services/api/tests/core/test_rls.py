@@ -26,7 +26,9 @@ from . import grant_matrix
 # Not tenant-scoped by design. Anything else without tenant_id fails below.
 GLOBAL_TABLES = {"terminology", "occasion_calendar", "schema_migrations",
                  # the worker's job tables (0043): platform-owned, owner connection only
-                 "scheduled_jobs", "job_triggers", "job_runs"}
+                 "scheduled_jobs", "job_triggers", "job_runs",
+                 # statutory reference data (0071): platform-owned, read-only for the app
+                 "statutory_schemes", "statutory_rates", "minimum_wages"}
 
 _TENANT_TABLES_SQL = """
     select c.relname,
@@ -133,6 +135,7 @@ def _value(typ: str) -> str:
 _SHAPED = {
     "auth_tokens": {"token_hash": lambda: uuid.uuid4().hex * 2},
     "outbox": {"kind": lambda: "rls.test_" + uuid.uuid4().hex[:8].translate(str.maketrans("0123456789", "ghijklmnop"))},
+    "pay_components": {"code": lambda: "RLS_" + uuid.uuid4().hex[:8].upper()},
 }
 
 

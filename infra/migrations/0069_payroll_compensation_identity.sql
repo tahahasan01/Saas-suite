@@ -11,8 +11,9 @@
 --    of today's row (or the joining row of someone who starts later). The
 --    legacy writes keep working and become history:
 --      * inserting an employee adds its 'joining' row;
---      * changing salary_minor directly adds a 'correction' row effective
---        today (tenant clock).
+--      * changing salary_minor directly adds a 'correction' row from the
+--        day the row in force today began (the single salary field always
+--        meant "the salary"); a dated raise goes through the API instead.
 --    A new compensation row re-mirrors salary_minor. Two GUCs stop the two
 --    triggers from feeding each other (app.comp_sync, app.comp_from_employee).
 --    Rollback (§7.2): salary_minor is still a real column holding the same
@@ -75,7 +76,7 @@ language sql stable as $$
       order by effective_from desc, seq desc limit 1),
     (select base_minor from hrms_compensation
       where employee_id = p_employee
-      order by effective_from, seq limit 1))
+      order by effective_from, seq desc limit 1))
 $$;
 
 -- A new compensation row re-mirrors salary_minor.
@@ -110,8 +111,18 @@ begin
     values (new.tenant_id, new.id, coalesce(new.join_date, new.created_at::date), new.salary_minor,
             'joining', actor);
   else
+    -- A direct edit corrects the salary in force today from the day that row
+    -- began, as the single salary field always meant; a dated raise is a
+    -- new compensation row instead. Locked payslips are stored, so this
+    -- can't move them.
     insert into hrms_compensation (tenant_id, employee_id, effective_from, base_minor, reason, created_by)
-    values (new.tenant_id, new.id, current_date, new.salary_minor, 'correction', actor);
+    values (new.tenant_id, new.id,
+            coalesce((select effective_from from hrms_compensation
+                       where employee_id = new.id and effective_from <= current_date
+                       order by effective_from desc, seq desc limit 1),
+                     (select min(effective_from) from hrms_compensation where employee_id = new.id),
+                     current_date),
+            new.salary_minor, 'correction', actor);
   end if;
   perform set_config('app.comp_from_employee', '', true);
   return new;

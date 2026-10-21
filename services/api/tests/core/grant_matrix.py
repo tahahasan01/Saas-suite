@@ -73,6 +73,20 @@ APP_USER: dict[str, set[str]] = {
     "hrms_punches":         {S, I},             # append-only: the attendance evidence
     # payroll (3F)
     "hrms_compensation":    {S, I},             # salary history: never edited in place (0069)
+    "pay_components":       {S, I, U},          # never deleted: payslip lines name them
+    "pay_structures":       {S, I, U},
+    "pay_structure_lines":  {S, I, D},          # a structure's lines are replaced on save
+    "payroll_runs":         {S, I, U},          # never deleted; a trigger enforces the state machine
+    "payslips":             {S, I, D},          # rebuilt while calculating, frozen after (trigger)
+    "payslip_lines":        {S, I, D},
+    "payroll_run_events":   {S, I},             # append-only
+    "pay_one_offs":         {S, I, U},
+    "pay_advances":         {S, I, U},
+    "statutory_schemes":    {S},                # platform reference data (0071)
+    "statutory_rates":      {S},
+    "minimum_wages":        {S},
+    "tenant_statutory_registrations": {S, I, U},   # upsert
+    "payslip_links":        set(),              # hashed download tokens: owner connection only (0072)
     # AI views: app_user reaches them only through `set local role ai_reader`
     "ai_v_leads":           set(),
     "ai_v_interactions":    set(),

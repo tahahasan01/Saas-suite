@@ -38,14 +38,16 @@ async def _employee(conn: Any, employee_id: str) -> Any:
 
 # ── Compensation (D-42) ─────────────────────────────────────────────────────
 _COMP_SELECT = """
-select c.id, c.employee_id, c.effective_from, c.base_minor, c.reason, c.note, c.created_at
-  from hrms_compensation c"""
+select c.id, c.employee_id, c.effective_from, c.base_minor, c.reason, c.note, c.created_at, c.structure_id,
+       s.name as structure_name
+  from hrms_compensation c left join pay_structures s on s.id = c.structure_id"""
 
 
 def _comp(r: Any) -> CompensationOut:
     return CompensationOut(
         id=str(r["id"]), employee_id=str(r["employee_id"]), effective_from=r["effective_from"],
-        base_minor=r["base_minor"], reason=r["reason"], note=r["note"], created_at=r["created_at"])
+        base_minor=r["base_minor"], reason=r["reason"], note=r["note"], created_at=r["created_at"],
+        structure_id=str(r["structure_id"]) if r["structure_id"] else None, structure_name=r["structure_name"])
 
 
 @router.get("/employees/{employee_id}/compensation", response_model=list[CompensationOut])
@@ -68,12 +70,19 @@ async def add_compensation(employee_id: str, body: CompensationCreate,
     rewritten, so a locked payslip can't move (D-40, D-42)."""
     async with db.tenant_conn(auth.tenant_id) as conn:
         emp = await _employee(conn, employee_id)
+        structure = None
+        if body.structure_id:
+            structure = await conn.fetchval("select id from pay_structures where id = $1 and active",
+                                            uuid_or_404(body.structure_id, "Structure"))
+            if structure is None:
+                raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "That pay structure doesn't exist")
         row = await conn.fetchrow(
             """insert into hrms_compensation (tenant_id, employee_id, effective_from, base_minor, reason, note,
-                                              created_by)
-               values ($1, $2, $3, $4, $5, $6, $7)
-               returning id, employee_id, effective_from, base_minor, reason, note, created_at""",
-            auth.tenant_id, emp["id"], body.effective_from, body.base_minor, body.reason, body.note, auth.user_id)
+                                              structure_id, created_by)
+               values ($1, $2, $3, $4, $5, $6, $7, $8) returning id""",
+            auth.tenant_id, emp["id"], body.effective_from, body.base_minor, body.reason, body.note, structure,
+            auth.user_id)
+        row = await conn.fetchrow(_COMP_SELECT + " where c.id = $1", row["id"])
     return _comp(row)
 
 

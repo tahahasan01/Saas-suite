@@ -1,0 +1,301 @@
+"""Saved payroll runs and the employee's own stored payslips (D-40).
+
+Runs need `payroll.run.*` keys with HRMS switched on. `/me/payslips` is
+scoped by structure like the rest of /me: it resolves the caller to their own
+employee record and only ever reads that employee's payslips from approved,
+paid or locked runs — it no longer computes the whole tenant (St03 §4).
+"""
+from __future__ import annotations
+
+import asyncio
+import secrets
+from datetime import datetime, timedelta, timezone
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+
+from .. import db, jobs, payroll_runs, payslip_pdf
+from .. import payroll_engine as eng
+from ..security import hash_token
+from ..deps import AuthContext, current_auth, current_employee
+from ..payroll_access import mask_iban, mask_tail, sees_pay
+from ..payroll_models import (
+    LineOut,
+    PayslipDetail,
+    PayslipLink,
+    PayslipSummary,
+    RecomputeCreate,
+    RunAction,
+    RunCreate,
+    RunDetail,
+    RunEventOut,
+    RunOut,
+)
+from ..rbac import require_key
+from .payroll import uuid_or_404
+
+router = APIRouter(prefix="/payroll", tags=["payroll"])
+portal = APIRouter(prefix="/me", tags=["portal"])
+public = APIRouter(prefix="/payslips", tags=["portal"])   # signed-link downloads, no session
+
+
+def run_out(r: Any) -> RunOut:
+    return RunOut(
+        id=str(r["id"]), number=r["number"], kind=r["kind"], purpose=r["purpose"], period_start=r["period_start"],
+        period_end=r["period_end"], pay_date=r["pay_date"], tax_year=r["tax_year"], status=r["status"],
+        progress_done=r["progress_done"], progress_total=r["progress_total"], totals=r["totals"] or {},
+        error=r["error"], note=r["note"], cancel_reason=r["cancel_reason"],
+        adjusts_run_id=str(r["adjusts_run_id"]) if r["adjusts_run_id"] else None, created_at=r["created_at"],
+        calculated_at=r["calculated_at"], approved_at=r["approved_at"], paid_at=r["paid_at"],
+        locked_at=r["locked_at"])
+
+
+def summary(p: Any) -> PayslipSummary:
+    return PayslipSummary(
+        id=str(p["id"]), employee_id=str(p["employee_id"]), name=p["snapshot"].get("name", ""),
+        gross_minor=p["gross_minor"], deductions_minor=p["deductions_minor"], tax_minor=p["tax_minor"],
+        net_minor=p["net_minor"], employer_cost_minor=p["employer_cost_minor"], tax_verified=p["tax_verified"],
+        statutory_verified=p["statutory_verified"], warnings=p["warnings"] or [], error=p["error"])
+
+
+def masked_snapshot(snap: dict[str, Any]) -> dict[str, Any]:
+    out = dict(snap)
+    out["iban"] = mask_iban(snap.get("iban") or "")
+    out["cnic"] = mask_tail(snap.get("cnic") or "", 4)
+    out["ntn"] = mask_tail(snap.get("ntn") or "", 2)
+    return out
+
+
+async def detail(conn: Any, payslip: Any, run: Any, *, reveal: bool) -> PayslipDetail:
+    lines = await conn.fetch("select * from payslip_lines where payslip_id = $1 order by sort", payslip["id"])
+    p = payslip
+    return PayslipDetail(
+        **summary(p).model_dump(), run_id=str(run["id"]), run_number=run["number"], run_kind=run["kind"],
+        run_status=run["status"], period_start=run["period_start"], period_end=run["period_end"],
+        pay_date=run["pay_date"], tax_year=p["tax_year"],
+        snapshot=p["snapshot"] if reveal else masked_snapshot(p["snapshot"]),
+        period_days=p["period_days"], employed_days=p["employed_days"], working_days=p["working_days"],
+        present_days=p["present_days"], paid_leave_days=p["paid_leave_days"],
+        unpaid_leave_days=p["unpaid_leave_days"], wfh_days=p["wfh_days"], absent_days=p["absent_days"],
+        half_days=p["half_days"], taxable_minor=p["taxable_minor"], taxable_ytd_minor=p["taxable_ytd_minor"],
+        tax_ytd_minor=p["tax_ytd_minor"], projected_annual_taxable_minor=p["projected_annual_taxable_minor"],
+        annual_tax_minor=p["annual_tax_minor"], notes=p["notes"] or [],
+        lines=[LineOut(code=ln["code"], name=ln["name"], kind=ln["kind"], amount_minor=ln["amount_minor"],
+                       taxable=ln["taxable"], explain=ln["explain"]) for ln in lines])
+
+
+async def run_unverified(conn: Any, run_id: Any) -> list[str]:
+    rows = await conn.fetch(
+        """select distinct on (code, explain->>'scheme') code, explain from payslip_lines
+            where run_id = $1 and (code = 'INCOME_TAX' or explain ? 'scheme')""", run_id)
+    return eng.unverified_items([(r["code"], r["explain"]) for r in rows])
+
+
+# ── Runs ────────────────────────────────────────────────────────────────────
+@router.get("/runs", response_model=list[RunOut])
+async def list_runs(auth: AuthContext = Depends(require_key("payroll.run.read", "hrms"))) -> list[RunOut]:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        rows = await conn.fetch("select * from payroll_runs order by period_start desc, created_at desc limit 120")
+    return [run_out(r) for r in rows]
+
+
+@router.post("/runs", response_model=RunOut, status_code=status.HTTP_201_CREATED)
+async def create_run(body: RunCreate, auth: AuthContext = Depends(require_key("payroll.run.create", "hrms"))
+                     ) -> RunOut:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        return run_out(await payroll_runs.create_run(conn, auth.tenant_id, auth.user_id, body))
+
+
+@router.post("/runs/recompute-tax-year", response_model=RunOut, status_code=status.HTTP_201_CREATED)
+async def create_recompute(body: RecomputeCreate,
+                           auth: AuthContext = Depends(require_key("payroll.run.create", "hrms"))) -> RunOut:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        return run_out(await payroll_runs.create_recompute(conn, auth.tenant_id, auth.user_id, body))
+
+
+@router.get("/runs/{run_id}", response_model=RunDetail)
+async def get_run(run_id: str, auth: AuthContext = Depends(require_key("payroll.run.read", "hrms"))) -> RunDetail:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        run = await payroll_runs.get_run(conn, run_id)
+        slips = await conn.fetch("select * from payslips where run_id = $1 order by snapshot->>'name', employee_id",
+                                 run["id"])
+        events = await conn.fetch(
+            """select e.*, u.name as actor_name from payroll_run_events e left join users u on u.id = e.actor_id
+                where e.run_id = $1 order by e.at, e.id""", run["id"])
+        unverified = await run_unverified(conn, run["id"])
+    return RunDetail(
+        **run_out(run).model_dump(), payslips=[summary(p) for p in slips],
+        events=[RunEventOut(from_status=e["from_status"], to_status=e["to_status"], actor_name=e["actor_name"],
+                            note=e["note"], at=e["at"]) for e in events],
+        rates_verified=not unverified, unverified=unverified)
+
+
+@router.get("/runs/{run_id}/payslips/{payslip_id}", response_model=PayslipDetail)
+async def get_payslip(run_id: str, payslip_id: str,
+                      auth: AuthContext = Depends(require_key("payroll.run.read", "hrms"))) -> PayslipDetail:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        run = await payroll_runs.get_run(conn, run_id)
+        p = await conn.fetchrow("select * from payslips where id = $1 and run_id = $2",
+                                uuid_or_404(payslip_id, "Payslip"), run["id"])
+        if p is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Payslip not found")
+        return await detail(conn, p, run, reveal=await sees_pay(conn, auth.role_id))
+
+
+@router.post("/runs/{run_id}/calculate", response_model=RunOut, status_code=status.HTTP_202_ACCEPTED)
+async def calculate(run_id: str, auth: AuthContext = Depends(require_key("payroll.run.calculate", "hrms"))
+                    ) -> RunOut:
+    """Queues the calculation for the worker (batches of 100) and answers at
+    once; poll the run for progress."""
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        run = await payroll_runs.start_calculation(conn, run_id, auth.user_id)
+    await jobs.trigger("payroll.calculate")
+    return run_out(run)
+
+
+@router.post("/runs/{run_id}/approve", response_model=RunOut)
+async def approve(run_id: str, body: RunAction | None = None,
+                  auth: AuthContext = Depends(require_key("payroll.run.approve", "hrms"))) -> RunOut:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        return run_out(await payroll_runs.approve(conn, run_id, auth.user_id, body.note if body else ""))
+
+
+@router.post("/runs/{run_id}/reopen", response_model=RunOut)
+async def reopen(run_id: str, body: RunAction,
+                 auth: AuthContext = Depends(require_key("payroll.run.reopen", "hrms"))) -> RunOut:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        return run_out(await payroll_runs.reopen(conn, run_id, auth.user_id, body.note))
+
+
+@router.post("/runs/{run_id}/mark-paid", response_model=RunOut)
+async def mark_paid(run_id: str, body: RunAction | None = None,
+                    auth: AuthContext = Depends(require_key("payroll.run.pay", "hrms"))) -> RunOut:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        return run_out(await payroll_runs.mark_paid(conn, run_id, auth.user_id, body.note if body else ""))
+
+
+@router.post("/runs/{run_id}/lock", response_model=RunOut)
+async def lock(run_id: str, body: RunAction | None = None,
+               auth: AuthContext = Depends(require_key("payroll.run.lock", "hrms"))) -> RunOut:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        return run_out(await payroll_runs.lock(conn, run_id, auth.user_id, body.note if body else ""))
+
+
+@router.post("/runs/{run_id}/cancel", response_model=RunOut)
+async def cancel(run_id: str, body: RunAction | None = None,
+                 auth: AuthContext = Depends(require_key("payroll.run.cancel", "hrms"))) -> RunOut:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        return run_out(await payroll_runs.cancel(conn, run_id, auth.user_id, body.note if body else ""))
+
+
+# ── The employee's own payslips ─────────────────────────────────────────────
+MY_PAYSLIPS = """
+select p.*, r.id as r_id from payslips p join payroll_runs r on r.id = p.run_id
+ where p.employee_id = $1 and r.status = any($2::text[])"""
+
+
+@portal.get("/payslips", response_model=list[PayslipDetail])
+async def my_payslips(month: str | None = None, auth: AuthContext = Depends(current_auth),
+                      employee_id: str = Depends(current_employee)) -> list[PayslipDetail]:
+    """Stored payslips of approved, paid or locked runs — newest first, or
+    one month's (regular and any adjustments) with `month=YYYY-MM`."""
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        args: list[Any] = [uuid_or_404(employee_id, "Employee"), list(payroll_runs.FINAL)]
+        sql = MY_PAYSLIPS
+        if month:
+            if not _is_month(month):
+                raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "month must be YYYY-MM")
+            sql += " and r.period_start = $3"
+            args.append(eng.month_bounds(month)[0])
+        rows = await conn.fetch(sql + " order by r.period_start desc, r.created_at desc limit 36", *args)
+        out = []
+        for p in rows:
+            run = await conn.fetchrow("select * from payroll_runs where id = $1", p["r_id"])
+            out.append(await detail(conn, p, run, reveal=False))
+    return out
+
+
+LINK_TTL = timedelta(minutes=5)
+
+
+async def pdf_bytes(conn: Any, p: Any, run: Any) -> bytes:
+    """Render a stored payslip (its frozen lines, never a recalculation)."""
+    company = await conn.fetchrow(
+        """select t.name, coalesce(f.seller_ntn_cnic, '') as ntn from tenants t
+             left join fbr_settings f on f.tenant_id = t.id where t.id = $1""", p["tenant_id"])
+    lines = await conn.fetch("select code, name, kind, amount_minor, explain from payslip_lines "
+                             "where payslip_id = $1 order by sort", p["id"])
+    unverified = eng.unverified_items([(ln["code"], ln["explain"]) for ln in lines])
+    payload = {
+        "company": company["name"], "company_ntn": company["ntn"], "run_number": run["number"],
+        "period": f"{run['period_start']:%B %Y}", "pay_date": f"{run['pay_date']:%d %b %Y}", "tax_year": p["tax_year"],
+        "rates_verified": not unverified, "snapshot": p["snapshot"], "employed_days": p["employed_days"],
+        "period_days": p["period_days"], "absent_days": p["absent_days"], "unpaid_leave_days": p["unpaid_leave_days"],
+        "gross_minor": p["gross_minor"], "deductions_minor": p["deductions_minor"], "net_minor": p["net_minor"],
+        "employer_cost_minor": p["employer_cost_minor"], "taxable_ytd_minor": p["taxable_ytd_minor"],
+        "tax_ytd_minor": p["tax_ytd_minor"], "warnings": p["warnings"] or [],
+        "lines": [dict(ln) for ln in lines]}
+    return await asyncio.to_thread(payslip_pdf.render, payload)
+
+
+def pdf_response(content: bytes, run: Any, p: Any) -> Response:
+    name = f"payslip-{run['period_start']:%Y-%m}-{str(p['employee_id'])[:8]}.pdf"
+    return Response(content, media_type="application/pdf", headers={
+        "Content-Disposition": f'attachment; filename="{name}"', "Cache-Control": "no-store, private"})
+
+
+@router.get("/runs/{run_id}/payslips/{payslip_id}/pdf")
+async def payslip_pdf_admin(run_id: str, payslip_id: str,
+                            auth: AuthContext = Depends(require_key("payroll.run.read", "hrms"))) -> Response:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        run = await payroll_runs.get_run(conn, run_id)
+        p = await conn.fetchrow("select * from payslips where id = $1 and run_id = $2",
+                                uuid_or_404(payslip_id, "Payslip"), run["id"])
+        if p is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Payslip not found")
+        content = await pdf_bytes(conn, p, run)
+    return pdf_response(content, run, p)
+
+
+@portal.post("/payslips/{payslip_id}/link", response_model=PayslipLink)
+async def my_payslip_link(payslip_id: str, auth: AuthContext = Depends(current_auth),
+                          employee_id: str = Depends(current_employee)) -> PayslipLink:
+    """A 5-minute download link for one of the caller's own final payslips
+    (St03 risk 14: a signed short-lived link, not a CNIC-derived password)."""
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        p = await conn.fetchrow(MY_PAYSLIPS + " and p.id = $3", uuid_or_404(employee_id, "Employee"),
+                                list(payroll_runs.FINAL), uuid_or_404(payslip_id, "Payslip"))
+    if p is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Payslip not found")
+    token = secrets.token_urlsafe(32)
+    expires = datetime.now(timezone.utc) + LINK_TTL
+    async with db.owner_conn() as oc:
+        await oc.execute("delete from payslip_links where expires_at < now() - interval '1 day'")
+        await oc.execute(
+            """insert into payslip_links (token_hash, tenant_id, payslip_id, user_id, expires_at)
+               values ($1, $2, $3, $4, $5)""",
+            hash_token(token), p["tenant_id"], p["id"], uuid_or_404(auth.user_id, "User"), expires)
+    return PayslipLink(url=f"/payslips/download?token={token}", expires_at=expires)
+
+
+@public.get("/download")
+async def download_payslip(token: str = "") -> Response:
+    """No session needed: the unexpired token is the credential."""
+    async with db.owner_conn() as oc:
+        link = await oc.fetchrow("select tenant_id, payslip_id from payslip_links "
+                                 "where token_hash = $1 and expires_at > now()", hash_token(token))
+    if link is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "This download link has expired. Open your payslips again.")
+    async with db.tenant_conn(str(link["tenant_id"])) as conn:
+        p = await conn.fetchrow("select * from payslips where id = $1", link["payslip_id"])
+        run = await conn.fetchrow("select * from payroll_runs where id = $1", p["run_id"])
+        content = await pdf_bytes(conn, p, run)
+    return pdf_response(content, run, p)
+
+
+def _is_month(value: str) -> bool:
+    try:
+        eng.month_bounds(value)
+    except ValueError:
+        return False
+    return True

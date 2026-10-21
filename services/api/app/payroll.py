@@ -85,6 +85,31 @@ def annual_tax(annual_income: float | int | Decimal, ty: TaxYear) -> int:
     return int(tax.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
 
 
+# The slabs the first payroll screen used (pre-2025 rates labelled "2025-26",
+# audit P1-1), kept ONLY so the one-time "recompute this tax year" run can say
+# what was withheld under them (St03 risk 2). Never used to tax anything.
+_LEGACY_SLABS = (
+    (600_000, 0, 0.00, 0),
+    (1_200_000, 0, 0.05, 600_000),
+    (2_200_000, 30_000, 0.15, 1_200_000),
+    (3_200_000, 180_000, 0.25, 2_200_000),
+    (4_100_000, 430_000, 0.30, 3_200_000),
+    (float("inf"), 700_000, 0.35, 4_100_000),
+)
+
+
+def legacy_monthly_tax_minor(monthly_salary_minor: int) -> int:
+    """What the old screen withheld for a monthly salary — the same float
+    arithmetic and rounding it used, so the difference is exact."""
+    annual = (monthly_salary_minor / 100) * 12
+    tax = 0.0
+    for upper, base, rate, lower in _LEGACY_SLABS:
+        if annual <= upper:
+            tax = base + (annual - lower) * rate
+            break
+    return round(tax / 12 * 100)
+
+
 def monthly_tax_minor(monthly_salary_minor: int, pay_date: date) -> int:
     """Monthly withholding in minor units for a monthly salary in minor units."""
     annual_income = Decimal(monthly_salary_minor) * 12 / 100

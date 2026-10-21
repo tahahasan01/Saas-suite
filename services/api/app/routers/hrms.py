@@ -2,14 +2,13 @@
 Guarded by the 'hrms' section. Mobile face-match/biometric plug into attendance later."""
 from __future__ import annotations
 
-import calendar
 from typing import Literal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
 
 from datetime import date, datetime, timedelta
 
-from .. import attendance, audit, db, email, payroll, refs
+from .. import attendance, audit, db, email, payroll_preview, refs
 from ..deps import AuthContext, current_auth, current_employee
 from ..models import (
     AttendanceOut,
@@ -25,8 +24,6 @@ from ..models import (
     LeaveOut,
     LeavePolicyOut,
     LeavePolicyUpdate,
-    PayrollOut,
-    Payslip,
     RequestType,
     ShiftAssign,
     ShiftAssignmentOut,
@@ -35,72 +32,14 @@ from ..models import (
     WeekOut,
     WeekRow,
 )
+from ..payroll_models import PreviewOut
 from ..rbac import holds, perm, require, require_key
 
 router = APIRouter(prefix="/hrms", tags=["hrms"])
 
-# Absence is derived from evidence, not from a status field: a working day with
-# no check-in and no approved leave. The previous query counted
-# `attendance.status = 'absent'`, which no code path ever wrote, so the
-# deduction was structurally always zero.
-#
-# $1 = first day of the month, $2 = the tenant's weekly rest days (ISO dow).
-_PAYROLL = """
-with working_days as (
-  select d::date as day
-    from generate_series($1::date,
-                         ($1::date + interval '1 month' - interval '1 day')::date,
-                         interval '1 day') d
-   where not (extract(dow from d)::int = any($2::int[]))
-     and not exists (select 1 from hrms_holidays h where h.holiday_date = d::date)
-)
-select e.id, e.name, e.salary_minor,
-       -- Per-day pay divides by the whole month's working days …
-       (select count(*) from working_days) as month_days,
-       -- … and only *completed* working days can be judged: `< current_date`,
-       -- never `<=`, or everyone is absent until they clock in this morning.
-       -- The created_at floor matters too — without it a business that signs up
-       -- mid-month sees staff docked for days before the system existed.
-       (select count(*) from working_days w
-         where w.day < current_date
-           and w.day >= greatest(coalesce(e.join_date, e.created_at::date), e.created_at::date)
-       ) as elapsed_days,
-       -- A check-in is presence unless the shift's thresholds derived the
-       -- day as an absence (worked under absent_below_min, 0045).
-       (select count(distinct a.work_date) from hrms_attendance a
-         where a.employee_id = e.id and a.check_in is not null and a.status <> 'absent'
-           and a.work_date in (select day from working_days)) as present_days,
-       -- Half days cost half a day, unless approved leave or WFH covers them.
-       (select count(distinct a.work_date) from hrms_attendance a
-         where a.employee_id = e.id and a.status = 'half_day'
-           and a.work_date in (select day from working_days)
-           and not exists (select 1 from hrms_leave_requests l
-                            where l.employee_id = e.id and l.status = 'approved'
-                              and a.work_date between l.from_date and l.to_date)) as half_days,
-       (select count(*) from working_days w
-         where w.day < current_date
-           and exists (select 1 from hrms_leave_requests l
-                        where l.employee_id = e.id and l.status = 'approved'
-                          and l.request_type = 'leave' and l.leave_type <> 'unpaid'
-                          and w.day between l.from_date and l.to_date)) as paid_leave_days,
-       (select count(*) from working_days w
-         where w.day < current_date
-           and exists (select 1 from hrms_leave_requests l
-                        where l.employee_id = e.id and l.status = 'approved'
-                          and l.request_type = 'leave' and l.leave_type = 'unpaid'
-                          and w.day between l.from_date and l.to_date)) as unpaid_leave_days,
-       -- Approved WFH is time worked. It counts toward presence and is never
-       -- deducted; the `request_type` filters above keep it out of leave.
-       (select count(*) from working_days w
-         where w.day < current_date
-           and exists (select 1 from hrms_leave_requests l
-                        where l.employee_id = e.id and l.status = 'approved'
-                          and l.request_type = 'wfh'
-                          and w.day between l.from_date and l.to_date)) as wfh_days
-  from hrms_employees e
- where e.status = 'active'
- order by e.name
-"""
+# Payroll's absence query and the preview calculator moved to app/payroll_data.py
+# and app/payroll_preview.py (Phase 3 payroll); the week matrix below keeps
+# mirroring the same rules.
 
 
 def _mask_cnic(cnic: str) -> str:
@@ -684,57 +623,15 @@ async def delete_holiday(holiday_id: str, response: Response,
     return response
 
 
-def _payslip(r, month_days: int, pay_date: date, ty: payroll.TaxYear) -> Payslip:
-    gross = r["salary_minor"]
-    unpaid = r["unpaid_leave_days"]
-    wfh = r["wfh_days"]
-    # Whatever is left once presence, approved leave and remote days are
-    # accounted for. A WFH day someone also clocked in for is counted once:
-    # accounted is capped at the days actually elapsed.
-    accounted = min(r["elapsed_days"], r["present_days"] + r["paid_leave_days"] + unpaid + wfh)
-    absent = max(0, r["elapsed_days"] - accounted)
-    per_day = gross / month_days if month_days else 0
-    half = r["half_days"]
-    deduction = round((absent + unpaid + 0.5 * half) * per_day)
-    tax = payroll.monthly_tax_minor(gross, pay_date)
-    return Payslip(
-        employee_id=str(r["id"]), name=r["name"], gross_minor=gross,
-        present_days=r["present_days"], paid_leave_days=r["paid_leave_days"],
-        unpaid_leave_days=unpaid, wfh_days=wfh, absent_days=absent, half_days=half,
-        absence_deduction_minor=deduction, tax_minor=tax,
-        net_minor=max(0, gross - deduction - tax),
-        tax_year=ty.label, tax_rates_verified=ty.verified)
-
-
-async def _compute_payroll(conn, tenant_id: str, month: str) -> PayrollOut:
-    """Shared by the admin payroll run and an employee's own payslip — one code
-    path, so a payslip a worker sees can never disagree with the run."""
-    try:
-        first = date.fromisoformat(f"{month}-01")
-    except ValueError:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "month must be YYYY-MM")
-    off_days = await conn.fetchval("select weekly_off_days from tenants where id=$1", tenant_id)
-    # A day derived while still open (a check-in, no check-out) must be judged
-    # as over before it is counted, or a check-in alone earns a full day.
-    await attendance.finalise_open_days(conn)
-    rows = await conn.fetch(_PAYROLL, first, list(off_days or [0]))
-    month_days = rows[0]["month_days"] if rows else 0
-    # Salaries are paid for the month, so its last day decides the tax year.
-    pay_date = first.replace(day=calendar.monthrange(first.year, first.month)[1])
-    ty = payroll.tax_year_for(pay_date)
-    return PayrollOut(month=month, working_days=month_days,
-                      payslips=[_payslip(r, month_days, pay_date, ty) for r in rows],
-                      tax_year=ty.label, tax_rates_verified=ty.verified)
-
-
-@router.get("/payroll", response_model=PayrollOut)
+@router.get("/payroll", response_model=PreviewOut)
 async def run_payroll(month: str | None = None,
                       auth: AuthContext = Depends(require_key("payroll.run.read", "hrms"))):
-    """Monthly payslips: gross − absence deduction − FBR tax. `month` = YYYY-MM.
-    Everyone's pay is on it, so it needs a payroll key, not hrms:read (D-42)."""
+    """A month's payroll as it would be calculated now — saved nowhere (saved
+    runs are /payroll/runs). Everyone's pay is on it, so it needs a payroll
+    key, not hrms:read (D-42)."""
     async with db.tenant_conn(auth.tenant_id) as conn:
         month = month or (await conn.fetchval("select current_date")).strftime("%Y-%m")
-        return await _compute_payroll(conn, auth.tenant_id, month)
+        return await payroll_preview.preview(conn, month)
 
 
 # ── Employee self-service (/me) ──────────────────────────────────────────────
@@ -812,12 +709,4 @@ async def my_request_leave(body: LeaveCreate, auth: AuthContext = Depends(curren
     return await create_leave(forced, auth)
 
 
-@portal.get("/payslips", response_model=list[Payslip])
-async def my_payslips(month: str | None = None, auth: AuthContext = Depends(current_auth),
-                      employee_id: str = Depends(current_employee)):
-    async with db.tenant_conn(auth.tenant_id) as conn:
-        m = month or (await conn.fetchval("select current_date")).strftime("%Y-%m")
-        run = await _compute_payroll(conn, auth.tenant_id, m)
-    # Return only the caller's slip — the run computed everyone, but an employee
-    # sees exactly one payslip: their own.
-    return [s for s in run.payslips if s.employee_id == employee_id]
+# /me/payslips reads stored payslips now: app/routers/payroll_runs.py (St03 §4).
