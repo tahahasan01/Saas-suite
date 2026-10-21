@@ -44,7 +44,7 @@ PLAIN_PARAMS = {"section": "crm", "decision": "approve"}
 
 # The /me/* portal never takes an id from the caller — it acts on the logged-in
 # employee only (tests/hrms/test_employee_portal.py proves the forcing).
-SKIP_PREFIXES = ("/me/",)
+SKIP_PREFIXES = ("/me/", "/kiosk/")   # /kiosk/{token}: the token is the credential (3F), no tenant ids
 
 
 async def _ids(c: AsyncClient) -> dict[str, str]:

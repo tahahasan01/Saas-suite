@@ -229,7 +229,7 @@ async def test_cancelling_approved_leave_gives_the_days_back(client, tenant):
     r = await client.post(f"/hrms/leave/{req['id']}/cancel")
     assert r.status_code == 200 and r.json()["status"] == "cancelled"
     entries = [e["entry"] for e in await _ledger(emp) if e["code"] == "casual"]
-    assert entries[-2:] == ["taken", "reversal"]
+    assert "taken" in entries and entries[-1] == "reversal"   # grant and taken share a transaction
     bal = next(b for b in (await client.get(f"/hrms/leave/balances?employee_id={emp}")).json()
                if b["leave_type"] == "casual")
     assert bal["used"] == 0

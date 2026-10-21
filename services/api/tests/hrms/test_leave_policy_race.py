@@ -99,6 +99,8 @@ async def test_concurrent_approvals_on_a_tenant_without_a_policy_row(client, ten
     employees = (await client.get("/hrms/employees")).json()
     assert len(employees) >= 2, "sample data should seed several employees"
     base = date.today() + timedelta(days=60)
+    while base.weekday() != 0:   # a Monday: a Sunday-only request is now refused as no working days (0068)
+        base += timedelta(days=1)
     for attempt in range(5):
         await _drop_policy(tenant.tenant_id)
         ids = []
