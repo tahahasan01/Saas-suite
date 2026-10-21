@@ -298,6 +298,29 @@ async def test_session_branches_resolution(client, pos_tenant):
         await conn.close()
 
 
+async def test_a_deactivated_home_branch_is_never_the_fallback(client, pos_tenant):
+    """Security review (fail-open): when X-Branch-Ids names none of the user's
+    branches, the home branch is the fallback only while it is still one of
+    their active branches. Otherwise: '' (no rows, D-03)."""
+    main = await _default_branch(pos_tenant.tenant_id)
+    other = await _second_branch(pos_tenant.tenant_id)
+    mate, user_id = await _member(client, {"pos": ["read"]})
+    await mate.aclose()
+    t, u = uuid.UUID(pos_tenant.tenant_id), uuid.UUID(user_id)
+    conn = await _owner()
+    try:
+        await conn.execute("delete from user_branches where user_id=$1", u)
+        await conn.execute(
+            "insert into user_branches (tenant_id, user_id, branch_id, is_home) values ($1,$2,$3,true)", t, u, other)
+        await conn.execute("update branches set active=false where id=$1", other)
+        f = "select bos_session_branches($1, $2, $3)"
+        assert await conn.fetchval(f, t, u, [str(main)]) == ""
+        assert await conn.fetchval(f, t, u, [str(uuid.uuid4())]) == ""
+        assert await conn.fetchval(f, t, u, None) == ""
+    finally:
+        await conn.close()
+
+
 async def test_jobs_and_system_connections_see_every_branch(client, pos_tenant):
     await _sale(client)
     await _second_branch(pos_tenant.tenant_id)

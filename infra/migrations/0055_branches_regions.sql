@@ -182,7 +182,14 @@ begin
 
   select array_agg(x order by x) into picked from unnest(allowed) x where x::text = any (p_requested);
   if picked is null then
-    return coalesce(home::text, '');
+    -- Fall back to the home branch only while it is one of the user's
+    -- allowed branches AND still active; a revoked or switched-off home
+    -- branch gives no rows (fail closed, D-03).
+    if home is not null and home = any (allowed)
+       and exists (select 1 from public.branches where id = home and active) then
+      return home::text;
+    end if;
+    return '';
   end if;
   return array_to_string(picked, ',');
 end $$;
