@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { WORKFLOW_TRIGGERS, type Workflow } from "@business-os/types";
+import { WORKFLOW_TRIGGERS, type ActivityType, type Workflow } from "@business-os/types";
 import { X } from "lucide-react";
 import { api } from "@/lib/api";
 import { errorText, useAction } from "@/lib/useAction";
@@ -12,15 +12,29 @@ const TRIGGER_LABEL: Record<string, string> = {
   "lead.created": "When a lead is created",
   "lead.stage_changed": "When a lead changes stage",
   "interaction.logged": "When an interaction is logged",
+  "lead.won": "When a lead is won",
+  "lead.lost": "When a lead is lost",
+  "lead.restored": "When a lost lead is restored",
+  "activity.done": "When an activity is marked done",
+  "activity.overdue": "When an activity becomes overdue",
+  "contact.created": "When a contact is created",
 };
 
-const blank = { name: "", trigger: "lead.created", message: "", field: "", value: "" };
+// action: notify the owner, or plan an activity on the lead for its owner
+// (the create_activity action, St02 §6.10).
+const blank = { name: "", trigger: "lead.created", message: "", field: "", value: "",
+                action: "notify" as "notify" | "activity", activityType: "", days: "1" };
 
 export default function AutomationsPage() {
   const [items, setItems] = useState<Workflow[] | null>(null); // null = loading
   const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState(blank);
   const confirm = useConfirm();
+  // Only offered when the CRM is on (the types endpoint needs it).
+  const [types, setTypes] = useState<ActivityType[]>([]);
+  useEffect(() => {
+    api<ActivityType[]>("/activity-types", { notify: false }).then(setTypes).catch(() => setTypes([]));
+  }, []);
 
   const load = useCallback(() => {
     setLoadError(null);
@@ -47,7 +61,10 @@ export default function AutomationsPage() {
         method: "POST",
         body: JSON.stringify({
           name: form.name, trigger: form.trigger, conditions,
-          actions: [{ type: "notify", recipient: "owner", kind: "info", message: form.message, link: "/crm" }],
+          actions: form.action === "activity"
+            ? [{ type: "create_activity", activity_type: form.activityType || types[0]?.name, summary: form.message,
+                 offset_days: Math.max(0, Number(form.days) || 0), assignee: "owner" }]
+            : [{ type: "notify", recipient: "owner", kind: "info", message: form.message, link: "/crm" }],
         }),
       });
     },
@@ -96,6 +113,7 @@ export default function AutomationsPage() {
                   <p className="text-xs text-fg-subtle">
                     {TRIGGER_LABEL[w.trigger] ?? w.trigger}
                     {w.conditions.length > 0 && ` · if ${w.conditions[0].field} = ${String(w.conditions[0].value)}`}
+                    {w.actions[0]?.type === "create_activity" && " · plans an activity"}
                     {w.is_system && " · built-in"}
                     {/* State in words too, not only the switch's colour. */}
                     {" · "}{w.enabled ? "on" : "off"}
@@ -144,8 +162,29 @@ export default function AutomationsPage() {
                 <Input value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} placeholder="whatsapp" />
               </Field>
             </div>
-            <Field label="Notify with message">
-              <Input value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} required placeholder="New lead: {name}" />
+            {types.length > 0 && (
+              <Field label="Then…">
+                <Select value={form.action} onChange={(e) => setForm({ ...form, action: e.target.value as "notify" | "activity" })}>
+                  <option value="notify">Notify the owner</option>
+                  <option value="activity">Plan an activity for the owner</option>
+                </Select>
+              </Field>
+            )}
+            {form.action === "activity" && (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <Field label="Activity">
+                  <Select value={form.activityType || types[0]?.name} onChange={(e) => setForm({ ...form, activityType: e.target.value })}>
+                    {types.map((t) => <option key={t.id} value={t.name}>{t.name}</option>)}
+                  </Select>
+                </Field>
+                <Field label="Due in (days)">
+                  <Input type="number" min={0} max={365} value={form.days} onChange={(e) => setForm({ ...form, days: e.target.value })} />
+                </Field>
+              </div>
+            )}
+            <Field label={form.action === "activity" ? "Activity summary" : "Notify with message"}>
+              <Input value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} required
+                     placeholder={form.action === "activity" ? "Follow up with {name}" : "New lead: {name}"} />
             </Field>
             <Button type="submit" disabled={create.busy} className="w-full">{create.busy ? "Saving…" : "Create automation"}</Button>
           </form>
