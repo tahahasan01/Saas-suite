@@ -171,7 +171,7 @@ async def _plant(conn, table: str, key: str, owner_id: uuid.UUID) -> None:
     allowed.update({col: make() for col, make in _SHAPED.get(table, {}).items()})
     cols = {name: (typ, allowed.get(name, _value(typ))) for name, typ in await _required_columns(conn, table)}
     # A shaped optional column (e.g. the legacy_ref an invoice needs without a contact) is set too.
-    for col, make in _SHAPED.get(table, {}).items():
+    for col in _SHAPED.get(table, {}):
         cols.setdefault(col, ("text", allowed[col]))
     cols[key] = ("uuid", str(owner_id))
     names = list(cols)
