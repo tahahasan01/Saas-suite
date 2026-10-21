@@ -14,11 +14,11 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
-from .. import db, jobs, payroll_runs, payslip_pdf
+from .. import audit, db, jobs, payroll, payroll_reports, payroll_runs, payslip_pdf
 from .. import payroll_engine as eng
 from ..security import hash_token
 from ..deps import AuthContext, current_auth, current_employee
-from ..payroll_access import mask_iban, mask_tail, sees_pay
+from .. import payroll_access
 from ..payroll_models import (
     LineOut,
     PayslipDetail,
@@ -58,14 +58,6 @@ def summary(p: Any) -> PayslipSummary:
         statutory_verified=p["statutory_verified"], warnings=p["warnings"] or [], error=p["error"])
 
 
-def masked_snapshot(snap: dict[str, Any]) -> dict[str, Any]:
-    out = dict(snap)
-    out["iban"] = mask_iban(snap.get("iban") or "")
-    out["cnic"] = mask_tail(snap.get("cnic") or "", 4)
-    out["ntn"] = mask_tail(snap.get("ntn") or "", 2)
-    return out
-
-
 async def detail(conn: Any, payslip: Any, run: Any, *, reveal: bool) -> PayslipDetail:
     lines = await conn.fetch("select * from payslip_lines where payslip_id = $1 order by sort", payslip["id"])
     p = payslip
@@ -73,7 +65,7 @@ async def detail(conn: Any, payslip: Any, run: Any, *, reveal: bool) -> PayslipD
         **summary(p).model_dump(), run_id=str(run["id"]), run_number=run["number"], run_kind=run["kind"],
         run_status=run["status"], period_start=run["period_start"], period_end=run["period_end"],
         pay_date=run["pay_date"], tax_year=p["tax_year"],
-        snapshot=p["snapshot"] if reveal else masked_snapshot(p["snapshot"]),
+        snapshot=payroll_access.snapshot_view(p["snapshot"], reveal=reveal),
         period_days=p["period_days"], employed_days=p["employed_days"], working_days=p["working_days"],
         present_days=p["present_days"], paid_leave_days=p["paid_leave_days"],
         unpaid_leave_days=p["unpaid_leave_days"], wfh_days=p["wfh_days"], absent_days=p["absent_days"],
@@ -139,7 +131,7 @@ async def get_payslip(run_id: str, payslip_id: str,
                                 uuid_or_404(payslip_id, "Payslip"), run["id"])
         if p is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Payslip not found")
-        return await detail(conn, p, run, reveal=await sees_pay(conn, auth.role_id))
+        return await detail(conn, p, run, reveal=await payroll_access.sees_pay(conn, auth.role_id))
 
 
 @router.post("/runs/{run_id}/calculate", response_model=RunOut, status_code=status.HTTP_202_ACCEPTED)
@@ -211,14 +203,14 @@ async def my_payslips(month: str | None = None, auth: AuthContext = Depends(curr
         out = []
         for p in rows:
             run = await conn.fetchrow("select * from payroll_runs where id = $1", p["r_id"])
-            out.append(await detail(conn, p, run, reveal=False))
+            out.append(await detail(conn, p, run, reveal=True))
     return out
 
 
 LINK_TTL = timedelta(minutes=5)
 
 
-async def pdf_bytes(conn: Any, p: Any, run: Any) -> bytes:
+async def pdf_bytes(conn: Any, p: Any, run: Any, *, reveal: bool) -> bytes:
     """Render a stored payslip (its frozen lines, never a recalculation)."""
     company = await conn.fetchrow(
         """select t.name, coalesce(f.seller_ntn_cnic, '') as ntn from tenants t
@@ -229,7 +221,8 @@ async def pdf_bytes(conn: Any, p: Any, run: Any) -> bytes:
     payload = {
         "company": company["name"], "company_ntn": company["ntn"], "run_number": run["number"],
         "period": f"{run['period_start']:%B %Y}", "pay_date": f"{run['pay_date']:%d %b %Y}", "tax_year": p["tax_year"],
-        "rates_verified": not unverified, "snapshot": p["snapshot"], "employed_days": p["employed_days"],
+        "rates_verified": not unverified, "snapshot": payroll_access.snapshot_view(p["snapshot"], reveal=reveal),
+        "employed_days": p["employed_days"],
         "period_days": p["period_days"], "absent_days": p["absent_days"], "unpaid_leave_days": p["unpaid_leave_days"],
         "gross_minor": p["gross_minor"], "deductions_minor": p["deductions_minor"], "net_minor": p["net_minor"],
         "employer_cost_minor": p["employer_cost_minor"], "taxable_ytd_minor": p["taxable_ytd_minor"],
@@ -253,7 +246,7 @@ async def payslip_pdf_admin(run_id: str, payslip_id: str,
                                 uuid_or_404(payslip_id, "Payslip"), run["id"])
         if p is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Payslip not found")
-        content = await pdf_bytes(conn, p, run)
+        content = await pdf_bytes(conn, p, run, reveal=await payroll_access.sees_pay(conn, auth.role_id))
     return pdf_response(content, run, p)
 
 
@@ -289,8 +282,99 @@ async def download_payslip(token: str = "") -> Response:
     async with db.tenant_conn(str(link["tenant_id"])) as conn:
         p = await conn.fetchrow("select * from payslips where id = $1", link["payslip_id"])
         run = await conn.fetchrow("select * from payroll_runs where id = $1", p["run_id"])
-        content = await pdf_bytes(conn, p, run)
+        content = await pdf_bytes(conn, p, run, reveal=True)   # the employee's own payslip
     return pdf_response(content, run, p)
+
+
+# ── Exports (we export; we never file) ──────────────────────────────────────
+EXPORT = require_key("payroll.report.export", "hrms")
+
+
+async def _final_run(conn: Any, run_id: str) -> Any:
+    run = await payroll_runs.get_run(conn, run_id)
+    if run["status"] not in payroll_runs.FINAL:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Exports come from an approved run. Approve it first.")
+    return run
+
+
+def _csv(body: str, name: str) -> Response:
+    return Response(body, media_type="text/csv", headers={
+        "Content-Disposition": f'attachment; filename="{name}"', "Cache-Control": "no-store, private"})
+
+
+async def _export(run_id: str, auth: AuthContext, kind: str, build: Any) -> Response:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        run = await _final_run(conn, run_id)
+        reveal = await payroll_access.sees_pay(conn, auth.role_id)
+        body = await build(conn, run, reveal)
+        # St03 §7.10: every export of pay data is audited.
+        await audit.event(conn, "payroll.export", "payroll_runs", str(run["id"]), data={"kind": kind, "masked": not reveal})
+    return _csv(body, f"{kind}-{run['period_start']:%Y-%m}.csv")
+
+
+@router.get("/runs/{run_id}/exports/wht.csv")
+async def export_wht(run_id: str, auth: AuthContext = Depends(EXPORT)) -> Response:
+    return await _export(run_id, auth, "wht", lambda c, r, rv: payroll_reports.wht(c, r, reveal=rv))
+
+
+@router.get("/runs/{run_id}/exports/eobi.csv")
+async def export_eobi(run_id: str, auth: AuthContext = Depends(EXPORT)) -> Response:
+    return await _export(run_id, auth, "eobi",
+                         lambda c, r, rv: payroll_reports.contributions(c, r, "EOBI", reveal=rv))
+
+
+@router.get("/runs/{run_id}/exports/social-security.csv")
+async def export_social_security(run_id: str, scheme: str = "PESSI", auth: AuthContext = Depends(EXPORT)) -> Response:
+    if scheme not in ("PESSI", "SESSI"):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "scheme must be PESSI or SESSI")
+    return await _export(run_id, auth, scheme.lower(),
+                         lambda c, r, rv: payroll_reports.contributions(c, r, scheme, reveal=rv))
+
+
+@router.get("/runs/{run_id}/exports/bank.csv")
+async def export_bank(run_id: str, auth: AuthContext = Depends(EXPORT)) -> Response:
+    return await _export(run_id, auth, "bank", lambda c, r, rv: payroll_reports.bank_file(c, r, reveal=rv))
+
+
+@router.get("/runs/{run_id}/exports/bank-check")
+async def bank_check(run_id: str, auth: AuthContext = Depends(EXPORT)) -> dict[str, Any]:
+    """Before downloading the bank file: who it pays, who it can't, and why."""
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        run = await _final_run(conn, run_id)
+        checked = await payroll_reports.bank_check(conn, run, reveal=False)
+    return {"ready": len(checked["ready_slips"]), "problems": checked["problems"], "cash": checked["cash"],
+            "total_minor": sum(p["net_minor"] for p, _ in checked["ready_slips"])}
+
+
+async def _certificate(conn: Any, auth: AuthContext, employee_id: str, tax_year: str) -> dict[str, Any]:
+    if not any(t.label == tax_year for t in payroll.TAX_YEARS):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"No tax table for {tax_year}")
+    cert = await payroll_reports.salary_certificate(conn, uuid_or_404(employee_id, "Employee"), tax_year,
+                                                    reveal=await payroll_access.sees_pay(conn, auth.role_id))
+    if cert is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No approved payslips for this employee in that tax year")
+    await audit.event(conn, "payroll.export", "hrms_employees", employee_id, data={"kind": "salary_certificate"})
+    return cert
+
+
+@router.get("/reports/salary-certificate.json")
+async def salary_certificate_data(employee_id: str, tax_year: str, auth: AuthContext = Depends(EXPORT)
+                                  ) -> dict[str, Any]:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        return await _certificate(conn, auth, employee_id, tax_year)
+
+
+@router.get("/reports/salary-certificate")
+async def salary_certificate_pdf(employee_id: str, tax_year: str, auth: AuthContext = Depends(EXPORT)) -> Response:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        cert = await _certificate(conn, auth, employee_id, tax_year)
+        company = await conn.fetchrow(
+            """select t.name, coalesce(f.seller_ntn_cnic, '') as ntn from tenants t
+                 left join fbr_settings f on f.tenant_id = t.id where t.id = $1""", uuid_or_404(auth.tenant_id, "Tenant"))
+    content = await asyncio.to_thread(payslip_pdf.render_certificate, cert, company["name"], company["ntn"])
+    return Response(content, media_type="application/pdf", headers={
+        "Content-Disposition": f'attachment; filename="salary-certificate-{tax_year}.pdf"',
+        "Cache-Control": "no-store, private"})
 
 
 def _is_month(value: str) -> bool:

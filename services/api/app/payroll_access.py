@@ -28,3 +28,20 @@ def mask_tail(value: str, keep: int = 1) -> str:
 
 def mask_iban(value: str) -> str:
     return iban_mod.mask(value)
+
+
+# The identity fields a payslip snapshot freezes (app/payroll_data.py).
+_SNAPSHOT_MASKS = {"cnic": 4, "ntn": 1, "eobi_number": 1, "ss_number": 1}
+
+
+def snapshot_view(snapshot: dict[str, Any], *, reveal: bool) -> dict[str, Any]:
+    """THE one masking function for anything built from a payslip snapshot —
+    the JSON payslip, the PDF, the statutory worksheets and the bank file all
+    go through it, so no output can leak what another one hides."""
+    if reveal:
+        return dict(snapshot)
+    out = dict(snapshot)
+    for key, keep in _SNAPSHOT_MASKS.items():
+        out[key] = mask_tail(str(snapshot.get(key) or ""), keep)
+    out["iban"] = mask_iban(str(snapshot.get("iban") or ""))
+    return out

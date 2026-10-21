@@ -13,7 +13,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from .. import audit, db, iban
 from ..deps import AuthContext
-from ..payroll_access import mask_iban, mask_tail, sees_pay
+from .. import payroll_access
+from ..payroll_access import mask_iban, mask_tail
 from ..payroll_models import CompensationCreate, CompensationOut, PayrollDetailsOut, PayrollDetailsUpdate
 from ..payroll_province import resolve_work_provinces
 from ..rbac import holds, perm, require_key
@@ -102,7 +103,7 @@ def _details(r: Any, *, reveal: bool, base: int | None, province: tuple[str | No
 
 
 async def _details_for(conn: Any, row: Any, role_id: str | None) -> PayrollDetailsOut:
-    reveal = await sees_pay(conn, role_id)
+    reveal = await payroll_access.sees_pay(conn, role_id)
     base = await conn.fetchval("select hrms_base_on($1, current_date)", row["id"]) if reveal else None
     province = (await resolve_work_provinces(conn, [str(row["id"])]))[str(row["id"])]
     return _details(row, reveal=reveal, base=base, province=province)
