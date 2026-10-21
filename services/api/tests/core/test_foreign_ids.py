@@ -29,10 +29,14 @@ KIND_OF = {
     "sale_id": "sale", "sale_item_id": "sale_item",
     "employee_id": "employee", "leave_id": "leave", "holiday_id": "holiday",
     "request_id": "payment_request", "shift_id": "shift",
+    # payroll (3F)
+    "run_id": "payroll_run", "payslip_id": "payslip", "component_id": "pay_component",
+    "structure_id": "pay_structure", "one_off_id": "one_off", "advance_id": "advance",
 }
 
-# Path parameters that are not ids: a fixed, valid value.
-PLAIN_PARAMS = {"section": "crm", "decision": "approve"}
+# Path parameters that are not ids: a fixed, valid value. (scheme_code names
+# platform reference data — EOBI, PESSI — shared by every tenant.)
+PLAIN_PARAMS = {"section": "crm", "decision": "approve", "scheme_code": "EOBI"}
 
 # The /me/* portal never takes an id from the caller — it acts on the logged-in
 # employee only (tests/hrms/test_employee_portal.py proves the forcing).
@@ -59,7 +63,19 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
     workflow = (await c.post("/workflows", json={"name": "Probe", "trigger": "lead.created"})).json()
     payment = (await c.post("/billing/upgrade", json={"plan": "growth"})).json()
     shift = (await c.post("/hrms/shifts", json={"name": "Day"})).json()
+    run = (await c.post("/payroll/runs", json={"month": "2026-09"})).json()
+    component = (await c.post("/payroll/components", json={"code": "FUEL", "name": "Fuel"})).json()
+    structure = (await c.post("/payroll/structures", json={"name": "Probe",
+                                                           "component_ids": [component["id"]]})).json()
+    one_off = (await c.post("/payroll/one-offs", json={"employee_id": employee["id"], "month": "2026-09",
+                                                       "name": "Bonus", "amount_minor": 100})).json()
+    advance = (await c.post("/payroll/advances", json={"employee_id": employee["id"], "principal_minor": 100,
+                                                       "installment_minor": 100, "start_month": "2026-09"})).json()
     return {
+        "payroll_run": run["id"], "pay_component": component["id"], "pay_structure": structure["id"],
+        "one_off": one_off["id"], "advance": advance["id"],
+        # No payslip exists before a run is calculated; any id stands in (it must still 404).
+        "payslip": str(uuid.uuid4()),
         "shift": shift["id"],
         "role": (await c.get("/team/roles")).json()[0]["id"],
         "user": (await c.get("/auth/me")).json()["user"]["id"],
