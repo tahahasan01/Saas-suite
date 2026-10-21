@@ -15,7 +15,8 @@ const SECURITY_HEADERS = [
   // frame-ancestors 'none' in the CSP is the modern form; this covers old browsers.
   { key: "X-Frame-Options", value: "DENY" },
   // Nothing uses these yet; a feature that needs one (a camera barcode scanner) opts back in here.
-  { key: "Permissions-Policy", value: "camera=(), microphone=(), payment=(), usb=(), geolocation=()" },
+  // geolocation=(self): the staff punch reads the browser's location for the server-side geofence (D-43).
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), payment=(), usb=(), geolocation=(self)" },
 ];
 
 /** @type {(phase: string) => import('next').NextConfig} */

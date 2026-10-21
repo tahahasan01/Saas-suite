@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { Attendance, AttendanceWeek, AttendanceWeekRow, Employee } from "@business-os/types";
+import type { Attendance, AttendanceWeek, AttendanceWeekRow, Correction, Employee } from "@business-os/types";
 import { api } from "@/lib/api";
+import { Can } from "@/lib/can";
 import { attendanceBadge, formatDay, formatTime } from "@/lib/format";
 import { errorText, useAction } from "@/lib/useAction";
 import { DataTable, type Column } from "@/components/DataTable";
@@ -76,7 +77,13 @@ export default function AttendancePage() {
           <span className="flex flex-wrap items-center gap-1.5">
             <Badge tone={attendanceBadge(a.status).tone}>{attendanceBadge(a.status).label}</Badge>
             {a.fraud_flag && <Badge tone="danger">⚠ {a.fraud_flag.replace(/_/g, " ")}</Badge>}
-            {a.missing_checkout && <Badge tone="warning">no check-out</Badge>}
+            {a.geo_status === "outside" && <Badge tone="warning">outside the site</Badge>}
+            {a.geo_status === "no_fix" && <Badge>no location</Badge>}
+            {a.ip_status === "outside" && <Badge tone="warning">off network</Badge>}
+            {a.auto_closed ? <Badge tone="warning">closed automatically</Badge>
+              : a.missing_checkout && <Badge tone="warning">no check-out</Badge>}
+            {a.corrected && <Badge tone="brand">corrected</Badge>}
+            {!!a.overtime_min && <Badge tone="brand">+{a.overtime_min} min overtime</Badge>}
           </span>
         );
       },
@@ -107,6 +114,8 @@ export default function AttendancePage() {
 
   return (
     <div className="space-y-5">
+      <Corrections onDecided={load} />
+
       <section className="space-y-2">
         <h2 className="text-sm font-semibold">Today</h2>
         {loadError ? (
@@ -130,6 +139,49 @@ export default function AttendancePage() {
         <WeekMatrix week={week} />
       ) : null}
     </div>
+  );
+}
+
+/* Staff asking to fix a day (a forgotten check-out, a wrong time). Approving
+   adds the corrected times to the punch log — nothing is rewritten — and the
+   day is worked out again. The server refuses someone's own request. */
+function Corrections({ onDecided }: { onDecided: () => void }) {
+  const [rows, setRows] = useState<Correction[]>([]);
+  const load = useCallback(() => {
+    api<Correction[]>("/hrms/attendance/corrections?status=pending").then(setRows).catch(() => setRows([]));
+  }, []);
+  useEffect(load, [load]);
+  const decide = useAction(
+    (id: string, d: "approve" | "reject") =>
+      api<Correction>(`/hrms/attendance/corrections/${id}/${d}`, { method: "POST", body: JSON.stringify({}) }),
+    { success: (c) => `Correction ${(c as Correction).status}`, failure: "Couldn't record that decision" },
+  );
+  async function act(id: string, d: "approve" | "reject") {
+    await decide.run(id, d);
+    load();
+    onDecided();
+  }
+  if (!rows.length) return null;
+  return (
+    <section className="space-y-2" aria-labelledby="corrections-h">
+      <h2 id="corrections-h" className="text-sm font-semibold">Correction requests</h2>
+      <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
+        {rows.map((c) => (
+          <li key={c.id} className="flex flex-wrap items-center gap-2 px-4 py-2.5 text-sm">
+            <span className="min-w-0 flex-1 basis-56">
+              <span className="font-medium">{c.employee_name}</span>{" "}
+              <span className="text-fg-muted">· {formatDay(c.work_date, { weekday: "short", day: "numeric", month: "short" })} ·{" "}
+                {c.requested_in && `in ${time(c.requested_in)} `}{c.requested_out && `out ${time(c.requested_out)}`}</span>
+              <span className="block text-xs text-fg-subtle">{c.reason}</span>
+            </span>
+            <Can perm="hrms.attendance.approve">
+              <Button size="sm" onClick={() => act(c.id, "approve")} disabled={decide.busy} aria-label={`Approve ${c.employee_name}'s correction`}>Approve</Button>
+              <Button size="sm" variant="subtle" onClick={() => act(c.id, "reject")} disabled={decide.busy} aria-label={`Reject ${c.employee_name}'s correction`}>Reject</Button>
+            </Can>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

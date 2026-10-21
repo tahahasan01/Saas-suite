@@ -438,6 +438,13 @@ export interface Attendance {
   locked: boolean;
   /** The day is over with a check-in still open (counted as 0 minutes). */
   missing_checkout: boolean;
+  /** 3F: closed by the auto check-out job (no overtime), fixed by an approved
+   *  correction, and the server's geofence/network verdict on the check-in. */
+  auto_closed?: boolean;
+  overtime_min?: number;
+  corrected?: boolean;
+  geo_status?: "inside" | "outside" | "no_fix" | "not_required" | null;
+  ip_status?: "allowed" | "outside" | "not_required" | null;
 }
 
 export interface Shift {
@@ -452,6 +459,10 @@ export interface Shift {
   absent_below_min: number;
   overnight: boolean;
   active: boolean;
+  /** 3F policy: off | shift_end | max_hours. */
+  auto_checkout?: "off" | "shift_end" | "max_hours";
+  auto_checkout_after_min?: number;
+  overtime_after_min?: number;
 }
 
 export interface ShiftAssignment {
@@ -474,7 +485,15 @@ export interface Leave {
   from_date: string;
   to_date: string;
   reason: string;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "approved" | "rejected" | "cancelled";
+  /** Leave v2 (3F). */
+  leave_type_id?: string | null;
+  leave_type_name?: string;
+  paid?: boolean;
+  from_half?: "am" | "pm" | null;
+  to_half?: "am" | "pm" | null;
+  duration_days?: number | null;
+  approval_step?: "manager" | "hr" | "done" | null;
 }
 
 export interface HrmsSummary {
@@ -512,6 +531,11 @@ export interface Holiday {
   id: string;
   holiday_date: string;
   name: string;
+  /** 3F holiday calendars. */
+  calendar_id?: string | null;
+  calendar_name?: string;
+  kind?: "public" | "optional" | "company";
+  half_day?: boolean;
 }
 
 export interface Payroll {
@@ -656,3 +680,5 @@ export interface AttendanceWeek {
   days: string[];
   employees: AttendanceWeekRow[];
 }
+
+export * from "./hrms-org";

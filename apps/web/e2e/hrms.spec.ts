@@ -208,10 +208,14 @@ test.describe("leave", () => {
 });
 
 test.describe("holidays", () => {
-  test("fixed national holidays are offered for this year", async ({ page }) => {
+  // The hard-coded national list is gone (3F): the year's list is imported
+  // into a calendar, the federal one by default.
+  test("opens on this year's federal calendar, with an import instead of a fixed list", async ({ page }) => {
     await page.goto("/hrms/holidays");
     await expect(page.getByLabel("Year")).toHaveValue(yearPKT());
-    await expect(page.getByRole("heading", { name: new RegExp(`public holidays ${yearPKT()}`) })).toBeVisible();
+    await expect(page.getByLabel("Calendar")).toContainText("Federal");
+    await expect(page.getByRole("heading", { name: "Import a list" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /public holidays/i })).toHaveCount(0);
   });
 
   test("removing a holiday asks first, because it changes payroll", async ({ page, request }) => {
