@@ -3,14 +3,21 @@
 import { useCallback, useEffect, useState } from "react";
 import type { RoleOut, TeamUser } from "@business-os/types";
 import { api } from "@/lib/api";
+import { Can } from "@/lib/can";
+import { useSession } from "@/lib/session";
 import { errorText, useAction } from "@/lib/useAction";
+import { Dialog } from "@/components/Dialog";
 import { Badge, Button, Card, EmptyState, ErrorState, Field, Input, Select } from "@/components/ui";
 import { DataTable, type Column } from "@/components/DataTable";
 
 const COLUMNS: Column<TeamUser>[] = [
   { key: "name", header: "Name", primary: true, cell: (u) => u.name },
   { key: "email", header: "Email", cell: (u) => <span className="text-fg-muted">{u.email}</span> },
-  { key: "role", header: "Role", cell: (u) => u.role ?? "—" },
+  {
+    key: "role", header: "Roles", wrap: true,
+    // Several roles add up (D-04); the first is the primary one.
+    cell: (u) => (u.roles?.length ? u.roles.map((r) => r.name).join(", ") : u.role ?? "—"),
+  },
   {
     key: "status", header: "Status",
     // A word as well as a colour, so it doesn't rely on colour alone.
@@ -19,10 +26,13 @@ const COLUMNS: Column<TeamUser>[] = [
 ];
 
 export default function TeamPage() {
+  const { me } = useSession();
   const [users, setUsers] = useState<TeamUser[] | null>(null);
   const [roles, setRoles] = useState<RoleOut[]>([]);
   const [form, setForm] = useState({ email: "", role_id: "" });
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [editing, setEditing] = useState<TeamUser | null>(null);
+  const [picked, setPicked] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -43,6 +53,21 @@ export default function TeamPage() {
     async (body: typeof form) => { await api("/team/invite", { method: "POST", body: JSON.stringify(body) }); return body.email; },
     { success: (to) => `Invite sent to ${to}`, failure: "Couldn't send the invite" },
   );
+
+  const saveRoles = useAction(async (user: TeamUser, roleIds: string[]) => {
+    // Keep the current primary role first while it's still picked.
+    const primary = user.roles?.[0]?.id;
+    const ordered = primary && roleIds.includes(primary) ? [primary, ...roleIds.filter((r) => r !== primary)] : roleIds;
+    await api(`/team/users/${user.id}/roles`, { method: "PUT", body: JSON.stringify({ role_ids: ordered }) });
+    setEditing(null);
+    await load();
+    return user.name;
+  }, { success: (n) => `Roles updated for ${n}. They'll need to sign in again.`, failure: "Couldn't change the roles" });
+
+  function openRoles(u: TeamUser) {
+    setEditing(u);
+    setPicked((u.roles ?? []).map((r) => r.id));
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -66,12 +91,49 @@ export default function TeamPage() {
             columns={COLUMNS}
             rows={users ?? []}
             rowKey={(u) => u.id}
+            actions={(u) => (
+              // Your own roles are changed by another admin, so nobody locks themselves out.
+              <Can perm="settings.roles.manage">
+                {u.id !== me?.user.id && (
+                  <Button variant="ghost" size="sm" onClick={() => openRoles(u)} aria-label={`Change roles for ${u.name}`}>
+                    Roles
+                  </Button>
+                )}
+              </Can>
+            )}
             loading={users === null}
             caption="Team members"
             empty={<EmptyState title="No teammates yet" hint="Invite someone with the form alongside." />}
           />
         )}
       </div>
+
+      <Dialog
+        open={editing !== null}
+        onOpenChange={(o) => { if (!o) setEditing(null); }}
+        title={editing ? `Roles for ${editing.name}` : ""}
+        description="Someone with several roles can do everything each role allows."
+        size="sm"
+        footer={editing && (
+          <>
+            <Button variant="ghost" onClick={() => setEditing(null)}>Cancel</Button>
+            <Button disabled={!picked.length || saveRoles.busy} onClick={() => saveRoles.run(editing, picked)}>
+              {saveRoles.busy ? "Saving…" : "Save roles"}
+            </Button>
+          </>
+        )}
+      >
+        <fieldset className="space-y-1">
+          <legend className="sr-only">Roles</legend>
+          {roles.map((r) => (
+            <label key={r.id} className="flex items-center gap-2 text-sm pointer-coarse:min-h-11">
+              <input type="checkbox" className="h-4 w-4 accent-[var(--color-brand)]" checked={picked.includes(r.id)}
+                     onChange={(e) => setPicked(e.target.checked ? [...picked, r.id] : picked.filter((p) => p !== r.id))} />
+              {r.name}
+            </label>
+          ))}
+        </fieldset>
+      </Dialog>
 
       <Card className="space-y-3 self-start">
         <h2 className="text-sm font-semibold">Invite a teammate</h2>

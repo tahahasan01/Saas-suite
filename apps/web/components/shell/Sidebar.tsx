@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronsLeft, ChevronsRight } from "lucide-react";
 import { useSession } from "@/lib/session";
-import { MODULES, NAV_GROUPS, PORTAL_MODULES, moduleFor, tileStyle, type Module } from "@/lib/modules";
+import { MODULES, NAV_GROUPS, PORTAL_MODULES, moduleFor, tileStyle, visibleModules, type Module } from "@/lib/modules";
 
 /** The bold frame (D-90): deep teal, one colour tile per module, a saffron
  *  marker on the active one. Collapses to an icon rail on desktop.
@@ -17,9 +17,8 @@ export function Sidebar({ collapsed = false, onToggle, id, fill = false, onNavig
   const pathname = usePathname();
   if (!me) return null;
 
-  const enabled = new Set(me.entitlements.filter((e) => e.enabled).map((e) => e.section_key));
-  const modules = (me.employee_portal ? PORTAL_MODULES : MODULES)
-    .filter((m) => !m.requires || enabled.has(m.requires));
+  // The server decides which modules this caller sees (/auth/me `nav`).
+  const modules = me.employee_portal ? PORTAL_MODULES : visibleModules(me, MODULES);
   const active = moduleFor(pathname, modules);
 
   return (

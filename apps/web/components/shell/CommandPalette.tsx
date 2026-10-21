@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import * as R from "@radix-ui/react-dialog";
 import { CornerDownLeft, Search } from "lucide-react";
 import { useSession } from "@/lib/session";
-import { MODULES, PORTAL_MODULES } from "@/lib/modules";
+import { MODULES, PORTAL_MODULES, visibleModules, visibleTabs } from "@/lib/modules";
 import { useFocusReturn } from "./useFocusReturn";
 
 interface Entry { href: string; label: string; module: string; color: string }
@@ -31,12 +31,11 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
   const entries = useMemo<Entry[]>(() => {
     if (!me) return [];
-    const enabled = new Set(me.entitlements.filter((e) => e.enabled).map((e) => e.section_key));
     const out: Entry[] = [];
-    for (const m of me.employee_portal ? PORTAL_MODULES : MODULES) {
-      if (m.requires && !enabled.has(m.requires)) continue;
+    // Same server-decided modules and tabs as the sidebar (/auth/me `nav`).
+    for (const m of me.employee_portal ? PORTAL_MODULES : visibleModules(me, MODULES)) {
       const moduleLabel = m.label(t);
-      const tabs = (m.tabs ?? []).filter((tb) => !tb.requires || enabled.has(tb.requires));
+      const tabs = me.employee_portal ? (m.tabs ?? []) : visibleTabs(m, me);
       if (tabs.length === 0) out.push({ href: m.href, label: moduleLabel, module: moduleLabel, color: m.color });
       for (const tb of tabs) out.push({ href: tb.href, label: tb.label, module: moduleLabel, color: m.color });
     }
