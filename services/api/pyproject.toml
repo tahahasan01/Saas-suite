@@ -49,6 +49,12 @@ module = [
     "scripts.export_openapi",
     "scripts.seed_staging",
     "scripts.with_db",
+    # org data (3A, p3-orgdata)
+    "app.branches",
+    "app.org_models",
+    "app.routers.org",
+    "app.routers.sequences",
+    "app.sequences",
 ]
 # `strict` itself is global-only in mypy, so its per-module parts are spelled out.
 disallow_untyped_defs = true

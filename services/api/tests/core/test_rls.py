@@ -26,7 +26,9 @@ from . import grant_matrix
 # Not tenant-scoped by design. Anything else without tenant_id fails below.
 GLOBAL_TABLES = {"terminology", "occasion_calendar", "schema_migrations",
                  # the worker's job tables (0043): platform-owned, owner connection only
-                 "scheduled_jobs", "job_triggers", "job_runs"}
+                 "scheduled_jobs", "job_triggers", "job_runs",
+                 # org data reference tables (0055, 0058): global, select-only
+                 "pk_regions"}
 
 _TENANT_TABLES_SQL = """
     select c.relname,
@@ -133,6 +135,10 @@ def _value(typ: str) -> str:
 _SHAPED = {
     "auth_tokens": {"token_hash": lambda: uuid.uuid4().hex * 2},
     "outbox": {"kind": lambda: "rls.test_" + uuid.uuid4().hex[:8].translate(str.maketrans("0123456789", "ghijklmnop"))},
+    # org data (3A, p3-orgdata)
+    "branches": {"code": lambda: "R" + uuid.uuid4().hex[:6].upper()},
+    "sequences": {"code": lambda: "rls.test", "pattern": lambda: "{N}"},
+    "sequence_counters": {"period_key": lambda: "-"},
 }
 
 
@@ -181,6 +187,9 @@ async def test_app_user_is_confined_to_its_tenant(tenant_table):
 
         await conn.execute("set local role app_user")
         await conn.execute("select set_config('app.tenant_id', $1, true)", str(a))
+        # Every branch (D-03): this test is about the tenant policy; the
+        # restrictive branch policy has its own tests (test_branches.py).
+        await conn.execute("select set_config('app.branch_ids', '*', true)")
 
         async def denied(sql: str, *args) -> str:
             with pytest.raises(asyncpg.InsufficientPrivilegeError) as e:

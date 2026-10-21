@@ -500,6 +500,8 @@ class FbrSettingsOut(BaseModel):
     prices_include_tax: bool
     # The bearer token is never returned — only whether one is set.
     token_set: bool
+    # pk_regions code behind seller_province (0055); seller_province is its fbr_name.
+    seller_region_code: str | None = None
 
 
 class FbrSettingsUpdate(BaseModel):
@@ -511,6 +513,8 @@ class FbrSettingsUpdate(BaseModel):
     seller_address: str | None = None
     prices_include_tax: bool | None = None
     token: str | None = None
+    # Preferred over seller_province: a pk_regions code (0055).
+    seller_region_code: str | None = Field(default=None, pattern=r"^[A-Z]{2,3}$")
 
 
 class FbrInvoiceOut(BaseModel):
@@ -1047,3 +1051,25 @@ class WeekRow(BaseModel):
 class WeekOut(BaseModel):
     days: list[date]
     employees: list[WeekRow]
+
+
+# ─── Org data: regions, sequences, files, tax, branding (3A, 0055–0058) ─────
+# Request/response models live in app/org_models.py; the enum Literals are
+# here, next to the others test_enum_checks compares with the database.
+RegionCode = Literal["PB", "SD", "KP", "BA", "ICT", "GB", "AJK"]
+REGION_CODES: list[str] = list(get_args(RegionCode))
+RegionKind = Literal["province", "territory"]
+REGION_KINDS: list[str] = list(get_args(RegionKind))
+SequenceReset = Literal["never", "fiscal_year", "calendar_year", "month"]
+SEQUENCE_RESETS: list[str] = list(get_args(SequenceReset))
+FileVisibility = Literal["private", "public"]
+FILE_VISIBILITIES: list[str] = list(get_args(FileVisibility))
+FileMime = Literal["image/png", "image/jpeg", "image/webp", "application/pdf", "text/csv",
+                   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"]
+FILE_MIMES: list[str] = list(get_args(FileMime))
+TaxKind = Literal["gst", "pst", "further", "extra", "fed", "wht"]
+TAX_KINDS: list[str] = list(get_args(TaxKind))
+TaxAppliesTo = Literal["sale", "purchase", "both"]
+TAX_APPLIES_TO: list[str] = list(get_args(TaxAppliesTo))
+BrandingLayout = Literal["classic", "compact", "bold"]
+BRANDING_LAYOUTS: list[str] = list(get_args(BrandingLayout))

@@ -81,6 +81,19 @@ APP_USER: dict[str, set[str]] = {
     "ai_v_employees":       set(),
     "ai_v_attendance":      set(),
     "ai_v_leave":           set(),
+    # org data (3A, p3-orgdata, 0055–0058)
+    "pk_regions":           {S},                # global reference data
+    "branches":             {S, I, U},          # deactivate, never delete
+    "user_branches":        {S, I},             # home branch for users added by the team screen
+    "tenant_company":       {S, I, U},          # upsert from the company screen
+    "sequences":            {S, I, U},          # created on first use from the defaults
+    "sequence_counters":    {S, I, U},          # upsert allocates; never delete (reissue)
+}
+
+# Column-level grants don't appear in role_table_grants, so they are pinned
+# here and checked by tests/core/test_company_settings.py.
+APP_USER_COLUMN_UPDATES: dict[str, set[str]] = {
+    "tenants": {"name", "timezone", "fy_start_month", "updated_at"},
 }
 
 AI_VIEWS = {name for name in APP_USER if name.startswith("ai_v_")}

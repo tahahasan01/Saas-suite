@@ -242,3 +242,19 @@ def require_key(key: str, section: str):
         return auth
 
     return guard
+
+
+# ── Org data (3A, p3-orgdata): company, branches, sequences, branding ────────
+# Legacy mapping until RBAC v2: reading is settings:read, changing is
+# settings:admin. `settings.branches.all` (work in every branch, D-03) is what
+# bos_session_branches (0055) turns into '*'; it checks settings:admin today.
+register("settings", {
+    "settings.company.read": ("settings", "read"),
+    "settings.company.manage": ("settings", "admin"),
+    "settings.branches.read": ("settings", "read"),
+    "settings.branches.manage": ("settings", "admin"),
+    "settings.branches.all": ("settings", "admin"),
+    "settings.sequences.read": ("settings", "read"),
+    "settings.sequences.manage": ("settings", "admin"),
+    "settings.branding.manage": ("settings", "admin"),
+})

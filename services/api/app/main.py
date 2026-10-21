@@ -19,6 +19,7 @@ from .routers import (
     ai, auth, billing, crm, dashboard, entitlements, fbr, hrms, invoices, meta, notifications, pos,
     team, terminology, workflows,
 )
+from .routers import org, sequences  # org data (3A, p3-orgdata)
 
 # JSON logs with request/tenant context and PII redaction; Sentry if SENTRY_DSN (app/obs.py).
 obs.setup_logging("api")
@@ -80,6 +81,9 @@ app.include_router(fbr.router)
 app.include_router(hrms.router)
 app.include_router(hrms.portal)
 app.include_router(billing.router)
+# Org data (3A, p3-orgdata)
+app.include_router(org.router)
+app.include_router(sequences.router)
 
 
 @app.exception_handler(asyncpg.DataError)

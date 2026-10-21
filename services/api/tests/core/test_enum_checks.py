@@ -43,6 +43,10 @@ ENUM_COLUMNS = {
     ("timeline_events", "kind"): models.TIMELINE_KINDS,
     ("scheduled_jobs", "status"): models.JOB_STATUSES,
     ("job_runs", "status"): models.JOB_RUN_STATUSES,
+    # org data (3A, p3-orgdata)
+    ("pk_regions", "code"): models.REGION_CODES,
+    ("pk_regions", "kind"): models.REGION_KINDS,
+    ("sequences", "reset"): models.SEQUENCE_RESETS,
 }
 
 

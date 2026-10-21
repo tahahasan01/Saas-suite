@@ -130,6 +130,15 @@ export const PERMISSION_KEYS = [
   "payroll.salary.update",
   "payroll.report.export",
   "payroll.settings.manage",
+  // org data (3A): company, branches, sequences, branding
+  "settings.company.read",
+  "settings.company.manage",
+  "settings.branches.read",
+  "settings.branches.manage",
+  "settings.branches.all",
+  "settings.sequences.read",
+  "settings.sequences.manage",
+  "settings.branding.manage",
 ] as const;
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];
 
