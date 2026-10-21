@@ -24,7 +24,8 @@ from ..models import (
     PipelineOut,
     StageOut,
 )
-from ..rbac import require
+from ..rbac import perm, require, scope_of
+from ..scopes import where
 
 router = APIRouter(prefix="/crm", tags=["crm"])
 
@@ -193,11 +194,13 @@ async def save_fulfillment(lead_id: str, body: FulfillmentData,
 
 
 @router.get("/leads", response_model=list[LeadOut])
-async def list_leads(pipeline_id: str | None = None, auth: AuthContext = Depends(require("crm", "read"))):
+async def list_leads(pipeline_id: str | None = None, auth: AuthContext = Depends(perm("crm.lead.read"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
         pid = pipeline_id or await _ensure_default_pipeline(conn, auth.tenant_id)
+        scope = await scope_of(conn, auth, "crm.lead.read")   # own/team/branch/all (D-04)
         rows = await conn.fetch(
-            "select * from crm_leads where pipeline_id=$1 order by created_at desc", pid)
+            f"select * from crm_leads l where l.pipeline_id=$1 and {where('crm.lead', scope, 'l')} "
+            "order by l.created_at desc", pid)
     return [_lead(r) for r in rows]
 
 
@@ -246,11 +249,12 @@ async def create_lead(body: LeadCreate, auth: AuthContext = Depends(require("crm
 
 
 @router.get("/leads/{lead_id}", response_model=LeadDetail)
-async def get_lead(lead_id: str, auth: AuthContext = Depends(require("crm", "read"))):
+async def get_lead(lead_id: str, auth: AuthContext = Depends(perm("crm.lead.read"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
+        scope = await scope_of(conn, auth, "crm.lead.read")
         row = await conn.fetchrow(
-            """select l.*, s.kind as stage_kind from crm_leads l
-               join crm_stages s on s.id = l.stage_id where l.id=$1""", lead_id)
+            f"""select l.*, s.kind as stage_kind from crm_leads l
+               join crm_stages s on s.id = l.stage_id where l.id=$1 and {where('crm.lead', scope, 'l')}""", lead_id)
         if not row:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Lead not found")
         inter = await conn.fetch(
@@ -265,10 +269,13 @@ async def get_lead(lead_id: str, auth: AuthContext = Depends(require("crm", "rea
 
 
 @router.patch("/leads/{lead_id}", response_model=LeadOut)
-async def update_lead(lead_id: str, body: LeadUpdate, auth: AuthContext = Depends(require("crm", "write"))):
+async def update_lead(lead_id: str, body: LeadUpdate, auth: AuthContext = Depends(perm("crm.lead.update"))):
     fields = body.model_dump(exclude_none=True)
     async with db.tenant_conn(auth.tenant_id) as conn:
-        if not await conn.fetchval("select 1 from crm_leads where id=$1", lead_id):
+        # Outside the caller's scope is "not found", never "forbidden" (D-04).
+        scope = await scope_of(conn, auth, "crm.lead.update")
+        if not await conn.fetchval(
+                f"select 1 from crm_leads l where l.id=$1 and {where('crm.lead', scope, 'l')}", lead_id):
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Lead not found")
         await refs.ensure_visible(conn, "users", fields.get("owner_id"))
         # Moving to a stage in another pipeline keeps pipeline_id consistent.

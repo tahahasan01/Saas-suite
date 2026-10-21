@@ -44,7 +44,8 @@ from ..models import (
     SupplierCreate,
     SupplierOut,
 )
-from ..rbac import require
+from ..rbac import perm, require, scope_of
+from ..scopes import where
 
 _VELOCITY_SQL = """
 with vel as (
@@ -605,9 +606,11 @@ select i.id as sale_item_id, i.product_id, i.name, i.qty as qty_sold, i.price_mi
 
 
 @router.get("/sales/{sale_id}", response_model=SaleLookup)
-async def get_sale(sale_id: str, auth: AuthContext = Depends(require("pos", "read"))):
+async def get_sale(sale_id: str, auth: AuthContext = Depends(perm("pos.sale.read"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
-        sale = await conn.fetchrow("select * from pos_sales where id=$1", sale_id)
+        scope = await scope_of(conn, auth, "pos.sale.read")   # own = the cashier's own sales (D-04)
+        sale = await conn.fetchrow(
+            f"select * from pos_sales s where s.id=$1 and {where('pos.sale', scope, 's')}", sale_id)
         if sale is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Sale not found")
         lines = await conn.fetch(_RETURNABLE, sale_id)
@@ -640,12 +643,14 @@ async def get_sale(sale_id: str, auth: AuthContext = Depends(require("pos", "rea
 
 @router.post("/sales/{sale_id}/returns", response_model=ReturnOut, status_code=status.HTTP_201_CREATED)
 async def create_return(sale_id: str, body: ReturnCreate,
-                        auth: AuthContext = Depends(require("pos", "write"))):
+                        auth: AuthContext = Depends(perm("pos.sale.refund"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
         # Lock the sale: two returns of its last unit must be checked one after
-        # the other, or both see it as still returnable.
+        # the other, or both see it as still returnable. Out of scope = 404.
+        scope = await scope_of(conn, auth, "pos.sale.refund")
         sale = await conn.fetchrow(
-            "select total_minor, rounding_minor from pos_sales where id=$1 for update", sale_id)
+            f"select total_minor, rounding_minor from pos_sales s where s.id=$1 and {where('pos.sale', scope, 's')} "
+            "for update", sale_id)
         if sale is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Sale not found")
         available = {str(r["sale_item_id"]): r for r in await conn.fetch(_RETURNABLE, sale_id)}

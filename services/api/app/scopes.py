@@ -42,7 +42,12 @@ OWNERSHIP: dict[str, str] = {res: col for m in MODULES.values() for res, col in 
 # (app/rbac.py treats a narrow grant on any other key as not held), and
 # tests/core/test_scope_wiring.py checks that every route guarded by one of
 # them is listed here. Wiring a new route = apply where() and add it here.
-WIRED: dict[str, tuple[str, ...]] = {}
+WIRED: dict[str, tuple[str, ...]] = {
+    "crm.lead.read": ("GET /crm/leads", "GET /crm/leads/{lead_id}"),
+    "crm.lead.update": ("PATCH /crm/leads/{lead_id}",),
+    "pos.sale.read": ("GET /pos/sales/{sale_id}",),
+    "pos.sale.refund": ("POST /pos/sales/{sale_id}/returns",),
+}
 
 _ACTOR = "nullif(current_setting('app.actor_id', true), '')::uuid"
 _IDENT = re.compile(r"^[a-z_][a-z0-9_]*$")

@@ -109,7 +109,7 @@ async def test_shadow_mode_logs_a_mismatch_and_lets_the_old_check_decide(client,
         # Drift: the migrated grants go missing.
         await _owner("delete from role_grants where role_id=$1", role_id)
         rbac.SHADOW_LOG.clear()
-        assert (await mate.get("/crm/leads")).status_code == 200      # legacy still decides
+        assert (await mate.get("/crm/pipelines")).status_code == 200      # legacy still decides
         assert any(m["user_id"] == me["user"]["id"] and m["check"] == "crm:read" for m in rbac.SHADOW_LOG)
         assert "crm.lead.read" in (await mate.get("/auth/me")).json()["permissions"]
         assert any(m["check"] == "crm.lead.read" and m["legacy"] == "all" and m["v2"] is None
