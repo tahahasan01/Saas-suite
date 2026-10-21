@@ -170,7 +170,7 @@ async def create_employee(body: EmployeeCreate, auth: AuthContext = Depends(requ
             auth.tenant_id, body.name, body.email, body.phone, body.cnic, body.designation,
             body.department, body.join_date, body.salary_minor)
         # Org links (0065): set ones win; text-only department/designation is linked.
-        await hrorg.apply_job(conn, str(row["id"]),
+        await hrorg.apply_job(conn, auth, str(row["id"]),
                               body.model_dump(include=set(hrorg.JOB_FIELDS), exclude_none=True))
         await hrorg.link_text(conn)
         row = await conn.fetchrow("select * from hrms_employees where id=$1", row["id"])

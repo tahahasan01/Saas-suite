@@ -210,6 +210,9 @@ async def my_approvals(auth: AuthContext = Depends(current_auth)) -> ApprovalsOu
     at the manager step. Any login may ask; someone with no reports gets an
     empty inbox."""
     async with db.tenant_conn(auth.tenant_id) as conn:
-        corrections = await team_corrections(conn, auth.user_id)
-        requests = await leave.team_pending(conn, auth.user_id)
+        # The reporting link alone grants nothing: no approve key, no inbox.
+        corrections = (await team_corrections(conn, auth.user_id)
+                       if await hrorg.holds_hr(conn, auth, "hrms.attendance.approve") else [])
+        requests = (await leave.team_pending(conn, auth.user_id)
+                    if await hrorg.holds_hr(conn, auth, "hrms.leave.approve") else [])
     return ApprovalsOut(corrections=corrections, leave=requests)

@@ -51,16 +51,31 @@ async def department_loop(conn: asyncpg.Connection, dept_id: str, parent_id: Any
         dept_id, parent_id))
 
 
-async def apply_job(conn: asyncpg.Connection, employee_id: str, fields: dict[str, Any]) -> None:
+async def apply_job(conn: asyncpg.Connection, auth: AuthContext, employee_id: str,
+                    fields: dict[str, Any]) -> None:
     """Write org fields on an employee. `fields` holds only what the caller
     set; None clears a link. Ids must be this tenant's (404), the reporting
-    line can't loop (422), a code is unique per tenant (409)."""
+    line can't loop (422), a code is unique per tenant (409).
+
+    The manager link decides who may approve someone's requests, so changing
+    it needs hrms.org.manage, not just employee update, and nobody may make
+    themselves anyone's manager (security review)."""
     fields = {k: v for k, v in fields.items() if k in JOB_FIELDS}
     if not fields:
         return
     for col, table in _LINKS.items():
         if fields.get(col) is not None:
             await refs.ensure_visible(conn, table, fields[col])
+    if "manager_id" in fields:
+        current = await conn.fetchval("select manager_id from hrms_employees where id=$1", employee_id)
+        new = fields["manager_id"]
+        if (str(current) if current else None) != (str(new) if new else None):
+            if not await holds_hr(conn, auth, "hrms.org.manage"):
+                raise HTTPException(status.HTTP_403_FORBIDDEN, "Requires hrms.org.manage to change a manager")
+            if new is not None and str(new) != str(employee_id) and await conn.fetchval(
+                    "select 1 from hrms_employees where id=$1 and user_id=$2", new, auth.user_id):
+                raise HTTPException(status.HTTP_403_FORBIDDEN,
+                                    "You can't make yourself someone's manager — another admin must.")
     if fields.get("manager_id") is not None:
         if str(fields["manager_id"]) == str(employee_id) or await _manager_loop(
                 conn, employee_id, fields["manager_id"]):
@@ -95,9 +110,11 @@ async def holds_hr(conn: asyncpg.Connection, auth: AuthContext, key: str) -> boo
 
 async def approver_role(conn: asyncpg.Connection, auth: AuthContext, employee_id: str, *,
                         requested_by: Any, key: str) -> str:
-    """Who may decide a request about `employee_id`: their manager (the
-    manager employee's login) -> 'manager', or a holder of `key` -> 'hr'.
-    Never the employee or whoever filed it (TR-SEC-33): 403."""
+    """Who may decide a request about `employee_id`. Everyone needs `key`
+    (the link alone grants nothing — security review); with it, the
+    employee's manager (the manager employee's login) decides as 'manager',
+    anyone else as 'hr'. Never the employee or whoever filed it
+    (TR-SEC-33): 403."""
     row = await conn.fetchrow(
         """select e.user_id, m.user_id as manager_user from hrms_employees e
              left join hrms_employees m on m.id = e.manager_id where e.id = $1""", employee_id)
@@ -106,11 +123,11 @@ async def approver_role(conn: asyncpg.Connection, auth: AuthContext, employee_id
     if (row["user_id"] is not None and str(row["user_id"]) == auth.user_id) or (
             requested_by is not None and str(requested_by) == auth.user_id):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "You can't decide your own request — another approver must.")
+    if not await holds_hr(conn, auth, key):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, f"Requires {key}")
     if row["manager_user"] is not None and str(row["manager_user"]) == auth.user_id:
         return "manager"
-    if await holds_hr(conn, auth, key):
-        return "hr"
-    raise HTTPException(status.HTTP_403_FORBIDDEN, "Only their manager or HR can decide this.")
+    return "hr"
 
 
 async def link_text(conn: asyncpg.Connection) -> None:

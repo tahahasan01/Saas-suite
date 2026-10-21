@@ -254,7 +254,7 @@ async def update_employee_job(employee_id: str, body: EmployeeJobUpdate,
         # One org change per employee at a time, so two edits can't together
         # build a loop each one alone wouldn't.
         await conn.execute("select 1 from hrms_employees where id=$1 for update", employee_id)
-        await hrorg.apply_job(conn, employee_id, fields)
+        await hrorg.apply_job(conn, auth, employee_id, fields)
         return await load_profile(conn, auth, employee_id)
 
 

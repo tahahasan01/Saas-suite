@@ -197,18 +197,59 @@ async def test_a_document_kind_is_checked(client, tenant):
     assert r.status_code == 422
 
 
-async def test_team_function_follows_the_reporting_line(client, tenant):
-    a, b, c = [e["id"] for e in await _staff(client)][:3]
-    me = (await client.get("/auth/me")).json()["user"]["id"]
+async def _as_hr_clerk(tenant) -> None:
+    """The owner's role cut down to hrms read + write: may edit employees,
+    may not shape the org (no hrms.org.manage)."""
     conn = await _owner()
     try:
+        await conn.execute(
+            "delete from permissions where role_id = (select role_id from users where tenant_id=$1 limit 1) "
+            "and section='hrms'", uuid.UUID(tenant.tenant_id))
+        await conn.execute(
+            """insert into permissions (tenant_id, role_id, section, action)
+               select $1, u.role_id, 'hrms', a
+                 from (select role_id from users where tenant_id=$1 limit 1) u, unnest(array['read','write']) a""",
+            uuid.UUID(tenant.tenant_id))
+    finally:
+        await conn.close()
+
+
+async def test_setting_a_manager_needs_the_org_key(client, tenant):
+    """Security review: with only employee-update, a clerk could make
+    themselves someone's manager and then approve that person's requests."""
+    a, b = [e["id"] for e in await _staff(client)][:2]
+    await _as_hr_clerk(tenant)
+    r = await client.patch(f"/hrms/employees/{a}/job", json={"manager_id": b})
+    assert r.status_code == 403
+    r = await client.post("/hrms/employees", json={"name": "New hire", "manager_id": b})
+    assert r.status_code == 403
+    # Everything else on the job stays a clerk's work.
+    r = await client.patch(f"/hrms/employees/{a}/job", json={"employment_type": "contract"})
+    assert r.status_code == 200, r.text
+
+
+async def test_nobody_makes_themselves_a_manager(client, tenant):
+    a, b = [e["id"] for e in await _staff(client)][:2]
+    me = (await client.get("/auth/me")).json()["user"]["id"]
+    conn = await _owner()
+    try:   # the owner (org key and all) is also employee `a`
         await conn.execute("update hrms_employees set user_id=$1 where id=$2", uuid.UUID(me), uuid.UUID(a))
     finally:
         await conn.close()
+    assert (await client.patch(f"/hrms/employees/{b}/job", json={"manager_id": a})).status_code == 403
+    r = await client.post("/hrms/employees", json={"name": "Report", "manager_id": a})
+    assert r.status_code == 403
+    assert (await client.patch(f"/hrms/employees/{a}/job", json={"manager_id": a})).status_code == 422
+
+
+async def test_team_function_follows_the_reporting_line(client, tenant):
+    a, b, c = [e["id"] for e in await _staff(client)][:3]
+    me = (await client.get("/auth/me")).json()["user"]["id"]
     await client.patch(f"/hrms/employees/{b}/job", json={"manager_id": a})
     await client.patch(f"/hrms/employees/{c}/job", json={"manager_id": b})
     conn = await _owner()
     try:
+        await conn.execute("update hrms_employees set user_id=$1 where id=$2", uuid.UUID(me), uuid.UUID(a))
         ids = {str(r[0]) for r in await conn.fetch("select hrms_team_employee_ids($1)", uuid.UUID(me))}
     finally:
         await conn.close()

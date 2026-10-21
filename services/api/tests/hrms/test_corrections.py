@@ -31,15 +31,38 @@ async def _client_for(tenant, employee_id) -> AsyncClient:
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://test", cookies={SESSION_COOKIE: token})
 
 
+async def make_approver(tenant, employee_id: str) -> None:
+    """Move the employee's login onto a supervisor role that carries the
+    approve keys (hrms admin, until RBAC v2 narrows it)."""
+    conn = await asyncpg.connect(settings.database_url)
+    try:
+        tid = uuid.UUID(tenant.tenant_id)
+        role = await conn.fetchval(
+            """insert into roles (tenant_id, name, is_system) values ($1, 'Supervisor', false)
+               on conflict (tenant_id, name) do update set name = excluded.name returning id""", tid)
+        await conn.execute(
+            """insert into permissions (tenant_id, role_id, section, action) values ($1, $2, 'hrms', 'admin')
+               on conflict do nothing""", tid, role)
+        uid = await conn.fetchval("select user_id from hrms_employees where id=$1", uuid.UUID(employee_id))
+        await conn.execute("update users set role_id=$1 where id=$2", role, uid)
+        # A role change revokes sessions (D-05); keep the test's session alive.
+        await conn.execute(
+            "update sessions s set auth_epoch = u.auth_epoch from users u where u.id = s.user_id and u.id = $1", uid)
+    finally:
+        await conn.close()
+
+
 @pytest_asyncio.fixture
 async def team(client, tenant):
     """(worker client, manager client, worker id, manager id): the worker
-    reports to the manager; both have portal logins and no hrms keys."""
+    reports to the manager; both have portal logins, and the manager's role
+    carries the approve keys."""
     staff = [e["id"] for e in (await client.get("/hrms/employees")).json()]
     worker, manager = staff[0], staff[1]
     await client.patch(f"/hrms/employees/{worker}/job", json={"manager_id": manager})
     w = await _client_for(tenant, worker)
     m = await _client_for(tenant, manager)
+    await make_approver(tenant, manager)
     yield w, m, worker, manager
     await w.aclose()
     await m.aclose()
@@ -117,6 +140,24 @@ async def test_nobody_decides_their_own_correction(client, tenant, team):
     finally:
         await conn.close()
     assert (await client.post(f"/hrms/attendance/corrections/{cid}/approve", json={})).status_code == 403
+
+
+async def test_being_the_manager_is_not_enough_without_the_approve_key(client, tenant):
+    """Security review: the reporting link alone must not grant approval."""
+    staff = [e["id"] for e in (await client.get("/hrms/employees")).json()]
+    worker, manager = staff[0], staff[1]
+    await client.patch(f"/hrms/employees/{worker}/job", json={"manager_id": manager})
+    w = await _client_for(tenant, worker)
+    m = await _client_for(tenant, manager)       # the zero-permission Employee role
+    try:
+        await _forgot_checkout(tenant, worker)
+        cid = (await _ask(w)).json()["id"]
+        assert (await m.post(f"/hrms/attendance/corrections/{cid}/approve", json={})).status_code == 403
+        assert (await m.get("/me/approvals")).json()["corrections"] == []
+        assert (await _day(worker))["check_out"] is None
+    finally:
+        await w.aclose()
+        await m.aclose()
 
 
 async def test_someone_elses_manager_cannot_decide(client, tenant, team):
