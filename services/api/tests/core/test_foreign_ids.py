@@ -29,6 +29,8 @@ KIND_OF = {
     "sale_id": "sale", "sale_item_id": "sale_item",
     "employee_id": "employee", "leave_id": "leave", "holiday_id": "holiday",
     "request_id": "payment_request", "shift_id": "shift",
+    # org data (3A, p3-orgdata)
+    "branch_id": "branch", "sequence_id": "sequence", "logo_file_id": "file",
 }
 
 # Path parameters that are not ids: a fixed, valid value.
@@ -70,7 +72,25 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
         "sale": sale["id"], "sale_item": detail["returnable"][0]["sale_item_id"],
         "employee": employee["id"], "leave": leave["id"], "holiday": holiday["id"],
         "payment_request": payment["payment_request_id"],
+        **await _org_ids(c),
     }
+
+
+async def _org_ids(c: AsyncClient) -> dict[str, str]:
+    """Org data (3A): a branch, a sequence (made by taking a number) and an uploaded logo."""
+    import io
+
+    from PIL import Image
+
+    from app import db, sequences
+    tenant_id = (await c.get("/auth/me")).json()["tenant"]["id"]
+    async with db.tenant_conn(tenant_id) as conn:
+        seq = await sequences.next_number(conn, "sales.invoice")
+    buf = io.BytesIO()
+    Image.new("RGB", (4, 4), (15, 118, 110)).save(buf, "PNG")
+    logo = (await c.post("/files", params={"name": "logo.png", "purpose": "logo"}, content=buf.getvalue())).json()
+    return {"branch": (await c.get("/org/branches")).json()[0]["id"],
+            "sequence": seq.sequence_id, "file": logo["id"]}
 
 
 @pytest_asyncio.fixture
