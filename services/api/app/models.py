@@ -230,8 +230,9 @@ InteractionOutcome = Literal["interested", "not_interested", "callback", "busy"]
 INTERACTION_CHANNELS = list(get_args(InteractionChannel))
 INTERACTION_OUTCOMES = list(get_args(InteractionOutcome))
 STAGE_KINDS = ["active", "won", "lost"]   # legacy column, kept one release (0062)
-InvoiceStatus = Literal["pending", "approved", "rejected"]
-INVOICE_STATUSES = list(get_args(InvoiceStatus))
+# v1 invoice requests, read-only history since 0074.
+InvoiceRequestStatus = Literal["pending", "approved", "rejected"]
+INVOICE_REQUEST_STATUSES = list(get_args(InvoiceRequestStatus))
 LeadStatus = Literal["open", "won", "lost"]
 LEAD_STATUSES = list(get_args(LeadStatus))
 # Activities (D-32, 0063). Polymorphic: 'contact' arrives with the contacts module.
@@ -582,32 +583,6 @@ class FulfillmentSchema(BaseModel):
 
 class FulfillmentData(BaseModel):
     data: dict = Field(default_factory=dict)
-
-
-class InvoiceCreate(BaseModel):
-    # Who is billed (required, 0061). Given only a lead, the lead's contact is
-    # billed; a lead that isn't qualified yet is a 422.
-    contact_id: UUID | None = None
-    lead_id: UUID | None = None
-    amount_minor: int = Field(ge=0)
-    discount_pct: float = Field(default=0, ge=0, le=100)
-    notes: str = ""
-
-
-class InvoiceOut(BaseModel):
-    id: str
-    lead_id: str | None
-    lead_name: str | None
-    contact_id: str | None   # null only on requests raised before 0061 whose lead has no contact
-    contact_name: str | None
-    bill_to: str             # the contact's name, else the lead's
-    amount_minor: int
-    discount_pct: float
-    total_minor: int
-    notes: str
-    status: str
-    created_at: datetime
-    decided_at: datetime | None
 
 
 # ── POS ─────────────────────────────────────────────────────────────────────
@@ -2357,3 +2332,13 @@ StatutoryAuthority = Literal["federal", "punjab", "sindh", "kp", "balochistan"]
 STATUTORY_AUTHORITIES = list(get_args(StatutoryAuthority))
 StatutoryBaseKind = Literal["fixed_base", "min_wage", "actual_wage", "actual_wage_capped"]
 STATUTORY_BASE_KINDS = list(get_args(StatutoryBaseKind))
+
+
+# ─── Invoices v2 (3E, migration 0074) ───────────────────────────────────────
+# Request/response models live in app/invoice_models.py.
+InvoiceKind = Literal["invoice", "credit_note"]
+INVOICE_KINDS = list(get_args(InvoiceKind))
+InvoiceStatus = Literal["draft", "pending_approval", "issued", "partially_paid", "paid", "void"]
+INVOICE_STATUSES = list(get_args(InvoiceStatus))
+InvoicePaymentMethod = Literal["cash", "bank", "cheque", "card", "jazzcash", "easypaisa", "raast", "wht_adjustment"]
+INVOICE_PAYMENT_METHODS = list(get_args(InvoicePaymentMethod))

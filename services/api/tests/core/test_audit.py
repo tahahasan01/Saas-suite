@@ -303,12 +303,13 @@ async def test_a_leave_decision_is_audited_and_on_the_timeline(client, tenant):
 
 
 async def test_an_invoice_approval_is_audited_and_on_the_timeline(client, crm_tenant):
-    lead = (await client.get("/crm/leads")).json()[0]
-    inv = (await client.post("/crm/invoices", json={"lead_id": lead["id"], "amount_minor": 100_000})).json()
-    assert (await client.post(f"/crm/invoices/{inv['id']}/approve")).status_code == 200
-    row = (await _rows(crm_tenant.tenant_id, "crm_invoice_requests", inv["id"]))[-1]
-    assert row["changes"]["status"] == ["pending", "approved"]
-    events = await _timeline(crm_tenant.tenant_id, "invoice_request", inv["id"])
+    contact = (await client.post("/contacts", json={"name": "Audited Co", "force": True})).json()
+    inv = (await client.post("/invoices", json={"contact_id": contact["id"], "submit": True,
+                                                "lines": [{"description": "Services", "qty": 1, "unit_price_minor": 100_000}]})).json()
+    assert (await client.post(f"/invoices/{inv['id']}/approve")).status_code == 200
+    rows = await _rows(crm_tenant.tenant_id, "invoices", inv["id"])
+    assert any(r["changes"].get("status") == ["pending_approval", "issued"] for r in rows)
+    events = await _timeline(crm_tenant.tenant_id, "invoice", inv["id"])
     assert [e["kind"] for e in events] == ["approved"]
 
 

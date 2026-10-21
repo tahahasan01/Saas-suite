@@ -52,7 +52,7 @@ _MANIFESTS = [
         "crm", "Sales / CRM", "Leads, pipeline, follow-ups and invoice requests.",
         application=True, depends=("contacts",),
         # Invoice requests are a CRM feature until invoices v2 (3E) moves them.
-        claims=("invoicing.invoice.*",),
+        claims=("invoicing.invoice.*", "invoicing.payment.*"),
         scoped={"crm.lead": "owner_id"},
         jobs=("crm.followup_reminders", "crm.activity_overdue"),
         purge_tables=("crm_leads",),
@@ -100,6 +100,7 @@ _MANIFESTS = [
         "invoicing", "Invoices", "Quotations and tax invoices (invoices v2).",
         application=True, depends=("contacts", "products"),
         sequences=("sales.invoice", "sales.credit_note"),
+        jobs=("invoicing.overdue_reminders",),
     ),
     ModuleSpec(
         "hrms", "Staff / HRMS", "Employees, attendance, shifts and leave.",

@@ -75,7 +75,7 @@ test.describe("invoices and automations", () => {
     const requestBtn = drawer.getByRole("button", { name: "Request" });
     // A double tap must post once.
     const posts: string[] = [];
-    page.on("request", (r) => { if (r.method() === "POST" && r.url().endsWith("/crm/invoices")) posts.push(r.url()); });
+    page.on("request", (r) => { if (r.method() === "POST" && r.url().endsWith("/invoices")) posts.push(r.url()); });
     await requestBtn.dblclick();
     await expect(page.getByText(/invoice requested/i)).toBeVisible();
     expect(posts).toHaveLength(1);
@@ -83,12 +83,20 @@ test.describe("invoices and automations", () => {
 
     await page.goto("/invoices");
     const row = page.getByRole("row").filter({ hasText: lead.name });
-    await row.getByRole("button", { name: "Approve" }).click();
-    const confirm = page.getByRole("dialog", { name: /approve this invoice/i });
+    await expect(row).toContainText("Awaiting approval");
+    await row.getByRole("button", { name: /^Open/ }).click();
+    const sheet = page.getByRole("dialog", { name: new RegExp(lead.name) });
+    await sheet.getByRole("button", { name: "Approve" }).click();
+    const confirm = page.getByRole("alertdialog", { name: /approve this invoice/i })
+      .or(page.getByRole("dialog", { name: /approve this invoice/i }));
     await expect(confirm).toContainText(lead.name);
     await confirm.getByRole("button", { name: "Approve" }).click();
     await expect(confirm).toBeHidden();
-    await expect(row).toContainText("approved");
+    // Approval numbers it (INV-<fiscal year>-NNNNN) and it can be downloaded.
+    await expect(sheet).toContainText(/INV-\d{4}-\d{2}-\d{5}/);
+    await expect(sheet.getByRole("link", { name: /Download PDF/ })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(row).toContainText("Issued");
   });
 
   test("an automation can be switched off and deleted after naming it", async ({ page }) => {

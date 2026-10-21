@@ -719,7 +719,7 @@ export interface paths {
         patch: operations["update_workflow_workflows__workflow_id__patch"];
         trace?: never;
     };
-    "/crm/invoices": {
+    "/invoices": {
         parameters: {
             query?: never;
             header?: never;
@@ -727,17 +727,35 @@ export interface paths {
             cookie?: never;
         };
         /** List Invoices */
-        get: operations["list_invoices_crm_invoices_get"];
+        get: operations["list_invoices_invoices_get"];
         put?: never;
         /** Create Invoice */
-        post: operations["create_invoice_crm_invoices_post"];
+        post: operations["create_invoice_invoices_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/crm/invoices/{invoice_id}/approve": {
+    "/invoices/{invoice_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Invoice */
+        get: operations["get_invoice_invoices__invoice_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Invoice */
+        patch: operations["update_invoice_invoices__invoice_id__patch"];
+        trace?: never;
+    };
+    "/invoices/{invoice_id}/submit": {
         parameters: {
             query?: never;
             header?: never;
@@ -746,15 +764,15 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Approve */
-        post: operations["approve_crm_invoices__invoice_id__approve_post"];
+        /** Submit Invoice */
+        post: operations["submit_invoice_invoices__invoice_id__submit_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/crm/invoices/{invoice_id}/reject": {
+    "/invoices/{invoice_id}/approve": {
         parameters: {
             query?: never;
             header?: never;
@@ -763,15 +781,83 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Reject */
-        post: operations["reject_crm_invoices__invoice_id__reject_post"];
+        /** Approve Invoice */
+        post: operations["approve_invoice_invoices__invoice_id__approve_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/crm/invoices/{invoice_id}/pdf": {
+    "/invoices/{invoice_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject Invoice */
+        post: operations["reject_invoice_invoices__invoice_id__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/invoices/{invoice_id}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record Payment */
+        post: operations["record_payment_invoices__invoice_id__payments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/invoices/{invoice_id}/credit-notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Credit Invoice */
+        post: operations["credit_invoice_invoices__invoice_id__credit_notes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/invoices/{invoice_id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Void Invoice */
+        post: operations["void_invoice_invoices__invoice_id__void_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/invoices/{invoice_id}/pdf": {
         parameters: {
             query?: never;
             header?: never;
@@ -779,7 +865,7 @@ export interface paths {
             cookie?: never;
         };
         /** Invoice Pdf */
-        get: operations["invoice_pdf_crm_invoices__invoice_id__pdf_get"];
+        get: operations["invoice_pdf_invoices__invoice_id__pdf_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5362,6 +5448,16 @@ export interface components {
              */
             created_at: string;
         };
+        /**
+         * CreditNoteIn
+         * @description No amount = credit the whole invoice, line by line (tax included).
+         */
+        CreditNoteIn: {
+            /** Reason */
+            reason: string;
+            /** Amount Minor */
+            amount_minor?: number | null;
+        };
         /** CrmSummary */
         CrmSummary: {
             /** Total Leads */
@@ -6117,56 +6213,212 @@ export interface components {
             /** Role Id */
             role_id: string;
         };
-        /** InvoiceCreate */
+        /**
+         * InvoiceCreate
+         * @description A draft; `submit` sends it straight for approval.
+         */
         InvoiceCreate: {
             /** Contact Id */
             contact_id?: string | null;
             /** Lead Id */
             lead_id?: string | null;
-            /** Amount Minor */
-            amount_minor: number;
+            /** Due Date */
+            due_date?: string | null;
             /**
-             * Discount Pct
+             * Tax Inclusive
+             * @default false
+             */
+            tax_inclusive: boolean;
+            /**
+             * Discount Minor
              * @default 0
              */
-            discount_pct: number;
+            discount_minor: number;
             /**
              * Notes
              * @default
              */
             notes: string;
+            /** Lines */
+            lines: components["schemas"]["InvoiceLineIn"][];
+            /**
+             * Submit
+             * @default false
+             */
+            submit: boolean;
         };
-        /** InvoiceOut */
-        InvoiceOut: {
+        /** InvoiceDetail */
+        InvoiceDetail: {
             /** Id */
             id: string;
-            /** Lead Id */
-            lead_id: string | null;
-            /** Lead Name */
-            lead_name: string | null;
+            /** Kind */
+            kind: string;
+            /** Number */
+            number: string | null;
+            /** Legacy Ref */
+            legacy_ref: string | null;
+            /** Status */
+            status: string;
             /** Contact Id */
             contact_id: string | null;
             /** Contact Name */
             contact_name: string | null;
-            /** Bill To */
-            bill_to: string;
-            /** Amount Minor */
-            amount_minor: number;
-            /** Discount Pct */
-            discount_pct: number;
+            /** Lead Id */
+            lead_id: string | null;
+            /** Lead Name */
+            lead_name: string | null;
+            /** Issue Date */
+            issue_date: string | null;
+            /** Due Date */
+            due_date: string | null;
             /** Total Minor */
             total_minor: number;
-            /** Notes */
-            notes: string;
-            /** Status */
-            status: string;
+            /** Paid Minor */
+            paid_minor: number;
+            /** Credited Minor */
+            credited_minor: number;
+            /** Balance Minor */
+            balance_minor: number;
+            /** Overdue */
+            overdue: boolean;
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
-            /** Decided At */
-            decided_at: string | null;
+            /** Credit Of Id */
+            credit_of_id: string | null;
+            /** Tax Inclusive */
+            tax_inclusive: boolean;
+            /** Subtotal Minor */
+            subtotal_minor: number;
+            /** Line Discount Minor */
+            line_discount_minor: number;
+            /** Discount Minor */
+            discount_minor: number;
+            /** Tax Minor */
+            tax_minor: number;
+            /** Bill To */
+            bill_to: {
+                [key: string]: string;
+            };
+            /** Notes */
+            notes: string;
+            /** Reason */
+            reason: string;
+            /** Lines */
+            lines: components["schemas"]["InvoiceLineOut"][];
+            /** Payments */
+            payments: components["schemas"]["PaymentOut"][];
+            /** Credit Notes */
+            credit_notes: components["schemas"]["InvoiceSummary"][];
+            /** Unverified Rates */
+            unverified_rates: boolean;
+        };
+        /** InvoiceLineIn */
+        InvoiceLineIn: {
+            /** Description */
+            description: string;
+            /** Qty */
+            qty: number | string;
+            /** Unit Price Minor */
+            unit_price_minor: number;
+            /**
+             * Line Discount Minor
+             * @default 0
+             */
+            line_discount_minor: number;
+            /** Tax Code */
+            tax_code?: string | null;
+            /** Product Id */
+            product_id?: string | null;
+        };
+        /** InvoiceLineOut */
+        InvoiceLineOut: {
+            /** Id */
+            id: string;
+            /** Position */
+            position: number;
+            /** Description */
+            description: string;
+            /** Qty */
+            qty: number;
+            /** Unit Price Minor */
+            unit_price_minor: number;
+            /** Line Discount Minor */
+            line_discount_minor: number;
+            /** Share Minor */
+            share_minor: number;
+            /** Tax Code */
+            tax_code: string | null;
+            /** Tax Rate Pct */
+            tax_rate_pct: number;
+            /** Net Excl Minor */
+            net_excl_minor: number;
+            /** Tax Minor */
+            tax_minor: number;
+            /** Total Minor */
+            total_minor: number;
+            /** Product Id */
+            product_id: string | null;
+        };
+        /** InvoiceSummary */
+        InvoiceSummary: {
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Number */
+            number: string | null;
+            /** Legacy Ref */
+            legacy_ref: string | null;
+            /** Status */
+            status: string;
+            /** Contact Id */
+            contact_id: string | null;
+            /** Contact Name */
+            contact_name: string | null;
+            /** Lead Id */
+            lead_id: string | null;
+            /** Lead Name */
+            lead_name: string | null;
+            /** Issue Date */
+            issue_date: string | null;
+            /** Due Date */
+            due_date: string | null;
+            /** Total Minor */
+            total_minor: number;
+            /** Paid Minor */
+            paid_minor: number;
+            /** Credited Minor */
+            credited_minor: number;
+            /** Balance Minor */
+            balance_minor: number;
+            /** Overdue */
+            overdue: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * InvoiceUpdate
+         * @description Draft or awaiting approval only; `lines` replaces them all.
+         */
+        InvoiceUpdate: {
+            /** Contact Id */
+            contact_id?: string | null;
+            /** Due Date */
+            due_date?: string | null;
+            /** Tax Inclusive */
+            tax_inclusive?: boolean | null;
+            /** Discount Minor */
+            discount_minor?: number | null;
+            /** Notes */
+            notes?: string | null;
+            /** Lines */
+            lines?: components["schemas"]["InvoiceLineIn"][] | null;
         };
         /** JobTitleCreate */
         JobTitleCreate: {
@@ -7377,6 +7629,26 @@ export interface components {
             /** New Password */
             new_password: string;
         };
+        /** PaymentIn */
+        PaymentIn: {
+            /**
+             * Method
+             * @enum {string}
+             */
+            method: "cash" | "bank" | "cheque" | "card" | "jazzcash" | "easypaisa" | "raast" | "wht_adjustment";
+            /** Amount Minor */
+            amount_minor: number;
+            /**
+             * Paid On
+             * Format: date
+             */
+            paid_on: string;
+            /**
+             * Reference
+             * @default
+             */
+            reference: string;
+        };
         /** PaymentInstructions */
         PaymentInstructions: {
             /** Payment Request Id */
@@ -7391,6 +7663,27 @@ export interface components {
             bank: {
                 [key: string]: unknown;
             };
+        };
+        /** PaymentOut */
+        PaymentOut: {
+            /** Id */
+            id: string;
+            /** Method */
+            method: string;
+            /** Amount Minor */
+            amount_minor: number;
+            /**
+             * Paid On
+             * Format: date
+             */
+            paid_on: string;
+            /** Reference */
+            reference: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** PayrollDetailsOut */
         PayrollDetailsOut: {
@@ -8035,6 +8328,14 @@ export interface components {
              * @default false
              */
             force: boolean;
+        };
+        /** Reason */
+        Reason: {
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
         };
         /**
          * RecomputeCreate
@@ -10955,10 +11256,14 @@ export interface operations {
             };
         };
     };
-    list_invoices_crm_invoices_get: {
+    list_invoices_invoices_get: {
         parameters: {
             query?: {
-                status_filter?: string | null;
+                status?: ("draft" | "pending_approval" | "issued" | "partially_paid" | "paid" | "void") | null;
+                contact_id?: string | null;
+                lead_id?: string | null;
+                overdue?: boolean;
+                limit?: number;
             };
             header?: never;
             path?: never;
@@ -10974,7 +11279,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["InvoiceOut"][];
+                    "application/json": components["schemas"]["InvoiceSummary"][];
                 };
             };
             /** @description Validation Error */
@@ -10988,7 +11293,7 @@ export interface operations {
             };
         };
     };
-    create_invoice_crm_invoices_post: {
+    create_invoice_invoices_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -11009,7 +11314,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["InvoiceOut"];
+                    "application/json": components["schemas"]["InvoiceDetail"];
                 };
             };
             /** @description Validation Error */
@@ -11023,7 +11328,7 @@ export interface operations {
             };
         };
     };
-    approve_crm_invoices__invoice_id__approve_post: {
+    get_invoice_invoices__invoice_id__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -11042,7 +11347,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["InvoiceOut"];
+                    "application/json": components["schemas"]["InvoiceDetail"];
                 };
             };
             /** @description Validation Error */
@@ -11056,7 +11361,44 @@ export interface operations {
             };
         };
     };
-    reject_crm_invoices__invoice_id__reject_post: {
+    update_invoice_invoices__invoice_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvoiceUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_invoice_invoices__invoice_id__submit_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -11075,7 +11417,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["InvoiceOut"];
+                    "application/json": components["schemas"]["InvoiceDetail"];
                 };
             };
             /** @description Validation Error */
@@ -11089,7 +11431,188 @@ export interface operations {
             };
         };
     };
-    invoice_pdf_crm_invoices__invoice_id__pdf_get: {
+    approve_invoice_invoices__invoice_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reject_invoice_invoices__invoice_id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Reason"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_payment_invoices__invoice_id__payments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PaymentIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    credit_invoice_invoices__invoice_id__credit_notes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreditNoteIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    void_invoice_invoices__invoice_id__void_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Reason"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    invoice_pdf_invoices__invoice_id__pdf_get: {
         parameters: {
             query?: never;
             header?: never;

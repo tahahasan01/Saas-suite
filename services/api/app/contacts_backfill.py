@@ -42,10 +42,13 @@ async def link_lead(conn: asyncpg.Connection, lead_id: Any, contact_id: Any, *, 
     a migration doesn't write an event on every old lead."""
     # updated_at stays: the lost-stage migration (§7.1) reads it as lost_at.
     await conn.execute("update crm_leads set contact_id = $2 where id = $1", lead_id, contact_id)
-    # Requests raised on the lead before it had a contact now bill it (0061).
-    moved = await conn.execute(
+    # Invoices raised on the lead before it had a contact now bill it (0061,
+    # 0074); the v1 history keeps the link too.
+    await conn.execute(
         "update crm_invoice_requests set contact_id = $2 where lead_id = $1 and contact_id is null",
         lead_id, contact_id)
+    moved = await conn.execute(
+        "update invoices set contact_id = $2 where lead_id = $1 and contact_id is null", lead_id, contact_id)
     if body is not None:
         await audit.track(conn, entity_type="lead", entity_id=str(lead_id), contact_id=str(contact_id),
                           kind="system", body=body)

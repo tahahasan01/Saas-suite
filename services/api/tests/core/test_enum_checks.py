@@ -32,7 +32,7 @@ ENUM_COLUMNS = {
     ("crm_interactions", "channel"): models.INTERACTION_CHANNELS,
     ("crm_interactions", "outcome"): models.INTERACTION_OUTCOMES,
     ("crm_stages", "kind"): models.STAGE_KINDS,
-    ("crm_invoice_requests", "status"): models.INVOICE_STATUSES,
+    ("crm_invoice_requests", "status"): models.INVOICE_REQUEST_STATUSES,
     ("users", "status"): models.USER_STATUSES,
     ("workflows", "trigger"): models.WORKFLOW_TRIGGERS,
     ("pos_drawers", "status"): models.DRAWER_STATUSES,
@@ -97,6 +97,10 @@ ENUM_COLUMNS = {
     ("hrms_leave_requests", "approval_step"): models.LEAVE_STEPS,
     ("hrms_leave_approvals", "step"): models.APPROVAL_STEPS,
     ("hrms_leave_approvals", "decision"): models.APPROVAL_DECISIONS,
+    # invoices v2 (0074)
+    ("invoices", "kind"): models.INVOICE_KINDS,
+    ("invoices", "status"): models.INVOICE_STATUSES,
+    ("invoice_payments", "method"): models.INVOICE_PAYMENT_METHODS,
     # payroll (3F)
     ("hrms_compensation", "reason"): models.COMPENSATION_REASONS,
     ("hrms_employees", "payment_mode"): models.PAYMENT_MODES,

@@ -83,6 +83,9 @@ register("invoicing", {
     "invoicing.invoice.create": ("crm", "write"),
     # Separation of duties: approval is its own grant, not "is the Owner".
     "invoicing.invoice.approve": ("accounts", "admin"),
+    # Invoices v2 (3E): money in and documents cancelled are accounts work too.
+    "invoicing.payment.record": ("accounts", "admin"),
+    "invoicing.invoice.void": ("accounts", "admin"),
 })
 register("pos", {
     "pos.sale.read": ("pos", "read"),

@@ -15,7 +15,9 @@ import { MergeDialog } from "@/components/contacts/MergeDialog";
 import { ROLE_LABELS, telHref, useContactLabels, whatsappHref } from "@/components/contacts/labels";
 
 type Tab = "timeline" | "deals" | "sales" | "invoices" | "activities" | "details";
-const invTone = { pending: "warning", approved: "success", rejected: "danger" } as const;
+const invTone: Record<string, "neutral" | "warning" | "brand" | "success" | "danger"> = {
+  draft: "neutral", pending_approval: "warning", issued: "brand", partially_paid: "warning", paid: "success", void: "danger",
+};
 
 export default function ContactPage() {
   const { id } = useParams<{ id: string }>();
@@ -180,7 +182,7 @@ export default function ContactPage() {
               <li key={i.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
                 <span>{formatDate(i.created_at)}</span>
                 <span className="flex items-center gap-3">
-                  <Badge tone={invTone[i.status]}>{i.status}</Badge>
+                  <Badge tone={invTone[i.status] ?? "neutral"}>{i.status.replace("_", " ")}</Badge>
                   <span className="tabular-nums font-medium">{money(i.total_minor)}</span>
                 </span>
               </li>
@@ -210,7 +212,7 @@ function Kpi({ label, value }: { label: string; value: string }) {
   );
 }
 
-const ENTITY_LABEL: Record<string, string> = { contact: "", lead: "Deal", invoice_request: "Invoice", pos_sale: "Sale" };
+const ENTITY_LABEL: Record<string, string> = { contact: "", lead: "Deal", invoice_request: "Invoice", invoice: "Invoice", pos_sale: "Sale" };
 
 function Timeline({ contactId, refreshKey, onNoted }: { contactId: string; refreshKey: number; onNoted: () => void }) {
   const [items, setItems] = useState<TimelineItem[] | null>(null);

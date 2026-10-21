@@ -54,7 +54,7 @@ describe("requests", () => {
     fetchMock.mockResolvedValue(json(200, { ok: true }));
     await api("/pos/summary");
     expect(fetchMock.mock.calls[0][0]).toBe("/api/pos/summary");
-    expect(apiUrl("/crm/invoices/1/pdf")).toBe("/api/crm/invoices/1/pdf");
+    expect(apiUrl("/invoices/1/pdf")).toBe("/api/invoices/1/pdf");
   });
 
   it("sends a 401 to /login?next=… and marks the error handled", async () => {

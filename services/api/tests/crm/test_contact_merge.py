@@ -85,7 +85,8 @@ async def test_merge_moves_everything_to_the_winner_and_archives_the_losers(clie
     product = (await client.post("/pos/products", json={"name": "Widget", "price_minor": 1000})).json()
     sale = (await client.post("/pos/sales", json={"items": [{"product_id": product["id"], "qty": 1}],
                                                   "contact_id": loser["id"]})).json()
-    inv = (await client.post("/crm/invoices", json={"contact_id": loser["id"], "amount_minor": 1000})).json()
+    inv = (await client.post("/invoices", json={"contact_id": loser["id"], "lines": [
+        {"description": "Services", "qty": 1, "unit_price_minor": 1000}]})).json()
     await client.post(f"/contacts/{loser['id']}/notes", json={"body": "Prefers WhatsApp"})
 
     r = await _merge(client, winner, loser)
@@ -98,7 +99,7 @@ async def test_merge_moves_everything_to_the_winner_and_archives_the_losers(clie
     assert [t["name"] for t in w["tags"]] == ["VIP merge"]
     assert body["moved"]["crm_leads.contact_id"] == 1
     assert body["moved"]["pos_sales.contact_id"] == 1
-    assert body["moved"]["crm_invoice_requests.contact_id"] == 1
+    assert body["moved"]["invoices.contact_id"] == 1
 
     d = (await client.get(f"/contacts/{winner['id']}")).json()
     assert [x["id"] for x in d["deals"]] == [lead["id"]]

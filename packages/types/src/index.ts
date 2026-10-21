@@ -77,6 +77,8 @@ export const PERMISSION_KEYS = [
   "invoicing.invoice.read",
   "invoicing.invoice.create",
   "invoicing.invoice.approve",
+  "invoicing.payment.record",
+  "invoicing.invoice.void",
   // pos
   "pos.sale.read",
   "pos.sale.create",
@@ -486,24 +488,6 @@ export interface FulfillmentField {
 export interface FulfillmentSchema {
   label: string;
   fields: FulfillmentField[];
-}
-
-export interface Invoice {
-  id: string;
-  lead_id: string | null;
-  lead_name: string | null;
-  /** Who is billed. Null only on requests raised before contacts existed whose lead has none. */
-  contact_id: string | null;
-  contact_name: string | null;
-  /** The contact's name, else the lead's. */
-  bill_to: string;
-  amount_minor: number;
-  discount_pct: number;
-  total_minor: number;
-  notes: string;
-  status: "pending" | "approved" | "rejected";
-  created_at: string;
-  decided_at: string | null;
 }
 
 // ── POS ──────────────────────────────────────────────────────────────────
@@ -1086,7 +1070,7 @@ export interface ContactDetail {
   stats: ContactStats;
   deals: { id: string; name: string; stage: string; stage_kind: string; value_minor: number; created_at: string }[];
   sales: { id: string; total_minor: number; item_count: number; payment_method: string; created_at: string }[];
-  invoices: { id: string; total_minor: number; status: "pending" | "approved" | "rejected"; created_at: string }[];
+  invoices: { id: string; total_minor: number; status: string; created_at: string }[];
 }
 
 export interface TimelineItem {

@@ -105,6 +105,42 @@ async def run_activity_overdue() -> dict[str, int]:
     return {"activities": fired, "failed": failed}
 
 
+# An overdue invoice is reminded at most once a week (0074).
+REMIND_EVERY_DAYS = 7
+
+
+async def run_invoice_reminders() -> dict[str, int]:
+    """Daily: email the customer about each overdue invoice with something left
+    to pay, through the email outbox (WhatsApp joins in Phase 4)."""
+    sent = failed = 0
+    run_id = context.job_run_id()
+    for tid in await _active_tenants():
+        try:
+            async with db.job_conn(tid, "invoicing.overdue_reminders", run_id=run_id) as conn:
+                company = await conn.fetchval(
+                    """select coalesce(nullif(c.legal_name, ''), t.name) from tenants t
+                         left join tenant_company c on c.tenant_id = t.id where t.id = $1""", tid)
+                rows = await conn.fetch(
+                    """select i.id, i.number, i.legacy_ref, i.due_date, i.total_minor - i.paid_minor - i.credited_minor
+                              as balance_minor, c.email, c.name
+                         from invoices i join contacts c on c.id = i.contact_id
+                        where i.kind = 'invoice' and i.status in ('issued', 'partially_paid')
+                          and i.due_date < current_date and c.email <> ''
+                          and (i.last_reminded_at is null or i.last_reminded_at < now() - make_interval(days => $1))
+                        order by i.due_date limit 500""", REMIND_EVERY_DAYS)
+                for r in rows:
+                    await email.queue_invoice_overdue(
+                        conn, tid, r["email"], company=company or "", customer=r["name"],
+                        number=r["number"] or r["legacy_ref"] or "", due=r["due_date"].isoformat(),
+                        balance_minor=int(r["balance_minor"]))
+                    await conn.execute("update invoices set last_reminded_at = now() where id = $1", r["id"])
+                    sent += 1
+        except Exception:  # noqa: BLE001 — one bad tenant must not stop the rest
+            failed += 1
+            log.exception("invoice reminders failed for tenant %s", tid)
+    return {"reminded": sent, "failed": failed}
+
+
 async def run_restock_alerts() -> int:
     """Daily velocity check: tell the owner what is running out."""
     fired = 0
@@ -241,6 +277,7 @@ HANDLERS: dict[str, Callable[[], Awaitable[Any]]] = {
     "hrms.auto_checkout": run_auto_checkout,
     "hrms.leave_entitlements": run_leave_entitlements,
     "payroll.calculate": payroll_runs.run_due_calculations,   # 0070; batches of 100 (St03 risk 9)
+    "invoicing.overdue_reminders": run_invoice_reminders,     # 0074
 }
 
 

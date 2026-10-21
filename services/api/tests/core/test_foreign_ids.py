@@ -75,7 +75,9 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
                                                "from_date": "2027-03-01", "to_date": "2027-03-01"})).json()
     holiday = (await c.post("/hrms/holidays", json={"holiday_date": "2027-03-23",
                                                     "name": "Pakistan Day"})).json()
-    invoice = (await c.post("/crm/invoices", json={"lead_id": lead["id"], "amount_minor": 1000})).json()
+    bill_to = (await c.post("/contacts", json={"name": "Probe Bill To", "force": True})).json()
+    invoice = (await c.post("/invoices", json={"contact_id": bill_to["id"], "lines": [
+        {"description": "Probe", "qty": 1, "unit_price_minor": 1000}]})).json()
     workflow = (await c.post("/workflows", json={"name": "Probe", "trigger": "lead.created"})).json()
     payment = (await c.post("/billing/upgrade", json={"plan": "growth"})).json()
     shift = (await c.post("/hrms/shifts", json={"name": "Day"})).json()

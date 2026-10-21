@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { Activity, FulfillmentSchema, Invoice, Lead, LeadDetail, Stage } from "@business-os/types";
+import type { Activity, FulfillmentSchema, Lead, LeadDetail, Stage } from "@business-os/types";
+import type { Schema } from "@business-os/api-client";
 import { api, apiUrl } from "@/lib/api";
 import { formatDay, money } from "@/lib/format";
 import { errorText, useAction } from "@/lib/useAction";
@@ -12,7 +13,13 @@ import { ActivityActions, LostDialog, PriorityPicker, ScheduleActivity, TypeIcon
 import { TimelineList } from "./Timeline";
 import { LeadContactCard } from "@/components/contacts/LeadContactCard";
 
-const invTone = { pending: "warning", approved: "success", rejected: "danger" } as const;
+const invTone = {
+  draft: "neutral", pending_approval: "warning", issued: "brand", partially_paid: "warning", paid: "success", void: "danger",
+} as const;
+const INV_LABEL: Record<string, string> = {
+  draft: "draft", pending_approval: "awaiting approval", issued: "issued", partially_paid: "part paid", paid: "paid", void: "void",
+};
+type InvoiceSummary = Schema<"InvoiceSummary">;
 const stateTone = { overdue: "danger", today: "warning", planned: "neutral", done: "success", cancelled: "neutral" } as const;
 
 /** Lead details in a right-hand sheet. `name` comes from the board so the
@@ -337,26 +344,33 @@ function Fulfillment({ leadId }: { leadId: string }) {
 }
 
 function Invoices({ leadId, onChanged }: { leadId: string; onChanged: () => void }) {
-  const [invoices, setInvoices] = useState<Invoice[] | null>(null);
+  const [invoices, setInvoices] = useState<InvoiceSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [inv, setInv] = useState({ amount: "", discount: "0" });
 
   const load = useCallback(() => {
     setError(null);
-    api<Invoice[]>("/crm/invoices")
-      .then((all) => setInvoices(all.filter((x) => x.lead_id === leadId)))
+    api<InvoiceSummary[]>(`/invoices?lead_id=${leadId}`)
+      .then(setInvoices)
       .catch((e) => setError(errorText(e, "Couldn't load invoices.")));
   }, [leadId]);
   useEffect(load, [load]);
 
   // A money write: useAction refuses a second run while the first is in
-  // flight, so a double tap can't post two invoice requests.
+  // flight, so a double tap can't post two invoices. The quick request is a
+  // one-line invoice sent straight for approval (invoices v2, 3E).
   const request = useAction(
-    (amount: number, discount: number) =>
-      api<Invoice>("/crm/invoices", {
+    (amount: number, discountPct: number) => {
+      const price = Math.round(amount * 100);
+      return api<InvoiceSummary>("/invoices", {
         method: "POST",
-        body: JSON.stringify({ lead_id: leadId, amount_minor: Math.round(amount * 100), discount_pct: discount }),
-      }),
+        body: JSON.stringify({
+          lead_id: leadId, submit: true,
+          lines: [{ description: "Services", qty: 1, unit_price_minor: price,
+                    line_discount_minor: Math.round((price * discountPct) / 100) }],
+        }),
+      });
+    },
     { success: "Invoice requested — accounts will approve it", failure: "Couldn't request the invoice" },
   );
 
@@ -386,11 +400,11 @@ function Invoices({ leadId, onChanged }: { leadId: string; onChanged: () => void
       {error && <ErrorState message={error} onRetry={load} />}
       {invoices?.map((iv) => (
         <div key={iv.id} className="flex items-center justify-between gap-2 text-xs">
-          <span className="text-fg-muted">{money(iv.total_minor)}</span>
+          <span className="text-fg-muted">{iv.number ?? "Awaiting number"} · {money(iv.total_minor)}</span>
           <span className="flex items-center gap-2">
-            <Badge tone={invTone[iv.status]}>{iv.status}</Badge>
-            {iv.status === "approved" && (
-              <a href={apiUrl(`/crm/invoices/${iv.id}/pdf`)} target="_blank" rel="noreferrer" className="text-brand hover:underline">PDF</a>
+            <Badge tone={invTone[iv.status as keyof typeof invTone] ?? "neutral"}>{INV_LABEL[iv.status] ?? iv.status}</Badge>
+            {!["draft", "pending_approval"].includes(iv.status) && (
+              <a href={apiUrl(`/invoices/${iv.id}/pdf`)} target="_blank" rel="noreferrer" className="text-brand hover:underline">PDF</a>
             )}
           </span>
         </div>

@@ -119,10 +119,17 @@ async function seed(api: APIRequestContext) {
     value_minor: i % 4 === 0 ? 987_654_321 : 25_000_000 + i * 99_999,
     force: true,
   }));
-  await inBatches(leads.slice(0, 12), 6, (l: { id: string }, i) => post(api, "/crm/invoices", {
-    lead_id: l.id, amount_minor: 45_678_912 + i * 1_000_001, discount_pct: i % 3 ? 0 : 7.5,
-    notes: i % 2 ? "" : "Advance against purchase order PO-2026-00045 — balance on delivery",
-  }));
+  // Invoices bill a contact (0061, 0074): qualify the lead, then raise one for approval.
+  await inBatches(leads.slice(0, 12), 6, async (l: { id: string }, i) => {
+    await post(api, `/crm/leads/${l.id}/qualify`, { mode: "create", force: true });
+    const amount = 45_678_912 + i * 1_000_001;
+    return post(api, "/invoices", {
+      lead_id: l.id, submit: true,
+      lines: [{ description: "Services", qty: 1, unit_price_minor: amount,
+                line_discount_minor: i % 3 ? 0 : Math.round(amount * 0.075) }],
+      notes: i % 2 ? "" : "Advance against purchase order PO-2026-00045 — balance on delivery",
+    });
+  });
 
   // ── 30 leave requests, one per employee so none overlap ──
   const today = new Date();

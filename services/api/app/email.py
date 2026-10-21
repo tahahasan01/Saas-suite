@@ -107,6 +107,12 @@ async def queue_invite(conn, tenant_id: str, to: str, tenant_name: str, role_id:
                           employee_id=str(employee_id) if employee_id else None)
 
 
+async def queue_invoice_overdue(conn, tenant_id: str, to: str, *, company: str, customer: str, number: str,
+                                due: str, balance_minor: int) -> int:
+    return await _enqueue(conn, tenant_id, "invoice_overdue", to, company=company, customer=customer,
+                          number=number, due=due, balance_minor=balance_minor)
+
+
 # ── Rendering (at delivery: the link's token is minted here) ────────────────
 async def _render(row) -> tuple[str, str]:
     p = row["payload"]
@@ -126,6 +132,12 @@ async def _render(row) -> tuple[str, str]:
         name = p.get("tenant_name") or "a workspace"
         return (f"You're invited to {name} on Business OS",
                 f"You've been invited to join {name}. Set up your account:\n{WEB}/accept-invite?token={token}")
+    if template == "invoice_overdue":
+        rupees, paisa = divmod(int(p["balance_minor"]), 100)
+        amount = f"Rs {rupees:,}" + (f".{paisa:02d}" if paisa else "")
+        return (f"Payment reminder: invoice {p['number']} from {p['company']}",
+                f"Dear {p['customer']},\n\nInvoice {p['number']} was due on {p['due']} and {amount} is still "
+                f"outstanding. If you've already paid, please ignore this reminder.\n\nThank you,\n{p['company']}")
     raise ValueError(f"unknown email template {template!r}")
 
 

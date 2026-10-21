@@ -48,7 +48,6 @@ from ..models import (
     TimelineItem,
 )
 from ..phone import normalize_phone
-from .invoices import invoice_total
 from ..rbac import perm, scope_of
 from ..scopes import where
 
@@ -285,7 +284,7 @@ async def merge_preview(body: MergePreviewRequest, auth: AuthContext = Depends(M
             n = await conn.fetchrow(
                 """select (select count(*) from crm_leads where contact_id = $1) as leads,
                           (select count(*) from pos_sales where contact_id = $1) as sales,
-                          (select count(*) from crm_invoice_requests where contact_id = $1) as invoices,
+                          (select count(*) from invoices where contact_id = $1) as invoices,
                           (select count(*) from contacts where company_id = $1) as people""", cid)
             counts[str(cid)] = MergeCounts(
                 leads=n["leads"] if "crm.lead.read" in held else 0,
@@ -384,11 +383,11 @@ async def _related(conn: asyncpg.Connection, contact_id: str, held: set[str]) ->
         stats.sales_count, stats.lifetime_spend_minor, stats.last_visit_at = t["n"], t["spend"], t["last_at"]
     if "invoicing.invoice.read" in held:
         rows = await conn.fetch(
-            """select id, amount_minor, discount_pct, status, created_at from crm_invoice_requests
-                where contact_id = $1 order by created_at desc limit 50""", contact_id)
-        invoices = [ContactInvoice(id=str(i["id"]), total_minor=invoice_total(i["amount_minor"], i["discount_pct"]),
-                                   status=i["status"], created_at=i["created_at"]) for i in rows]
-        stats.invoiced_minor = sum(i.total_minor for i in invoices if i.status != "rejected")
+            """select id, number, total_minor, status, created_at from invoices
+                where contact_id = $1 and kind = 'invoice' order by created_at desc limit 50""", contact_id)
+        invoices = [ContactInvoice(id=str(i["id"]), total_minor=i["total_minor"], status=i["status"],
+                                   created_at=i["created_at"]) for i in rows]
+        stats.invoiced_minor = sum(i.total_minor for i in invoices if i.status != "void")
     return {"stats": stats, "deals": deals, "sales": sales, "invoices": invoices}
 
 

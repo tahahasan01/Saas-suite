@@ -104,7 +104,7 @@ async def test_a_read_only_role_gets_read_keys_and_the_api_agrees(client, crm_te
         assert "settings.team.manage" not in perms
         # The map mirrors the guards: what it omits, the API refuses.
         assert (await mate.get("/crm/leads")).status_code == 200
-        assert (await mate.post(f"/crm/invoices/{uuid.uuid4()}/approve")).status_code == 403
+        assert (await mate.post(f"/invoices/{uuid.uuid4()}/approve")).status_code == 403
     finally:
         await mate.aclose()
 
@@ -115,11 +115,12 @@ async def test_invoice_approval_follows_the_permission_not_the_owner_role(client
     try:
         perms = (await mate.get("/auth/me")).json()["permissions"]
         assert perms["invoicing.invoice.approve"] == "all"
-        lead = (await client.get("/crm/leads")).json()[0]
-        inv = await client.post("/crm/invoices", json={"lead_id": lead["id"], "amount_minor": 100_000})
+        contact = (await client.post("/contacts", json={"name": "Approver Co", "force": True})).json()
+        inv = await client.post("/invoices", json={"contact_id": contact["id"], "submit": True,
+                                                   "lines": [{"description": "Services", "qty": 1, "unit_price_minor": 100_000}]})
         inv.raise_for_status()
-        r = await mate.post(f"/crm/invoices/{inv.json()['id']}/approve")
-        assert r.status_code == 200 and r.json()["status"] == "approved"
+        r = await mate.post(f"/invoices/{inv.json()['id']}/approve")
+        assert r.status_code == 200 and r.json()["status"] == "issued"
     finally:
         await mate.aclose()
 

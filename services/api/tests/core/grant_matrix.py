@@ -48,7 +48,7 @@ APP_USER: dict[str, set[str]] = {
     "crm_leads":            {S, I, U},
     "crm_interactions":     {S},                # read-only since the activities split (0063)
     "crm_fulfillment":      {S, I, U},          # upsert
-    "crm_invoice_requests": {S, I, U},
+    "crm_invoice_requests": {S},                # v1 history (0074); contact_id stays updatable for merges
     "crm_lost_reasons":     {S, I, U, D},       # delete only when unused, else retired (0062)
     "activity_types":       {S, I, U},          # retired, never deleted (0063)
     "activities":           {S, I, U},          # done or cancelled, never deleted (0063)
@@ -141,12 +141,17 @@ APP_USER: dict[str, set[str]] = {
     "tenant_branding":      {S, I, U},          # upsert from the company screen
     "tax_rates":            {S},                # global reference data, migrations write it
     "tax_categories":       {S},                # global reference data
+    # invoices v2 (0074): numbered documents are never deleted
+    "invoices":             {S, I, U},
+    "invoice_lines":        {S, I, D},          # replaced wholesale while editable
+    "invoice_payments":     {S, I},             # append-only
 }
 
 # Column-level grants don't appear in role_table_grants, so they are pinned
 # here and checked by tests/core/test_company_settings.py.
 APP_USER_COLUMN_UPDATES: dict[str, set[str]] = {
     "tenants": {"name", "timezone", "fy_start_month", "updated_at"},
+    "crm_invoice_requests": {"contact_id"},     # v1 is read-only; merges re-point (0074)
 }
 
 AI_VIEWS = {name for name in APP_USER if name.startswith("ai_v_")}
