@@ -197,6 +197,24 @@ async def test_sindh_gets_sessi_and_its_own_minimum_wage(client, tenant):
     assert "PESSI_ER" not in lines
 
 
+async def test_the_work_location_decides_the_province_before_the_company(client, tenant):
+    """A Punjab company with a Karachi site: that employee pays SESSI (D-45:
+    by the province of the work location), and the FBR province is only the
+    fallback."""
+    await _set_province(tenant, "Punjab")
+    for scheme in ("EOBI", "SESSI", "PESSI"):
+        await client.put(f"/payroll/statutory/{scheme}", json={"enabled": True})
+    site = (await client.post("/hrms/locations", json={"name": "Karachi store", "province": "SD"})).json()
+    r = await client.patch(f"/hrms/employees/{tenant.employee_id}/job", json={"location_id": site["id"]})
+    assert r.status_code == 200, r.text
+    run = await calc(client)
+    lines = await lines_of(client, run, tenant.employee_id)
+    assert "SESSI_ER" in lines and "PESSI_ER" not in lines
+    slip = next(p for p in run["payslips"] if p["employee_id"] == tenant.employee_id)
+    full = (await client.get(f"/payroll/runs/{run['id']}/payslips/{slip['id']}")).json()
+    assert "Karachi store" in str(full)
+
+
 async def test_balochistan_eobi_uses_its_lower_base(client, tenant):
     await _set_province(tenant, "Balochistan")
     await client.put("/payroll/statutory/EOBI", json={"enabled": True})
