@@ -109,7 +109,7 @@ async def test_shadow_mode_logs_a_mismatch_and_lets_the_old_check_decide(client,
         # Drift: the migrated grants go missing.
         await _owner("delete from role_grants where role_id=$1", role_id)
         rbac.SHADOW_LOG.clear()
-        assert (await mate.get("/crm/pipelines")).status_code == 200      # legacy still decides
+        assert (await mate.get("/crm/summary")).status_code == 200        # legacy still decides
         assert any(m["user_id"] == me["user"]["id"] and m["check"] == "crm:read" for m in rbac.SHADOW_LOG)
         assert "crm.lead.read" in (await mate.get("/auth/me")).json()["permissions"]
         assert any(m["check"] == "crm.lead.read" and m["legacy"] == "all" and m["v2"] is None
@@ -147,19 +147,19 @@ async def test_legacy_mode_ignores_v2_only_roles(client, crm_tenant, monkeypatch
 
 # ── v2 roles end to end ─────────────────────────────────────────────────────
 async def test_a_v2_role_passes_an_old_section_guard_only_with_every_key_it_mapped(client, crm_tenant):
-    """An old `require("crm", "read")` route needs every key (crm, read) mapped
-    to, at 'all' — one narrow key never opens the whole section."""
+    """An old `require("crm", "read")` route (/crm/summary) needs every key
+    (crm, read) mapped to, at 'all' — one narrow key never opens the whole section."""
     rid = await _role(client, [{"permission_key": "crm.lead.read", "scope": "all"}])
     mate, _, _ = await _user_on(client, [rid])
     try:
-        assert (await mate.get("/crm/pipelines")).status_code == 403
+        assert (await mate.get("/crm/summary")).status_code == 403
         assert (await mate.get("/auth/me")).json()["permissions"] == {"crm.lead.read": "all"}
     finally:
         await mate.aclose()
     rid = await _role(client, CRM_READ)
     mate, _, _ = await _user_on(client, [rid])
     try:
-        assert (await mate.get("/crm/pipelines")).status_code == 200
+        assert (await mate.get("/crm/summary")).status_code == 200
         r = await mate.post("/crm/leads", json={"name": "Nope", "phone": "03001234567"})
         assert r.status_code == 403
     finally:

@@ -216,6 +216,8 @@ def _value(name: str, schema: dict, own: dict):
         return "4826"
     if schema.get("format") == "date":
         return "2027-04-05"
+    if name.endswith("month"):  # payroll months are 'YYYY-MM'
+        return "2027-04"
     return "Probe"
 
 

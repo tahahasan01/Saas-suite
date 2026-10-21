@@ -23,9 +23,11 @@ import asyncpg
 TRANSACTIONAL_TABLES: tuple[str, ...] = (
     "pos_sales", "pos_returns", "pos_drawers", "pos_purchase_orders",
     "hrms_attendance", "hrms_punches", "crm_invoice_requests",
+    # Phase 3 Wave 1 (0073)
+    "activities", "hrms_attendance_corrections", "payroll_runs",
 )
 # Shared masters: branch_id nullable (null = every branch).
-MASTER_TABLES: tuple[str, ...] = ("pos_products",)
+MASTER_TABLES: tuple[str, ...] = ("pos_products", "hrms_locations", "hrms_departments", "hrms_kiosks")
 
 _COLS = ("id, code, name, address, phone, region_code, timezone, fbr_pos_id, receipt_header, "
          "is_default, active")
