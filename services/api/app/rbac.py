@@ -456,14 +456,74 @@ async def roles_grant_star(conn, role_ids: list[str]) -> bool:
     return bool(role_ids) and bool(await conn.fetchval(_ROLE_HAS_STAR, role_ids))
 
 
+_USER_HAS_STAR = """
+    with recursive reach(role_id) as (
+        select role_id from user_roles where user_id = $1
+        union
+        select ri.inherits_id from role_inherits ri join reach on ri.role_id = reach.role_id)
+    select exists(select 1 from role_grants g join reach using (role_id) where g.permission_key = '*')"""
+
+
+async def target_holds_star(conn, user_id: str) -> bool:
+    """Whether `user_id` holds '*', whatever their status: a disabled owner is
+    still an owner (only an owner may reactivate or change them)."""
+    return bool(await conn.fetchval(_USER_HAS_STAR, user_id))
+
+
 async def guard_star_change(conn, caller_id: str, *, target_id: str | None = None,
                             role_ids: list[str] | None = None) -> None:
     """403 unless the caller holds '*' when the change touches a '*' holder
-    (`target_id`) or hands out a role that grants '*' (`role_ids`)."""
-    touches = (target_id is not None and await holds_star(conn, target_id)) or \
+    (`target_id`, active or not) or hands out a role that grants '*' (`role_ids`)."""
+    touches = (target_id is not None and await target_holds_star(conn, target_id)) or \
         await roles_grant_star(conn, role_ids or [])
     if touches and not await holds_star(conn, caller_id):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only an owner can change owners or give owner access")
+
+
+def _raw_scope(p: Principal, key: str) -> Scope | None:
+    """What `p` holds on `key` regardless of whether its module is on."""
+    if p.legacy_decides:
+        return "all" if _carries(PERMISSIONS[key], p.legacy) else None
+    return p.v2_scope(key)
+
+
+async def role_grant_rows(conn, role_ids: list[str]) -> list[tuple[str, str]]:
+    """Every (pattern, scope) the roles grant — inheritance and old section
+    grants included — i.e. what holding them would give someone."""
+    if not role_ids:
+        return []
+    rows = [(r["permission_key"], r["scope"]) for r in await conn.fetch(_V2_GRANTS, role_ids)]
+    for r in await conn.fetch("select section, action from permissions where role_id = any($1::uuid[])", role_ids):
+        rows += [(k, "all") for k in keys_for_grant(r["section"], r["action"])]
+    return rows
+
+
+async def ensure_within_callers_grants(conn, auth: AuthContext, rows: Iterable[tuple[str, str]]) -> None:
+    """403 unless the caller already holds every key in `rows` at an equal or
+    wider scope: nobody hands out (or builds a role with) more than they have.
+    '*' holders hold everything."""
+    rows = list(rows)
+    if not rows or await holds_star(conn, auth.user_id):
+        return
+    caller = await principal_for(conn, auth)
+    for pattern, scope in rows:
+        if pattern == "*":
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Only an owner can give owner access")
+        for key in PERMISSIONS:
+            if pattern_matches(pattern, key):
+                have = _raw_scope(caller, key)
+                if have is None or _WIDTH[have] < _WIDTH[scope]:
+                    raise HTTPException(status.HTTP_403_FORBIDDEN,
+                                        f"You can't give {key} at '{scope}': you don't hold it")
+
+
+async def guard_role_assignment(conn, auth: AuthContext, role_ids: list[str]) -> None:
+    """Every route that sets someone's role(s): the roles key, owner access
+    only from an owner, and never more than the caller holds."""
+    if (await principal_for(conn, auth)).scope("settings.roles.manage") is None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Requires settings.roles.manage to set roles")
+    await guard_star_change(conn, auth.user_id, role_ids=role_ids)
+    await ensure_within_callers_grants(conn, auth, await role_grant_rows(conn, role_ids))
 
 
 async def ensure_an_owner_remains(conn) -> None:

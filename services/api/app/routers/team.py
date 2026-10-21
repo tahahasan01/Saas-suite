@@ -7,7 +7,14 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from .. import audit, billing, db, email, refs
 from ..deps import AuthContext
 from ..models import InviteRequest, RoleCreate, RoleIdsPut, RoleOut, RoleRef, TeamUser, UserCreate, UserUpdate
-from ..rbac import ensure_an_owner_remains, guard_star_change, legacy_grants, perm
+from ..rbac import (
+    ensure_an_owner_remains,
+    ensure_within_callers_grants,
+    guard_role_assignment,
+    guard_star_change,
+    legacy_grants,
+    perm,
+)
 from ..security import hash_password
 
 router = APIRouter(prefix="/team", tags=["team"])
@@ -45,6 +52,7 @@ async def set_user_roles(user_id: str, body: RoleIdsPut,
         for rid in role_ids:
             await refs.ensure_visible(conn, "roles", rid)
         await guard_star_change(conn, auth.user_id, target_id=user_id, role_ids=role_ids)
+        await guard_role_assignment(conn, auth, role_ids)
         before = sorted(str(r["role_id"]) for r in await conn.fetch(
             "select role_id from user_roles where user_id=$1", user_id))
         # Primary first (the users trigger keeps it in user_roles), then the set.
@@ -73,7 +81,8 @@ async def set_user_roles(user_id: str, body: RoleIdsPut,
 async def create_user(body: UserCreate, auth: AuthContext = Depends(perm("settings.team.manage"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
         await refs.ensure_visible(conn, "roles", body.role_id)
-        await guard_star_change(conn, auth.user_id, role_ids=[body.role_id])
+        # Setting a role is a roles decision, whatever route does it.
+        await guard_role_assignment(conn, auth, [body.role_id])
         await billing.check_seat_limit(conn)
         try:
             user_id = await conn.fetchval(
@@ -98,8 +107,12 @@ async def update_user(user_id: str, body: UserUpdate, auth: AuthContext = Depend
         await refs.ensure_visible(conn, "roles", body.role_id)
         role_id = body.role_id if "role_id" in body.model_fields_set else current["role_id"]
         new_status = body.status or current["status"]
-        await guard_star_change(conn, auth.user_id, target_id=user_id,
-                                role_ids=[str(role_id)] if role_id and role_id != current["role_id"] else [])
+        role_changes = "role_id" in body.model_fields_set and str(role_id or "") != str(current["role_id"] or "")
+        await guard_star_change(conn, auth.user_id, target_id=user_id)
+        if role_changes:
+            if user_id == auth.user_id:
+                raise HTTPException(status.HTTP_409_CONFLICT, "You can't change your own role; ask another admin")
+            await guard_role_assignment(conn, auth, [str(role_id)] if role_id else [])
         # A role or status change bumps the user's auth_epoch (users trigger,
         # 0033), so the sessions they hold get 401 on their next request.
         await conn.execute("update users set role_id=$1, status=$2, updated_at=now() where id=$3",
@@ -124,7 +137,7 @@ async def invite_member(body: InviteRequest, response: Response, background: Bac
         role = await conn.fetchval("select name from roles where id=$1", body.role_id)
         if role is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Role not found")
-        await guard_star_change(conn, auth.user_id, role_ids=[body.role_id])
+        await guard_role_assignment(conn, auth, [body.role_id])
         tenant_name = await conn.fetchval("select name from tenants where id=$1", auth.tenant_id)
         await audit.event(conn, "user.invite", "user", data={"email": body.email, "role": role})
         mail = await email.queue_invite(conn, auth.tenant_id, body.email, tenant_name, body.role_id)
@@ -155,6 +168,7 @@ async def create_role(body: RoleCreate, auth: AuthContext = Depends(perm("settin
                     "insert into permissions (tenant_id, role_id, section, action) values ($1,$2,$3,$4)",
                     auth.tenant_id, role_id, section, action)
                 keys |= legacy_grants(section, action)
+        await ensure_within_callers_grants(conn, auth, [(k, "all") for k in keys])
         # The same grants in RBAC v2 terms (TR-SEC-36 mapping), so the shim agrees.
         for key in sorted(keys):
             await conn.execute(

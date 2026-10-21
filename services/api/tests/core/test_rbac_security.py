@@ -13,6 +13,7 @@ from __future__ import annotations
 import uuid
 
 import asyncpg
+import pytest
 
 from app import rbac, scopes
 from app.config import settings
@@ -128,4 +129,88 @@ async def test_no_change_leaves_the_tenant_without_an_owner(client, crm_tenant):
         assert (await b.put(f"/roles/{deputy}/inherits", json={"role_ids": []})).status_code == 200   # harmless
     finally:
         await b.aclose()
+
+
+# ── Second review: role assignment parity, disabled owners ──────────────────
+# Every route that can set someone's role, as (method, path, body) builders.
+async def _set_role_routes(target_id: str, role_id: str) -> list[tuple[str, str, dict]]:
+    return [
+        ("post", "/team/users", {"name": "N", "email": f"n+{uuid.uuid4().hex[:8]}@example.com",
+                                 "password": "Sup3rSecret!23", "role_id": role_id}),
+        ("post", "/team/invite", {"email": f"i+{uuid.uuid4().hex[:8]}@example.com", "role_id": role_id}),
+        ("patch", f"/team/users/{target_id}", {"role_id": role_id}),
+        ("put", f"/team/users/{target_id}/roles", {"role_ids": [role_id]}),
+    ]
+
+
+ROUTE_IDS = ["create_user", "invite", "update_user", "set_user_roles"]
+
+
+@pytest.mark.parametrize("route", range(4), ids=ROUTE_IDS)
+async def test_setting_a_role_needs_the_roles_key(client, crm_tenant, route):
+    team_mgr = await _role(client, [{"permission_key": k, "scope": "all"} for k in
+                                    ("settings.team.read", "settings.team.manage")])
+    reader = await _role(client, [{"permission_key": "crm.lead.read", "scope": "all"}])
+    other_role = await _role(client, [{"permission_key": "settings.team.read", "scope": "all"}])
+    mgr, _, _ = await _user_on(client, [team_mgr])
+    victim, victim_id, _ = await _user_on(client, [reader])
+    await victim.aclose()
+    try:
+        method, path, body = (await _set_role_routes(victim_id, other_role))[route]
+        assert (await getattr(mgr, method)(path, json=body)).status_code == 403
+    finally:
+        await mgr.aclose()
+
+
+@pytest.mark.parametrize("route", range(4), ids=ROUTE_IDS)
+async def test_nobody_hands_out_more_than_they_hold(client, crm_tenant, route):
+    admin, _, _ = await _admin(client)          # team + roles keys, no payroll, no CRM
+    payroll = await _role(client, [{"permission_key": "payroll.salary.read", "scope": "all"}])
+    modest = await _role(client, [{"permission_key": "settings.team.read", "scope": "all"}])
+    other, other_id, _ = await _user_on(client, [modest])
+    await other.aclose()
+    try:
+        method, path, body = (await _set_role_routes(other_id, payroll))[route]
+        assert (await getattr(admin, method)(path, json=body)).status_code == 403
+        method, path, body = (await _set_role_routes(other_id, modest))[route]
+        assert (await getattr(admin, method)(path, json=body)).status_code in (200, 201, 204)
+    finally:
+        await admin.aclose()
+
+
+async def test_roles_can_only_grant_what_their_editor_holds(client, crm_tenant):
+    admin, _, _ = await _admin(client)
+    try:
+        r = await admin.post("/roles", json={"name": "Pay", "grants": [{"permission_key": "payroll.salary.read", "scope": "all"}]})
+        assert r.status_code == 403
+        ok = {"name": "Ok", "grants": [{"permission_key": "settings.team.read", "scope": "all"}]}
+        rid = (await admin.post("/roles", json=ok)).json()["id"]
+        r = await admin.put(f"/roles/{rid}/grants", json={"grants": [{"permission_key": "payroll.salary.read", "scope": "all"}]})
+        assert r.status_code == 403
+        payroll = await _role(client, [{"permission_key": "payroll.salary.read", "scope": "all"}])
+        assert (await admin.put(f"/roles/{rid}/inherits", json={"role_ids": [payroll]})).status_code == 403
+        assert (await admin.post(f"/roles/{payroll}/copy", json={"name": "Pay copy"})).status_code == 403
+    finally:
+        await admin.aclose()
+
+
+async def test_nobody_changes_their_own_role(client, crm_tenant):
+    me = (await client.get("/auth/me")).json()["user"]["id"]
+    reader = await _role(client, [{"permission_key": "crm.lead.read", "scope": "all"}])
+    assert (await client.patch(f"/team/users/{me}", json={"role_id": reader})).status_code == 409
+
+
+async def test_a_disabled_owner_is_still_an_owner(client, crm_tenant):
+    owner_role = next(r["id"] for r in (await client.get("/roles")).json() if r["template_key"] == "owner")
+    deputy = (await client.post(f"/roles/{owner_role}/copy", json={"name": "Deputy 2"})).json()["id"]
+    b, b_id, _ = await _user_on(client, [deputy])
+    await b.aclose()
+    assert (await client.patch(f"/team/users/{b_id}", json={"status": "disabled"})).status_code == 200
+    admin, _, _ = await _admin(client)
+    reader = await _role(client, [{"permission_key": "settings.team.read", "scope": "all"}])
+    try:
+        assert (await admin.patch(f"/team/users/{b_id}", json={"status": "active"})).status_code == 403
+        assert (await admin.put(f"/team/users/{b_id}/roles", json={"role_ids": [reader]})).status_code == 403
+    finally:
+        await admin.aclose()
 

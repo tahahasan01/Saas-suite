@@ -28,7 +28,15 @@ from ..models import (
     TeamOut,
 )
 from ..modules import MODULES, owner_of
-from ..rbac import MODULE_KEYS, PERMISSIONS, ensure_an_owner_remains, guard_star_change, perm
+from ..rbac import (
+    MODULE_KEYS,
+    PERMISSIONS,
+    ensure_an_owner_remains,
+    ensure_within_callers_grants,
+    guard_star_change,
+    perm,
+    role_grant_rows,
+)
 
 router = APIRouter(tags=["roles"])
 
@@ -128,6 +136,8 @@ async def list_roles(auth: AuthContext = Depends(perm("settings.team.read"))) ->
 async def create_role(body: RoleV2Create, auth: AuthContext = Depends(_ROLES)) -> RoleDetail:
     grants = _check_grants(body.grants)
     async with db.tenant_conn(auth.tenant_id) as conn:
+        # Nobody builds a role with more than they hold themselves.
+        await ensure_within_callers_grants(conn, auth, [(g.permission_key, g.scope) for g in grants])
         try:
             role_id = str(await conn.fetchval(
                 "insert into roles (tenant_id, name, description, rbac_v2) values ($1,$2,$3,true) returning id",
@@ -185,6 +195,7 @@ async def put_grants(role_id: str, body: GrantsPut, auth: AuthContext = Depends(
         # never leave the workspace without an owner.
         await guard_star_change(conn, auth.user_id, role_ids=[role_id])
         grants = _check_grants(body.grants, keep_all=any(b["permission_key"] == "*" for b in before))
+        await ensure_within_callers_grants(conn, auth, [(g.permission_key, g.scope) for g in grants])
         await _set_grants(conn, auth.tenant_id, role_id, grants)
         await ensure_an_owner_remains(conn)
         await audit.event(conn, "role.grants", "role", role_id, changes={
@@ -207,6 +218,7 @@ async def put_inherits(role_id: str, body: RoleIdsPut, auth: AuthContext = Depen
                        select exists(select 1 from up where id = $2::uuid)""", pid, role_id):
                 raise HTTPException(status.HTTP_409_CONFLICT, "A role can't include itself, even indirectly")
         await guard_star_change(conn, auth.user_id, role_ids=[role_id, *parents])
+        await ensure_within_callers_grants(conn, auth, await role_grant_rows(conn, parents))
         await conn.execute("delete from role_inherits where role_id=$1", role_id)
         for pid in parents:
             await conn.execute(
@@ -225,6 +237,7 @@ async def copy_role(role_id: str, body: RoleCopy, auth: AuthContext = Depends(_R
     async with db.tenant_conn(auth.tenant_id) as conn:
         await refs.ensure_visible(conn, "roles", role_id)
         await guard_star_change(conn, auth.user_id, role_ids=[role_id])   # copying '*' is handing it out
+        await ensure_within_callers_grants(conn, auth, await role_grant_rows(conn, [role_id]))
         try:
             new_id = str(await conn.fetchval(
                 """insert into roles (tenant_id, name, description, rbac_v2)
