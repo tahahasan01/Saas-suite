@@ -1280,7 +1280,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Get Employee */
+        get: operations["get_employee_hrms_employees__employee_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1424,80 +1425,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/hrms/leave": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Leave */
-        get: operations["list_leave_hrms_leave_get"];
-        put?: never;
-        /** Create Leave */
-        post: operations["create_leave_hrms_leave_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/hrms/leave/policy": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Leave Policy */
-        get: operations["get_leave_policy_hrms_leave_policy_get"];
-        /** Update Leave Policy */
-        put: operations["update_leave_policy_hrms_leave_policy_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/hrms/leave/balances": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Leave Balances */
-        get: operations["leave_balances_hrms_leave_balances_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/hrms/leave/{leave_id}/{decision}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Decide Leave
-         * @description Approval needs hrms:admin — with plain write, anyone who could request
-         *     leave could approve their own (the audit's separation-of-duties finding).
-         */
-        post: operations["decide_leave_hrms_leave__leave_id___decision__post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/hrms/summary": {
         parameters: {
             query?: never;
@@ -1510,41 +1437,6 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/hrms/holidays": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Holidays */
-        get: operations["list_holidays_hrms_holidays_get"];
-        put?: never;
-        /** Create Holiday */
-        post: operations["create_holiday_hrms_holidays_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/hrms/holidays/{holiday_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Delete Holiday */
-        delete: operations["delete_holiday_hrms_holidays__holiday_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1597,80 +1489,6 @@ export interface paths {
         };
         /** My Attendance */
         get: operations["my_attendance_me_attendance_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/me/attendance/checkin": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** My Checkin */
-        post: operations["my_checkin_me_attendance_checkin_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/me/attendance/checkout": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** My Checkout */
-        post: operations["my_checkout_me_attendance_checkout_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/me/leave": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** My Leave */
-        get: operations["my_leave_me_leave_get"];
-        put?: never;
-        /**
-         * My Request Leave
-         * @description An employee requests their own leave. The employee_id in the body is
-         *     ignored — it is forced to the caller, so nobody can file against someone
-         *     else. Approval still belongs to an admin (hrms:admin).
-         */
-        post: operations["my_request_leave_me_leave_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/me/leave/balances": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** My Balances */
-        get: operations["my_balances_me_leave_balances_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2931,6 +2749,804 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/hrms/departments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Departments */
+        get: operations["list_departments_hrms_departments_get"];
+        put?: never;
+        /** Create Department */
+        post: operations["create_department_hrms_departments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/departments/{dept_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Department */
+        patch: operations["update_department_hrms_departments__dept_id__patch"];
+        trace?: never;
+    };
+    "/hrms/job-titles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Job Titles */
+        get: operations["list_job_titles_hrms_job_titles_get"];
+        put?: never;
+        /** Create Job Title */
+        post: operations["create_job_title_hrms_job_titles_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/job-titles/{title_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Job Title */
+        patch: operations["update_job_title_hrms_job_titles__title_id__patch"];
+        trace?: never;
+    };
+    "/hrms/locations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Locations */
+        get: operations["list_locations_hrms_locations_get"];
+        put?: never;
+        /** Create Location */
+        post: operations["create_location_hrms_locations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/locations/{location_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Location */
+        patch: operations["update_location_hrms_locations__location_id__patch"];
+        trace?: never;
+    };
+    "/hrms/employees/{employee_id}/job": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Employee Job */
+        patch: operations["update_employee_job_hrms_employees__employee_id__job_patch"];
+        trace?: never;
+    };
+    "/hrms/employees/{employee_id}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Documents */
+        get: operations["list_documents_hrms_employees__employee_id__documents_get"];
+        put?: never;
+        /** Add Document */
+        post: operations["add_document_hrms_employees__employee_id__documents_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/documents/{doc_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Document */
+        delete: operations["delete_document_hrms_documents__doc_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/documents/expiring": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Expiring Documents
+         * @description Expired documents and those expiring within `days`, soonest first, for
+         *     active staff — the list HR works through before an inspection.
+         */
+        get: operations["expiring_documents_hrms_documents_expiring_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/shifts/{shift_id}/policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Shift Policy
+         * @description Auto check-out and overtime threshold. Like the rest of a shift's
+         *     rules they move pay, so this is hrms admin (hrms.shift.manage).
+         */
+        patch: operations["update_shift_policy_hrms_shifts__shift_id__policy_patch"];
+        trace?: never;
+    };
+    "/hrms/attendance/corrections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Corrections */
+        get: operations["list_corrections_hrms_attendance_corrections_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/attendance/corrections/{correction_id}/{decision}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decide Correction
+         * @description The employee's manager, or anyone holding hrms.attendance.approve,
+         *     decides — never the employee or whoever filed it (TR-SEC-33). Only a
+         *     pending request can be decided. Approval appends `correction` punches
+         *     and re-derives the day; a payroll-locked day can't be corrected.
+         */
+        post: operations["decide_correction_hrms_attendance_corrections__correction_id___decision__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/attendance/punch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * My Punch
+         * @description Check in, or out if checked in. Send what the browser's Geolocation
+         *     API reported; the server decides against the work location (D-43).
+         */
+        post: operations["my_punch_me_attendance_punch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/attendance/checkin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** My Checkin */
+        post: operations["my_checkin_me_attendance_checkin_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/attendance/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** My Checkout */
+        post: operations["my_checkout_me_attendance_checkout_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/attendance/corrections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My Corrections */
+        get: operations["my_corrections_me_attendance_corrections_get"];
+        put?: never;
+        /** Request Correction */
+        post: operations["request_correction_me_attendance_corrections_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My Approvals
+         * @description A manager's inbox: their direct reports' pending corrections and leave
+         *     at the manager step. Any login may ask; someone with no reports gets an
+         *     empty inbox.
+         */
+        get: operations["my_approvals_me_approvals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/kiosks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Kiosks */
+        get: operations["list_kiosks_hrms_kiosks_get"];
+        put?: never;
+        /**
+         * Create Kiosk
+         * @description The response carries the token once; open /kiosk/{token} on the device.
+         */
+        post: operations["create_kiosk_hrms_kiosks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/kiosks/{kiosk_id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke Kiosk */
+        post: operations["revoke_kiosk_hrms_kiosks__kiosk_id__revoke_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/employees/{employee_id}/kiosk-pin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Kiosk Pin
+         * @description Set or replace an employee's kiosk PIN (4–6 digits, stored hashed).
+         */
+        put: operations["set_kiosk_pin_hrms_employees__employee_id__kiosk_pin_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kiosk/{token}/bootstrap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Bootstrap */
+        get: operations["bootstrap_kiosk__token__bootstrap_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kiosk/{token}/punch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Kiosk Punch */
+        post: operations["kiosk_punch_kiosk__token__punch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/holiday-calendars": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Calendars */
+        get: operations["list_calendars_hrms_holiday_calendars_get"];
+        put?: never;
+        /** Create Calendar */
+        post: operations["create_calendar_hrms_holiday_calendars_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/holiday-calendars/{calendar_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Calendar */
+        delete: operations["delete_calendar_hrms_holiday_calendars__calendar_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/holidays": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Holidays */
+        get: operations["list_holidays_hrms_holidays_get"];
+        put?: never;
+        /**
+         * Create Holiday
+         * @description One holiday per date per calendar; a repeat renames it (as before).
+         */
+        post: operations["create_holiday_hrms_holidays_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/holidays/{holiday_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Holiday */
+        delete: operations["delete_holiday_hrms_holidays__holiday_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/holidays/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Holidays
+         * @description Load a calendar from a CSV posted as the body: columns Date and Name,
+         *     optional Kind (public / optional / company) and Half day (yes/no).
+         *     Dates already in the calendar are skipped, never renamed; bad rows are
+         *     named and the rest still import.
+         */
+        post: operations["import_holidays_hrms_holidays_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/blackout-days": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Blackouts */
+        get: operations["list_blackouts_hrms_blackout_days_get"];
+        put?: never;
+        /** Create Blackout */
+        post: operations["create_blackout_hrms_blackout_days_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/blackout-days/{blackout_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Blackout */
+        delete: operations["delete_blackout_hrms_blackout_days__blackout_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/leave-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Leave Types */
+        get: operations["list_leave_types_hrms_leave_types_get"];
+        put?: never;
+        /** Create Leave Type */
+        post: operations["create_leave_type_hrms_leave_types_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/leave-types/{leave_type_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Leave Type
+         * @description Edit a template or a type of your own. Changing days per year tops up
+         *     or trims this year's grants with new ledger entries.
+         */
+        patch: operations["update_leave_type_hrms_leave_types__leave_type_id__patch"];
+        trace?: never;
+    };
+    "/hrms/leave/policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Leave Policy */
+        get: operations["get_leave_policy_hrms_leave_policy_get"];
+        /** Update Leave Policy */
+        put: operations["update_leave_policy_hrms_leave_policy_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/leave": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Leave */
+        get: operations["list_leave_hrms_leave_get"];
+        put?: never;
+        /** Create Leave */
+        post: operations["create_leave_hrms_leave_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/leave/balances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Leave Balances */
+        get: operations["leave_balances_hrms_leave_balances_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/leave/ledger": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Leave Ledger */
+        get: operations["leave_ledger_hrms_leave_ledger_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/leave/ledger/adjust": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Adjust Ledger
+         * @description HR corrects a balance with a reason; audited. Never your own.
+         */
+        post: operations["adjust_ledger_hrms_leave_ledger_adjust_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/leave/{leave_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Hr Cancel Leave */
+        post: operations["hr_cancel_leave_hrms_leave__leave_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/leave/{leave_id}/{decision}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decide Leave
+         * @description Approve or reject the current step. Needs hrms.leave.approve; the
+         *     employee's manager decides the manager step, anyone else with the key
+         *     decides as HR. Never your own leave; only pending requests.
+         */
+        post: operations["decide_leave_hrms_leave__leave_id___decision__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/leave": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My Leave */
+        get: operations["my_leave_me_leave_get"];
+        put?: never;
+        /**
+         * My Request Leave
+         * @description An employee requests their own leave: the employee_id in the body is
+         *     ignored and forced to the caller.
+         */
+        post: operations["my_request_leave_me_leave_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/leave/balances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My Balances */
+        get: operations["my_balances_me_leave_balances_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/leave-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My Leave Types */
+        get: operations["my_leave_types_me_leave_types_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/leave/{leave_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** My Cancel Leave */
+        post: operations["my_cancel_leave_me_leave__leave_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3226,6 +3842,16 @@ export interface components {
             /** Tone */
             tone: string;
         };
+        /**
+         * ApprovalsOut
+         * @description A manager's inbox: pending requests from their direct reports.
+         */
+        ApprovalsOut: {
+            /** Corrections */
+            corrections: components["schemas"]["CorrectionOut"][];
+            /** Leave */
+            leave: components["schemas"]["LeaveOut"][];
+        };
         /** AskRequest */
         AskRequest: {
             /** Question */
@@ -3292,6 +3918,25 @@ export interface components {
              * @default false
              */
             missing_checkout: boolean;
+            /**
+             * Auto Closed
+             * @default false
+             */
+            auto_closed: boolean;
+            /**
+             * Overtime Min
+             * @default 0
+             */
+            overtime_min: number;
+            /**
+             * Corrected
+             * @default false
+             */
+            corrected: boolean;
+            /** Geo Status */
+            geo_status?: string | null;
+            /** Ip Status */
+            ip_status?: string | null;
         };
         /** BackfillReport */
         BackfillReport: {
@@ -3331,6 +3976,46 @@ export interface components {
             seats_used: number;
             /** Sections Used */
             sections_used: number;
+        };
+        /** BlackoutCreate */
+        BlackoutCreate: {
+            /** Name */
+            name: string;
+            /**
+             * Date From
+             * Format: date
+             */
+            date_from: string;
+            /**
+             * Date To
+             * Format: date
+             */
+            date_to: string;
+            /** Location Id */
+            location_id?: string | null;
+            /** Department Id */
+            department_id?: string | null;
+        };
+        /** BlackoutOut */
+        BlackoutOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Date From
+             * Format: date
+             */
+            date_from: string;
+            /**
+             * Date To
+             * Format: date
+             */
+            date_to: string;
+            /** Location Id */
+            location_id: string | null;
+            /** Department Id */
+            department_id: string | null;
         };
         /** BranchOut */
         BranchOut: {
@@ -3831,6 +4516,53 @@ export interface components {
             /** Tag Ids */
             tag_ids?: string[] | null;
         };
+        /** CorrectionCreate */
+        CorrectionCreate: {
+            /**
+             * Work Date
+             * Format: date
+             */
+            work_date: string;
+            /** Requested In */
+            requested_in?: string | null;
+            /** Requested Out */
+            requested_out?: string | null;
+            /** Reason */
+            reason: string;
+        };
+        /** CorrectionOut */
+        CorrectionOut: {
+            /** Id */
+            id: string;
+            /** Employee Id */
+            employee_id: string;
+            /** Employee Name */
+            employee_name: string;
+            /**
+             * Work Date
+             * Format: date
+             */
+            work_date: string;
+            /** Requested In */
+            requested_in: string | null;
+            /** Requested Out */
+            requested_out: string | null;
+            /** Reason */
+            reason: string;
+            /** Status */
+            status: string;
+            /** Decided By */
+            decided_by: string | null;
+            /** Decided At */
+            decided_at: string | null;
+            /** Decision Note */
+            decision_note: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** CrmSummary */
         CrmSummary: {
             /** Total Leads */
@@ -3859,6 +4591,55 @@ export interface components {
             /** Activity */
             activity: components["schemas"]["ActivityItem"][];
         };
+        /** Decision */
+        Decision: {
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /** DepartmentCreate */
+        DepartmentCreate: {
+            /** Name */
+            name: string;
+            /** Parent Id */
+            parent_id?: string | null;
+            /** Head Employee Id */
+            head_employee_id?: string | null;
+        };
+        /** DepartmentOut */
+        DepartmentOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Parent Id */
+            parent_id: string | null;
+            /** Head Employee Id */
+            head_employee_id: string | null;
+            /** Active */
+            active: boolean;
+            /**
+             * Headcount
+             * @default 0
+             */
+            headcount: number;
+        };
+        /**
+         * DepartmentUpdate
+         * @description An explicit null clears parent or head.
+         */
+        DepartmentUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Parent Id */
+            parent_id?: string | null;
+            /** Head Employee Id */
+            head_employee_id?: string | null;
+            /** Active */
+            active?: boolean | null;
+        };
         /** DisablePlanOut */
         DisablePlanOut: {
             /** Module */
@@ -3869,6 +4650,61 @@ export interface components {
             blocked_by: string[];
             /** Applied */
             applied: boolean;
+        };
+        /** DocumentCreate */
+        DocumentCreate: {
+            /**
+             * Kind
+             * @default other
+             * @enum {string}
+             */
+            kind: "cnic" | "contract" | "certificate" | "medical" | "license" | "passport" | "other";
+            /** Title */
+            title: string;
+            /**
+             * Number
+             * @default
+             */
+            number: string;
+            /** Issued On */
+            issued_on?: string | null;
+            /** Expires On */
+            expires_on?: string | null;
+            /** File Id */
+            file_id?: string | null;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /** DocumentOut */
+        DocumentOut: {
+            /** Id */
+            id: string;
+            /** Employee Id */
+            employee_id: string;
+            /**
+             * Employee Name
+             * @default
+             */
+            employee_name: string;
+            /** Kind */
+            kind: string;
+            /** Title */
+            title: string;
+            /** Number */
+            number: string;
+            /** Issued On */
+            issued_on: string | null;
+            /** Expires On */
+            expires_on: string | null;
+            /** File Id */
+            file_id: string | null;
+            /** Note */
+            note: string;
+            /** Days Left */
+            days_left?: number | null;
         };
         /** DrawerClose */
         DrawerClose: {
@@ -3959,6 +4795,44 @@ export interface components {
              * @default 0
              */
             salary_minor: number;
+            /** Code */
+            code?: string | null;
+            /** Department Id */
+            department_id?: string | null;
+            /** Job Title Id */
+            job_title_id?: string | null;
+            /** Location Id */
+            location_id?: string | null;
+            /** Manager Id */
+            manager_id?: string | null;
+            /**
+             * Employment Type
+             * @default permanent
+             * @enum {string}
+             */
+            employment_type: "permanent" | "contract" | "probation" | "daily_wage" | "intern";
+            /** Probation End */
+            probation_end?: string | null;
+        };
+        /**
+         * EmployeeJobUpdate
+         * @description Org fields; an explicit null clears a link.
+         */
+        EmployeeJobUpdate: {
+            /** Code */
+            code?: string | null;
+            /** Department Id */
+            department_id?: string | null;
+            /** Job Title Id */
+            job_title_id?: string | null;
+            /** Location Id */
+            location_id?: string | null;
+            /** Manager Id */
+            manager_id?: string | null;
+            /** Employment Type */
+            employment_type?: ("permanent" | "contract" | "probation" | "daily_wage" | "intern") | null;
+            /** Probation End */
+            probation_end?: string | null;
         };
         /** EmployeeOut */
         EmployeeOut: {
@@ -3998,10 +4872,83 @@ export interface components {
              */
             pay_masked: boolean;
         };
+        /** EmployeeProfile */
+        EmployeeProfile: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Email */
+            email: string;
+            /** Phone */
+            phone: string;
+            /** Cnic */
+            cnic: string;
+            /** Designation */
+            designation: string;
+            /** Department */
+            department: string;
+            /** Join Date */
+            join_date: string | null;
+            /** Salary Minor */
+            salary_minor: number | null;
+            /** Status */
+            status: string;
+            /**
+             * Present Today
+             * @default false
+             */
+            present_today: boolean;
+            /**
+             * Has Login
+             * @default false
+             */
+            has_login: boolean;
+            /**
+             * Pay Masked
+             * @default false
+             */
+            pay_masked: boolean;
+            /** Code */
+            code?: string | null;
+            /** Department Id */
+            department_id?: string | null;
+            /** Job Title Id */
+            job_title_id?: string | null;
+            /** Location Id */
+            location_id?: string | null;
+            /** Location Name */
+            location_name?: string | null;
+            /** Province */
+            province?: string | null;
+            /** Manager Id */
+            manager_id?: string | null;
+            /** Manager Name */
+            manager_name?: string | null;
+            /**
+             * Employment Type
+             * @default permanent
+             */
+            employment_type: string;
+            /** Probation End */
+            probation_end?: string | null;
+            /**
+             * Has Kiosk Pin
+             * @default false
+             */
+            has_kiosk_pin: boolean;
+            /**
+             * Documents Expiring
+             * @default 0
+             */
+            documents_expiring: number;
+        };
         /** EmployeeUpdate */
         EmployeeUpdate: {
             /** Name */
             name?: string | null;
+            /** Email */
+            email?: string | null;
             /** Phone */
             phone?: string | null;
             /** Designation */
@@ -4215,6 +5162,35 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** HolidayCalendarCreate */
+        HolidayCalendarCreate: {
+            /** Name */
+            name: string;
+            /**
+             * Scope
+             * @default company
+             * @enum {string}
+             */
+            scope: "province" | "company";
+            /** Province */
+            province?: ("PB" | "SD" | "KP" | "BA" | "ICT" | "GB" | "AJK") | null;
+        };
+        /** HolidayCalendarOut */
+        HolidayCalendarOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Scope */
+            scope: string;
+            /** Province */
+            province: string | null;
+            /**
+             * Holidays
+             * @default 0
+             */
+            holidays: number;
+        };
         /** HolidayCreate */
         HolidayCreate: {
             /**
@@ -4224,6 +5200,19 @@ export interface components {
             holiday_date: string;
             /** Name */
             name: string;
+            /** Calendar Id */
+            calendar_id?: string | null;
+            /**
+             * Kind
+             * @default public
+             * @enum {string}
+             */
+            kind: "public" | "optional" | "company";
+            /**
+             * Half Day
+             * @default false
+             */
+            half_day: boolean;
         };
         /** HolidayOut */
         HolidayOut: {
@@ -4236,6 +5225,23 @@ export interface components {
             holiday_date: string;
             /** Name */
             name: string;
+            /** Calendar Id */
+            calendar_id?: string | null;
+            /**
+             * Calendar Name
+             * @default
+             */
+            calendar_name: string;
+            /**
+             * Kind
+             * @default public
+             */
+            kind: string;
+            /**
+             * Half Day
+             * @default false
+             */
+            half_day: boolean;
         };
         /** HrmsSummary */
         HrmsSummary: {
@@ -4362,6 +5368,118 @@ export interface components {
             created_at: string;
             /** Decided At */
             decided_at: string | null;
+        };
+        /** JobTitleCreate */
+        JobTitleCreate: {
+            /** Name */
+            name: string;
+            /** Department Id */
+            department_id?: string | null;
+        };
+        /** JobTitleOut */
+        JobTitleOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Department Id */
+            department_id: string | null;
+            /** Active */
+            active: boolean;
+        };
+        /** JobTitleUpdate */
+        JobTitleUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Department Id */
+            department_id?: string | null;
+            /** Active */
+            active?: boolean | null;
+        };
+        /** KioskBootstrap */
+        KioskBootstrap: {
+            location: components["schemas"]["KioskLocation"];
+            /** Kiosk Name */
+            kiosk_name: string;
+            /** Employees */
+            employees: components["schemas"]["KioskEmployee"][];
+        };
+        /** KioskCreate */
+        KioskCreate: {
+            /**
+             * Location Id
+             * Format: uuid
+             */
+            location_id: string;
+            /** Name */
+            name: string;
+        };
+        /** KioskEmployee */
+        KioskEmployee: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Has Pin */
+            has_pin: boolean;
+        };
+        /** KioskLocation */
+        KioskLocation: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+        };
+        /** KioskOut */
+        KioskOut: {
+            /** Id */
+            id: string;
+            /** Location Id */
+            location_id: string;
+            /** Location Name */
+            location_name: string;
+            /** Name */
+            name: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Last Seen At */
+            last_seen_at: string | null;
+            /** Revoked At */
+            revoked_at: string | null;
+            /** Token */
+            token?: string | null;
+        };
+        /** KioskPinSet */
+        KioskPinSet: {
+            /** Pin */
+            pin: string;
+        };
+        /** KioskPunchOut */
+        KioskPunchOut: {
+            /** Kind */
+            kind: string;
+            /** Name */
+            name: string;
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Worked Today Min */
+            worked_today_min: number;
+        };
+        /** KioskPunchRequest */
+        KioskPunchRequest: {
+            /**
+             * Employee Id
+             * Format: uuid
+             */
+            employee_id: string;
+            /** Pin */
+            pin: string;
         };
         /** Kpi */
         Kpi: {
@@ -4545,7 +5663,11 @@ export interface components {
             /** Expected Close Date */
             expected_close_date?: string | null;
         };
-        /** LeaveBalance */
+        /**
+         * LeaveBalance
+         * @description One leave type's balance in the current leave year, from the ledger
+         *     (0068): quota = granted + accrued + carried in ± adjustments.
+         */
         LeaveBalance: {
             /** Leave Type */
             leave_type: string;
@@ -4555,6 +5677,22 @@ export interface components {
             used: number;
             /** Remaining */
             remaining: number;
+            /** Leave Type Id */
+            leave_type_id?: string | null;
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /**
+             * Pending
+             * @default 0
+             */
+            pending: number;
+            /** Cycle Start */
+            cycle_start?: string | null;
+            /** Cycle End */
+            cycle_end?: string | null;
         };
         /** LeaveCreate */
         LeaveCreate: {
@@ -4569,9 +5707,10 @@ export interface components {
             /**
              * Leave Type
              * @default annual
-             * @enum {string}
              */
-            leave_type: "annual" | "sick" | "casual" | "unpaid";
+            leave_type: string;
+            /** Leave Type Id */
+            leave_type_id?: string | null;
             /**
              * From Date
              * Format: date
@@ -4582,6 +5721,10 @@ export interface components {
              * Format: date
              */
             to_date: string;
+            /** From Half */
+            from_half?: ("am" | "pm") | null;
+            /** To Half */
+            to_half?: ("am" | "pm") | null;
             /**
              * Reason
              * @default
@@ -4614,6 +5757,26 @@ export interface components {
             reason: string;
             /** Status */
             status: string;
+            /** Leave Type Id */
+            leave_type_id?: string | null;
+            /**
+             * Leave Type Name
+             * @default
+             */
+            leave_type_name: string;
+            /**
+             * Paid
+             * @default true
+             */
+            paid: boolean;
+            /** From Half */
+            from_half?: string | null;
+            /** To Half */
+            to_half?: string | null;
+            /** Duration Days */
+            duration_days?: number | null;
+            /** Approval Step */
+            approval_step?: string | null;
         };
         /** LeavePolicyOut */
         LeavePolicyOut: {
@@ -4632,6 +5795,306 @@ export interface components {
             sick_days?: number | null;
             /** Casual Days */
             casual_days?: number | null;
+        };
+        /** LeaveTypeCreate */
+        LeaveTypeCreate: {
+            /** Name */
+            name: string;
+            /**
+             * Color
+             * @default #0f766e
+             */
+            color: string;
+            /**
+             * Paid
+             * @default true
+             */
+            paid: boolean;
+            /**
+             * Requires Balance
+             * @default true
+             */
+            requires_balance: boolean;
+            /**
+             * Counts As
+             * @default leave
+             * @enum {string}
+             */
+            counts_as: "leave" | "wfh";
+            /**
+             * Allow Half Day
+             * @default true
+             */
+            allow_half_day: boolean;
+            /**
+             * Approval
+             * @default manager_then_hr
+             * @enum {string}
+             */
+            approval: "none" | "manager" | "hr" | "manager_then_hr";
+            /**
+             * Grant Mode
+             * @default annual_upfront
+             * @enum {string}
+             */
+            grant_mode: "annual_upfront" | "monthly_accrual" | "none";
+            /**
+             * Days Per Year
+             * @default 0
+             */
+            days_per_year: number;
+            /**
+             * Accrual Start After Days
+             * @default 0
+             */
+            accrual_start_after_days: number;
+            /**
+             * Prorate Joiners
+             * @default true
+             */
+            prorate_joiners: boolean;
+            /**
+             * Cycle Start Month
+             * @default 1
+             */
+            cycle_start_month: number;
+            /**
+             * Carry Forward
+             * @default none
+             * @enum {string}
+             */
+            carry_forward: "none" | "all" | "capped";
+            /**
+             * Carry Cap Days
+             * @default 0
+             */
+            carry_cap_days: number;
+            /** Carry Expires After Months */
+            carry_expires_after_months?: number | null;
+            /** Max Balance Days */
+            max_balance_days?: number | null;
+            /**
+             * Allow Negative Days
+             * @default 0
+             */
+            allow_negative_days: number;
+            /** Max Consecutive Days */
+            max_consecutive_days?: number | null;
+            /**
+             * Include Holidays
+             * @default false
+             */
+            include_holidays: boolean;
+            /**
+             * Statutory Note
+             * @default
+             */
+            statutory_note: string;
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /** Code */
+            code: string;
+        };
+        /** LeaveTypeOut */
+        LeaveTypeOut: {
+            /** Name */
+            name: string;
+            /**
+             * Color
+             * @default #0f766e
+             */
+            color: string;
+            /**
+             * Paid
+             * @default true
+             */
+            paid: boolean;
+            /**
+             * Requires Balance
+             * @default true
+             */
+            requires_balance: boolean;
+            /**
+             * Counts As
+             * @default leave
+             * @enum {string}
+             */
+            counts_as: "leave" | "wfh";
+            /**
+             * Allow Half Day
+             * @default true
+             */
+            allow_half_day: boolean;
+            /**
+             * Approval
+             * @default manager_then_hr
+             * @enum {string}
+             */
+            approval: "none" | "manager" | "hr" | "manager_then_hr";
+            /**
+             * Grant Mode
+             * @default annual_upfront
+             * @enum {string}
+             */
+            grant_mode: "annual_upfront" | "monthly_accrual" | "none";
+            /**
+             * Days Per Year
+             * @default 0
+             */
+            days_per_year: number;
+            /**
+             * Accrual Start After Days
+             * @default 0
+             */
+            accrual_start_after_days: number;
+            /**
+             * Prorate Joiners
+             * @default true
+             */
+            prorate_joiners: boolean;
+            /**
+             * Cycle Start Month
+             * @default 1
+             */
+            cycle_start_month: number;
+            /**
+             * Carry Forward
+             * @default none
+             * @enum {string}
+             */
+            carry_forward: "none" | "all" | "capped";
+            /**
+             * Carry Cap Days
+             * @default 0
+             */
+            carry_cap_days: number;
+            /** Carry Expires After Months */
+            carry_expires_after_months?: number | null;
+            /** Max Balance Days */
+            max_balance_days?: number | null;
+            /**
+             * Allow Negative Days
+             * @default 0
+             */
+            allow_negative_days: number;
+            /** Max Consecutive Days */
+            max_consecutive_days?: number | null;
+            /**
+             * Include Holidays
+             * @default false
+             */
+            include_holidays: boolean;
+            /**
+             * Statutory Note
+             * @default
+             */
+            statutory_note: string;
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /** Id */
+            id: string;
+            /** Code */
+            code: string;
+        };
+        /**
+         * LeaveTypeUpdate
+         * @description Any LeaveTypeBase field; the code never changes (requests keep it).
+         */
+        LeaveTypeUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Color */
+            color?: string | null;
+            /** Paid */
+            paid?: boolean | null;
+            /** Requires Balance */
+            requires_balance?: boolean | null;
+            /** Counts As */
+            counts_as?: ("leave" | "wfh") | null;
+            /** Allow Half Day */
+            allow_half_day?: boolean | null;
+            /** Approval */
+            approval?: ("none" | "manager" | "hr" | "manager_then_hr") | null;
+            /** Grant Mode */
+            grant_mode?: ("annual_upfront" | "monthly_accrual" | "none") | null;
+            /** Days Per Year */
+            days_per_year?: number | null;
+            /** Accrual Start After Days */
+            accrual_start_after_days?: number | null;
+            /** Prorate Joiners */
+            prorate_joiners?: boolean | null;
+            /** Cycle Start Month */
+            cycle_start_month?: number | null;
+            /** Carry Forward */
+            carry_forward?: ("none" | "all" | "capped") | null;
+            /** Carry Cap Days */
+            carry_cap_days?: number | null;
+            /** Carry Expires After Months */
+            carry_expires_after_months?: number | null;
+            /** Max Balance Days */
+            max_balance_days?: number | null;
+            /** Allow Negative Days */
+            allow_negative_days?: number | null;
+            /** Max Consecutive Days */
+            max_consecutive_days?: number | null;
+            /** Include Holidays */
+            include_holidays?: boolean | null;
+            /** Statutory Note */
+            statutory_note?: string | null;
+            /** Active */
+            active?: boolean | null;
+        };
+        /** LedgerAdjust */
+        LedgerAdjust: {
+            /**
+             * Employee Id
+             * Format: uuid
+             */
+            employee_id: string;
+            /**
+             * Leave Type Id
+             * Format: uuid
+             */
+            leave_type_id: string;
+            /** Days */
+            days: number;
+            /** Note */
+            note: string;
+        };
+        /** LedgerEntryOut */
+        LedgerEntryOut: {
+            /** Id */
+            id: string;
+            /** Leave Type Id */
+            leave_type_id: string;
+            /** Leave Type */
+            leave_type: string;
+            /**
+             * Cycle Start
+             * Format: date
+             */
+            cycle_start: string;
+            /** Entry */
+            entry: string;
+            /** Days */
+            days: number;
+            /** Period Key */
+            period_key: string | null;
+            /** Ref Request Id */
+            ref_request_id: string | null;
+            /** Note */
+            note: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /**
          * LocaleOut
@@ -4652,6 +6115,104 @@ export interface components {
             timezone: string;
             /** Currency */
             currency: string;
+        };
+        /** LocationCreate */
+        LocationCreate: {
+            /** Name */
+            name: string;
+            /**
+             * Kind
+             * @default office
+             * @enum {string}
+             */
+            kind: "office" | "store" | "warehouse" | "factory" | "remote";
+            /**
+             * Address
+             * @default
+             */
+            address: string;
+            /** Lat */
+            lat?: number | null;
+            /** Lng */
+            lng?: number | null;
+            /**
+             * Radius M
+             * @default 150
+             */
+            radius_m: number;
+            /** Allowed Cidrs */
+            allowed_cidrs?: string[];
+            /** Province */
+            province?: ("PB" | "SD" | "KP" | "BA" | "ICT" | "GB" | "AJK") | null;
+            /**
+             * Geo Mode
+             * @default record
+             * @enum {string}
+             */
+            geo_mode: "off" | "record" | "require";
+            /**
+             * Ip Mode
+             * @default off
+             * @enum {string}
+             */
+            ip_mode: "off" | "record" | "require";
+        };
+        /** LocationOut */
+        LocationOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Kind */
+            kind: string;
+            /** Address */
+            address: string;
+            /** Lat */
+            lat: number | null;
+            /** Lng */
+            lng: number | null;
+            /** Radius M */
+            radius_m: number;
+            /** Allowed Cidrs */
+            allowed_cidrs: string[];
+            /** Province */
+            province: string | null;
+            /** Geo Mode */
+            geo_mode: string;
+            /** Ip Mode */
+            ip_mode: string;
+            /** Active */
+            active: boolean;
+            /**
+             * Kiosks
+             * @default 0
+             */
+            kiosks: number;
+        };
+        /** LocationUpdate */
+        LocationUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Kind */
+            kind?: ("office" | "store" | "warehouse" | "factory" | "remote") | null;
+            /** Address */
+            address?: string | null;
+            /** Lat */
+            lat?: number | null;
+            /** Lng */
+            lng?: number | null;
+            /** Radius M */
+            radius_m?: number | null;
+            /** Allowed Cidrs */
+            allowed_cidrs?: string[] | null;
+            /** Province */
+            province?: ("PB" | "SD" | "KP" | "BA" | "ICT" | "GB" | "AJK") | null;
+            /** Geo Mode */
+            geo_mode?: ("off" | "record" | "require") | null;
+            /** Ip Mode */
+            ip_mode?: ("off" | "record" | "require") | null;
+            /** Active */
+            active?: boolean | null;
         };
         /** LoginRequest */
         LoginRequest: {
@@ -5267,6 +6828,34 @@ export interface components {
             /** Locale */
             locale?: string | null;
         };
+        /** PunchOut */
+        PunchOut: {
+            /** Kind */
+            kind: string;
+            attendance: components["schemas"]["AttendanceOut"];
+            /** Geo Status */
+            geo_status: string;
+            /** Ip Status */
+            ip_status: string;
+        };
+        /**
+         * PunchRequest
+         * @description What the browser's Geolocation API reported; all optional — a punch
+         *     without a fix is recorded as `no_fix` (TR-NFR-32).
+         */
+        PunchRequest: {
+            /** Lat */
+            lat?: number | null;
+            /** Lng */
+            lng?: number | null;
+            /** Accuracy M */
+            accuracy_m?: number | null;
+            /**
+             * Mock Gps
+             * @default false
+             */
+            mock_gps: boolean;
+        };
         /** PurgeOut */
         PurgeOut: {
             /** Module */
@@ -5881,6 +7470,30 @@ export interface components {
             overnight: boolean;
             /** Active */
             active: boolean;
+            /**
+             * Auto Checkout
+             * @default off
+             */
+            auto_checkout: string;
+            /**
+             * Auto Checkout After Min
+             * @default 600
+             */
+            auto_checkout_after_min: number;
+            /**
+             * Overtime After Min
+             * @default 30
+             */
+            overtime_after_min: number;
+        };
+        /** ShiftPolicyUpdate */
+        ShiftPolicyUpdate: {
+            /** Auto Checkout */
+            auto_checkout?: ("off" | "shift_end" | "max_hours") | null;
+            /** Auto Checkout After Min */
+            auto_checkout_after_min?: number | null;
+            /** Overtime After Min */
+            overtime_after_min?: number | null;
         };
         /** SignupRequest */
         SignupRequest: {
@@ -9098,6 +10711,39 @@ export interface operations {
             };
         };
     };
+    get_employee_hrms_employees__employee_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employee_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmployeeProfile"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     update_employee_hrms_employees__employee_id__patch: {
         parameters: {
             query?: never;
@@ -9405,207 +11051,6 @@ export interface operations {
             };
         };
     };
-    list_leave_hrms_leave_get: {
-        parameters: {
-            query?: {
-                request_type?: ("leave" | "wfh") | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: {
-                bos_session?: string | null;
-            };
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LeaveOut"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    create_leave_hrms_leave_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: {
-                bos_session?: string | null;
-            };
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LeaveCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LeaveOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_leave_policy_hrms_leave_policy_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: {
-                bos_session?: string | null;
-            };
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LeavePolicyOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    update_leave_policy_hrms_leave_policy_put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: {
-                bos_session?: string | null;
-            };
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LeavePolicyUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LeavePolicyOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    leave_balances_hrms_leave_balances_get: {
-        parameters: {
-            query: {
-                employee_id: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: {
-                bos_session?: string | null;
-            };
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LeaveBalance"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    decide_leave_hrms_leave__leave_id___decision__post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                leave_id: string;
-                decision: string;
-            };
-            cookie?: {
-                bos_session?: string | null;
-            };
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LeaveOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     summary_hrms_summary_get: {
         parameters: {
             query?: never;
@@ -9625,103 +11070,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HrmsSummary"];
                 };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_holidays_hrms_holidays_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: {
-                bos_session?: string | null;
-            };
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HolidayOut"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    create_holiday_hrms_holidays_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: {
-                bos_session?: string | null;
-            };
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["HolidayCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HolidayOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    delete_holiday_hrms_holidays__holiday_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                holiday_id: string;
-            };
-            cookie?: {
-                bos_session?: string | null;
-            };
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -9816,165 +11164,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AttendanceOut"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    my_checkin_me_attendance_checkin_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: {
-                bos_session?: string | null;
-            };
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AttendanceOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    my_checkout_me_attendance_checkout_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: {
-                bos_session?: string | null;
-            };
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AttendanceOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    my_leave_me_leave_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: {
-                bos_session?: string | null;
-            };
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LeaveOut"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    my_request_leave_me_leave_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: {
-                bos_session?: string | null;
-            };
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LeaveCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LeaveOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    my_balances_me_leave_balances_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: {
-                bos_session?: string | null;
-            };
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LeaveBalance"][];
                 };
             };
             /** @description Validation Error */
@@ -12976,6 +14165,1895 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_departments_hrms_departments_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DepartmentOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_department_hrms_departments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DepartmentCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DepartmentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_department_hrms_departments__dept_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dept_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DepartmentUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DepartmentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_job_titles_hrms_job_titles_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobTitleOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_job_title_hrms_job_titles_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobTitleCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobTitleOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_job_title_hrms_job_titles__title_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                title_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobTitleUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobTitleOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_locations_hrms_locations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LocationOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_location_hrms_locations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LocationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_location_hrms_locations__location_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                location_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocationUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LocationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_employee_job_hrms_employees__employee_id__job_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employee_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmployeeJobUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmployeeProfile"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_documents_hrms_employees__employee_id__documents_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employee_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_document_hrms_employees__employee_id__documents_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employee_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocumentCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_document_hrms_documents__doc_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                doc_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    expiring_documents_hrms_documents_expiring_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_shift_policy_hrms_shifts__shift_id__policy_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shift_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShiftPolicyUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShiftOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_corrections_hrms_attendance_corrections_get: {
+        parameters: {
+            query?: {
+                status?: ("pending" | "approved" | "rejected" | "cancelled") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorrectionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decide_correction_hrms_attendance_corrections__correction_id___decision__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                correction_id: string;
+                decision: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Decision"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorrectionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_punch_me_attendance_punch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PunchRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PunchOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_checkin_me_attendance_checkin_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PunchRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendanceOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_checkout_me_attendance_checkout_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PunchRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendanceOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_corrections_me_attendance_corrections_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorrectionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_correction_me_attendance_corrections_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorrectionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorrectionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_approvals_me_approvals_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_kiosks_hrms_kiosks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KioskOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_kiosk_hrms_kiosks_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KioskCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KioskOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_kiosk_hrms_kiosks__kiosk_id__revoke_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kiosk_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KioskOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_kiosk_pin_hrms_employees__employee_id__kiosk_pin_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employee_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KioskPinSet"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bootstrap_kiosk__token__bootstrap_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KioskBootstrap"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    kiosk_punch_kiosk__token__punch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KioskPunchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KioskPunchOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_calendars_hrms_holiday_calendars_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HolidayCalendarOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_calendar_hrms_holiday_calendars_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HolidayCalendarCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HolidayCalendarOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_calendar_hrms_holiday_calendars__calendar_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                calendar_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_holidays_hrms_holidays_get: {
+        parameters: {
+            query?: {
+                calendar_id?: string | null;
+                year?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HolidayOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_holiday_hrms_holidays_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HolidayCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HolidayOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_holiday_hrms_holidays__holiday_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                holiday_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_holidays_hrms_holidays_import_post: {
+        parameters: {
+            query?: {
+                calendar_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_blackouts_hrms_blackout_days_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BlackoutOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_blackout_hrms_blackout_days_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BlackoutCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BlackoutOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_blackout_hrms_blackout_days__blackout_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                blackout_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_leave_types_hrms_leave_types_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaveTypeOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_leave_type_hrms_leave_types_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LeaveTypeCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaveTypeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_leave_type_hrms_leave_types__leave_type_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                leave_type_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LeaveTypeUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaveTypeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_leave_policy_hrms_leave_policy_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeavePolicyOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_leave_policy_hrms_leave_policy_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LeavePolicyUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeavePolicyOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_leave_hrms_leave_get: {
+        parameters: {
+            query?: {
+                request_type?: ("leave" | "wfh") | null;
+                status?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaveOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_leave_hrms_leave_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LeaveCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaveOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    leave_balances_hrms_leave_balances_get: {
+        parameters: {
+            query: {
+                employee_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaveBalance"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    leave_ledger_hrms_leave_ledger_get: {
+        parameters: {
+            query: {
+                employee_id: string;
+                leave_type_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LedgerEntryOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    adjust_ledger_hrms_leave_ledger_adjust_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LedgerAdjust"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaveBalance"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hr_cancel_leave_hrms_leave__leave_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                leave_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaveOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decide_leave_hrms_leave__leave_id___decision__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                leave_id: string;
+                decision: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Decision"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaveOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_leave_me_leave_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaveOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_request_leave_me_leave_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LeaveCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaveOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_balances_me_leave_balances_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaveBalance"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_leave_types_me_leave_types_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaveTypeOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_cancel_leave_me_leave__leave_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                leave_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaveOut"];
+                };
             };
             /** @description Validation Error */
             422: {

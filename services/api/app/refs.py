@@ -18,6 +18,10 @@ _LABELS = {
     "hrms_employees": "Employee",
     "contacts": "Contact",
     "teams": "Team",
+    # HR org (0065)
+    "hrms_departments": "Department",
+    "hrms_job_titles": "Job title",
+    "hrms_locations": "Location",
 }
 
 

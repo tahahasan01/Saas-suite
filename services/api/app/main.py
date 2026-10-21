@@ -23,6 +23,7 @@ from .routers import activities as activities_router, crm_pipelines, crm_reports
 from .routers import contacts as contacts_router
 from .routers import files, org, profile, sequences, tax  # org data (3A, p3-orgdata)
 from .routers import platform, roles
+from .routers import hrms_attendance, hrms_holidays, hrms_kiosk, hrms_leave, hrms_org
 
 # JSON logs with request/tenant context and PII redaction; Sentry if SENTRY_DSN (app/obs.py).
 obs.setup_logging("api")
@@ -96,6 +97,15 @@ app.include_router(tax.router)
 app.include_router(profile.router)
 app.include_router(platform.router)
 app.include_router(roles.router)
+# HR org, attendance v2, kiosk, leave v2 and holidays (3F, 0065–0068).
+app.include_router(hrms_org.router)
+app.include_router(hrms_attendance.router)
+app.include_router(hrms_attendance.portal)
+app.include_router(hrms_kiosk.router)
+app.include_router(hrms_kiosk.device)
+app.include_router(hrms_holidays.router)
+app.include_router(hrms_leave.router)
+app.include_router(hrms_leave.portal)
 
 
 @app.exception_handler(asyncpg.DataError)

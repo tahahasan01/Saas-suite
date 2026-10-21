@@ -91,6 +91,10 @@ export const MODULES: Module[] = [
       { href: "/hrms/attendance", label: "Attendance" },
       { href: "/hrms/leave", label: "Leave" },
       { href: "/hrms/holidays", label: "Holidays" },
+      // 3F: org setup, documents, sites and kiosks
+      { href: "/hrms/employees/setup", label: "Departments" },
+      { href: "/hrms/employees/documents", label: "Documents" },
+      { href: "/hrms/kiosk", label: "Sites & kiosks" },
     ],
   },
   {

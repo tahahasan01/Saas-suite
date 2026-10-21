@@ -19,7 +19,7 @@ from app.config import settings
 # (table, column) -> the model's list of allowed values.
 ENUM_COLUMNS = {
     ("pos_sales", "payment_method"): models.PAYMENT_METHODS,
-    ("hrms_leave_requests", "leave_type"): models.LEAVE_TYPES,
+    # leave_type codes are tenant data since 0068 (hrms_leave_types, FK); no fixed list.
     ("hrms_leave_requests", "request_type"): models.REQUEST_TYPES,
     ("hrms_leave_requests", "status"): models.LEAVE_STATUSES,
     ("hrms_attendance", "status"): models.ATTENDANCE_STATUSES,
@@ -68,6 +68,35 @@ ENUM_COLUMNS = {
     ("tenant_modules", "reason"): models.MODULE_REASONS,
     ("module_purges", "status"): models.PURGE_STATUSES,
     ("role_grants", "scope"): models.GRANT_SCOPES,
+    # hrms org (0065)
+    ("hrms_locations", "kind"): models.LOCATION_KINDS,
+    ("hrms_locations", "province"): models.PROVINCES,
+    ("hrms_locations", "geo_mode"): models.GEO_MODES,
+    ("hrms_locations", "ip_mode"): models.GEO_MODES,
+    ("hrms_employees", "employment_type"): models.EMPLOYMENT_TYPES,
+    ("hrms_employee_documents", "kind"): models.DOCUMENT_KINDS,
+    # attendance v2 (0066)
+    ("hrms_punches", "geo_status"): models.GEO_STATUSES,
+    ("hrms_attendance", "geo_status"): models.GEO_STATUSES,
+    ("hrms_punches", "ip_status"): models.IP_STATUSES,
+    ("hrms_attendance", "ip_status"): models.IP_STATUSES,
+    ("hrms_shifts", "auto_checkout"): models.AUTO_CHECKOUT_POLICIES,
+    ("hrms_attendance_corrections", "status"): models.CORRECTION_STATUSES,
+    # holiday calendars (0067)
+    ("hrms_holiday_calendars", "scope"): models.HOLIDAY_SCOPES,
+    ("hrms_holiday_calendars", "province"): models.PROVINCES,
+    ("hrms_holidays", "kind"): models.HOLIDAY_KINDS,
+    # leave v2 (0068)
+    ("hrms_leave_types", "counts_as"): models.LEAVE_COUNTS_AS,
+    ("hrms_leave_types", "approval"): models.LEAVE_APPROVALS,
+    ("hrms_leave_types", "grant_mode"): models.LEAVE_GRANT_MODES,
+    ("hrms_leave_types", "carry_forward"): models.LEAVE_CARRY_MODES,
+    ("hrms_leave_ledger", "entry"): models.LEDGER_ENTRIES,
+    ("hrms_leave_requests", "from_half"): models.HALVES,
+    ("hrms_leave_requests", "to_half"): models.HALVES,
+    ("hrms_leave_requests", "approval_step"): models.LEAVE_STEPS,
+    ("hrms_leave_approvals", "step"): models.APPROVAL_STEPS,
+    ("hrms_leave_approvals", "decision"): models.APPROVAL_DECISIONS,
 }
 
 

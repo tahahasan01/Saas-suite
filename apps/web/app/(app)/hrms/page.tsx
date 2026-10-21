@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import type { Employee } from "@business-os/types";
 import { api } from "@/lib/api";
 import { money } from "@/lib/format";
@@ -9,7 +10,7 @@ import { Dialog } from "@/components/Dialog";
 import { Badge, Button, Card, EmptyState, ErrorState, Field, Input, LoadingRows } from "@/components/ui";
 import { useHrmsSummary } from "./summary";
 
-const blank = { name: "", designation: "", department: "", cnic: "", salary: "", join_date: "" };
+const blank = { name: "", email: "", phone: "", designation: "", department: "", cnic: "", salary: "", join_date: "" };
 const toMinor = (rupees: string) => Math.round(Number(rupees || 0) * 100);
 
 export default function EmployeesPage() {
@@ -51,7 +52,8 @@ export default function EmployeesPage() {
     () => api("/hrms/employees", {
       method: "POST",
       body: JSON.stringify({
-        name: form.name, designation: form.designation, department: form.department,
+        name: form.name, email: form.email.trim(), phone: form.phone.trim(),
+        designation: form.designation, department: form.department,
         cnic: form.cnic, salary_minor: payMasked ? 0 : toMinor(form.salary),
         join_date: form.join_date || null,
       }),
@@ -95,6 +97,9 @@ export default function EmployeesPage() {
         <Card>
           <form onSubmit={add} className="grid gap-3 sm:grid-cols-3">
             <Field label="Name"><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required autoFocus /></Field>
+            {/* The email lets them have their own login ("Enable login"). */}
+            <Field label="Email"><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
+            <Field label="Phone"><Input type="tel" value={form.phone} placeholder="03XX-XXXXXXX" onChange={(e) => setForm({ ...form, phone: e.target.value })} /></Field>
             <Field label="Designation"><Input value={form.designation} onChange={(e) => setForm({ ...form, designation: e.target.value })} /></Field>
             <Field label="Department"><Input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} /></Field>
             <Field label="CNIC"><Input value={form.cnic} onChange={(e) => setForm({ ...form, cnic: e.target.value })} placeholder="35201-XXXXXXX-X" /></Field>
@@ -160,7 +165,7 @@ function Row({ e, onChanged, onEdit }: { e: Employee; onChanged: () => void; onE
     <li className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
       <Avatar name={e.name} present={e.present_today} />
       <div className="min-w-0 flex-1 basis-40">
-        <p className="break-words text-sm font-medium">{e.name}</p>
+        <Link href={`/hrms/employees/${e.id}`} className="block break-words text-sm font-medium hover:underline">{e.name}</Link>
         <p className="truncate text-xs text-fg-muted">{e.designation || "—"}{e.cnic && ` · ${e.cnic}`}</p>
       </div>
       {/* On a phone this whole group drops below the name, indented to line up with it. */}

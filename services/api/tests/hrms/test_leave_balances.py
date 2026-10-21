@@ -24,7 +24,8 @@ async def _request(client, employee_id, from_date, to_date, leave_type="annual")
 async def test_balances_start_at_the_policy_quota(client, tenant):
     r = await client.get(f"/hrms/leave/balances?employee_id={tenant.employee_id}")
     balances = {b["leave_type"]: b for b in r.json()}
-    assert balances["annual"] == {"leave_type": "annual", "quota": 14, "used": 0, "remaining": 14}
+    annual = balances["annual"]
+    assert (annual["quota"], annual["used"], annual["remaining"]) == (14, 0, 14)
     assert balances["sick"]["quota"] == 10
     assert balances["casual"]["quota"] == 10
 

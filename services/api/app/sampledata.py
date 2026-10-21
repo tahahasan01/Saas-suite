@@ -71,3 +71,5 @@ async def seed(conn: asyncpg.Connection, tenant_id: str, user_id: str, sections:
                 """insert into hrms_employees (tenant_id, name, designation, department, salary_minor)
                    values ($1,$2,$3,$4,$5)""",
                 tenant_id, name, designation, department, salary)
+        # Departments and job titles from the text above (0065, §7.10).
+        await conn.execute("select hrms_link_org_text()")

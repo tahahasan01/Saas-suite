@@ -140,6 +140,7 @@ _SHAPED = {
     "sequences": {"code": lambda: "rls.test", "pattern": lambda: "{N}"},
     "sequence_counters": {"period_key": lambda: "-"},
     "files": {"sha256": lambda: uuid.uuid4().hex * 2},
+    "hrms_leave_types": {"code": lambda: "rls_" + uuid.uuid4().hex[:12]},   # a lower-case code (0068)
 }
 
 

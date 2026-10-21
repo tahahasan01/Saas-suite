@@ -902,7 +902,7 @@ LeaveType = Literal["annual", "sick", "casual", "unpaid"]
 RequestType = Literal["leave", "wfh"]
 LEAVE_TYPES = list(get_args(LeaveType))
 REQUEST_TYPES = list(get_args(RequestType))
-LEAVE_STATUSES = ["pending", "approved", "rejected"]
+LEAVE_STATUSES = ["pending", "approved", "rejected", "cancelled"]   # cancelled: 0068
 EmployeeStatus = Literal["active", "inactive"]
 EMPLOYEE_STATUSES = list(get_args(EmployeeStatus))
 # half_day and absent are derived from a shift's worked-minute thresholds
@@ -910,10 +910,14 @@ EMPLOYEE_STATUSES = list(get_args(EmployeeStatus))
 ATTENDANCE_STATUSES = ["present", "late", "half_day", "absent", "leave"]
 # What a caller may claim; 'self' is written only by the employee's own portal punch.
 CheckInMethod = Literal["web", "mobile", "biometric", "qr"]
-ATTENDANCE_METHODS = [*get_args(CheckInMethod), "self"]
+# 0066: 'kiosk', 'auto' (the auto check-out job) and 'correction' (an approved
+# correction request) are written by the server, never claimed by a caller.
+ATTENDANCE_METHODS = [*get_args(CheckInMethod), "self", "kiosk", "auto", "correction"]
 FRAUD_FLAGS = ["", "mock_gps", "vpn", "face_mismatch"]
 PunchKind = Literal["in", "out"]
 PUNCH_KINDS = list(get_args(PunchKind))
+EmploymentType = Literal["permanent", "contract", "probation", "daily_wage", "intern"]   # 0065
+EMPLOYMENT_TYPES = list(get_args(EmploymentType))
 
 
 class EmployeeOut(BaseModel):
@@ -941,10 +945,19 @@ class EmployeeCreate(BaseModel):
     department: str = ""
     join_date: date | None = None
     salary_minor: int = Field(default=0, ge=0)
+    # Org fields (0065); the same rules as PATCH /hrms/employees/{id}/job.
+    code: str | None = Field(default=None, max_length=40)
+    department_id: UUID | None = None
+    job_title_id: UUID | None = None
+    location_id: UUID | None = None
+    manager_id: UUID | None = None
+    employment_type: EmploymentType = "permanent"
+    probation_end: date | None = None
 
 
 class EmployeeUpdate(BaseModel):
     name: str | None = None
+    email: str | None = Field(default=None, max_length=254)
     phone: str | None = None
     designation: str | None = None
     department: str | None = None
@@ -980,6 +993,14 @@ class AttendanceOut(BaseModel):
     # The day is over with a check-in still open: its open interval counted
     # 0 minutes. HR should correct it.
     missing_checkout: bool = False
+    # 0066: closed by the auto check-out job (no overtime, 0 minutes for the
+    # open interval), fixed by an approved correction, and the server's
+    # geofence / network verdict on the last check-in.
+    auto_closed: bool = False
+    overtime_min: int = 0
+    corrected: bool = False
+    geo_status: str | None = None
+    ip_status: str | None = None
 
 
 class ShiftCreate(BaseModel):
@@ -1005,6 +1026,10 @@ class ShiftOut(ShiftCreate):
     id: str
     overnight: bool
     active: bool
+    # 0066 policy (PATCH /hrms/shifts/{id}/policy).
+    auto_checkout: str = "off"
+    auto_checkout_after_min: int = 600
+    overtime_after_min: int = 30
 
 
 class ShiftAssign(BaseModel):
@@ -1026,10 +1051,16 @@ class ShiftAssignmentOut(BaseModel):
 class LeaveCreate(BaseModel):
     employee_id: str
     request_type: RequestType = "leave"
-    leave_type: LeaveType = "annual"
+    # A leave type's code (the tenant's own since 0068) or its id; unknown -> 422.
+    leave_type: str = Field(default="annual", max_length=30)
+    leave_type_id: UUID | None = None
     from_date: date
     to_date: date
-    reason: str = ""
+    # Half days (0068): one day, morning or afternoon -> from_half = to_half;
+    # longer, starting after lunch -> from_half 'pm', back after lunch -> to_half 'am'.
+    from_half: Literal["am", "pm"] | None = None
+    to_half: Literal["am", "pm"] | None = None
+    reason: str = Field(default="", max_length=1000)
 
 
 class LeaveOut(BaseModel):
@@ -1042,6 +1073,14 @@ class LeaveOut(BaseModel):
     to_date: date
     reason: str
     status: str
+    # Leave v2 (0068)
+    leave_type_id: str | None = None
+    leave_type_name: str = ""
+    paid: bool = True
+    from_half: str | None = None
+    to_half: str | None = None
+    duration_days: float | None = None   # working days, half days as 0.5
+    approval_step: str | None = None     # manager | hr | done
 
 
 class HrmsSummary(BaseModel):
@@ -1082,11 +1121,19 @@ class HolidayOut(BaseModel):
     id: str
     holiday_date: date
     name: str
+    # 0067: the calendar it belongs to (federal, a province, the company).
+    calendar_id: str | None = None
+    calendar_name: str = ""
+    kind: str = "public"
+    half_day: bool = False
 
 
 class HolidayCreate(BaseModel):
     holiday_date: date
     name: str = Field(min_length=1, max_length=120)
+    calendar_id: UUID | None = None          # default: the federal calendar
+    kind: Literal["public", "optional", "company"] = "public"
+    half_day: bool = False
 
 
 # ── Billing ─────────────────────────────────────────────────────────────────
@@ -1259,10 +1306,17 @@ class LeavePolicyUpdate(BaseModel):
 
 
 class LeaveBalance(BaseModel):
+    """One leave type's balance in the current leave year, from the ledger
+    (0068): quota = granted + accrued + carried in ± adjustments."""
     leave_type: str
-    quota: int
-    used: int        # approved working days this calendar year
-    remaining: int
+    quota: float
+    used: float      # approved working days this leave year (half days 0.5)
+    remaining: float
+    leave_type_id: str | None = None
+    name: str = ""
+    pending: float = 0
+    cycle_start: date | None = None
+    cycle_end: date | None = None
 
 
 # ─── Cash drawer ─────────────────────────────────────────────────────────────
@@ -1809,3 +1863,468 @@ class TeamOut(BaseModel):
 
 class TeamMembersPut(BaseModel):
     user_ids: list[str] = Field(max_length=500)
+
+
+# ─── HR org structure (3F, 0065; St03 §6.2) ──────────────────────────────────
+# Province codes as pk_regions holds them (integration adds the FK).
+Province = Literal["PB", "SD", "KP", "BA", "ICT", "GB", "AJK"]
+PROVINCES = list(get_args(Province))
+LocationKind = Literal["office", "store", "warehouse", "factory", "remote"]
+LOCATION_KINDS = list(get_args(LocationKind))
+# off: not checked · record: checked and flagged · require: refused unless it passes.
+GeoMode = Literal["off", "record", "require"]
+GEO_MODES = list(get_args(GeoMode))
+DocumentKind = Literal["cnic", "contract", "certificate", "medical", "license", "passport", "other"]
+DOCUMENT_KINDS = list(get_args(DocumentKind))
+
+
+def _networks(v: list[str] | None) -> list[str] | None:
+    """Normalised CIDRs ("198.51.100.7" -> "198.51.100.7/32"); 422 on junk."""
+    import ipaddress
+    if v is None:
+        return None
+    out = []
+    for c in v:
+        try:
+            out.append(str(ipaddress.ip_network(c.strip(), strict=False)))
+        except ValueError:
+            raise ValueError(f"{c!r} is not an IP address or network") from None
+    return out
+
+
+class DepartmentCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    parent_id: UUID | None = None
+    head_employee_id: UUID | None = None
+
+
+class DepartmentUpdate(BaseModel):
+    """An explicit null clears parent or head."""
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    parent_id: UUID | None = None
+    head_employee_id: UUID | None = None
+    active: bool | None = None
+
+
+class DepartmentOut(BaseModel):
+    id: str
+    name: str
+    parent_id: str | None
+    head_employee_id: str | None
+    active: bool
+    headcount: int = 0
+
+
+class JobTitleCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    department_id: UUID | None = None
+
+
+class JobTitleUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    department_id: UUID | None = None
+    active: bool | None = None
+
+
+class JobTitleOut(BaseModel):
+    id: str
+    name: str
+    department_id: str | None
+    active: bool
+
+
+class LocationCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    kind: LocationKind = "office"
+    address: str = Field(default="", max_length=400)
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lng: float | None = Field(default=None, ge=-180, le=180)
+    radius_m: int = Field(default=150, ge=10, le=5000)
+    allowed_cidrs: list[str] = Field(default_factory=list, max_length=50)
+    province: Province | None = None
+    geo_mode: GeoMode = "record"
+    ip_mode: GeoMode = "off"
+
+    _cidrs = field_validator("allowed_cidrs")(lambda cls, v: _networks(v))
+
+    @model_validator(mode="after")
+    def _consistent(self):
+        check_location(self.lat, self.lng, self.geo_mode, self.ip_mode, self.allowed_cidrs)
+        return self
+
+
+def check_location(lat, lng, geo_mode, ip_mode, cidrs) -> None:
+    """The rules a location must keep, on create and on the merged update."""
+    if (lat is None) != (lng is None):
+        raise ValueError("Give both latitude and longitude, or neither")
+    if geo_mode == "require" and lat is None:
+        raise ValueError("A required geofence needs the location's latitude and longitude")
+    if ip_mode == "require" and not cidrs:
+        raise ValueError("Requiring the office network needs at least one allowed network")
+
+
+class LocationUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    kind: LocationKind | None = None
+    address: str | None = Field(default=None, max_length=400)
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lng: float | None = Field(default=None, ge=-180, le=180)
+    radius_m: int | None = Field(default=None, ge=10, le=5000)
+    allowed_cidrs: list[str] | None = Field(default=None, max_length=50)
+    province: Province | None = None
+    geo_mode: GeoMode | None = None
+    ip_mode: GeoMode | None = None
+    active: bool | None = None
+
+    _cidrs = field_validator("allowed_cidrs")(lambda cls, v: _networks(v))
+
+
+class LocationOut(BaseModel):
+    id: str
+    name: str
+    kind: str
+    address: str
+    lat: float | None
+    lng: float | None
+    radius_m: int
+    allowed_cidrs: list[str]
+    province: str | None
+    geo_mode: str
+    ip_mode: str
+    active: bool
+    kiosks: int = 0
+
+
+class EmployeeJobUpdate(BaseModel):
+    """Org fields; an explicit null clears a link."""
+    code: str | None = Field(default=None, max_length=40)
+    department_id: UUID | None = None
+    job_title_id: UUID | None = None
+    location_id: UUID | None = None
+    manager_id: UUID | None = None
+    employment_type: EmploymentType | None = None
+    probation_end: date | None = None
+
+
+class EmployeeProfile(EmployeeOut):
+    code: str | None = None
+    department_id: str | None = None
+    job_title_id: str | None = None
+    location_id: str | None = None
+    location_name: str | None = None
+    province: str | None = None
+    manager_id: str | None = None
+    manager_name: str | None = None
+    employment_type: str = "permanent"
+    probation_end: date | None = None
+    has_kiosk_pin: bool = False
+    documents_expiring: int = 0     # expired or due within 30 days
+
+
+class DocumentCreate(BaseModel):
+    kind: DocumentKind = "other"
+    title: str = Field(min_length=1, max_length=160)
+    number: str = Field(default="", max_length=80)
+    issued_on: date | None = None
+    expires_on: date | None = None
+    file_id: UUID | None = None
+    note: str = Field(default="", max_length=1000)
+
+    @model_validator(mode="after")
+    def _dates(self):
+        if self.issued_on and self.expires_on and self.expires_on < self.issued_on:
+            raise ValueError("A document can't expire before it was issued")
+        return self
+
+
+class DocumentOut(BaseModel):
+    id: str
+    employee_id: str
+    employee_name: str = ""
+    kind: str
+    title: str
+    number: str
+    issued_on: date | None
+    expires_on: date | None
+    file_id: str | None
+    note: str
+    days_left: int | None = None    # negative once expired
+
+
+# ─── Attendance v2: geofence, kiosks, auto check-out, corrections (3F, 0066) ─
+GeoStatus = Literal["inside", "outside", "no_fix", "not_required"]
+GEO_STATUSES = list(get_args(GeoStatus))
+IpStatus = Literal["allowed", "outside", "not_required"]
+IP_STATUSES = list(get_args(IpStatus))
+AutoCheckout = Literal["off", "shift_end", "max_hours"]
+AUTO_CHECKOUT_POLICIES = list(get_args(AutoCheckout))
+CorrectionStatus = Literal["pending", "approved", "rejected", "cancelled"]
+CORRECTION_STATUSES = list(get_args(CorrectionStatus))
+
+
+class ShiftPolicyUpdate(BaseModel):
+    auto_checkout: AutoCheckout | None = None
+    auto_checkout_after_min: int | None = Field(default=None, ge=30, le=1440)
+    overtime_after_min: int | None = Field(default=None, ge=0, le=1440)
+
+
+class PunchRequest(BaseModel):
+    """What the browser's Geolocation API reported; all optional — a punch
+    without a fix is recorded as `no_fix` (TR-NFR-32)."""
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lng: float | None = Field(default=None, ge=-180, le=180)
+    accuracy_m: float | None = Field(default=None, ge=0, le=100_000)
+    mock_gps: bool = False      # the client's suspicion: a risk flag, never a pass
+
+
+class PunchOut(BaseModel):
+    kind: str                   # in | out
+    attendance: AttendanceOut
+    geo_status: str
+    ip_status: str
+
+
+class CorrectionCreate(BaseModel):
+    work_date: date
+    requested_in: datetime | None = None
+    requested_out: datetime | None = None
+    reason: str = Field(min_length=1, max_length=500)
+
+    @model_validator(mode="after")
+    def _times(self):
+        if self.requested_in is None and self.requested_out is None:
+            raise ValueError("Give the check-in time, the check-out time, or both")
+        if self.requested_in and self.requested_out and self.requested_out <= self.requested_in:
+            raise ValueError("The check-out must be after the check-in")
+        if not self.reason.strip():
+            raise ValueError("Say why the day needs correcting")
+        return self
+
+
+class CorrectionOut(BaseModel):
+    id: str
+    employee_id: str
+    employee_name: str
+    work_date: date
+    requested_in: datetime | None
+    requested_out: datetime | None
+    reason: str
+    status: str
+    decided_by: str | None
+    decided_at: datetime | None
+    decision_note: str
+    created_at: datetime
+
+
+class Decision(BaseModel):
+    note: str = Field(default="", max_length=500)
+
+
+class KioskCreate(BaseModel):
+    location_id: UUID
+    name: str = Field(min_length=1, max_length=80)
+
+
+class KioskOut(BaseModel):
+    id: str
+    location_id: str
+    location_name: str
+    name: str
+    created_at: datetime
+    last_seen_at: datetime | None
+    revoked_at: datetime | None
+    token: str | None = None    # only in the create response; stored as a hash
+
+
+class KioskPinSet(BaseModel):
+    pin: str = Field(pattern=r"^\d{4,6}$")
+
+
+class KioskPunchRequest(BaseModel):
+    employee_id: UUID
+    pin: str = Field(min_length=1, max_length=12)
+
+
+class KioskEmployee(BaseModel):
+    id: str
+    name: str
+    has_pin: bool
+
+
+class KioskLocation(BaseModel):
+    id: str
+    name: str
+
+
+class KioskBootstrap(BaseModel):
+    location: KioskLocation
+    kiosk_name: str
+    employees: list[KioskEmployee]
+
+
+class KioskPunchOut(BaseModel):
+    kind: str
+    name: str
+    at: datetime
+    worked_today_min: int
+
+
+# ─── Holiday calendars and blackout days (3F, 0067) ──────────────────────────
+HolidayScope = Literal["federal", "province", "company"]
+HOLIDAY_SCOPES = list(get_args(HolidayScope))
+HolidayKind = Literal["public", "optional", "company"]
+HOLIDAY_KINDS = list(get_args(HolidayKind))
+
+
+class HolidayCalendarCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    scope: Literal["province", "company"] = "company"   # one federal calendar exists already
+    province: Province | None = None
+
+    @model_validator(mode="after")
+    def _province(self):
+        if (self.scope == "province") != (self.province is not None):
+            raise ValueError("A province calendar needs a province; other calendars have none")
+        return self
+
+
+class HolidayCalendarOut(BaseModel):
+    id: str
+    name: str
+    scope: str
+    province: str | None
+    holidays: int = 0
+
+
+class BlackoutCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    date_from: date
+    date_to: date
+    location_id: UUID | None = None
+    department_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def _range(self):
+        if self.date_to < self.date_from:
+            raise ValueError("The blackout can't end before it starts")
+        return self
+
+
+class BlackoutOut(BaseModel):
+    id: str
+    name: str
+    date_from: date
+    date_to: date
+    location_id: str | None
+    department_id: str | None
+
+
+class ApprovalsOut(BaseModel):
+    """A manager's inbox: pending requests from their direct reports."""
+    corrections: list[CorrectionOut]
+    leave: list[LeaveOut]
+
+
+# ─── Leave v2: types, ledger, approval chain (3F, 0068; D-44) ─────────────────
+LeaveCountsAs = Literal["leave", "wfh"]
+LEAVE_COUNTS_AS = list(get_args(LeaveCountsAs))
+LeaveApproval = Literal["none", "manager", "hr", "manager_then_hr"]
+LEAVE_APPROVALS = list(get_args(LeaveApproval))
+LeaveGrantMode = Literal["annual_upfront", "monthly_accrual", "none"]
+LEAVE_GRANT_MODES = list(get_args(LeaveGrantMode))
+LeaveCarry = Literal["none", "all", "capped"]
+LEAVE_CARRY_MODES = list(get_args(LeaveCarry))
+LedgerEntry = Literal["grant", "accrual", "carry_in", "carry_expire", "taken", "reversal", "adjust"]
+LEDGER_ENTRIES = list(get_args(LedgerEntry))
+Half = Literal["am", "pm"]
+HALVES = list(get_args(Half))
+LeaveStep = Literal["manager", "hr", "done"]
+LEAVE_STEPS = list(get_args(LeaveStep))
+APPROVAL_STEPS = ["manager", "hr"]
+APPROVAL_DECISIONS = ["approved", "rejected"]
+
+
+class LeaveTypeBase(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    color: str = Field(default="#0f766e", pattern=r"^#[0-9a-fA-F]{6}$")
+    paid: bool = True
+    requires_balance: bool = True
+    counts_as: LeaveCountsAs = "leave"
+    allow_half_day: bool = True
+    approval: LeaveApproval = "manager_then_hr"
+    grant_mode: LeaveGrantMode = "annual_upfront"
+    days_per_year: float = Field(default=0, ge=0, le=366)
+    accrual_start_after_days: int = Field(default=0, ge=0, le=3650)
+    prorate_joiners: bool = True
+    cycle_start_month: int = Field(default=1, ge=1, le=12)
+    carry_forward: LeaveCarry = "none"
+    carry_cap_days: float = Field(default=0, ge=0, le=366)
+    carry_expires_after_months: int | None = Field(default=None, ge=1, le=12)
+    max_balance_days: float | None = Field(default=None, ge=0, le=999)
+    allow_negative_days: float = Field(default=0, ge=0, le=366)
+    max_consecutive_days: int | None = Field(default=None, ge=1, le=366)
+    include_holidays: bool = False
+    statutory_note: str = Field(default="", max_length=400)
+    active: bool = True
+
+
+class LeaveTypeCreate(LeaveTypeBase):
+    code: str = Field(pattern=r"^[a-z][a-z0-9_]{0,29}$")
+
+
+class LeaveTypeUpdate(BaseModel):
+    """Any LeaveTypeBase field; the code never changes (requests keep it)."""
+    name: str | None = Field(default=None, min_length=1, max_length=80)
+    color: str | None = Field(default=None, pattern=r"^#[0-9a-fA-F]{6}$")
+    paid: bool | None = None
+    requires_balance: bool | None = None
+    counts_as: LeaveCountsAs | None = None
+    allow_half_day: bool | None = None
+    approval: LeaveApproval | None = None
+    grant_mode: LeaveGrantMode | None = None
+    days_per_year: float | None = Field(default=None, ge=0, le=366)
+    accrual_start_after_days: int | None = Field(default=None, ge=0, le=3650)
+    prorate_joiners: bool | None = None
+    cycle_start_month: int | None = Field(default=None, ge=1, le=12)
+    carry_forward: LeaveCarry | None = None
+    carry_cap_days: float | None = Field(default=None, ge=0, le=366)
+    carry_expires_after_months: int | None = Field(default=None, ge=1, le=12)
+    max_balance_days: float | None = Field(default=None, ge=0, le=999)
+    allow_negative_days: float | None = Field(default=None, ge=0, le=366)
+    max_consecutive_days: int | None = Field(default=None, ge=1, le=366)
+    include_holidays: bool | None = None
+    statutory_note: str | None = Field(default=None, max_length=400)
+    active: bool | None = None
+
+
+class LeaveTypeOut(LeaveTypeBase):
+    id: str
+    code: str
+
+
+class LedgerEntryOut(BaseModel):
+    id: str
+    leave_type_id: str
+    leave_type: str
+    cycle_start: date
+    entry: str
+    days: float
+    period_key: str | None
+    ref_request_id: str | None
+    note: str
+    created_at: datetime
+
+
+class LedgerAdjust(BaseModel):
+    employee_id: UUID
+    leave_type_id: UUID
+    days: float = Field(ge=-366, le=366)
+    note: str = Field(min_length=1, max_length=300)
+
+    @model_validator(mode="after")
+    def _nonzero(self):
+        if self.days == 0:
+            raise ValueError("An adjustment needs a number of days")
+        if round(self.days * 2) != self.days * 2:
+            raise ValueError("Adjust in whole or half days")
+        return self

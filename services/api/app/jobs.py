@@ -26,7 +26,7 @@ import asyncio
 import logging
 from typing import Any, Awaitable, Callable
 
-from . import activities, alerts, attendance, audit, context, db, email, fbr_submit, monitor, notifications, obs
+from . import activities, alerts, attendance, audit, context, db, email, fbr_submit, leave, monitor, notifications, obs
 from .modules import service as modules_service
 from .routers.pos import _VELOCITY_SQL
 from . import files  # org data (3A): files.gc
@@ -178,6 +178,47 @@ async def run_finalise_open_days() -> dict[str, int]:
     return {"tenants": len(tenants), "days": days, "failed": failed}
 
 
+async def _hrms_tenants() -> list[str]:
+    async with db.owner_conn() as oc:
+        return [str(r["id"]) for r in await oc.fetch(
+            """select t.id from tenants t
+                 join entitlements e on e.tenant_id = t.id and e.section_key = 'hrms' and e.enabled
+                where t.status = 'active'""")]
+
+
+async def run_auto_checkout() -> dict[str, int]:
+    """Every 15 minutes (0066): close open days per each shift's auto
+    check-out policy. Auto-closed days earn no overtime and, by Phase 2's
+    rule, are not paid as present until corrected."""
+    closed = failed = 0
+    run_id = context.job_run_id()
+    tenants = await _hrms_tenants()
+    for tid in tenants:
+        try:
+            async with db.job_conn(tid, "hrms.auto_checkout", run_id=run_id) as conn:
+                closed += await attendance.auto_checkout(conn)
+        except Exception:  # noqa: BLE001 — one bad tenant must not stop the rest
+            failed += 1
+            log.exception("auto check-out failed for tenant %s", tid)
+    return {"tenants": len(tenants), "closed": closed, "failed": failed}
+
+
+async def run_leave_entitlements() -> dict[str, int]:
+    """Daily (0068): leave grants at the start of each leave year, the
+    monthly accrual, carry-forward and expiry. Idempotent per tenant."""
+    employees = failed = 0
+    run_id = context.job_run_id()
+    tenants = await _hrms_tenants()
+    for tid in tenants:
+        try:
+            async with db.job_conn(tid, "hrms.leave_entitlements", run_id=run_id) as conn:
+                employees += await leave.run_entitlements(conn)
+        except Exception:  # noqa: BLE001 — one bad tenant must not stop the rest
+            failed += 1
+            log.exception("leave entitlements failed for tenant %s", tid)
+    return {"tenants": len(tenants), "employees": employees, "failed": failed}
+
+
 # code -> handler. Every row in scheduled_jobs has one here and vice versa
 # (tests/core/test_worker.py); a new job is a seed row in a migration plus a
 # line here.
@@ -196,6 +237,8 @@ HANDLERS: dict[str, Callable[[], Awaitable[Any]]] = {
     # org data (3A, p3-orgdata): stale draft uploads and orphan blobs (0057)
     "files.gc": files.gc,
     "modules.purge": modules_service.run_due_purges,
+    "hrms.auto_checkout": run_auto_checkout,
+    "hrms.leave_entitlements": run_leave_entitlements,
 }
 
 

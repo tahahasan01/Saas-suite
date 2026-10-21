@@ -12,9 +12,11 @@ from __future__ import annotations
 
 import uuid
 
+import asyncpg
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
+from app.config import settings
 from app.main import app
 from tests.conftest import _drop, _signup
 
@@ -37,6 +39,12 @@ KIND_OF = {
     # org data (3A, p3-orgdata)
     "branch_id": "branch", "sequence_id": "sequence", "logo_file_id": "file",
     "team_id": "team", "lead_user_id": "user",
+    # HR org, attendance v2, holidays, leave v2 (3F)
+    "dept_id": "department", "department_id": "department", "parent_id": "department",
+    "title_id": "job_title", "job_title_id": "job_title", "location_id": "location",
+    "manager_id": "employee", "head_employee_id": "employee", "doc_id": "document",
+    "kiosk_id": "kiosk", "correction_id": "correction", "calendar_id": "calendar",
+    "blackout_id": "blackout", "leave_type_id": "leave_type",
 }
 
 # Path parameters that are not ids: a fixed, valid value.
@@ -44,7 +52,7 @@ PLAIN_PARAMS = {"section": "crm", "decision": "approve", "key": "crm"}
 
 # The /me/* portal never takes an id from the caller — it acts on the logged-in
 # employee only (tests/hrms/test_employee_portal.py proves the forcing).
-SKIP_PREFIXES = ("/me/",)
+SKIP_PREFIXES = ("/me/", "/kiosk/")   # /kiosk/{token}: the token is the credential (3F), no tenant ids
 
 
 async def _ids(c: AsyncClient) -> dict[str, str]:
@@ -80,12 +88,34 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
     activity = (await c.post("/activities", json={"entity_type": "lead", "entity_id": lead["id"],
                                                   "type_id": activity_type["id"], "due_date": "2027-04-05"})).json()
     team = (await c.post("/teams", json={"name": "Probe team"})).json()
+    # 3F records
+    dept = (await c.post("/hrms/departments", json={"name": "Probe dept"})).json()
+    title = (await c.post("/hrms/job-titles", json={"name": "Probe title"})).json()
+    loc = (await c.post("/hrms/locations", json={"name": "Probe site"})).json()
+    doc = (await c.post(f"/hrms/employees/{employee['id']}/documents", json={"title": "Probe doc"})).json()
+    kiosk = (await c.post("/hrms/kiosks", json={"location_id": loc["id"], "name": "Probe kiosk"})).json()
+    calendar = (await c.post("/hrms/holiday-calendars", json={"name": "Probe cal", "scope": "company"})).json()
+    blackout = (await c.post("/hrms/blackout-days", json={"name": "Probe", "date_from": "2027-05-01",
+                                                          "date_to": "2027-05-01"})).json()
+    leave_type = next(t for t in (await c.get("/hrms/leave-types")).json() if t["code"] == "casual")
+    # A correction is filed through /me; plant one directly for this tenant.
+    owner = await asyncpg.connect(settings.database_url)
+    try:
+        correction = await owner.fetchval(
+            """insert into hrms_attendance_corrections (tenant_id, employee_id, work_date, requested_out, reason)
+               select tenant_id, id, '2027-03-02', '2027-03-02T13:00:00Z', 'probe' from hrms_employees
+                where id=$1 returning id""", uuid.UUID(employee["id"]))
+    finally:
+        await owner.close()
     return {
         "activity_type": activity_type["id"], "activity": activity["id"],
         "lost_reason": (await c.get("/crm/lost-reasons")).json()[0]["id"],
         "contact": contact["id"], "company": company["id"], "address": address["id"], "tag": tag["id"],
         "review_item": review_item["id"],
         "shift": shift["id"], "team": team["id"],
+        "department": dept["id"], "job_title": title["id"], "location": loc["id"], "document": doc["id"],
+        "kiosk": kiosk["id"], "calendar": calendar["id"], "blackout": blackout["id"],
+        "leave_type": leave_type["id"], "correction": str(correction),
         "role": (await c.get("/team/roles")).json()[0]["id"],
         "user": (await c.get("/auth/me")).json()["user"]["id"],
         "pipeline": pipeline["id"], "stage": pipeline["stages"][0]["id"], "lead": lead["id"],
@@ -166,6 +196,8 @@ def _value(name: str, schema: dict, own: dict):
         return f"probe+{uuid.uuid4().hex[:8]}@example.com"
     if name == "password":
         return PASSWORD
+    if name == "pin":
+        return "4826"
     if schema.get("format") == "date":
         return "2027-04-05"
     return "Probe"

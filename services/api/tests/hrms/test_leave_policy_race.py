@@ -14,7 +14,7 @@ import asyncpg
 
 from app import db
 from app.config import settings
-from app.routers import hrms
+from app import leave
 
 
 async def _owner():
@@ -32,7 +32,7 @@ async def _drop_policy(tenant_id: str) -> None:
 
 
 async def _wait_for_blocked_insert(timeout: float = 5.0) -> None:
-    """Returns once some backend is waiting on a lock while inserting the policy row."""
+    """Returns once some backend is waiting on a lock while seeding leave types."""
     owner = await _owner()
     try:
         loop = asyncio.get_running_loop()
@@ -41,7 +41,7 @@ async def _wait_for_blocked_insert(timeout: float = 5.0) -> None:
             n = await owner.fetchval(
                 """select count(*) from pg_stat_activity
                     where wait_event_type = 'Lock'
-                      and query ilike 'insert into hrms_leave_policies%'""")
+                      and query ilike 'select hrms_seed_leave_types%'""")
             if n:
                 return
             await asyncio.sleep(0.02)
@@ -61,37 +61,46 @@ async def test_signup_creates_the_policy_row(client, tenant):
     assert (row["annual_days"], row["sick_days"], row["casual_days"]) == (14, 10, 10)
 
 
-async def test_loader_tolerates_a_row_inserted_by_another_connection(client, tenant):
-    """Deterministic version of the race: connection A creates the row and holds
-    its transaction open; B's loader runs, misses the uncommitted row and blocks
-    on the insert; A commits. B must return the row, not raise UniqueViolation."""
-    await _drop_policy(tenant.tenant_id)
+# Since 0068 the quotas live on hrms_leave_types, seeded on first use; the
+# same race (two first uses at once) must not 500 there either.
+async def test_seeding_tolerates_types_inserted_by_another_connection(client, tenant):
+    """Connection A seeds the types and holds its transaction open; B's seed
+    blocks on the same rows; A commits. B must carry on, not raise
+    UniqueViolation, and the tenant ends with one row per code."""
+    owner = await _owner()
+    try:
+        await owner.execute("delete from hrms_leave_types where tenant_id=$1", uuid.UUID(tenant.tenant_id))
+    finally:
+        await owner.close()
 
     async def second_loader():
         async with db.tenant_conn(tenant.tenant_id) as b:
-            return await hrms._policy(b, tenant.tenant_id)
+            await leave.ensure_types(b, tenant.tenant_id)
+            return await b.fetchval("select count(*) from hrms_leave_types")
 
     async with db.tenant_conn(tenant.tenant_id) as a:
-        first = await hrms._policy(a, tenant.tenant_id)
+        await leave.ensure_types(a, tenant.tenant_id)
         task = asyncio.create_task(second_loader())
         await _wait_for_blocked_insert()
-    # A has committed; B is now released.
-    second = await asyncio.wait_for(task, timeout=5)
-    assert second["tenant_id"] == first["tenant_id"]
-    assert second["annual_days"] == 14
+    assert await asyncio.wait_for(task, timeout=5) == 6
 
 
-async def test_loader_returns_an_existing_row(client, tenant):
+async def test_seeding_twice_changes_nothing(client, tenant):
     async with db.tenant_conn(tenant.tenant_id) as conn:
-        a = await hrms._policy(conn, tenant.tenant_id)
-        b = await hrms._policy(conn, tenant.tenant_id)
-    assert a == b
+        await leave.ensure_types(conn, tenant.tenant_id)
+        first = await conn.fetch("select code, days_per_year from hrms_leave_types order by code")
+        await leave.ensure_types(conn, tenant.tenant_id)
+        again = await conn.fetch("select code, days_per_year from hrms_leave_types order by code")
+    assert first == again
+    assert dict((r["code"], r["days_per_year"]) for r in first)["annual"] == 14
 
 
 async def test_concurrent_approvals_on_a_tenant_without_a_policy_row(client, tenant):
     employees = (await client.get("/hrms/employees")).json()
     assert len(employees) >= 2, "sample data should seed several employees"
     base = date.today() + timedelta(days=60)
+    while base.weekday() != 0:   # a Monday: a Sunday-only request is now refused as no working days (0068)
+        base += timedelta(days=1)
     for attempt in range(5):
         await _drop_policy(tenant.tenant_id)
         ids = []

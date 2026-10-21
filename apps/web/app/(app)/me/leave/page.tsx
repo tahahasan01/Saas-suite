@@ -1,59 +1,82 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { LEAVE_TYPES, type Leave } from "@business-os/types";
+import type { Leave, LeaveBalanceV2, LeaveType } from "@business-os/types";
 import { api } from "@/lib/api";
+import { formatDay } from "@/lib/format";
 import { errorText, useAction } from "@/lib/useAction";
+import { useConfirm } from "@/components/Confirm";
 import { DataTable, type Column } from "@/components/DataTable";
-import { Badge, Button, Card, EmptyState, ErrorState, Field, Input, Select } from "@/components/ui";
+import { LeaveRequestForm, daysLabel, halvesLabel, leaveTone, stepLabel, type LeaveDraft } from "@/components/hrms/LeaveRequestForm";
+import { Badge, Button, Card, EmptyState, ErrorState } from "@/components/ui";
 
-interface Balance { leave_type: string; quota: number; used: number; remaining: number }
-
-const tone = { pending: "warning", approved: "success", rejected: "danger" } as const;
-const blank = { request_type: "leave", leave_type: "annual", from_date: "", to_date: "", reason: "" };
-
-const columns: Column<Leave>[] = [
-  {
-    key: "type", header: "Type", primary: true,
-    cell: (l) => l.request_type === "wfh" ? <Badge tone="brand">Work from home</Badge>
-      : <span className="capitalize">{l.leave_type} leave</span>,
-  },
-  { key: "dates", header: "Dates", cell: (l) => <span className="whitespace-nowrap tabular-nums text-fg-muted">{l.from_date} → {l.to_date}</span> },
-  { key: "status", header: "Status", cell: (l) => <Badge tone={tone[l.status]}>{l.status}</Badge> },
-];
+const day = (d: string) => formatDay(d, { day: "numeric", month: "short" });
 
 export default function MyLeave() {
   const [items, setItems] = useState<Leave[] | null>(null); // null = loading
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [balances, setBalances] = useState<Balance[]>([]);
+  const [balances, setBalances] = useState<LeaveBalanceV2[]>([]);
   const [balancesError, setBalancesError] = useState<string | null>(null);
-  const [form, setForm] = useState(blank);
+  const [types, setTypes] = useState<LeaveType[]>([]);
+  const confirm = useConfirm();
 
   const load = useCallback(() => {
     setLoadError(null);
     api<Leave[]>("/me/leave").then(setItems).catch((e) => setLoadError(errorText(e, "Couldn't load your requests.")));
     setBalancesError(null);
-    api<Balance[]>("/me/leave/balances").then(setBalances)
+    api<LeaveBalanceV2[]>("/me/leave/balances").then(setBalances)
       .catch((e) => { setBalances([]); setBalancesError(errorText(e, "Couldn't load your leave balances.")); });
+    api<LeaveType[]>("/me/leave-types").then(setTypes).catch(() => setTypes([]));
   }, []);
   useEffect(load, [load]);
 
   // Busy-guarded: a double tap filed two identical requests before. The
-  // server's reason (overlap, not enough balance) comes back in the toast.
+  // server's reason (overlap, a blackout, half-day rules) comes back in the toast.
   const submitAction = useAction(
     // employee_id is ignored server-side and forced to the caller.
-    () => api("/me/leave", { method: "POST", body: JSON.stringify({ ...form, employee_id: "self" }) }),
+    (d: LeaveDraft) => api("/me/leave", { method: "POST", body: JSON.stringify({ ...d, employee_id: "self" }) }),
     { success: "Request submitted — your manager will review it.", failure: "Couldn't submit that request" },
   );
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if ((await submitAction.run()) === undefined) return;
-    setForm(blank);
-    load();
+  async function submit(d: LeaveDraft) {
+    const ok = (await submitAction.run(d)) !== undefined;
+    if (ok) load();
+    return ok;
   }
 
-  const isWfh = form.request_type === "wfh";
+  const cancelAction = useAction(
+    (l: Leave) => api(`/me/leave/${l.id}/cancel`, { method: "POST" }),
+    { success: "Request cancelled", failure: "Couldn't cancel that request" },
+  );
+  function onCancel(l: Leave) {
+    void confirm({
+      title: "Cancel this request?",
+      body: l.status === "approved" ? "The days go back to your balance." : "Your manager won't see it any more.",
+      confirmLabel: "Cancel request",
+      cancelLabel: "Keep it",
+      busyLabel: "Cancelling…",
+      tone: "danger",
+      run: async () => { const done = (await cancelAction.run(l)) !== undefined; load(); return done; },
+    });
+  }
+
+  const columns: Column<Leave>[] = [
+    {
+      key: "type", header: "Type", primary: true,
+      cell: (l) => l.request_type === "wfh" ? <Badge tone="brand">Work from home</Badge>
+        : <span>{l.leave_type_name || l.leave_type}</span>,
+    },
+    {
+      key: "dates", header: "Dates",
+      cell: (l) => (
+        <span className="whitespace-nowrap tabular-nums text-fg-muted">
+          {l.from_date === l.to_date ? day(l.from_date) : `${day(l.from_date)} → ${day(l.to_date)}`}
+          {halvesLabel(l) && <span className="text-fg-subtle"> · {halvesLabel(l)}</span>}
+        </span>
+      ),
+    },
+    { key: "days", header: "Days", cell: (l) => <span className="tabular-nums">{daysLabel(l.duration_days)}</span> },
+    { key: "status", header: "Status", cell: (l) => <Badge tone={leaveTone[l.status]}>{stepLabel(l)}</Badge> },
+  ];
 
   return (
     <div className="mx-auto grid max-w-4xl gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
@@ -67,6 +90,9 @@ export default function MyLeave() {
             rowKey={(l) => l.id}
             loading={!items}
             caption="My leave and work-from-home requests"
+            actions={(l) => (l.status === "pending" || l.status === "approved") ? (
+              <Button size="sm" variant="ghost" onClick={() => onCancel(l)} aria-label={`Cancel request from ${l.from_date}`}>Cancel</Button>
+            ) : null}
             empty={<EmptyState title="No requests yet." hint="Use the form to ask for leave or a work-from-home day." />}
           />
         )}
@@ -78,34 +104,15 @@ export default function MyLeave() {
           {balances.map((b) => (
             <Card key={b.leave_type} className="p-3 text-center">
               <p className="text-lg font-semibold tabular-nums">{b.remaining}</p>
-              <p className="text-[10px] capitalize text-fg-subtle">{b.leave_type} left</p>
+              <p className="text-[10px] text-fg-subtle">{b.name || b.leave_type} left</p>
+              {b.pending > 0 && <p className="text-[10px] text-warning">{b.pending} pending</p>}
             </Card>
           ))}
         </div>
 
         <Card className="space-y-3">
           <h2 className="text-sm font-semibold">New request</h2>
-          <form onSubmit={submit} className="space-y-3">
-            <Field label="Request">
-              <Select value={form.request_type} onChange={(e) => setForm({ ...form, request_type: e.target.value })}>
-                <option value="leave">Leave</option>
-                <option value="wfh">Work from home</option>
-              </Select>
-            </Field>
-            {!isWfh && (
-              <Field label="Leave type">
-                <Select value={form.leave_type} onChange={(e) => setForm({ ...form, leave_type: e.target.value })}>
-                  {LEAVE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                </Select>
-              </Field>
-            )}
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="From"><Input type="date" value={form.from_date} required onChange={(e) => setForm({ ...form, from_date: e.target.value })} /></Field>
-              <Field label="To"><Input type="date" value={form.to_date} min={form.from_date || undefined} required onChange={(e) => setForm({ ...form, to_date: e.target.value })} /></Field>
-            </div>
-            <Field label="Reason"><Input value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} /></Field>
-            <Button type="submit" disabled={submitAction.busy} className="w-full">{submitAction.busy ? "Submitting…" : "Submit"}</Button>
-          </form>
+          <LeaveRequestForm types={types} busy={submitAction.busy} onSubmit={submit} />
         </Card>
       </div>
     </div>
