@@ -39,6 +39,7 @@ module = [
     "app.crypto",
     "app.monitor",
     "app.obs",
+    "app.phone",
     "app.pricing",
     "app.routers.meta",
     "app.secheaders",
