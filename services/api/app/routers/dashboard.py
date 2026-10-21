@@ -37,33 +37,36 @@ select d::date as day, count(l.id)::bigint as value
 #
 # left join so an empty stage plots as a real zero rather than vanishing — a
 # missing "Proposal sent" column reads as "no such stage", not "nothing in it".
-# 'lost' is excluded: it isn't pipeline, and including it would dominate the
-# axis for anyone with a long history.
+# Lost leads are excluded: they aren't pipeline, and including them would
+# dominate the axis for anyone with a long history. Since 0062 lost is a
+# status (the lead keeps its stage), so it is filtered on the lead.
 _PIPELINE = """
 select s.name, s.kind,
        count(l.id)::bigint as count,
        coalesce(sum(l.value_minor), 0)::bigint as value
   from crm_stages s
-  left join crm_leads l on l.stage_id = s.id
- where s.kind <> 'lost'
+  left join crm_leads l on l.stage_id = s.id and l.status <> 'lost'
  group by s.id, s.name, s.kind, s.position
  order by s.position
 """
 
+# Won month-to-date counts by won_at (0062), not by the last edit; "stale"
+# is an open lead nobody has touched for a week (its "created" event aside).
 _CRM = """
-select count(*) filter (where s.kind = 'active') as open_leads,
+select count(*) filter (where l.status = 'open') as open_leads,
        coalesce(sum(l.value_minor) filter (
-         where s.kind = 'won' and l.updated_at >= date_trunc('month', current_date)), 0) as won_mtd,
+         where l.status = 'won' and l.won_at >= date_trunc('month', current_date)), 0) as won_mtd,
        coalesce(sum(l.value_minor) filter (
-         where s.kind = 'won'
-           and l.updated_at >= date_trunc('month', current_date) - interval '1 month'
-           and l.updated_at <  date_trunc('month', current_date)), 0) as won_prev,
+         where l.status = 'won'
+           and l.won_at >= date_trunc('month', current_date) - interval '1 month'
+           and l.won_at <  date_trunc('month', current_date)), 0) as won_prev,
        count(*) filter (
-         where s.kind = 'active'
-           and not exists (select 1 from crm_interactions i
-                            where i.lead_id = l.id and i.created_at > now() - interval '7 days')
+         where l.status = 'open'
+           and not exists (select 1 from timeline_events e
+                            where e.entity_type = 'lead' and e.entity_id = l.id and e.kind <> 'system'
+                              and e.occurred_at > now() - interval '7 days')
        ) as stale
-  from crm_leads l join crm_stages s on s.id = l.stage_id
+  from crm_leads l
 """
 
 _POS = """

@@ -175,9 +175,19 @@ InteractionChannel = Literal["call", "whatsapp", "email", "note", "bot"]
 InteractionOutcome = Literal["interested", "not_interested", "callback", "busy"]
 INTERACTION_CHANNELS = list(get_args(InteractionChannel))
 INTERACTION_OUTCOMES = list(get_args(InteractionOutcome))
-STAGE_KINDS = ["active", "won", "lost"]
+STAGE_KINDS = ["active", "won", "lost"]   # legacy column, kept one release (0062)
 InvoiceStatus = Literal["pending", "approved", "rejected"]
 INVOICE_STATUSES = list(get_args(InvoiceStatus))
+LeadStatus = Literal["open", "won", "lost"]
+LEAD_STATUSES = list(get_args(LeadStatus))
+# Activities (D-32, 0063). Polymorphic: 'contact' arrives with the contacts module.
+ActivityEntity = Literal["lead", "contact"]
+ACTIVITY_ENTITIES = list(get_args(ActivityEntity))
+ActivityIcon = Literal["call", "whatsapp", "meeting", "visit", "todo", "quote", "payment"]
+ACTIVITY_ICONS = list(get_args(ActivityIcon))
+ACTIVITY_TYPE_CODES = ACTIVITY_ICONS        # seeded types: code == icon
+ActivityState = Literal["overdue", "today", "planned", "done", "cancelled"]
+ACTIVITY_STATES = list(get_args(ActivityState))
 
 
 class StageOut(BaseModel):
@@ -185,6 +195,11 @@ class StageOut(BaseModel):
     name: str
     position: int
     kind: str
+    is_won: bool = False
+    fold: bool = False
+    rotting_days: int | None = None
+    default_probability: int | None = None
+    requirements: str = ""
 
 
 class PipelineOut(BaseModel):
@@ -192,6 +207,53 @@ class PipelineOut(BaseModel):
     name: str
     is_default: bool
     stages: list[StageOut]
+
+
+class PipelineCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+
+
+class PipelineUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=80)
+    is_default: bool | None = None
+
+
+class StageCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=60)
+    is_won: bool = False
+    fold: bool = False
+    rotting_days: int | None = Field(default=None, ge=1, le=365)
+    default_probability: int | None = Field(default=None, ge=0, le=100)
+    requirements: str = Field(default="", max_length=500)
+
+
+class StageUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=60)
+    is_won: bool | None = None
+    fold: bool | None = None
+    rotting_days: int | None = Field(default=None, ge=1, le=365)
+    default_probability: int | None = Field(default=None, ge=0, le=100)
+    requirements: str | None = Field(default=None, max_length=500)
+
+
+class StageOrder(BaseModel):
+    stage_ids: list[str] = Field(min_length=1, max_length=50)
+
+
+class LostReasonOut(BaseModel):
+    id: str
+    name: str
+    active: bool
+    position: int
+
+
+class LostReasonCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+
+
+class LostReasonUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=80)
+    position: int | None = Field(default=None, ge=0, le=1000)
 
 
 class LeadOut(BaseModel):
@@ -209,6 +271,21 @@ class LeadOut(BaseModel):
     score: int | None
     created_at: datetime
     stage_kind: str | None = None
+    status: LeadStatus = "open"
+    lost_reason_id: str | None = None
+    lost_reason: str | None = None
+    lost_note: str | None = None
+    won_at: datetime | None = None
+    lost_at: datetime | None = None
+    probability: int | None = None
+    probability_is_manual: bool = False
+    weighted_value_minor: int = 0
+    expected_close_date: date | None = None
+    priority: int = 0
+    stage_entered_at: datetime | None = None
+    # Worst state among the lead's open activities, and the earliest due day.
+    activity_state: Literal["overdue", "today", "planned"] | None = None
+    next_activity_date: date | None = None
 
 
 class LeadCreate(BaseModel):
@@ -220,6 +297,8 @@ class LeadCreate(BaseModel):
     value_minor: int = 0
     pipeline_id: str | None = None
     stage_id: str | None = None
+    priority: int = Field(default=0, ge=0, le=3)
+    expected_close_date: date | None = None
     force: bool = False  # create even if a possible duplicate is detected
 
 
@@ -231,6 +310,17 @@ class LeadUpdate(BaseModel):
     email: str | None = None
     value_minor: int | None = None
     owner_id: str | None = None
+    # Setting a probability makes it manual; probability_auto=true hands it
+    # back to the stage.
+    probability: int | None = Field(default=None, ge=0, le=100)
+    probability_auto: bool | None = None
+    priority: int | None = Field(default=None, ge=0, le=3)
+    expected_close_date: date | None = None
+
+
+class LeadLost(BaseModel):
+    lost_reason_id: str | None = None
+    lost_note: str | None = Field(default=None, max_length=2000)
 
 
 class DuplicateMatch(BaseModel):
@@ -257,9 +347,171 @@ class InteractionCreate(BaseModel):
     next_follow_up_at: datetime | None = None
 
 
+class TimelineChange(BaseModel):
+    field: str
+    label: str
+    old: object = None
+    new: object = None
+    old_label: str | None = None
+    new_label: str | None = None
+    masked: bool = False
+
+
+class TimelineEventOut(BaseModel):
+    id: str
+    kind: str
+    actor_id: str | None
+    actor_name: str | None
+    body: str | None
+    changes: list[TimelineChange]
+    payload: dict | None
+    occurred_at: datetime
+
+
+class TimelinePage(BaseModel):
+    items: list[TimelineEventOut]
+    next_cursor: str | None
+
+
+class NoteCreate(BaseModel):
+    body: str = Field(min_length=1, max_length=4000)
+
+    @field_validator("body")
+    @classmethod
+    def _not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("A note can't be empty")
+        return v.strip()
+
+
+class ActivityTypeOut(BaseModel):
+    id: str
+    name: str
+    code: str | None
+    icon: ActivityIcon
+    default_days: int
+    position: int
+    active: bool
+
+
+class ActivityTypeCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=60)
+    icon: ActivityIcon = "todo"
+    default_days: int = Field(default=0, ge=0, le=365)
+
+
+class ActivityTypeUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=60)
+    icon: ActivityIcon | None = None
+    default_days: int | None = Field(default=None, ge=0, le=365)
+    position: int | None = Field(default=None, ge=0, le=1000)
+
+
+class ActivityOut(BaseModel):
+    id: str
+    entity_type: ActivityEntity
+    entity_id: str
+    entity_name: str | None
+    type_id: str
+    type_name: str
+    type_icon: str
+    summary: str
+    note: str
+    due_date: date
+    due_at: datetime | None
+    assigned_to: str | None
+    assigned_name: str | None
+    automated: bool
+    state: ActivityState
+    done_at: datetime | None
+    outcome: str | None
+    feedback: str
+    created_at: datetime
+
+
+class ActivityCreate(BaseModel):
+    entity_type: ActivityEntity = "lead"
+    entity_id: str
+    type_id: str
+    summary: str = Field(default="", max_length=200)
+    note: str = Field(default="", max_length=4000)
+    due_date: date
+    due_at: datetime | None = None
+    assigned_to: str | None = None
+
+
+class ActivityUpdate(BaseModel):
+    type_id: str | None = None
+    summary: str | None = Field(default=None, max_length=200)
+    note: str | None = Field(default=None, max_length=4000)
+    due_date: date | None = None
+    due_at: datetime | None = None
+    assigned_to: str | None = None
+
+
+class ActivityNext(BaseModel):
+    type_id: str
+    due_date: date
+    summary: str = Field(default="", max_length=200)
+
+
+class ActivityDone(BaseModel):
+    outcome: InteractionOutcome | None = None
+    feedback: str = Field(default="", max_length=4000)
+    next: ActivityNext | None = None
+
+
+class ActivitySnooze(BaseModel):
+    days: int = Field(ge=1, le=60)
+
+
+class ActivitySummary(BaseModel):
+    overdue: int
+    today: int
+    planned: int
+
+
 class LeadDetail(BaseModel):
     lead: LeadOut
-    interactions: list[InteractionOut]
+    timeline: list[TimelineEventOut]
+    activities: list[ActivityOut]
+
+
+class FunnelRow(BaseModel):
+    stage_id: str
+    stage: str
+    is_won: bool
+    reached: int
+    value_minor: int
+    conversion_pct: int | None
+
+
+class LostReasonRow(BaseModel):
+    reason: str
+    count: int
+    value_minor: int
+
+
+class SourceRow(BaseModel):
+    source: str
+    leads: int
+    open: int
+    won: int
+    lost: int
+    won_value_minor: int
+    win_rate_pct: int | None
+
+
+class FunnelReport(BaseModel):
+    rows: list[FunnelRow]
+
+
+class LostReasonsReport(BaseModel):
+    rows: list[LostReasonRow]
+
+
+class SourcesReport(BaseModel):
+    rows: list[SourceRow]
 
 
 class CrmSummary(BaseModel):
@@ -833,7 +1085,9 @@ class NotificationList(BaseModel):
 
 
 # ── Workflows (ECA automations) ─────────────────────────────────────────────
-WorkflowTrigger = Literal["lead.created", "lead.stage_changed", "interaction.logged"]
+WorkflowTrigger = Literal["lead.created", "lead.stage_changed", "interaction.logged",
+                          "lead.won", "lead.lost", "lead.restored",
+                          "activity.done", "activity.overdue", "contact.created"]
 WORKFLOW_TRIGGERS = list(get_args(WorkflowTrigger))
 
 # ── Worker jobs (0043; platform tables, read by app/jobs.py) ────────────────

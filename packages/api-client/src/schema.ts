@@ -363,23 +363,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/crm/pipelines": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Pipelines */
-        get: operations["list_pipelines_crm_pipelines_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/crm/leads/import": {
         parameters: {
             query?: never;
@@ -513,6 +496,91 @@ export interface paths {
         patch: operations["update_lead_crm_leads__lead_id__patch"];
         trace?: never;
     };
+    "/crm/leads/{lead_id}/won": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Win Lead */
+        post: operations["win_lead_crm_leads__lead_id__won_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/leads/{lead_id}/lost": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Lose Lead */
+        post: operations["lose_lead_crm_leads__lead_id__lost_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/leads/{lead_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore Lead */
+        post: operations["restore_lead_crm_leads__lead_id__restore_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/leads/{lead_id}/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lead Timeline */
+        get: operations["lead_timeline_crm_leads__lead_id__timeline_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/leads/{lead_id}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Note */
+        post: operations["add_note_crm_leads__lead_id__notes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/crm/leads/{lead_id}/interactions": {
         parameters: {
             query?: never;
@@ -522,7 +590,12 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Log Interaction */
+        /**
+         * Log Interaction
+         * @description The pre-activities way to log a contact, kept for API callers: the
+         *     contact lands on the timeline (kind 'note' or 'call'), a follow-up time
+         *     becomes a planned activity, and `interaction.logged` still fires.
+         */
         post: operations["log_interaction_crm_leads__lead_id__interactions_post"];
         delete?: never;
         options?: never;
@@ -1678,6 +1751,327 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/crm/pipelines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Pipelines */
+        get: operations["list_pipelines_crm_pipelines_get"];
+        put?: never;
+        /** Create Pipeline */
+        post: operations["create_pipeline_crm_pipelines_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/pipelines/{pipeline_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Pipeline */
+        delete: operations["delete_pipeline_crm_pipelines__pipeline_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Pipeline */
+        patch: operations["update_pipeline_crm_pipelines__pipeline_id__patch"];
+        trace?: never;
+    };
+    "/crm/pipelines/{pipeline_id}/stages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Stage */
+        post: operations["create_stage_crm_pipelines__pipeline_id__stages_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/pipelines/{pipeline_id}/stages/{stage_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Stage */
+        delete: operations["delete_stage_crm_pipelines__pipeline_id__stages__stage_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Stage */
+        patch: operations["update_stage_crm_pipelines__pipeline_id__stages__stage_id__patch"];
+        trace?: never;
+    };
+    "/crm/pipelines/{pipeline_id}/stages/order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Reorder Stages */
+        put: operations["reorder_stages_crm_pipelines__pipeline_id__stages_order_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/lost-reasons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Lost Reasons */
+        get: operations["list_lost_reasons_crm_lost_reasons_get"];
+        put?: never;
+        /** Create Lost Reason */
+        post: operations["create_lost_reason_crm_lost_reasons_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/lost-reasons/{reason_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Lost Reason
+         * @description Unused: deleted. In use: retired, so past losses keep their reason.
+         */
+        delete: operations["delete_lost_reason_crm_lost_reasons__reason_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Lost Reason */
+        patch: operations["update_lost_reason_crm_lost_reasons__reason_id__patch"];
+        trace?: never;
+    };
+    "/crm/reports/funnel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Funnel */
+        get: operations["funnel_crm_reports_funnel_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/reports/lost-reasons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lost Reasons */
+        get: operations["lost_reasons_crm_reports_lost_reasons_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/reports/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Sources */
+        get: operations["sources_crm_reports_sources_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Activities */
+        get: operations["list_activities_activities_get"];
+        put?: never;
+        /** Create Activity */
+        post: operations["create_activity_activities_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/activities/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Activity Summary */
+        get: operations["activity_summary_activities_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/activities/{activity_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Activity */
+        patch: operations["update_activity_activities__activity_id__patch"];
+        trace?: never;
+    };
+    "/activities/{activity_id}/done": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete Activity */
+        post: operations["complete_activity_activities__activity_id__done_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/activities/{activity_id}/snooze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Snooze Activity */
+        post: operations["snooze_activity_activities__activity_id__snooze_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/activities/{activity_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Activity */
+        post: operations["cancel_activity_activities__activity_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/activity-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Activity Types */
+        get: operations["list_activity_types_activity_types_get"];
+        put?: never;
+        /** Create Activity Type */
+        post: operations["create_activity_type_activity_types_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/activity-types/{type_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Activity Type
+         * @description Retires the type: it leaves the picker, old activities keep their label,
+         *     and automations naming it fall back to To-do.
+         */
+        delete: operations["delete_activity_type_activity_types__type_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Activity Type */
+        patch: operations["update_activity_type_activity_types__type_id__patch"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1690,6 +2084,49 @@ export interface components {
             name: string;
             /** Password */
             password: string;
+        };
+        /** ActivityCreate */
+        ActivityCreate: {
+            /**
+             * Entity Type
+             * @default lead
+             * @enum {string}
+             */
+            entity_type: "lead" | "contact";
+            /** Entity Id */
+            entity_id: string;
+            /** Type Id */
+            type_id: string;
+            /**
+             * Summary
+             * @default
+             */
+            summary: string;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+            /**
+             * Due Date
+             * Format: date
+             */
+            due_date: string;
+            /** Due At */
+            due_at?: string | null;
+            /** Assigned To */
+            assigned_to?: string | null;
+        };
+        /** ActivityDone */
+        ActivityDone: {
+            /** Outcome */
+            outcome?: ("interested" | "not_interested" | "callback" | "busy") | null;
+            /**
+             * Feedback
+             * @default
+             */
+            feedback: string;
+            next?: components["schemas"]["ActivityNext"] | null;
         };
         /** ActivityItem */
         ActivityItem: {
@@ -1704,6 +2141,150 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** ActivityNext */
+        ActivityNext: {
+            /** Type Id */
+            type_id: string;
+            /**
+             * Due Date
+             * Format: date
+             */
+            due_date: string;
+            /**
+             * Summary
+             * @default
+             */
+            summary: string;
+        };
+        /** ActivityOut */
+        ActivityOut: {
+            /** Id */
+            id: string;
+            /**
+             * Entity Type
+             * @enum {string}
+             */
+            entity_type: "lead" | "contact";
+            /** Entity Id */
+            entity_id: string;
+            /** Entity Name */
+            entity_name: string | null;
+            /** Type Id */
+            type_id: string;
+            /** Type Name */
+            type_name: string;
+            /** Type Icon */
+            type_icon: string;
+            /** Summary */
+            summary: string;
+            /** Note */
+            note: string;
+            /**
+             * Due Date
+             * Format: date
+             */
+            due_date: string;
+            /** Due At */
+            due_at: string | null;
+            /** Assigned To */
+            assigned_to: string | null;
+            /** Assigned Name */
+            assigned_name: string | null;
+            /** Automated */
+            automated: boolean;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "overdue" | "today" | "planned" | "done" | "cancelled";
+            /** Done At */
+            done_at: string | null;
+            /** Outcome */
+            outcome: string | null;
+            /** Feedback */
+            feedback: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** ActivitySnooze */
+        ActivitySnooze: {
+            /** Days */
+            days: number;
+        };
+        /** ActivitySummary */
+        ActivitySummary: {
+            /** Overdue */
+            overdue: number;
+            /** Today */
+            today: number;
+            /** Planned */
+            planned: number;
+        };
+        /** ActivityTypeCreate */
+        ActivityTypeCreate: {
+            /** Name */
+            name: string;
+            /**
+             * Icon
+             * @default todo
+             * @enum {string}
+             */
+            icon: "call" | "whatsapp" | "meeting" | "visit" | "todo" | "quote" | "payment";
+            /**
+             * Default Days
+             * @default 0
+             */
+            default_days: number;
+        };
+        /** ActivityTypeOut */
+        ActivityTypeOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Code */
+            code: string | null;
+            /**
+             * Icon
+             * @enum {string}
+             */
+            icon: "call" | "whatsapp" | "meeting" | "visit" | "todo" | "quote" | "payment";
+            /** Default Days */
+            default_days: number;
+            /** Position */
+            position: number;
+            /** Active */
+            active: boolean;
+        };
+        /** ActivityTypeUpdate */
+        ActivityTypeUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Icon */
+            icon?: ("call" | "whatsapp" | "meeting" | "visit" | "todo" | "quote" | "payment") | null;
+            /** Default Days */
+            default_days?: number | null;
+            /** Position */
+            position?: number | null;
+        };
+        /** ActivityUpdate */
+        ActivityUpdate: {
+            /** Type Id */
+            type_id?: string | null;
+            /** Summary */
+            summary?: string | null;
+            /** Note */
+            note?: string | null;
+            /** Due Date */
+            due_date?: string | null;
+            /** Due At */
+            due_at?: string | null;
+            /** Assigned To */
+            assigned_to?: string | null;
         };
         /** Alert */
         Alert: {
@@ -2123,6 +2704,26 @@ export interface components {
                 [key: string]: unknown;
             }[];
         };
+        /** FunnelReport */
+        FunnelReport: {
+            /** Rows */
+            rows: components["schemas"]["FunnelRow"][];
+        };
+        /** FunnelRow */
+        FunnelRow: {
+            /** Stage Id */
+            stage_id: string;
+            /** Stage */
+            stage: string;
+            /** Is Won */
+            is_won: boolean;
+            /** Reached */
+            reached: number;
+            /** Value Minor */
+            value_minor: number;
+            /** Conversion Pct */
+            conversion_pct: number | null;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -2317,6 +2918,13 @@ export interface components {
             /** Stage Id */
             stage_id?: string | null;
             /**
+             * Priority
+             * @default 0
+             */
+            priority: number;
+            /** Expected Close Date */
+            expected_close_date?: string | null;
+            /**
              * Force
              * @default false
              */
@@ -2325,8 +2933,17 @@ export interface components {
         /** LeadDetail */
         LeadDetail: {
             lead: components["schemas"]["LeadOut"];
-            /** Interactions */
-            interactions: components["schemas"]["InteractionOut"][];
+            /** Timeline */
+            timeline: components["schemas"]["TimelineEventOut"][];
+            /** Activities */
+            activities: components["schemas"]["ActivityOut"][];
+        };
+        /** LeadLost */
+        LeadLost: {
+            /** Lost Reason Id */
+            lost_reason_id?: string | null;
+            /** Lost Note */
+            lost_note?: string | null;
         };
         /** LeadOut */
         LeadOut: {
@@ -2361,6 +2978,47 @@ export interface components {
             created_at: string;
             /** Stage Kind */
             stage_kind?: string | null;
+            /**
+             * Status
+             * @default open
+             * @enum {string}
+             */
+            status: "open" | "won" | "lost";
+            /** Lost Reason Id */
+            lost_reason_id?: string | null;
+            /** Lost Reason */
+            lost_reason?: string | null;
+            /** Lost Note */
+            lost_note?: string | null;
+            /** Won At */
+            won_at?: string | null;
+            /** Lost At */
+            lost_at?: string | null;
+            /** Probability */
+            probability?: number | null;
+            /**
+             * Probability Is Manual
+             * @default false
+             */
+            probability_is_manual: boolean;
+            /**
+             * Weighted Value Minor
+             * @default 0
+             */
+            weighted_value_minor: number;
+            /** Expected Close Date */
+            expected_close_date?: string | null;
+            /**
+             * Priority
+             * @default 0
+             */
+            priority: number;
+            /** Stage Entered At */
+            stage_entered_at?: string | null;
+            /** Activity State */
+            activity_state?: ("overdue" | "today" | "planned") | null;
+            /** Next Activity Date */
+            next_activity_date?: string | null;
         };
         /** LeadUpdate */
         LeadUpdate: {
@@ -2378,6 +3036,14 @@ export interface components {
             value_minor?: number | null;
             /** Owner Id */
             owner_id?: string | null;
+            /** Probability */
+            probability?: number | null;
+            /** Probability Auto */
+            probability_auto?: boolean | null;
+            /** Priority */
+            priority?: number | null;
+            /** Expected Close Date */
+            expected_close_date?: string | null;
         };
         /** LeaveBalance */
         LeaveBalance: {
@@ -2497,6 +3163,43 @@ export interface components {
             /** Password */
             password: string;
         };
+        /** LostReasonCreate */
+        LostReasonCreate: {
+            /** Name */
+            name: string;
+        };
+        /** LostReasonOut */
+        LostReasonOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Active */
+            active: boolean;
+            /** Position */
+            position: number;
+        };
+        /** LostReasonRow */
+        LostReasonRow: {
+            /** Reason */
+            reason: string;
+            /** Count */
+            count: number;
+            /** Value Minor */
+            value_minor: number;
+        };
+        /** LostReasonUpdate */
+        LostReasonUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Position */
+            position?: number | null;
+        };
+        /** LostReasonsReport */
+        LostReasonsReport: {
+            /** Rows */
+            rows: components["schemas"]["LostReasonRow"][];
+        };
         /** MeResponse */
         MeResponse: {
             user: components["schemas"]["UserOut"];
@@ -2522,6 +3225,11 @@ export interface components {
             count: number;
             /** Total Minor */
             total_minor: number;
+        };
+        /** NoteCreate */
+        NoteCreate: {
+            /** Body */
+            body: string;
         };
         /** NotificationList */
         NotificationList: {
@@ -2644,6 +3352,11 @@ export interface components {
              */
             tax_rates_verified: boolean;
         };
+        /** PipelineCreate */
+        PipelineCreate: {
+            /** Name */
+            name: string;
+        };
         /** PipelineOut */
         PipelineOut: {
             /** Id */
@@ -2654,6 +3367,13 @@ export interface components {
             is_default: boolean;
             /** Stages */
             stages: components["schemas"]["StageOut"][];
+        };
+        /** PipelineUpdate */
+        PipelineUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Is Default */
+            is_default?: boolean | null;
         };
         /** PlanOut */
         PlanOut: {
@@ -3320,6 +4040,57 @@ export interface components {
              */
             sample_data: boolean;
         };
+        /** SourceRow */
+        SourceRow: {
+            /** Source */
+            source: string;
+            /** Leads */
+            leads: number;
+            /** Open */
+            open: number;
+            /** Won */
+            won: number;
+            /** Lost */
+            lost: number;
+            /** Won Value Minor */
+            won_value_minor: number;
+            /** Win Rate Pct */
+            win_rate_pct: number | null;
+        };
+        /** SourcesReport */
+        SourcesReport: {
+            /** Rows */
+            rows: components["schemas"]["SourceRow"][];
+        };
+        /** StageCreate */
+        StageCreate: {
+            /** Name */
+            name: string;
+            /**
+             * Is Won
+             * @default false
+             */
+            is_won: boolean;
+            /**
+             * Fold
+             * @default false
+             */
+            fold: boolean;
+            /** Rotting Days */
+            rotting_days?: number | null;
+            /** Default Probability */
+            default_probability?: number | null;
+            /**
+             * Requirements
+             * @default
+             */
+            requirements: string;
+        };
+        /** StageOrder */
+        StageOrder: {
+            /** Stage Ids */
+            stage_ids: string[];
+        };
         /** StageOut */
         StageOut: {
             /** Id */
@@ -3330,6 +4101,25 @@ export interface components {
             position: number;
             /** Kind */
             kind: string;
+            /**
+             * Is Won
+             * @default false
+             */
+            is_won: boolean;
+            /**
+             * Fold
+             * @default false
+             */
+            fold: boolean;
+            /** Rotting Days */
+            rotting_days?: number | null;
+            /** Default Probability */
+            default_probability?: number | null;
+            /**
+             * Requirements
+             * @default
+             */
+            requirements: string;
         };
         /**
          * StageSlice
@@ -3346,6 +4136,21 @@ export interface components {
             count: number;
             /** Value */
             value: number;
+        };
+        /** StageUpdate */
+        StageUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Is Won */
+            is_won?: boolean | null;
+            /** Fold */
+            fold?: boolean | null;
+            /** Rotting Days */
+            rotting_days?: number | null;
+            /** Default Probability */
+            default_probability?: number | null;
+            /** Requirements */
+            requirements?: string | null;
         };
         /** SupplierCreate */
         SupplierCreate: {
@@ -3414,6 +4219,57 @@ export interface components {
             labels: {
                 [key: string]: string;
             };
+        };
+        /** TimelineChange */
+        TimelineChange: {
+            /** Field */
+            field: string;
+            /** Label */
+            label: string;
+            /** Old */
+            old?: unknown;
+            /** New */
+            new?: unknown;
+            /** Old Label */
+            old_label?: string | null;
+            /** New Label */
+            new_label?: string | null;
+            /**
+             * Masked
+             * @default false
+             */
+            masked: boolean;
+        };
+        /** TimelineEventOut */
+        TimelineEventOut: {
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Actor Id */
+            actor_id: string | null;
+            /** Actor Name */
+            actor_name: string | null;
+            /** Body */
+            body: string | null;
+            /** Changes */
+            changes: components["schemas"]["TimelineChange"][];
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+        };
+        /** TimelinePage */
+        TimelinePage: {
+            /** Items */
+            items: components["schemas"]["TimelineEventOut"][];
+            /** Next Cursor */
+            next_cursor: string | null;
         };
         /** TrendPoint */
         TrendPoint: {
@@ -3504,7 +4360,7 @@ export interface components {
              * Trigger
              * @enum {string}
              */
-            trigger: "lead.created" | "lead.stage_changed" | "interaction.logged";
+            trigger: "lead.created" | "lead.stage_changed" | "interaction.logged" | "lead.won" | "lead.lost" | "lead.restored" | "activity.done" | "activity.overdue" | "contact.created";
             /** Conditions */
             conditions?: {
                 [key: string]: unknown;
@@ -4241,37 +5097,6 @@ export interface operations {
             };
         };
     };
-    list_pipelines_crm_pipelines_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: {
-                bos_session?: string | null;
-            };
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PipelineOut"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     import_leads_crm_leads_import_post: {
         parameters: {
             query?: {
@@ -4472,6 +5297,8 @@ export interface operations {
         parameters: {
             query?: {
                 pipeline_id?: string | null;
+                /** @description Comma list of open, won, lost */
+                status?: string | null;
             };
             header?: never;
             path?: never;
@@ -4593,6 +5420,182 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LeadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    win_lead_crm_leads__lead_id__won_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lead_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    lose_lead_crm_leads__lead_id__lost_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lead_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LeadLost"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    restore_lead_crm_leads__lead_id__restore_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lead_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    lead_timeline_crm_leads__lead_id__timeline_get: {
+        parameters: {
+            query?: {
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                lead_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimelinePage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_note_crm_leads__lead_id__notes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lead_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoteCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimelineEventOut"];
                 };
             };
             /** @description Validation Error */
@@ -7073,6 +8076,916 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BillingOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_pipelines_crm_pipelines_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PipelineOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_pipeline_crm_pipelines_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PipelineCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PipelineOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_pipeline_crm_pipelines__pipeline_id__delete: {
+        parameters: {
+            query?: {
+                move_to?: string | null;
+            };
+            header?: never;
+            path: {
+                pipeline_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_pipeline_crm_pipelines__pipeline_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pipeline_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PipelineUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PipelineOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_stage_crm_pipelines__pipeline_id__stages_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pipeline_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StageCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StageOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_stage_crm_pipelines__pipeline_id__stages__stage_id__delete: {
+        parameters: {
+            query?: {
+                move_to?: string | null;
+            };
+            header?: never;
+            path: {
+                pipeline_id: string;
+                stage_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_stage_crm_pipelines__pipeline_id__stages__stage_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pipeline_id: string;
+                stage_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StageUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StageOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reorder_stages_crm_pipelines__pipeline_id__stages_order_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pipeline_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StageOrder"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PipelineOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_lost_reasons_crm_lost_reasons_get: {
+        parameters: {
+            query?: {
+                include_retired?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LostReasonOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_lost_reason_crm_lost_reasons_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LostReasonCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LostReasonOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_lost_reason_crm_lost_reasons__reason_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reason_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_lost_reason_crm_lost_reasons__reason_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reason_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LostReasonUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LostReasonOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    funnel_crm_reports_funnel_get: {
+        parameters: {
+            query?: {
+                pipeline_id?: string | null;
+                date_from?: string | null;
+                date_to?: string | null;
+                format?: "json" | "csv";
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FunnelReport"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    lost_reasons_crm_reports_lost_reasons_get: {
+        parameters: {
+            query?: {
+                pipeline_id?: string | null;
+                date_from?: string | null;
+                date_to?: string | null;
+                format?: "json" | "csv";
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LostReasonsReport"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sources_crm_reports_sources_get: {
+        parameters: {
+            query?: {
+                pipeline_id?: string | null;
+                date_from?: string | null;
+                date_to?: string | null;
+                format?: "json" | "csv";
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourcesReport"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_activities_activities_get: {
+        parameters: {
+            query?: {
+                /** @description Comma list of overdue, today, planned, done, cancelled */
+                state?: string | null;
+                assigned?: ("me" | "all") | null;
+                entity_type?: ("lead" | "contact") | null;
+                entity_id?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_activity_activities_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivityCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    activity_summary_activities_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivitySummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_activity_activities__activity_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                activity_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivityUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    complete_activity_activities__activity_id__done_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                activity_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivityDone"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    snooze_activity_activities__activity_id__snooze_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                activity_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivitySnooze"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_activity_activities__activity_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                activity_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_activity_types_activity_types_get: {
+        parameters: {
+            query?: {
+                include_retired?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityTypeOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_activity_type_activity_types_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivityTypeCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityTypeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_activity_type_activity_types__type_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                type_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_activity_type_activity_types__type_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                type_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivityTypeUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityTypeOut"];
                 };
             };
             /** @description Validation Error */

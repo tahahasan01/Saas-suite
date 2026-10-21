@@ -3,19 +3,25 @@
 `emit()` is called inside a tenant_conn transaction after a domain event. It
 loads the tenant's enabled workflows for that trigger, evaluates their
 conditions against the event payload (safe, declarative — no eval), and runs
-the matching actions. v1 action catalog: `notify` (in-app; external channels
-plug in here later).
+the matching actions. Action catalog: `notify` (in-app; external channels
+plug in here later) and `create_activity` (plans an activity on the record
+the event is about, St02 §6.10).
 """
 from __future__ import annotations
 
 from typing import Any
 
+import datetime as dt
+
 import asyncpg
 
-from .. import notifications
+from .. import activities, notifications
 
-# Declarative triggers other modules emit.
-TRIGGERS = ["lead.created", "lead.stage_changed", "interaction.logged"]
+# Declarative triggers other modules emit. contact.created is emitted by the
+# contacts module; activity.overdue by the crm.activity_overdue job.
+TRIGGERS = ["lead.created", "lead.stage_changed", "interaction.logged",
+            "lead.won", "lead.lost", "lead.restored",
+            "activity.done", "activity.overdue", "contact.created"]
 
 # Safe comparison operators.
 OPS = {
@@ -52,8 +58,37 @@ def _render(template: str, payload: dict[str, Any]) -> str:
     return out
 
 
+async def _create_activity(conn: asyncpg.Connection, action: dict, payload: dict, actor_id: str) -> bool:
+    """{type: create_activity, activity_type: <code or name>, summary, offset_days,
+    assignee: owner|actor}. Plans it on the event's lead (or contact). Returns
+    whether one was planned: an event about no record plans nothing."""
+    if payload.get("lead_id"):
+        entity_type, entity_id = "lead", str(payload["lead_id"])
+    elif payload.get("contact_id") and "contact" in activities.ENTITY_TABLES:
+        entity_type, entity_id = "contact", str(payload["contact_id"])
+    else:
+        return False
+    typ = await activities.type_by_code_or_name(conn, action.get("activity_type"))
+    if typ is None:
+        return False
+    try:
+        offset = max(0, min(365, int(action.get("offset_days", 0))))
+    except (TypeError, ValueError):
+        offset = 0
+    today: dt.date = await conn.fetchval("select current_date")
+    assignee = payload.get("owner_id") if action.get("assignee", "owner") == "owner" else actor_id
+    await activities.create(
+        conn, entity_type=entity_type, entity_id=entity_id, type_id=str(typ["id"]),
+        due_date=today + dt.timedelta(days=offset), created_by=actor_id,
+        summary=_render(str(action.get("summary") or typ["name"]), payload)[:200],
+        assigned_to=str(assignee or actor_id), automated=True)
+    return True
+
+
 async def _run_action(conn: asyncpg.Connection, action: dict, payload: dict, actor_id: str) -> None:
-    if action.get("type") == "notify":
+    if action.get("type") == "create_activity":
+        await _create_activity(conn, action, payload, actor_id)
+    elif action.get("type") == "notify":
         recipient = action.get("recipient", "owner")
         user_id = payload.get("owner_id") if recipient == "owner" else actor_id
         user_id = user_id or actor_id  # fall back to the actor if no owner

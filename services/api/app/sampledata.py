@@ -9,8 +9,7 @@ from __future__ import annotations
 
 import asyncpg
 
-_STAGES = [("New", "active"), ("Contacted", "active"), ("Qualified", "active"),
-           ("Proposal", "active"), ("Won", "won"), ("Lost", "lost")]
+from . import pipelines
 
 # name, company, phone, email, source, stage_index, value_minor, score
 _LEADS = [
@@ -37,15 +36,8 @@ _EMPLOYEES = [
 
 async def seed(conn: asyncpg.Connection, tenant_id: str, user_id: str, sections: list[str]) -> None:
     if "crm" in sections:
-        pid = await conn.fetchval(
-            "insert into crm_pipelines (tenant_id, name, is_default) values ($1,'Sales Pipeline',true) returning id",
-            tenant_id)
-        stage_ids = []
-        for pos, (name, kind) in enumerate(_STAGES):
-            sid = await conn.fetchval(
-                "insert into crm_stages (tenant_id, pipeline_id, name, position, kind) values ($1,$2,$3,$4,$5) returning id",
-                tenant_id, pid, name, pos, kind)
-            stage_ids.append(sid)
+        # The default stages (0062): lost is a status, not a column.
+        pid, *stage_ids = await pipelines.create(conn, tenant_id, "Sales Pipeline", is_default=True)
         await conn.execute(
             """insert into workflows (tenant_id, name, trigger, conditions, actions, is_system)
                values ($1,'Notify owner when a deal is won','lead.stage_changed',$2,$3,true)""",
@@ -54,11 +46,15 @@ async def seed(conn: asyncpg.Connection, tenant_id: str, user_id: str, sections:
             [{"type": "notify", "recipient": "owner", "kind": "success",
               "message": "Deal won: {name}", "body": "{company}", "link": "/crm"}])
         for name, company, phone, email, source, si, value, score in _LEADS:
+            _, is_won, prob = pipelines.DEFAULT_STAGES[si]
             await conn.execute(
                 """insert into crm_leads (tenant_id, pipeline_id, stage_id, owner_id, name, company,
-                                       phone, email, source, value_minor, score)
-                   values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)""",
-                tenant_id, pid, stage_ids[si], user_id, name, company, phone, email, source, value, score)
+                                       phone, email, source, value_minor, score, status, won_at,
+                                       probability, stage_entered_at)
+                   values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,
+                           case when $12 = 'won' then now() end, $13, now())""",
+                tenant_id, pid, stage_ids[si], user_id, name, company, phone, email, source, value, score,
+                "won" if is_won else "open", prob)
 
     if "pos" in sections:
         for name, barcode, price, stock, low in _PRODUCTS:

@@ -29,6 +29,9 @@ KIND_OF = {
     "sale_id": "sale", "sale_item_id": "sale_item",
     "employee_id": "employee", "leave_id": "leave", "holiday_id": "holiday",
     "request_id": "payment_request", "shift_id": "shift",
+    # crm v2 (0062-0064)
+    "activity_id": "activity", "type_id": "activity_type", "reason_id": "lost_reason",
+    "lost_reason_id": "lost_reason", "entity_id": "lead", "assigned_to": "user",
 }
 
 # Path parameters that are not ids: a fixed, valid value.
@@ -59,7 +62,12 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
     workflow = (await c.post("/workflows", json={"name": "Probe", "trigger": "lead.created"})).json()
     payment = (await c.post("/billing/upgrade", json={"plan": "growth"})).json()
     shift = (await c.post("/hrms/shifts", json={"name": "Day"})).json()
+    activity_type = (await c.get("/activity-types")).json()[0]
+    activity = (await c.post("/activities", json={"entity_type": "lead", "entity_id": lead["id"],
+                                                  "type_id": activity_type["id"], "due_date": "2027-04-05"})).json()
     return {
+        "activity_type": activity_type["id"], "activity": activity["id"],
+        "lost_reason": (await c.get("/crm/lost-reasons")).json()[0]["id"],
         "shift": shift["id"],
         "role": (await c.get("/team/roles")).json()[0]["id"],
         "user": (await c.get("/auth/me")).json()["user"]["id"],

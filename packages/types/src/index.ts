@@ -130,6 +130,10 @@ export const PERMISSION_KEYS = [
   "payroll.salary.update",
   "payroll.report.export",
   "payroll.settings.manage",
+  // crm v2 (3B)
+  "crm.pipeline.manage",
+  "crm.settings.manage",
+  "crm.report.read",
 ] as const;
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];
 
@@ -184,7 +188,119 @@ export interface Stage {
   id: string;
   name: string;
   position: number;
+  /** Legacy (kept one release); read `is_won` instead. */
   kind: "active" | "won" | "lost";
+  is_won: boolean;
+  /** Shown as a narrow strip on the board. */
+  fold: boolean;
+  /** A lead sitting here longer than this is "stale". */
+  rotting_days: number | null;
+  default_probability: number | null;
+  requirements: string;
+}
+
+export const LEAD_STATUSES = ["open", "won", "lost"] as const;
+export type LeadStatus = (typeof LEAD_STATUSES)[number];
+export type ActivityState = "overdue" | "today" | "planned" | "done" | "cancelled";
+export const ACTIVITY_ICONS = ["call", "whatsapp", "meeting", "visit", "todo", "quote", "payment"] as const;
+export type ActivityIcon = (typeof ACTIVITY_ICONS)[number];
+
+export interface LostReason {
+  id: string;
+  name: string;
+  active: boolean;
+  position: number;
+}
+
+export interface ActivityType {
+  id: string;
+  name: string;
+  code: string | null;
+  icon: ActivityIcon;
+  default_days: number;
+  position: number;
+  active: boolean;
+}
+
+export interface Activity {
+  id: string;
+  entity_type: "lead" | "contact";
+  entity_id: string;
+  entity_name: string | null;
+  type_id: string;
+  type_name: string;
+  type_icon: ActivityIcon;
+  summary: string;
+  note: string;
+  /** YYYY-MM-DD, the tenant's business day. */
+  due_date: string;
+  due_at: string | null;
+  assigned_to: string | null;
+  assigned_name: string | null;
+  automated: boolean;
+  state: ActivityState;
+  done_at: string | null;
+  outcome: string | null;
+  feedback: string;
+  created_at: string;
+}
+
+export interface ActivitySummary {
+  overdue: number;
+  today: number;
+  planned: number;
+}
+
+export interface TimelineChange {
+  field: string;
+  label: string;
+  old: unknown;
+  new: unknown;
+  old_label: string | null;
+  new_label: string | null;
+  /** Sensitive field: the timeline says "changed", without values. */
+  masked: boolean;
+}
+
+export interface TimelineEvent {
+  id: string;
+  kind: string;
+  actor_id: string | null;
+  actor_name: string | null;
+  body: string | null;
+  changes: TimelineChange[];
+  payload: Record<string, unknown> | null;
+  occurred_at: string;
+}
+
+export interface TimelinePage {
+  items: TimelineEvent[];
+  next_cursor: string | null;
+}
+
+export interface FunnelRow {
+  stage_id: string;
+  stage: string;
+  is_won: boolean;
+  reached: number;
+  value_minor: number;
+  conversion_pct: number | null;
+}
+
+export interface LostReasonRow {
+  reason: string;
+  count: number;
+  value_minor: number;
+}
+
+export interface SourceRow {
+  source: string;
+  leads: number;
+  open: number;
+  won: number;
+  lost: number;
+  won_value_minor: number;
+  win_rate_pct: number | null;
 }
 
 export interface Pipeline {
@@ -209,6 +325,23 @@ export interface Lead {
   score: number | null;
   created_at: string;
   stage_kind?: string | null;
+  status: LeadStatus;
+  lost_reason_id: string | null;
+  lost_reason: string | null;
+  lost_note: string | null;
+  won_at: string | null;
+  lost_at: string | null;
+  /** 0–100; follows the stage unless set by hand. */
+  probability: number | null;
+  probability_is_manual: boolean;
+  weighted_value_minor: number;
+  expected_close_date: string | null;
+  /** 0–3 stars. */
+  priority: number;
+  stage_entered_at: string | null;
+  /** Worst state among open activities. */
+  activity_state: "overdue" | "today" | "planned" | null;
+  next_activity_date: string | null;
 }
 
 export interface FulfillmentField {
@@ -560,7 +693,10 @@ export interface Interaction {
 
 export interface LeadDetail {
   lead: Lead;
-  interactions: Interaction[];
+  /** Newest first; the first page. More via /crm/leads/{id}/timeline. */
+  timeline: TimelineEvent[];
+  /** Open activities, due first. */
+  activities: Activity[];
 }
 
 export interface DuplicateMatch {
@@ -577,7 +713,11 @@ export interface CrmSummary {
   added_this_week: number;
 }
 
-export const WORKFLOW_TRIGGERS = ["lead.created", "lead.stage_changed", "interaction.logged"] as const;
+export const WORKFLOW_TRIGGERS = [
+  "lead.created", "lead.stage_changed", "interaction.logged",
+  "lead.won", "lead.lost", "lead.restored",
+  "activity.done", "activity.overdue", "contact.created",
+] as const;
 
 export interface Workflow {
   id: string;

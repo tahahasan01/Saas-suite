@@ -33,8 +33,15 @@ no_implicit_optional = true
 
 [[tool.mypy.overrides]]
 module = [
+    "app.activities",
     "app.alerts",
     "app.attendance",
+    "app.leads",
+    "app.pipelines",
+    "app.routers.activities",
+    "app.routers.crm_pipelines",
+    "app.routers.crm_reports",
+    "app.timeline",
     "app.context",
     "app.crypto",
     "app.monitor",

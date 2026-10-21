@@ -143,6 +143,13 @@ register("payroll", {
     "payroll.report.export": ("payroll", "admin"),
     "payroll.settings.manage": ("payroll", "admin"),
 })
+# CRM v2 (Phase 3, 3B): shaping the pipeline and its lists is admin work; a
+# rep with `crm:write` works leads and activities but doesn't redesign stages.
+register("crm", {
+    "crm.pipeline.manage": ("crm", "admin"),
+    "crm.settings.manage": ("crm", "admin"),
+    "crm.report.read": ("crm", "read"),
+})
 
 
 def _grants(rows) -> set[tuple[str, str]]:

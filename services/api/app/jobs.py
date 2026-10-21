@@ -26,7 +26,7 @@ import asyncio
 import logging
 from typing import Any, Awaitable, Callable
 
-from . import alerts, attendance, audit, context, db, email, fbr_submit, monitor, notifications, obs
+from . import activities, alerts, attendance, audit, context, db, email, fbr_submit, monitor, notifications, obs
 from .routers.pos import _VELOCITY_SQL
 
 log = logging.getLogger("jobs")
@@ -44,27 +44,62 @@ async def _owner_user(conn) -> str | None:
 
 
 async def run_followup_reminders() -> int:
-    """A due next_follow_up_at notifies the lead owner (once)."""
+    """An activity with an exact time (due_at) coming up in the next 15
+    minutes notifies its assignee, once (0063: was crm_interactions)."""
     fired = 0
+    run_id = context.job_run_id()
     for tid in await _active_tenants():
         try:
-            async with db.tenant_conn(tid) as conn:
+            async with db.job_conn(tid, "crm.followup_reminders", run_id=run_id) as conn:
                 due = await conn.fetch(
-                    """select i.id, l.name, l.owner_id
-                       from crm_interactions i join crm_leads l on l.id = i.lead_id
-                       where i.next_follow_up_at is not null and not i.reminder_sent
-                         and i.next_follow_up_at <= now() + interval '15 minutes'
-                         and i.next_follow_up_at >= now() - interval '2 days'""")
+                    f"""select a.id, a.assigned_to, a.summary, a.entity_name, a.entity_owner
+                          from ({activities.SELECT}) a
+                         where a.due_at is not null and a.reminder_sent_at is null
+                           and a.done_at is null and a.cancelled_at is null
+                           and a.due_at <= now() + interval '15 minutes'
+                           and a.due_at >= now() - interval '2 days'""")
                 for r in due:
-                    recipient = str(r["owner_id"]) if r["owner_id"] else await _owner_user(conn)
+                    who = r["assigned_to"] or r["entity_owner"]
+                    recipient = str(who) if who else await _owner_user(conn)
                     if recipient:
                         await notifications.create(conn, user_id=recipient, kind="warning",
-                                                   title=f"Follow-up due: {r['name']}", link="/crm")
+                                                   title=f"Follow-up due: {r['entity_name'] or r['summary']}",
+                                                   body=r["summary"], link="/my-day")
                         fired += 1
-                    await conn.execute("update crm_interactions set reminder_sent=true where id=$1", r["id"])
+                    await conn.execute("update activities set reminder_sent_at = now() where id = $1", r["id"])
         except Exception:
             log.exception("follow-up reminders failed for tenant %s", tid)
     return fired
+
+
+async def run_activity_overdue() -> dict[str, int]:
+    """Every 15 minutes: an open activity whose due day has passed tells its
+    assignee and fires `activity.overdue`, once (overdue_notified_at)."""
+    from .workflow import engine as wf
+
+    fired = failed = 0
+    run_id = context.job_run_id()
+    for tid in await _active_tenants():
+        try:
+            async with db.job_conn(tid, "crm.activity_overdue", run_id=run_id) as conn:
+                rows = await conn.fetch(
+                    f"""select * from ({activities.SELECT}) a
+                         where a.state = 'overdue' and a.overdue_notified_at is null
+                         order by a.due_date limit 500""")
+                for r in rows:
+                    who = r["assigned_to"] or r["entity_owner"]
+                    recipient = str(who) if who else await _owner_user(conn)
+                    if recipient:
+                        await notifications.create(conn, user_id=recipient, kind="warning",
+                                                   title=f"Overdue: {r['summary']}",
+                                                   body=r["entity_name"] or "", link="/my-day")
+                        await wf.emit(conn, recipient, "activity.overdue", activities.event_payload(r))
+                    await conn.execute("update activities set overdue_notified_at = now() where id = $1", r["id"])
+                    fired += 1
+        except Exception:  # noqa: BLE001 — one bad tenant must not stop the rest
+            failed += 1
+            log.exception("overdue activities failed for tenant %s", tid)
+    return {"activities": fired, "failed": failed}
 
 
 async def run_restock_alerts() -> int:
@@ -155,6 +190,7 @@ HANDLERS: dict[str, Callable[[], Awaitable[Any]]] = {
     "audit.retention": run_audit_retention,
     "audit.detach": run_audit_detach,
     "hrms.finalise_open_days": run_finalise_open_days,
+    "crm.activity_overdue": run_activity_overdue,
 }
 
 

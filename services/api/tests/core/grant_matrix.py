@@ -43,12 +43,15 @@ APP_USER: dict[str, set[str]] = {
     "job_triggers":         set(),
     "job_runs":             set(),
     # crm
-    "crm_pipelines":        {S, I},
-    "crm_stages":           {S, I},
+    "crm_pipelines":        {S, I, U, D},       # pipeline editing (0062)
+    "crm_stages":           {S, I, U, D},       # stage editing; delete moves leads first
     "crm_leads":            {S, I, U},
-    "crm_interactions":     {S, I, U},
+    "crm_interactions":     {S},                # read-only since the activities split (0063)
     "crm_fulfillment":      {S, I, U},          # upsert
     "crm_invoice_requests": {S, I, U},
+    "crm_lost_reasons":     {S, I, U, D},       # delete only when unused, else retired (0062)
+    "activity_types":       {S, I, U},          # retired, never deleted (0063)
+    "activities":           {S, I, U},          # done or cancelled, never deleted (0063)
     # pos
     "pos_products":         {S, I, U},
     "pos_sales":            {S, I, U},          # select … for update on refunds
@@ -98,6 +101,7 @@ AI_READER: dict[str, set[str]] = {name: ({S} if name in AI_VIEWS else set()) for
 # is why it has no table-level entry here.
 _VIEW_BASES = {
     "crm_leads", "crm_stages", "crm_pipelines", "crm_interactions",
+    "timeline_events",          # ai_v_interactions reads the lead timeline (0063)
     "pos_sales", "pos_sale_items", "pos_products", "pos_returns",
     "hrms_employees", "hrms_attendance", "hrms_leave_requests",
 }
