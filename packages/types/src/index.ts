@@ -232,8 +232,13 @@ export interface FulfillmentSchema {
 
 export interface Invoice {
   id: string;
-  lead_id: string;
-  lead_name: string;
+  lead_id: string | null;
+  lead_name: string | null;
+  /** Who is billed. Null only on requests raised before contacts existed whose lead has none. */
+  contact_id: string | null;
+  contact_name: string | null;
+  /** The contact's name, else the lead's. */
+  bill_to: string;
   amount_minor: number;
   discount_pct: number;
   total_minor: number;
@@ -293,6 +298,8 @@ export interface Sale {
   fbr_invoice_number: string | null;
   /** 'submitted' | 'pending', or null when FBR invoicing is off. */
   fbr_status: string | null;
+  /** The customer; null for a walk-in. */
+  contact_id?: string | null;
 }
 
 export interface ReturnableLine {
@@ -655,4 +662,156 @@ export interface AttendanceWeekRow {
 export interface AttendanceWeek {
   days: string[];
   employees: AttendanceWeekRow[];
+}
+
+// ─── Contacts (D-30, D-33) ───────────────────────────────────────────────────
+export const CONTACT_ROLES = ["customer", "supplier", "patient", "student", "parent", "partner"] as const;
+export type ContactRole = (typeof CONTACT_ROLES)[number];
+export const TAG_COLORS = ["slate", "teal", "amber", "rose", "violet", "sky", "lime"] as const;
+export type TagColor = (typeof TAG_COLORS)[number];
+export const ADDRESS_KINDS = ["billing", "shipping", "other"] as const;
+
+export interface Tag {
+  id: string;
+  name: string;
+  color: TagColor;
+}
+
+export interface Contact {
+  id: string;
+  kind: "person" | "company";
+  name: string;
+  company_id: string | null;
+  /** The linked company's name, else free text. */
+  company_name: string;
+  job_title: string;
+  /** As typed. */
+  phone: string;
+  /** The matching key; null when the number couldn't be placed. */
+  phone_e164: string | null;
+  email: string;
+  ntn: string;
+  strn: string;
+  /** A person under a company reads the company's NTN. */
+  effective_ntn: string;
+  city: string;
+  roles: ContactRole[];
+  source: string;
+  notes: string;
+  owner_id: string | null;
+  tags: Tag[];
+  archived_at: string | null;
+  merged_into_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContactBrief {
+  id: string;
+  kind: "person" | "company";
+  name: string;
+  phone: string;
+  phone_e164: string | null;
+  email: string;
+  company_name: string;
+  archived: boolean;
+}
+
+export interface ContactDuplicate {
+  id: string;
+  name: string;
+  kind: "person" | "company";
+  phone_e164: string | null;
+  email: string;
+  ntn: string;
+  archived: boolean;
+  reason: "phone" | "email" | "ntn";
+}
+
+export interface ContactAddress {
+  id: string;
+  kind: (typeof ADDRESS_KINDS)[number];
+  line1: string;
+  line2: string;
+  city: string;
+  province: string;
+  postal_code: string;
+  is_default: boolean;
+}
+
+export interface ContactStats {
+  open_deals: number;
+  won_value_minor: number;
+  sales_count: number;
+  lifetime_spend_minor: number;
+  last_visit_at: string | null;
+  invoiced_minor: number;
+}
+
+export interface ContactDetail {
+  contact: Contact;
+  company: ContactBrief | null;
+  people: ContactBrief[];
+  addresses: ContactAddress[];
+  stats: ContactStats;
+  deals: { id: string; name: string; stage: string; stage_kind: string; value_minor: number; created_at: string }[];
+  sales: { id: string; total_minor: number; item_count: number; payment_method: string; created_at: string }[];
+  invoices: { id: string; total_minor: number; status: "pending" | "approved" | "rejected"; created_at: string }[];
+}
+
+export interface TimelineItem {
+  id: string;
+  entity_type: string;
+  entity_id: string;
+  kind: string;
+  body: string | null;
+  changes: Record<string, unknown> | null;
+  actor_id: string | null;
+  actor_name: string | null;
+  occurred_at: string;
+}
+
+export interface ContactLookup {
+  phone_e164: string | null;
+  /** Held by more than the threshold: pick one, never auto-attach. */
+  shared: boolean;
+  matches: ContactBrief[];
+}
+
+export interface LeadContact {
+  lead_id: string;
+  contact: Contact;
+}
+
+export interface ContactReviewItem {
+  id: string;
+  lead_id: string;
+  lead_name: string;
+  lead_phone: string;
+  lead_email: string;
+  reason: "shared_phone" | "name_mismatch";
+  match_key: string;
+  candidates: ContactBrief[];
+  created_at: string;
+}
+
+export interface BackfillReport {
+  leads_seen: number;
+  contacts_created: number;
+  leads_linked: number;
+  queued: number;
+  invalid_phones: number;
+  invoices_linked: number;
+}
+
+export interface MergePreview {
+  contacts: Contact[];
+  differing_fields: string[];
+  counts: Record<string, { leads: number; sales: number; invoices: number; people: number }>;
+}
+
+export interface MergeResult {
+  winner: Contact;
+  merged_ids: string[];
+  moved: Record<string, number>;
 }

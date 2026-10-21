@@ -1678,6 +1678,376 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/contacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Contacts
+         * @description One page; `X-Total-Count` is how many match. A phone typed in any
+         *     format matches its E.164 key.
+         */
+        get: operations["list_contacts_contacts_get"];
+        put?: never;
+        /**
+         * Create Contact
+         * @description With contacts.contact.create: any field, and a 409 naming the likely
+         *     duplicates. From the till (pos.sale.create only): name, phone and email,
+         *     and a duplicate answer that names no one — matched on phone alone and
+         *     reported as a count — so adding a customer can't be used to read the
+         *     contact book. The cashier then finds them with lookup by phone.
+         */
+        post: operations["create_contact_contacts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/contacts/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lookup
+         * @description Exact E.164 lookup for the till (and the WhatsApp inbox later). Every
+         *     live holder comes back: a shared number is the cashier's pick, never an
+         *     automatic match.
+         */
+        get: operations["lookup_contacts_lookup_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/contacts/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Merge Contacts
+         * @description Merge up to four contacts into one, in one transaction (soft merge).
+         */
+        post: operations["merge_contacts_contacts_merge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/contacts/merge/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Merge Preview
+         * @description Side by side: the records, the fields that differ, and how many
+         *     records would move from each (sales only for those who can read POS).
+         */
+        post: operations["merge_preview_contacts_merge_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/contacts/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Review Queue
+         * @description Open items, each with the contacts holding the clashing key.
+         */
+        get: operations["review_queue_contacts_review_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/contacts/{contact_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Contact
+         * @description Contact 360: the record, its company or people, addresses, and what
+         *     the other modules hold for it.
+         */
+        get: operations["get_contact_contacts__contact_id__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Archive Contact
+         * @description Archive, never delete: sales, invoices and old receipts keep pointing here.
+         */
+        delete: operations["archive_contact_contacts__contact_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Contact */
+        patch: operations["update_contact_contacts__contact_id__patch"];
+        trace?: never;
+    };
+    "/contacts/{contact_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore Contact */
+        post: operations["restore_contact_contacts__contact_id__restore_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/contacts/{contact_id}/duplicates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Contact Duplicates
+         * @description Other contacts holding this one's phone, email or NTN (archived ones
+         *     too); keys shared by more than the threshold are listed, not matched.
+         */
+        get: operations["contact_duplicates_contacts__contact_id__duplicates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/contacts/{contact_id}/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Contact Timeline
+         * @description Everything that happened to this contact or to a record rolled up to
+         *     it, newest first, limited to the record types the caller may read
+         *     (TIMELINE_ENTITY_KEYS). Contacts merged into this one bring their
+         *     history: the timeline is append-only, so reads follow merged_into_id
+         *     instead of rewriting old events (contact_merge registry, "follow").
+         */
+        get: operations["contact_timeline_contacts__contact_id__timeline_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/contacts/{contact_id}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Note */
+        post: operations["add_note_contacts__contact_id__notes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/contacts/{contact_id}/addresses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Address */
+        post: operations["add_address_contacts__contact_id__addresses_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/contacts/{contact_id}/addresses/{address_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Address */
+        delete: operations["delete_address_contacts__contact_id__addresses__address_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Address */
+        patch: operations["update_address_contacts__contact_id__addresses__address_id__patch"];
+        trace?: never;
+    };
+    "/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Tags */
+        get: operations["list_tags_tags_get"];
+        put?: never;
+        /** Create Tag */
+        post: operations["create_tag_tags_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tags/{tag_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Tag */
+        delete: operations["delete_tag_tags__tag_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Tag */
+        patch: operations["update_tag_tags__tag_id__patch"];
+        trace?: never;
+    };
+    "/crm/leads/{lead_id}/contact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lead Contact
+         * @description The contact a lead is qualified to, or null.
+         */
+        get: operations["lead_contact_crm_leads__lead_id__contact_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/leads/{lead_id}/qualify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Qualify Lead
+         * @description Link the lead to a contact, or create the contact from the lead. A
+         *     create that finds a contact with the same phone or email answers 409
+         *     with them, so the user links instead of duplicating (unless `force`).
+         */
+        post: operations["qualify_lead_crm_leads__lead_id__qualify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/contacts/backfill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Backfill
+         * @description Create contacts for this tenant's leads (option b). Safe to rerun.
+         */
+        post: operations["run_backfill_contacts_backfill_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/contacts/review/{item_id}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dismiss Review
+         * @description Leave the lead without a contact; the backfill won't queue it again.
+         */
+        post: operations["dismiss_review_contacts_review__item_id__dismiss_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1704,6 +2074,78 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** AddressCreate */
+        AddressCreate: {
+            /**
+             * Kind
+             * @default billing
+             * @enum {string}
+             */
+            kind: "billing" | "shipping" | "other";
+            /** Line1 */
+            line1: string;
+            /**
+             * Line2
+             * @default
+             */
+            line2: string;
+            /**
+             * City
+             * @default
+             */
+            city: string;
+            /**
+             * Province
+             * @default
+             */
+            province: string;
+            /**
+             * Postal Code
+             * @default
+             */
+            postal_code: string;
+            /**
+             * Is Default
+             * @default false
+             */
+            is_default: boolean;
+        };
+        /** AddressOut */
+        AddressOut: {
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Line1 */
+            line1: string;
+            /** Line2 */
+            line2: string;
+            /** City */
+            city: string;
+            /** Province */
+            province: string;
+            /** Postal Code */
+            postal_code: string;
+            /** Is Default */
+            is_default: boolean;
+        };
+        /** AddressUpdate */
+        AddressUpdate: {
+            /** Kind */
+            kind?: ("billing" | "shipping" | "other") | null;
+            /** Line1 */
+            line1?: string | null;
+            /** Line2 */
+            line2?: string | null;
+            /** City */
+            city?: string | null;
+            /** Province */
+            province?: string | null;
+            /** Postal Code */
+            postal_code?: string | null;
+            /** Is Default */
+            is_default?: boolean | null;
         };
         /** Alert */
         Alert: {
@@ -1781,6 +2223,24 @@ export interface components {
              */
             missing_checkout: boolean;
         };
+        /** BackfillReport */
+        BackfillReport: {
+            /** Leads Seen */
+            leads_seen: number;
+            /** Contacts Created */
+            contacts_created: number;
+            /** Leads Linked */
+            leads_linked: number;
+            /** Queued */
+            queued: number;
+            /** Invalid Phones */
+            invalid_phones: number;
+            /**
+             * Invoices Linked
+             * @default 0
+             */
+            invoices_linked: number;
+        };
         /** BillingOut */
         BillingOut: {
             /** Plan */
@@ -1821,6 +2281,302 @@ export interface components {
              * @default false
              */
             mock_gps: boolean;
+        };
+        /** ContactBrief */
+        ContactBrief: {
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Name */
+            name: string;
+            /** Phone */
+            phone: string;
+            /** Phone E164 */
+            phone_e164: string | null;
+            /** Email */
+            email: string;
+            /** Company Name */
+            company_name: string;
+            /** Archived */
+            archived: boolean;
+        };
+        /** ContactCreate */
+        ContactCreate: {
+            /**
+             * Kind
+             * @default person
+             * @enum {string}
+             */
+            kind: "person" | "company";
+            /** Name */
+            name: string;
+            /** Company Id */
+            company_id?: string | null;
+            /**
+             * Company Name
+             * @default
+             */
+            company_name: string;
+            /**
+             * Job Title
+             * @default
+             */
+            job_title: string;
+            /**
+             * Phone
+             * @default
+             */
+            phone: string;
+            /**
+             * Email
+             * @default
+             */
+            email: string;
+            /**
+             * Ntn
+             * @default
+             */
+            ntn: string;
+            /**
+             * Strn
+             * @default
+             */
+            strn: string;
+            /**
+             * City
+             * @default
+             */
+            city: string;
+            /** Roles */
+            roles?: ("customer" | "supplier" | "patient" | "student" | "parent" | "partner")[];
+            /**
+             * Source
+             * @default
+             */
+            source: string;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /** Owner Id */
+            owner_id?: string | null;
+            /** Tag Ids */
+            tag_ids?: string[];
+            /**
+             * Force
+             * @default false
+             */
+            force: boolean;
+        };
+        /** ContactDeal */
+        ContactDeal: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Stage */
+            stage: string;
+            /** Stage Kind */
+            stage_kind: string;
+            /** Value Minor */
+            value_minor: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** ContactDetail */
+        ContactDetail: {
+            contact: components["schemas"]["ContactOut"];
+            company: components["schemas"]["ContactBrief"] | null;
+            /** People */
+            people: components["schemas"]["ContactBrief"][];
+            /** Addresses */
+            addresses: components["schemas"]["AddressOut"][];
+            stats: components["schemas"]["ContactStats"];
+            /** Deals */
+            deals: components["schemas"]["ContactDeal"][];
+            /** Sales */
+            sales: components["schemas"]["ContactSale"][];
+            /** Invoices */
+            invoices: components["schemas"]["ContactInvoice"][];
+        };
+        /** ContactDuplicate */
+        ContactDuplicate: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Kind */
+            kind: string;
+            /** Phone E164 */
+            phone_e164: string | null;
+            /** Email */
+            email: string;
+            /** Ntn */
+            ntn: string;
+            /** Archived */
+            archived: boolean;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "phone" | "email" | "ntn";
+        };
+        /** ContactDuplicates */
+        ContactDuplicates: {
+            /** Duplicates */
+            duplicates: components["schemas"]["ContactDuplicate"][];
+            /** Shared Keys */
+            shared_keys?: string[];
+        };
+        /** ContactInvoice */
+        ContactInvoice: {
+            /** Id */
+            id: string;
+            /** Total Minor */
+            total_minor: number;
+            /** Status */
+            status: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** ContactLookup */
+        ContactLookup: {
+            /** Phone E164 */
+            phone_e164: string | null;
+            /** Shared */
+            shared: boolean;
+            /** Matches */
+            matches: components["schemas"]["ContactBrief"][];
+        };
+        /** ContactNoteCreate */
+        ContactNoteCreate: {
+            /** Body */
+            body: string;
+        };
+        /** ContactOut */
+        ContactOut: {
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Name */
+            name: string;
+            /** Company Id */
+            company_id: string | null;
+            /** Company Name */
+            company_name: string;
+            /** Job Title */
+            job_title: string;
+            /** Phone */
+            phone: string;
+            /** Phone E164 */
+            phone_e164: string | null;
+            /** Email */
+            email: string;
+            /** Ntn */
+            ntn: string;
+            /** Strn */
+            strn: string;
+            /** Effective Ntn */
+            effective_ntn: string;
+            /** City */
+            city: string;
+            /** Roles */
+            roles: string[];
+            /** Source */
+            source: string;
+            /** Notes */
+            notes: string;
+            /** Owner Id */
+            owner_id: string | null;
+            /** Tags */
+            tags?: components["schemas"]["TagOut"][];
+            /** Archived At */
+            archived_at: string | null;
+            /** Merged Into Id */
+            merged_into_id: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** ContactSale */
+        ContactSale: {
+            /** Id */
+            id: string;
+            /** Total Minor */
+            total_minor: number;
+            /** Item Count */
+            item_count: number;
+            /** Payment Method */
+            payment_method: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** ContactStats */
+        ContactStats: {
+            /** Open Deals */
+            open_deals: number;
+            /** Won Value Minor */
+            won_value_minor: number;
+            /** Sales Count */
+            sales_count: number;
+            /** Lifetime Spend Minor */
+            lifetime_spend_minor: number;
+            /** Last Visit At */
+            last_visit_at: string | null;
+            /** Invoiced Minor */
+            invoiced_minor: number;
+        };
+        /** ContactUpdate */
+        ContactUpdate: {
+            /** Kind */
+            kind?: ("person" | "company") | null;
+            /** Name */
+            name?: string | null;
+            /** Company Id */
+            company_id?: string | null;
+            /** Company Name */
+            company_name?: string | null;
+            /** Job Title */
+            job_title?: string | null;
+            /** Phone */
+            phone?: string | null;
+            /** Email */
+            email?: string | null;
+            /** Ntn */
+            ntn?: string | null;
+            /** Strn */
+            strn?: string | null;
+            /** City */
+            city?: string | null;
+            /** Roles */
+            roles?: ("customer" | "supplier" | "patient" | "student" | "parent" | "partner")[] | null;
+            /** Source */
+            source?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Owner Id */
+            owner_id?: string | null;
+            /** Tag Ids */
+            tag_ids?: string[] | null;
         };
         /** CrmSummary */
         CrmSummary: {
@@ -2227,8 +2983,10 @@ export interface components {
         };
         /** InvoiceCreate */
         InvoiceCreate: {
+            /** Contact Id */
+            contact_id?: string | null;
             /** Lead Id */
-            lead_id: string;
+            lead_id?: string | null;
             /** Amount Minor */
             amount_minor: number;
             /**
@@ -2247,9 +3005,15 @@ export interface components {
             /** Id */
             id: string;
             /** Lead Id */
-            lead_id: string;
+            lead_id: string | null;
             /** Lead Name */
-            lead_name: string;
+            lead_name: string | null;
+            /** Contact Id */
+            contact_id: string | null;
+            /** Contact Name */
+            contact_name: string | null;
+            /** Bill To */
+            bill_to: string;
             /** Amount Minor */
             amount_minor: number;
             /** Discount Pct */
@@ -2282,6 +3046,12 @@ export interface components {
             delta_pct?: number | null;
             /** Href */
             href: string;
+        };
+        /** LeadContact */
+        LeadContact: {
+            /** Lead Id */
+            lead_id: string;
+            contact: components["schemas"]["ContactOut"];
         };
         /** LeadCreate */
         LeadCreate: {
@@ -2513,6 +3283,57 @@ export interface components {
              * @default false
              */
             employee_portal: boolean;
+        };
+        /** MergeCounts */
+        MergeCounts: {
+            /** Leads */
+            leads: number;
+            /** Sales */
+            sales: number;
+            /** Invoices */
+            invoices: number;
+            /** People */
+            people: number;
+        };
+        /** MergePreview */
+        MergePreview: {
+            /** Contacts */
+            contacts: components["schemas"]["ContactOut"][];
+            /** Differing Fields */
+            differing_fields: string[];
+            /** Counts */
+            counts: {
+                [key: string]: components["schemas"]["MergeCounts"];
+            };
+        };
+        /** MergePreviewRequest */
+        MergePreviewRequest: {
+            /** Ids */
+            ids: string[];
+        };
+        /** MergeRequest */
+        MergeRequest: {
+            /**
+             * Winner Id
+             * Format: uuid
+             */
+            winner_id: string;
+            /** Loser Ids */
+            loser_ids: string[];
+            /** Field Choices */
+            field_choices?: {
+                [key: string]: string;
+            };
+        };
+        /** MergeResult */
+        MergeResult: {
+            winner: components["schemas"]["ContactOut"];
+            /** Merged Ids */
+            merged_ids: string[];
+            /** Moved */
+            moved: {
+                [key: string]: number;
+            };
         };
         /** MethodTotal */
         MethodTotal: {
@@ -2886,6 +3707,31 @@ export interface components {
             fbr_uom?: string | null;
         };
         /**
+         * QualifyRequest
+         * @description Link the lead to an existing contact, or create one from the lead.
+         */
+        QualifyRequest: {
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "link" | "create";
+            /** Contact Id */
+            contact_id?: string | null;
+            /** Company Id */
+            company_id?: string | null;
+            /**
+             * Create Company
+             * @default false
+             */
+            create_company: boolean;
+            /**
+             * Force
+             * @default false
+             */
+            force: boolean;
+        };
+        /**
          * RefundableLine
          * @description A returnable line plus the two figures a refund is computed from
          *     (pricing.refund_for), so the Returns screen previews what will actually be
@@ -2992,6 +3838,30 @@ export interface components {
             /** Fbr Status */
             fbr_status?: string | null;
         };
+        /** ReviewItem */
+        ReviewItem: {
+            /** Id */
+            id: string;
+            /** Lead Id */
+            lead_id: string;
+            /** Lead Name */
+            lead_name: string;
+            /** Lead Phone */
+            lead_phone: string;
+            /** Lead Email */
+            lead_email: string;
+            /** Reason */
+            reason: string;
+            /** Match Key */
+            match_key: string;
+            /** Candidates */
+            candidates: components["schemas"]["ContactBrief"][];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** RoleCreate */
         RoleCreate: {
             /** Name */
@@ -3032,6 +3902,8 @@ export interface components {
              * @enum {string}
              */
             payment_method: "cash" | "card" | "jazzcash" | "easypaisa" | "bank";
+            /** Contact Id */
+            contact_id?: string | null;
         };
         /** SaleItemOut */
         SaleItemOut: {
@@ -3095,6 +3967,8 @@ export interface components {
             fbr_invoice_number?: string | null;
             /** Fbr Status */
             fbr_status?: string | null;
+            /** Contact Id */
+            contact_id?: string | null;
             /** Returnable */
             returnable?: components["schemas"]["RefundableLine"][];
             /**
@@ -3147,6 +4021,8 @@ export interface components {
             fbr_invoice_number?: string | null;
             /** Fbr Status */
             fbr_status?: string | null;
+            /** Contact Id */
+            contact_id?: string | null;
         };
         /** SaleQuote */
         SaleQuote: {
@@ -3380,6 +4256,33 @@ export interface components {
             /** Notes */
             notes: string;
         };
+        /** TagCreate */
+        TagCreate: {
+            /** Name */
+            name: string;
+            /**
+             * Color
+             * @default slate
+             * @enum {string}
+             */
+            color: "slate" | "teal" | "amber" | "rose" | "violet" | "sky" | "lime";
+        };
+        /** TagOut */
+        TagOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Color */
+            color: string;
+        };
+        /** TagUpdate */
+        TagUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Color */
+            color?: ("slate" | "teal" | "amber" | "rose" | "violet" | "sky" | "lime") | null;
+        };
         /** TeamUser */
         TeamUser: {
             /** Id */
@@ -3414,6 +4317,32 @@ export interface components {
             labels: {
                 [key: string]: string;
             };
+        };
+        /** TimelineItem */
+        TimelineItem: {
+            /** Id */
+            id: string;
+            /** Entity Type */
+            entity_type: string;
+            /** Entity Id */
+            entity_id: string;
+            /** Kind */
+            kind: string;
+            /** Body */
+            body: string | null;
+            /** Changes */
+            changes: {
+                [key: string]: unknown;
+            } | null;
+            /** Actor Id */
+            actor_id: string | null;
+            /** Actor Name */
+            actor_name: string | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
         };
         /** TrendPoint */
         TrendPoint: {
@@ -7074,6 +8003,829 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["BillingOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_contacts_contacts_get: {
+        parameters: {
+            query?: {
+                q?: string | null;
+                kind?: ("person" | "company") | null;
+                role?: ("customer" | "supplier" | "patient" | "student" | "parent" | "partner") | null;
+                tag?: string | null;
+                owner?: string | null;
+                include_archived?: boolean;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContactOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_contact_contacts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContactCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContactOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    lookup_contacts_lookup_get: {
+        parameters: {
+            query: {
+                phone: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContactLookup"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    merge_contacts_contacts_merge_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MergeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MergeResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    merge_preview_contacts_merge_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MergePreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MergePreview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_queue_contacts_review_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewItem"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_contact_contacts__contact_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contact_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContactDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    archive_contact_contacts__contact_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contact_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_contact_contacts__contact_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contact_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContactUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContactOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    restore_contact_contacts__contact_id__restore_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contact_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContactOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    contact_duplicates_contacts__contact_id__duplicates_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contact_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContactDuplicates"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    contact_timeline_contacts__contact_id__timeline_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                contact_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimelineItem"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_note_contacts__contact_id__notes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contact_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContactNoteCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_address_contacts__contact_id__addresses_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contact_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddressCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddressOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_address_contacts__contact_id__addresses__address_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contact_id: string;
+                address_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_address_contacts__contact_id__addresses__address_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contact_id: string;
+                address_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddressUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddressOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tags_tags_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_tag_tags_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TagCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_tag_tags__tag_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tag_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_tag_tags__tag_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tag_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TagUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    lead_contact_crm_leads__lead_id__contact_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lead_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContactOut"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    qualify_lead_crm_leads__lead_id__qualify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lead_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QualifyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadContact"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_backfill_contacts_backfill_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackfillReport"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dismiss_review_contacts_review__item_id__dismiss_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

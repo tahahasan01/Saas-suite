@@ -66,6 +66,8 @@ test.describe("CRM list view on a phone", () => {
 test.describe("invoices and automations", () => {
   test("an invoice requested from a lead is approved only after confirming", async ({ page, request }) => {
     const { lead } = await freshLead(request);
+    // Invoices bill a contact (0061): qualify the lead first.
+    expect((await request.post(`${API}/crm/leads/${lead.id}/qualify`, { data: { mode: "create", force: true } })).ok()).toBeTruthy();
     await page.goto("/crm");
     await page.getByRole("main").getByRole("button", { name: `Open ${lead.name}` }).click();
     const drawer = page.getByRole("dialog", { name: lead.name });
