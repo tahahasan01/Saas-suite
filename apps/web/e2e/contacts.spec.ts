@@ -77,6 +77,21 @@ test.describe("contacts", () => {
     await expect(page.getByText(/was merged into another record/i)).toBeVisible();
   });
 
+  test("a lead is qualified from its drawer and links to the new record", async ({ page, request }) => {
+    const name = `Qualify Me ${uniq()}`;
+    const res = await request.post(`${API}/crm/leads`, { data: { name, phone: phone(), force: true } });
+    expect(res.ok()).toBeTruthy();
+    await page.goto("/crm");
+    await ready(page);
+    await page.getByRole("main").getByRole("button", { name: `Open ${name}` }).first().click();
+    const drawer = page.getByRole("dialog", { name });
+    await drawer.getByRole("button", { name: "Qualify" }).click();
+    const dialog = page.getByRole("dialog", { name: `Qualify ${name}` });
+    await dialog.getByRole("button", { name: /create customer/i }).click();
+    await expect(dialog).toBeHidden();
+    await expect(drawer.getByRole("link", { name })).toBeVisible();
+  });
+
   test("the review queue page loads", async ({ page }) => {
     await page.goto("/contacts/review");
     await ready(page);

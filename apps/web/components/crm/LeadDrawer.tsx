@@ -14,6 +14,7 @@ import { api, apiUrl } from "@/lib/api";
 import { money, relativeDate } from "@/lib/format";
 import { errorText, useAction } from "@/lib/useAction";
 import { Sheet } from "@/components/Dialog";
+import { LeadContactCard } from "@/components/contacts/LeadContactCard";
 import { Badge, Button, ErrorState, Field, Input, LoadingRows, Select, Textarea } from "@/components/ui";
 
 const invTone = { pending: "warning", approved: "success", rejected: "danger" } as const;
@@ -96,6 +97,8 @@ export function LeadDrawer({ leadId, name, stages, onMove, onClose, onChanged }:
                 </div>
               </>
             )}
+
+            <LeadContactCard lead={data.lead} onChanged={onChanged} />
 
             {data.lead.stage_kind === "won" && <Fulfillment leadId={leadId} />}
 
