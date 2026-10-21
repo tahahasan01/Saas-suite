@@ -36,10 +36,11 @@ KIND_OF = {
     "item_id": "review_item", "winner_id": "contact",
     # org data (3A, p3-orgdata)
     "branch_id": "branch", "sequence_id": "sequence", "logo_file_id": "file",
+    "team_id": "team", "lead_user_id": "user",
 }
 
 # Path parameters that are not ids: a fixed, valid value.
-PLAIN_PARAMS = {"section": "crm", "decision": "approve"}
+PLAIN_PARAMS = {"section": "crm", "decision": "approve", "key": "crm"}
 
 # The /me/* portal never takes an id from the caller — it acts on the logged-in
 # employee only (tests/hrms/test_employee_portal.py proves the forcing).
@@ -78,12 +79,13 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
     activity_type = (await c.get("/activity-types")).json()[0]
     activity = (await c.post("/activities", json={"entity_type": "lead", "entity_id": lead["id"],
                                                   "type_id": activity_type["id"], "due_date": "2027-04-05"})).json()
+    team = (await c.post("/teams", json={"name": "Probe team"})).json()
     return {
         "activity_type": activity_type["id"], "activity": activity["id"],
         "lost_reason": (await c.get("/crm/lost-reasons")).json()[0]["id"],
         "contact": contact["id"], "company": company["id"], "address": address["id"], "tag": tag["id"],
         "review_item": review_item["id"],
-        "shift": shift["id"],
+        "shift": shift["id"], "team": team["id"],
         "role": (await c.get("/team/roles")).json()[0]["id"],
         "user": (await c.get("/auth/me")).json()["user"]["id"],
         "pipeline": pipeline["id"], "stage": pipeline["stages"][0]["id"], "lead": lead["id"],

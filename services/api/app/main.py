@@ -22,6 +22,7 @@ from .routers import (
 from .routers import activities as activities_router, crm_pipelines, crm_reports  # crm v2 (3B)
 from .routers import contacts as contacts_router
 from .routers import files, org, profile, sequences, tax  # org data (3A, p3-orgdata)
+from .routers import platform, roles
 
 # JSON logs with request/tenant context and PII redaction; Sentry if SENTRY_DSN (app/obs.py).
 obs.setup_logging("api")
@@ -93,6 +94,8 @@ app.include_router(sequences.router)
 app.include_router(files.router)
 app.include_router(tax.router)
 app.include_router(profile.router)
+app.include_router(platform.router)
+app.include_router(roles.router)
 
 
 @app.exception_handler(asyncpg.DataError)

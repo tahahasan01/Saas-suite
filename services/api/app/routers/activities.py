@@ -28,7 +28,8 @@ from ..models import (
     ActivityTypeUpdate,
     ActivityUpdate,
 )
-from ..rbac import perm
+from ..rbac import perm, scope_of
+from ..scopes import where
 
 router = APIRouter(tags=["activities"])
 
@@ -56,9 +57,13 @@ async def list_activities(
     # A record's activities are everyone's; otherwise "mine" unless asked.
     who = assigned or ("all" if entity_id else "me")
     async with db.tenant_conn(auth.tenant_id) as conn:
+        # A lead's activities follow the lead's record scope (D-04).
+        scope = await scope_of(conn, auth, "crm.lead.read")
         rows = await conn.fetch(
             f"""select * from ({activities.SELECT}) a
                  where a.state = any($1::text[])
+                   and (a.entity_type <> 'lead' or exists (
+                        select 1 from crm_leads l where l.id = a.entity_id and {where('crm.lead', scope, 'l')}))
                    and ($2::uuid is null or a.assigned_to = $2)
                    and ($3::text is null or a.entity_type = $3)
                    and ($4::uuid is null or a.entity_id = $4)

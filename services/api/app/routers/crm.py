@@ -31,7 +31,8 @@ from ..models import (
     TimelineEventOut,
     TimelinePage,
 )
-from ..rbac import perm, require
+from ..rbac import perm, require, scope_of
+from ..scopes import where
 
 router = APIRouter(prefix="/crm", tags=["crm"])
 
@@ -157,12 +158,14 @@ def _statuses(raw: str | None) -> list[str] | None:
 async def list_leads(pipeline_id: str | None = None,
                      status_filter: str | None = Query(None, alias="status",
                                                        description="Comma list of open, won, lost"),
-                     auth: AuthContext = Depends(require("crm", "read"))):
+                     auth: AuthContext = Depends(perm("crm.lead.read"))):
     wanted = _statuses(status_filter)
     async with db.tenant_conn(auth.tenant_id) as conn:
         pid = pipeline_id or await pipelines.ensure_default(conn, auth.tenant_id)
+        scope = await scope_of(conn, auth, "crm.lead.read")   # own/team/branch/all (D-04)
         rows = await conn.fetch(
-            leads.LEAD_SELECT + """ where l.pipeline_id = $1 and ($2::text[] is null or l.status = any($2::text[]))
+            leads.LEAD_SELECT + f""" where l.pipeline_id = $1 and ($2::text[] is null or l.status = any($2::text[]))
+                                     and {where('crm.lead', scope, 'l')}
                                     order by l.created_at desc""", pid, wanted)
     return [leads.lead_out(r) for r in rows]
 
@@ -224,8 +227,9 @@ async def create_lead(body: LeadCreate, auth: AuthContext = Depends(require("crm
 
 
 @router.get("/leads/{lead_id}", response_model=LeadDetail)
-async def get_lead(lead_id: str, auth: AuthContext = Depends(require("crm", "read"))):
+async def get_lead(lead_id: str, auth: AuthContext = Depends(perm("crm.lead.read"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
+        await leads.ensure_in_scope(conn, auth, "crm.lead.read", lead_id)
         lead = await leads.fetch_out(conn, lead_id)
         page = await timeline.page(conn, "lead", lead_id, limit=50)
         acts = await conn.fetch(
@@ -235,11 +239,12 @@ async def get_lead(lead_id: str, auth: AuthContext = Depends(require("crm", "rea
 
 
 @router.patch("/leads/{lead_id}", response_model=LeadOut)
-async def update_lead(lead_id: str, body: LeadUpdate, auth: AuthContext = Depends(require("crm", "write"))):
+async def update_lead(lead_id: str, body: LeadUpdate, auth: AuthContext = Depends(perm("crm.lead.update"))):
     fields = body.model_dump(exclude_unset=True)
     # Explicit nulls only clear the fields that may be empty.
     fields = {k: v for k, v in fields.items() if v is not None or k == "expected_close_date"}
     async with db.tenant_conn(auth.tenant_id) as conn:
+        await leads.ensure_in_scope(conn, auth, "crm.lead.update", lead_id)
         before = await leads.lock(conn, lead_id)
         await refs.ensure_visible(conn, "users", fields.get("owner_id"))
         patch = await leads.plan_patch(conn, before, fields)
@@ -249,18 +254,21 @@ async def update_lead(lead_id: str, body: LeadUpdate, auth: AuthContext = Depend
 @router.post("/leads/{lead_id}/won", response_model=LeadOut)
 async def win_lead(lead_id: str, auth: AuthContext = Depends(perm("crm.lead.update"))) -> LeadOut:
     async with db.tenant_conn(auth.tenant_id) as conn:
+        await leads.ensure_in_scope(conn, auth, "crm.lead.update", lead_id)
         return await leads.mark_won(conn, auth.user_id, lead_id)
 
 
 @router.post("/leads/{lead_id}/lost", response_model=LeadOut)
 async def lose_lead(lead_id: str, body: LeadLost, auth: AuthContext = Depends(perm("crm.lead.update"))) -> LeadOut:
     async with db.tenant_conn(auth.tenant_id) as conn:
+        await leads.ensure_in_scope(conn, auth, "crm.lead.update", lead_id)
         return await leads.mark_lost(conn, auth.user_id, lead_id, body.lost_reason_id, body.lost_note)
 
 
 @router.post("/leads/{lead_id}/restore", response_model=LeadOut)
 async def restore_lead(lead_id: str, auth: AuthContext = Depends(perm("crm.lead.update"))) -> LeadOut:
     async with db.tenant_conn(auth.tenant_id) as conn:
+        await leads.ensure_in_scope(conn, auth, "crm.lead.update", lead_id)
         return await leads.restore(conn, auth.user_id, lead_id)
 
 
@@ -268,8 +276,7 @@ async def restore_lead(lead_id: str, auth: AuthContext = Depends(perm("crm.lead.
 async def lead_timeline(lead_id: str, cursor: str | None = None, limit: int = Query(50, ge=1, le=200),
                         auth: AuthContext = Depends(perm("crm.lead.read"))) -> TimelinePage:
     async with db.tenant_conn(auth.tenant_id) as conn:
-        if not await conn.fetchval("select 1 from crm_leads where id=$1", lead_id):
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "Lead not found")
+        await leads.ensure_in_scope(conn, auth, "crm.lead.read", lead_id)
         try:
             return await timeline.page(conn, "lead", lead_id, cursor=cursor, limit=limit)
         except ValueError as e:
@@ -279,6 +286,7 @@ async def lead_timeline(lead_id: str, cursor: str | None = None, limit: int = Qu
 @router.post("/leads/{lead_id}/notes", response_model=TimelineEventOut, status_code=status.HTTP_201_CREATED)
 async def add_note(lead_id: str, body: NoteCreate, auth: AuthContext = Depends(perm("crm.lead.update"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
+        await leads.ensure_in_scope(conn, auth, "crm.lead.update", lead_id)
         if not await conn.fetchval("update crm_leads set updated_at = now() where id=$1 returning 1", lead_id):
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Lead not found")
         event_id = await timeline.record(conn, entity_type="lead", entity_id=lead_id, kind="note", body=body.body)

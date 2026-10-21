@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from .. import billing, db
 from ..deps import AuthContext, current_auth
 from ..models import BillingOut, PaymentInstructions, PlanOut, UpgradeRequest
-from ..rbac import require
+from ..rbac import perm
 
 router = APIRouter(prefix="/billing", tags=["billing"])
 
@@ -42,7 +42,7 @@ async def list_plans() -> list[PlanOut]:
 
 
 @router.post("/upgrade", response_model=PaymentInstructions)
-async def upgrade(body: UpgradeRequest, auth: AuthContext = Depends(require("settings", "admin"))) -> PaymentInstructions:
+async def upgrade(body: UpgradeRequest, auth: AuthContext = Depends(perm("settings.billing.manage"))) -> PaymentInstructions:
     plan = billing.PLANS.get(body.plan)
     if plan is None or body.plan == "enterprise":
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Choose Starter or Growth (Enterprise = contact sales)")
@@ -56,7 +56,7 @@ async def upgrade(body: UpgradeRequest, auth: AuthContext = Depends(require("set
 
 
 @router.post("/payment-requests/{request_id}/submit", response_model=BillingOut)
-async def submit_payment(request_id: str, auth: AuthContext = Depends(require("settings", "admin"))) -> BillingOut:
+async def submit_payment(request_id: str, auth: AuthContext = Depends(perm("settings.billing.manage"))) -> BillingOut:
     """Customer states they have sent the bank transfer.
 
     This records the claim and nothing more. It deliberately does NOT activate

@@ -11,7 +11,7 @@ import {
   HandCoins, KanbanSquare, LayoutGrid, type LucideIcon, Palmtree, Receipt, RotateCcw,
   Settings, ShoppingCart, Sparkles, Store, Truck, UserRound, Users, Wallet, Workflow,
 } from "lucide-react";
-import type { Section } from "@business-os/types";
+import type { MeResponse, Section } from "@business-os/types";
 
 export interface ModuleTab {
   href: string;
@@ -106,6 +106,7 @@ export const MODULES: Module[] = [
     href: "/settings/team", group: "admin",
     tabs: [
       { href: "/settings/team", label: "Team" },
+      { href: "/settings/roles", label: "Roles" },
       { href: "/settings/sections", label: "Modules" },
       { href: "/settings/billing", label: "Billing" },
       { href: "/settings/fbr", label: "FBR invoicing", requires: "pos" },
@@ -130,6 +131,53 @@ export const PORTAL_MODULES: Module[] = [
   { key: "me-payslips", label: () => "Payslips", icon: Wallet, color: "--color-mod-payroll",
     href: "/me/payslips", group: "people" },
 ];
+
+/**
+ * What this caller may see, decided by the server (D-04, D-50): /auth/me's
+ * `nav` lists the modules and tabs from the manifests ∩ enabled modules ∩ the
+ * caller's keys. This file only says how they look. An older API without
+ * `nav` falls back to the entitlement sections.
+ */
+export function visibleModules(me: MeResponse, list: Module[] = MODULES): Module[] {
+  if (me.nav?.length) {
+    const keys = new Set(me.nav.map((n) => n.key));
+    return list.filter((m) => keys.has(m.key));
+  }
+  const enabled = new Set(me.entitlements.filter((e) => e.enabled).map((e) => e.section_key));
+  return list.filter((m) => !m.requires || enabled.has(m.requires));
+}
+
+export function visibleTabs(m: Module, me: MeResponse): ModuleTab[] {
+  const tabs = m.tabs ?? [];
+  const item = me.nav?.find((n) => n.key === m.key);
+  if (item) {
+    // No children listed: the server didn't split this entry, show its tabs.
+    if (!item.children.length) return tabs;
+    const hrefs = new Set(item.children.map((c) => c.href));
+    return tabs.filter((t) => hrefs.has(t.href));
+  }
+  const enabled = new Set(me.entitlements.filter((e) => e.enabled).map((e) => e.section_key));
+  return tabs.filter((t) => !t.requires || enabled.has(t.requires));
+}
+
+/** Labels for module keys on the settings screens. */
+export function moduleLabel(key: string, fallback?: string): string {
+  return MODULE_LABELS[key] ?? fallback ?? key;
+}
+
+const MODULE_LABELS: Record<string, string> = {
+  core: "Workspace",
+  contacts: "Customers",
+  products: "Products",
+  crm: "Sales / CRM",
+  pos: "POS & inventory",
+  purchasing: "Purchasing",
+  fbr: "FBR invoicing",
+  invoicing: "Invoices",
+  hrms: "Staff / HRMS",
+  payroll: "Payroll",
+  pos_hrms: "Cashiers are staff",
+};
 
 /** Which module a path belongs to: the longest matching module or tab href wins. */
 export function moduleFor(pathname: string, modules: Module[]): Module | undefined {

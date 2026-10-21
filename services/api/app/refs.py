@@ -17,6 +17,7 @@ _LABELS = {
     "pos_suppliers": "Supplier",
     "hrms_employees": "Employee",
     "contacts": "Contact",
+    "teams": "Team",
 }
 
 

@@ -64,6 +64,10 @@ ENUM_COLUMNS = {
     ("tenant_branding", "layout"): models.BRANDING_LAYOUTS,
     ("tax_rates", "kind"): models.TAX_KINDS,
     ("tax_rates", "applies_to"): models.TAX_APPLIES_TO,
+    ("tenant_modules", "state"): models.MODULE_STATES,
+    ("tenant_modules", "reason"): models.MODULE_REASONS,
+    ("module_purges", "status"): models.PURGE_STATUSES,
+    ("role_grants", "scope"): models.GRANT_SCOPES,
 }
 
 

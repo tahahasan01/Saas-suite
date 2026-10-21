@@ -11,7 +11,7 @@ from ..models import (
     WorkflowOut,
     WorkflowUpdate,
 )
-from ..rbac import require
+from ..rbac import perm
 
 router = APIRouter(prefix="/workflows", tags=["workflows"])
 
@@ -23,7 +23,7 @@ def _out(r) -> WorkflowOut:
 
 
 @router.get("", response_model=list[WorkflowOut])
-async def list_workflows(auth: AuthContext = Depends(require("settings", "read"))):
+async def list_workflows(auth: AuthContext = Depends(perm("settings.workflows.read"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
         rows = await conn.fetch(
             "select id,name,trigger,conditions,actions,enabled,is_system from workflows order by created_at")
@@ -31,7 +31,7 @@ async def list_workflows(auth: AuthContext = Depends(require("settings", "read")
 
 
 @router.post("", response_model=WorkflowOut, status_code=status.HTTP_201_CREATED)
-async def create_workflow(body: WorkflowCreate, auth: AuthContext = Depends(require("settings", "admin"))):
+async def create_workflow(body: WorkflowCreate, auth: AuthContext = Depends(perm("settings.workflows.manage"))):
     if body.trigger not in WORKFLOW_TRIGGERS:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"Unknown trigger: {body.trigger}")
     async with db.tenant_conn(auth.tenant_id) as conn:
@@ -47,7 +47,7 @@ async def create_workflow(body: WorkflowCreate, auth: AuthContext = Depends(requ
 
 @router.patch("/{workflow_id}", response_model=WorkflowOut)
 async def update_workflow(workflow_id: str, body: WorkflowUpdate,
-                          auth: AuthContext = Depends(require("settings", "admin"))):
+                          auth: AuthContext = Depends(perm("settings.workflows.manage"))):
     async with db.tenant_conn(auth.tenant_id) as conn:
         cur = await conn.fetchrow("select name, enabled from workflows where id=$1", workflow_id)
         if cur is None:
@@ -63,7 +63,7 @@ async def update_workflow(workflow_id: str, body: WorkflowUpdate,
 
 @router.delete("/{workflow_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_workflow(workflow_id: str, response: Response,
-                          auth: AuthContext = Depends(require("settings", "admin"))) -> Response:
+                          auth: AuthContext = Depends(perm("settings.workflows.manage"))) -> Response:
     async with db.tenant_conn(auth.tenant_id) as conn:
         # A 204 for a row RLS hid (another tenant's) or a system one we kept
         # would claim a delete that never happened.

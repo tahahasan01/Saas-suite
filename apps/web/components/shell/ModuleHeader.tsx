@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useSession } from "@/lib/session";
-import { MODULES, PORTAL_MODULES, moduleFor, tabIsActive, tileStyle, type Module, type ModuleTab } from "@/lib/modules";
+import { MODULES, PORTAL_MODULES, moduleFor, tabIsActive, tileStyle, visibleTabs, type Module, type ModuleTab } from "@/lib/modules";
 
 /** The module's name in its colour, and its screens as tabs — the same on every
  *  page of the module, so nobody hunts for a link buried in a page. */
@@ -14,13 +14,13 @@ export function ModuleHeader() {
   const pathname = usePathname();
   if (!me) return null;
 
-  const enabled = new Set(me.entitlements.filter((e) => e.enabled).map((e) => e.section_key));
   const modules = me.employee_portal ? PORTAL_MODULES : MODULES;
   const m = moduleFor(pathname, modules);
   // The overview pages open with their own greeting; a module title above it
   // would say the same thing twice.
   if (!m || m.key === "dashboard" || m.key === "me") return null;
-  const tabs = (m.tabs ?? []).filter((tb) => !tb.requires || enabled.has(tb.requires));
+  // Which tabs this caller may open comes from the server (/auth/me `nav`).
+  const tabs = me.employee_portal ? (m.tabs ?? []) : visibleTabs(m, me);
   const Icon = m.icon;
 
   return (

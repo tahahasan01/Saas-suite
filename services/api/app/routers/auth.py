@@ -13,6 +13,8 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request,
 from .. import audit, context, db, email, ratelimit, rbac, sampledata, tokens
 from ..config import settings
 from ..deps import AuthContext, current_auth
+from ..modules import MODULES, is_effective, nav_for
+from ..modules import service as modules_service
 from ..models import (
     INDUSTRIES,
     SECTIONS,
@@ -21,11 +23,14 @@ from ..models import (
     ForgotRequest,
     LocaleOut,
     LoginRequest,
+    MeModule,
+    MeNavItem,
     MeResponse,
     PasswordChange,
     ResetRequest,
     SignupRequest,
     TenantOut,
+    TerminologyRef,
     UserOut,
     VerifyRequest,
 )
@@ -86,9 +91,14 @@ async def signup(body: SignupRequest, response: Response, background: Background
                 body.company_name, body.industry_type,
             )
             role_id = await conn.fetchval(
-                "insert into roles (tenant_id, name, is_system) values ($1,'Owner',true) returning id",
+                """insert into roles (tenant_id, name, is_system, template_key)
+                   values ($1,'Owner',true,'owner') returning id""",
                 tenant_id,
             )
+            # RBAC v2 (0053): the Owner template holds every key, present and future.
+            await conn.execute(
+                "insert into role_grants (tenant_id, role_id, permission_key, scope) values ($1,$2,'*','all')",
+                tenant_id, role_id)
             # Owner gets admin on every section (incl. settings + accounts approvals,
             # and payroll, which hrms:admin deliberately doesn't carry — D-42).
             for section in SECTIONS + ["settings", "accounts", "payroll"]:
@@ -101,12 +111,9 @@ async def signup(body: SignupRequest, response: Response, background: Background
                    values ($1,$2,$3,$4,$5) returning id""",
                 tenant_id, body.email, hash_password(body.password), body.name, role_id,
             )
-            # Enable the chosen sections; the rest exist but disabled.
-            for section in SECTIONS:
-                await conn.execute(
-                    "insert into entitlements (tenant_id, section_key, enabled) values ($1,$2,$3)",
-                    tenant_id, section, section in sections,
-                )
+            # The chosen apps on (the rest exist but off), with the supporting
+            # and link modules they need (D-01, migration 0052).
+            await modules_service.bootstrap(conn, tenant_id, sections)
             # Start a 14-day trial with Growth-level features.
             await conn.execute(
                 """insert into subscriptions (tenant_id, plan, status, trial_ends_at)
@@ -285,13 +292,33 @@ async def _bootstrap(conn, user: UserOut, tenant_id: str, role_id: str | None) -
     # The user's choice, else English; a tenant default joins here when the
     # typed tenant settings land (12-trd §4.2).
     locale = await conn.fetchval("select locale from users where id=$1", user.id) or "en"
+    # RBAC v2 + module registry (D-01, D-04): one principal answers both the
+    # permission map and the nav, so the two can't disagree.
+    principal = await rbac.load_principal(conn, user_id=user.id, role_id=role_id)
+    permissions = principal.permissions()
+    on = {k for k in MODULES if is_effective(k, principal.modules_on)}
+    async with db.owner_conn() as oc:   # platform-owned reference data
+        flag_rows = await oc.fetch(
+            """select flag_key, enabled from feature_flags
+                where tenant_id is null or tenant_id = $1 order by tenant_id nulls first""",
+            tenant_row["id"])
+        term_sig = await oc.fetchval(
+            """select md5(coalesce(string_agg(key || '=' || label, ',' order by key), ''))
+                 from terminology where industry_type = $1 and locale = 'en'""",
+            tenant_row["industry_type"])
     return MeResponse(
         user=user,
         tenant=TenantOut(id=str(tenant_row["id"]), name=tenant_row["name"],
                          industry_type=tenant_row["industry_type"], status=tenant_row["status"]),
         entitlements=[EntitlementOut(section_key=r["section_key"], enabled=r["enabled"], limits=r["limits"])
                       for r in ent_rows],
-        permissions=await rbac.effective_permissions(conn, tenant_id, role_id),
+        permissions=permissions,
+        modules=[MeModule(key=k, state="enabled" if k in on else "disabled", application=m.application)
+                 for k, m in MODULES.items()],
+        nav=[MeNavItem(**n) for n in nav_for(principal.modules_on, permissions)],
+        flags={r["flag_key"]: r["enabled"] for r in flag_rows},   # a tenant row overrides the default
+        terminology=TerminologyRef(etag=f'W/"{term_sig[:16]}"', industry_type=tenant_row["industry_type"],
+                                   locale="en"),
         # A CHECK keeps users.locale to en|ur; the column type is still text.
         locale=LocaleOut(locale=locale, dir="rtl" if locale == "ur" else "ltr",  # type: ignore[arg-type]
                          timezone=tenant_row["timezone"], currency="PKR"),

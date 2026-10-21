@@ -86,6 +86,10 @@ class Settings(BaseSettings):
     s3_region: str = "auto"                    # R2 uses 'auto'
     s3_access_key_id: str = ""
     s3_secret_access_key: str = ""
+    # RBAC v2 rollout (app/rbac.py, §7.7): 'shadow' evaluates both models and
+    # logs mismatches while the old grants decide for never-edited roles;
+    # 'v2' enforces role_grants; 'legacy' is the rollback to the old check.
+    rbac_mode: str = "shadow"
 
     @property
     def cors_origins(self) -> list[str]:

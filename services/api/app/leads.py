@@ -20,9 +20,19 @@ from typing import Any
 import asyncpg
 from fastapi import HTTPException, status
 
-from . import timeline
+from . import rbac, scopes, timeline
+from .deps import AuthContext
 from .models import LeadOut, LeadStatus, TimelineKind
 from .workflow import engine as wf
+
+
+async def ensure_in_scope(conn: asyncpg.Connection, auth: AuthContext, key: str, lead_id: str) -> None:
+    """404 unless the lead is inside the caller's record scope for `key`
+    (D-04: out of scope reads as "not found", never "forbidden")."""
+    scope = await rbac.scope_of(conn, auth, key)
+    if not await conn.fetchval(
+            f"select 1 from crm_leads l where l.id = $1 and {scopes.where('crm.lead', scope, 'l')}", lead_id):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lead not found")
 
 LEAD_SELECT = """
 select l.*, s.is_won as stage_is_won, r.name as lost_reason,

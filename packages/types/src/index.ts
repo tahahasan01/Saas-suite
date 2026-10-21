@@ -91,6 +91,7 @@ export const PERMISSION_KEYS = [
   "products.product.update",
   "products.product.import",
   "products.product.export",
+  "products.cost.read",
   // purchasing
   "purchasing.po.read",
   "purchasing.po.create",
@@ -164,12 +165,37 @@ export interface LocaleOut {
   currency: string;
 }
 
+/** A module and whether it is on for the tenant (D-01). */
+export interface MeModule {
+  key: string;
+  state: "enabled" | "disabled";
+  application: boolean;
+}
+
+/** A sidebar entry the server says this caller may see (manifests ∩ enabled
+ *  modules ∩ held keys). `key` matches a module key in lib/modules.ts. */
+export interface MeNavItem {
+  key: string;
+  module: string;
+  href: string;
+  label_key: string;
+  icon: string;
+  group: string;
+  children: { href: string; label_key: string }[];
+}
+
 export interface MeResponse {
   user: UserOut;
   tenant: TenantOut;
+  /** Deprecated: read `modules` / `nav`. Kept for one release. */
   entitlements: EntitlementOut[];
   /** Keys the caller holds -> scope. A missing key is not held. */
   permissions: Partial<Record<PermissionKey, PermissionScope>>;
+  modules: MeModule[];
+  nav: MeNavItem[];
+  flags: Record<string, boolean>;
+  /** Refetch /terminology when the ETag changes. */
+  terminology: { etag: string; industry_type: string; locale: string } | null;
   locale: LocaleOut;
   /** True when this login is an employee self-service account. */
   employee_portal: boolean;
@@ -185,6 +211,76 @@ export interface MeResponse {
   } | null;
 }
 
+// ── Modules and RBAC v2 (D-01, D-02, D-04) ─────────────────────────────────
+export interface ModuleOut {
+  key: string;
+  label: string;
+  description: string;
+  application: boolean;
+  always_on: boolean;
+  state: "enabled" | "disabled";
+  reason: "user" | "dependency" | "auto" | null;
+  depends: string[];
+  auto_enable: string[];
+  purgeable: boolean;
+  pending_purge_at: string | null;
+}
+
+export interface EnablePlanOut {
+  module: string;
+  to_enable: string[];
+  violations: string[];
+  applied: boolean;
+}
+
+export interface DisablePlanOut {
+  module: string;
+  to_disable: string[];
+  blocked_by: string[];
+  applied: boolean;
+}
+
+export interface Grant {
+  permission_key: string;
+  scope: PermissionScope;
+}
+
+export interface RoleSummary {
+  id: string;
+  name: string;
+  description: string;
+  is_system: boolean;
+  template_key: string | null;
+  user_count: number;
+}
+
+export interface RoleDetail extends RoleSummary {
+  grants: Grant[];
+  inherits: string[];
+}
+
+export interface CatalogKey {
+  key: string;
+  resource: string;
+  action: string;
+  /** Own/team/branch narrow it; otherwise only "all" applies. */
+  scoped: boolean;
+  legacy: [string, string];
+}
+
+export interface CatalogModule {
+  module: string;
+  label: string;
+  keys: CatalogKey[];
+}
+
+export interface TeamOut {
+  id: string;
+  name: string;
+  lead_user_id: string | null;
+  member_ids: string[];
+}
+
 export interface TerminologyResponse {
   industry_type: Industry;
   locale: string;
@@ -195,8 +291,11 @@ export interface TeamUser {
   id: string;
   email: string;
   name: string;
+  /** The primary role. */
   role: string | null;
   status: string;
+  /** Every role held (RBAC v2), primary first. */
+  roles: { id: string; name: string }[];
 }
 
 export interface RoleOut {

@@ -13,7 +13,7 @@ from uuid import UUID
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
-from .. import audit, contact_merge, contacts, contacts_backfill, db, rbac, refs
+from .. import audit, contact_merge, contacts, contacts_backfill, db, leads, rbac, refs
 from ..deps import AuthContext, current_auth
 from ..models import (
     AddressCreate,
@@ -49,7 +49,8 @@ from ..models import (
 )
 from ..phone import normalize_phone
 from .invoices import invoice_total
-from ..rbac import perm
+from ..rbac import perm, scope_of
+from ..scopes import where
 
 router = APIRouter(tags=["contacts"])
 
@@ -615,6 +616,7 @@ async def delete_tag(tag_id: str, auth: AuthContext = Depends(perm("contacts.tag
 async def lead_contact(lead_id: str, auth: AuthContext = Depends(perm("crm.lead.read"))) -> ContactOut | None:
     """The contact a lead is qualified to, or null."""
     async with db.tenant_conn(auth.tenant_id) as conn:
+        await leads.ensure_in_scope(conn, auth, "crm.lead.read", lead_id)
         lead = await conn.fetchrow("select contact_id from crm_leads where id = $1", lead_id)
         if lead is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Lead not found")
@@ -697,9 +699,13 @@ async def run_backfill(auth: AuthContext = Depends(perm("contacts.contact.merge"
 async def dismiss_review(item_id: str, auth: AuthContext = Depends(perm("crm.lead.update"))) -> Response:
     """Leave the lead without a contact; the backfill won't queue it again."""
     async with db.tenant_conn(auth.tenant_id) as conn:
+        # The item is about a lead: out of the caller's scope reads as not found.
+        scope = await scope_of(conn, auth, "crm.lead.update")
         done = await conn.execute(
-            """update contact_review_items set status = 'dismissed', resolved_by = $2, resolved_at = now()
-                where id = $1 and status = 'open'""", item_id, auth.user_id)
+            f"""update contact_review_items i set status = 'dismissed', resolved_by = $2, resolved_at = now()
+                 where i.id = $1 and i.status = 'open'
+                   and exists (select 1 from crm_leads l where l.id = i.lead_id and {where('crm.lead', scope, 'l')})""",
+            item_id, auth.user_id)
     if done == "UPDATE 0":
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Review item not found")
     return Response(status_code=status.HTTP_204_NO_CONTENT)

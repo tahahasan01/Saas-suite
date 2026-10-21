@@ -18,7 +18,7 @@ S, I, U, D = "SELECT", "INSERT", "UPDATE", "DELETE"
 APP_USER: dict[str, set[str]] = {
     # platform
     "tenants":              {S},
-    "roles":                {S, I},
+    "roles":                {S, I, U, D},       # rename, describe, delete a custom role (0053)
     "permissions":          {S, I},
     "users":                {S, I, U},
     "entitlements":         {S, I, U},          # upsert from the modules screen
@@ -80,6 +80,15 @@ APP_USER: dict[str, set[str]] = {
     "hrms_shifts":          {S, I},
     "hrms_shift_assignments": {S, I, U},        # the next assignment closes an open one
     "hrms_punches":         {S, I},             # append-only: the attendance evidence
+    # modules and RBAC v2 (0052-0054)
+    "tenant_modules":       {S, I, U},          # upsert from the modules screen
+    "feature_flags":        set(),              # platform-owned: owner pool only
+    "module_purges":        {S, I, U},          # requested and cancelled; run by the worker
+    "user_roles":           {S, I, D},          # a user's role set is replaced wholesale
+    "role_inherits":        {S, I, D},
+    "role_grants":          {S, I, D},
+    "teams":                {S, I, U, D},
+    "team_members":         {S, I, D},
     # AI views: app_user reaches them only through `set local role ai_reader`
     "ai_v_leads":           set(),
     "ai_v_interactions":    set(),

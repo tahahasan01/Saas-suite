@@ -27,6 +27,7 @@ import logging
 from typing import Any, Awaitable, Callable
 
 from . import activities, alerts, attendance, audit, context, db, email, fbr_submit, monitor, notifications, obs
+from .modules import service as modules_service
 from .routers.pos import _VELOCITY_SQL
 from . import files  # org data (3A): files.gc
 
@@ -194,6 +195,7 @@ HANDLERS: dict[str, Callable[[], Awaitable[Any]]] = {
     "crm.activity_overdue": run_activity_overdue,
     # org data (3A, p3-orgdata): stale draft uploads and orphan blobs (0057)
     "files.gc": files.gc,
+    "modules.purge": modules_service.run_due_purges,
 }
 
 
