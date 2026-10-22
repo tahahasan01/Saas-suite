@@ -1,5 +1,7 @@
 "use client";
 
+import { BirthdaySwitch } from "@/components/hrms/BirthdaySwitch";
+import { Celebrations } from "@/components/hrms/Celebrations";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { Approvals, Attendance, Employee, LeaveBalanceV2 } from "@business-os/types";
@@ -69,6 +71,8 @@ export default function MySpace() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
+      <Celebrations path="/me/celebrations" />
+      {profile && <BirthdaySwitch initial={profile.celebrate_birthday !== false} hasDate={!!profile.date_of_birth} />}
       <header>
         <h1 className="font-display text-[28px] font-bold tracking-tight">Hi, {firstName}</h1>
         {profile && (

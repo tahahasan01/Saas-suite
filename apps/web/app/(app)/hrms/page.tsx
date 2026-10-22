@@ -1,5 +1,6 @@
 "use client";
 
+import { Celebrations } from "@/components/hrms/Celebrations";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Employee } from "@business-os/types";
@@ -76,6 +77,7 @@ export default function EmployeesPage() {
 
   return (
     <div className="space-y-4">
+      <Celebrations path="/hrms/celebrations" />
       <div className="flex flex-wrap items-center gap-3">
         <Input
           value={q}

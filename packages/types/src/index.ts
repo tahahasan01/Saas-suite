@@ -682,6 +682,9 @@ export interface OccasionForecast {
 export const LEAVE_TYPES = ["annual", "sick", "casual", "unpaid"] as const;
 
 export interface Employee {
+  /** 0088: birthdays show the day only. */
+  date_of_birth?: string | null;
+  celebrate_birthday?: boolean;
   id: string;
   name: string;
   email: string;

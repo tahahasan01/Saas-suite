@@ -49,7 +49,9 @@ def _emp(r, *, reveal: bool) -> EmployeeOut:
         pay_masked=not reveal,
         # Absent from the list query (create/update return the bare row) → default False.
         present_today=bool(r["present_today"]) if "present_today" in r.keys() else False,
-        has_login="user_id" in r.keys() and r["user_id"] is not None)
+        has_login="user_id" in r.keys() and r["user_id"] is not None,
+        date_of_birth=r["date_of_birth"] if "date_of_birth" in r.keys() else None,
+        celebrate_birthday=bool(r["celebrate_birthday"]) if "celebrate_birthday" in r.keys() else True)
 
 
 def _att(r) -> AttendanceOut:

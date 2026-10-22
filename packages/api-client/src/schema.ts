@@ -3673,6 +3673,111 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/hrms/requests/pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pending */
+        get: operations["pending_hrms_requests_pending_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My Requests */
+        get: operations["my_requests_me_requests_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/celebrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Celebrations */
+        get: operations["celebrations_hrms_celebrations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/org-chart": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Org Chart */
+        get: operations["org_chart_hrms_org_chart_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/celebrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My Celebrations */
+        get: operations["my_celebrations_me_celebrations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/celebrations/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * My Celebration Settings
+         * @description Whether the team sees my birthday: my choice, not HR's.
+         */
+        put: operations["my_celebration_settings_me_celebrations_settings_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/hrms/leave-types": {
         parameters: {
             query?: never;
@@ -6156,6 +6261,30 @@ export interface components {
             /** Active */
             active?: boolean | null;
         };
+        /** Celebration */
+        Celebration: {
+            /** Employee Id */
+            employee_id: string;
+            /** Name */
+            name: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "birthday" | "anniversary";
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Years */
+            years: number | null;
+        };
+        /** CelebrationSettings */
+        CelebrationSettings: {
+            /** Celebrate Birthday */
+            celebrate_birthday: boolean;
+        };
         /** CheckInRequest */
         CheckInRequest: {
             /** Employee Id */
@@ -7132,6 +7261,13 @@ export interface components {
              * @default false
              */
             pay_masked: boolean;
+            /** Date Of Birth */
+            date_of_birth?: string | null;
+            /**
+             * Celebrate Birthday
+             * @default true
+             */
+            celebrate_birthday: boolean;
         };
         /** EmployeeProfile */
         EmployeeProfile: {
@@ -7170,6 +7306,13 @@ export interface components {
              * @default false
              */
             pay_masked: boolean;
+            /** Date Of Birth */
+            date_of_birth?: string | null;
+            /**
+             * Celebrate Birthday
+             * @default true
+             */
+            celebrate_birthday: boolean;
             /** Code */
             code?: string | null;
             /** Department Id */
@@ -7220,6 +7363,12 @@ export interface components {
             salary_minor?: number | null;
             /** Status */
             status?: ("active" | "inactive") | null;
+            /** Join Date */
+            join_date?: string | null;
+            /** Date Of Birth */
+            date_of_birth?: string | null;
+            /** Celebrate Birthday */
+            celebrate_birthday?: boolean | null;
         };
         /** EnablePlanOut */
         EnablePlanOut: {
@@ -9238,6 +9387,21 @@ export interface components {
             /** Run Id */
             run_id: string | null;
         };
+        /** OrgChartPerson */
+        OrgChartPerson: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Job Title */
+            job_title: string;
+            /** Department */
+            department: string;
+            /** Manager Id */
+            manager_id: string | null;
+            /** Reports */
+            reports: number;
+        };
         /** OvertimeClaimIn */
         OvertimeClaimIn: {
             /**
@@ -10194,6 +10358,33 @@ export interface components {
             registration_no: string;
             /** Effective From */
             effective_from?: string | null;
+        };
+        /** RequestRow */
+        RequestRow: {
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "leave" | "wfh" | "correction" | "overtime";
+            /** Title */
+            title: string;
+            /** Status */
+            status: string;
+            /** Reason */
+            reason: string;
+            /** Employee Id */
+            employee_id: string;
+            /** Employee Name */
+            employee_name: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Link */
+            link: string;
         };
         /** ResetRequest */
         ResetRequest: {
@@ -20202,6 +20393,200 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AssetOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pending_hrms_requests_pending_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequestRow"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_requests_me_requests_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequestRow"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    celebrations_hrms_celebrations_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Celebration"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    org_chart_hrms_org_chart_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgChartPerson"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_celebrations_me_celebrations_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Celebration"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_celebration_settings_me_celebrations_settings_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CelebrationSettings"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CelebrationSettings"];
                 };
             };
             /** @description Validation Error */

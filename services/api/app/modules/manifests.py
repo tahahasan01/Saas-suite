@@ -119,6 +119,7 @@ _MANIFESTS = [
                     children=(
                         NavChild("/hrms", "nav.hrms.team", "hrms.employee.read"),
                         NavChild("/hrms/approvals", "nav.hrms.approvals", "hrms.leave.approve"),
+                        NavChild("/hrms/org-chart", "nav.hrms.org_chart", "hrms.employee.read"),
                         NavChild("/hrms/attendance", "nav.hrms.attendance", "hrms.attendance.read"),
                         NavChild("/hrms/reports", "nav.hrms.reports", "hrms.attendance.read"),
                         NavChild("/hrms/leave", "nav.hrms.leave", "hrms.leave.read"),

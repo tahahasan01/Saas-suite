@@ -964,6 +964,8 @@ class EmployeeOut(BaseModel):
     present_today: bool = False
     has_login: bool = False   # linked to a self-service portal user
     pay_masked: bool = False  # True when salary and CNIC were withheld from this caller
+    date_of_birth: date | None = None   # 0088
+    celebrate_birthday: bool = True
 
 
 class EmployeeCreate(BaseModel):
@@ -993,6 +995,9 @@ class EmployeeUpdate(BaseModel):
     department: str | None = None
     salary_minor: int | None = Field(default=None, ge=0)
     status: EmployeeStatus | None = None
+    join_date: date | None = None
+    date_of_birth: date | None = None          # 0088: birthdays show the day only
+    celebrate_birthday: bool | None = None
 
 
 class CheckInRequest(BaseModel):
@@ -1947,6 +1952,31 @@ class NoticeOut(BaseModel):
     audience_size: int
     acknowledged: int
     acknowledged_at: datetime | None = None   # /me only: when this employee acknowledged
+
+
+# ── Celebrations and the org chart (wave A, H2/H20) ──
+CelebrationKind = Literal["birthday", "anniversary"]
+
+
+class Celebration(BaseModel):
+    employee_id: str
+    name: str
+    kind: CelebrationKind
+    date: date              # this year's (or next year's) day; never the birth year
+    years: int | None       # anniversaries only
+
+
+class CelebrationSettings(BaseModel):
+    celebrate_birthday: bool
+
+
+class OrgChartPerson(BaseModel):
+    id: str
+    name: str
+    job_title: str
+    department: str
+    manager_id: str | None
+    reports: int
 
 
 # ── Request tracker (wave A, H16) ──

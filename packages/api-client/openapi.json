@@ -15220,6 +15220,355 @@
         }
       }
     },
+    "/hrms/requests/pending": {
+      "get": {
+        "tags": [
+          "hrms"
+        ],
+        "summary": "Pending",
+        "operationId": "pending_hrms_requests_pending_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RequestRow"
+                  },
+                  "title": "Response Pending Hrms Requests Pending Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/requests": {
+      "get": {
+        "tags": [
+          "portal"
+        ],
+        "summary": "My Requests",
+        "operationId": "my_requests_me_requests_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RequestRow"
+                  },
+                  "title": "Response My Requests Me Requests Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hrms/celebrations": {
+      "get": {
+        "tags": [
+          "hrms"
+        ],
+        "summary": "Celebrations",
+        "operationId": "celebrations_hrms_celebrations_get",
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 366,
+              "minimum": 0,
+              "default": 30,
+              "title": "Days"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Celebration"
+                  },
+                  "title": "Response Celebrations Hrms Celebrations Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hrms/org-chart": {
+      "get": {
+        "tags": [
+          "hrms"
+        ],
+        "summary": "Org Chart",
+        "operationId": "org_chart_hrms_org_chart_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrgChartPerson"
+                  },
+                  "title": "Response Org Chart Hrms Org Chart Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/celebrations": {
+      "get": {
+        "tags": [
+          "portal"
+        ],
+        "summary": "My Celebrations",
+        "operationId": "my_celebrations_me_celebrations_get",
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 366,
+              "minimum": 0,
+              "default": 30,
+              "title": "Days"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Celebration"
+                  },
+                  "title": "Response My Celebrations Me Celebrations Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/celebrations/settings": {
+      "put": {
+        "tags": [
+          "portal"
+        ],
+        "summary": "My Celebration Settings",
+        "description": "Whether the team sees my birthday: my choice, not HR's.",
+        "operationId": "my_celebration_settings_me_celebrations_settings_put",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CelebrationSettings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CelebrationSettings"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/hrms/leave-types": {
       "get": {
         "tags": [
@@ -24664,6 +25013,64 @@
         "type": "object",
         "title": "CategoryUpdate"
       },
+      "Celebration": {
+        "properties": {
+          "employee_id": {
+            "type": "string",
+            "title": "Employee Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "birthday",
+              "anniversary"
+            ],
+            "title": "Kind"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "years": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Years"
+          }
+        },
+        "type": "object",
+        "required": [
+          "employee_id",
+          "name",
+          "kind",
+          "date",
+          "years"
+        ],
+        "title": "Celebration"
+      },
+      "CelebrationSettings": {
+        "properties": {
+          "celebrate_birthday": {
+            "type": "boolean",
+            "title": "Celebrate Birthday"
+          }
+        },
+        "type": "object",
+        "required": [
+          "celebrate_birthday"
+        ],
+        "title": "CelebrationSettings"
+      },
       "CheckInRequest": {
         "properties": {
           "employee_id": {
@@ -27514,6 +27921,23 @@
             "type": "boolean",
             "title": "Pay Masked",
             "default": false
+          },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "celebrate_birthday": {
+            "type": "boolean",
+            "title": "Celebrate Birthday",
+            "default": true
           }
         },
         "type": "object",
@@ -27602,6 +28026,23 @@
             "type": "boolean",
             "title": "Pay Masked",
             "default": false
+          },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "celebrate_birthday": {
+            "type": "boolean",
+            "title": "Celebrate Birthday",
+            "default": true
           },
           "code": {
             "anyOf": [
@@ -27818,6 +28259,41 @@
               }
             ],
             "title": "Status"
+          },
+          "join_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Join Date"
+          },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "celebrate_birthday": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Celebrate Birthday"
           }
         },
         "type": "object",
@@ -33609,6 +34085,51 @@
         ],
         "title": "OneOffOut"
       },
+      "OrgChartPerson": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "job_title": {
+            "type": "string",
+            "title": "Job Title"
+          },
+          "department": {
+            "type": "string",
+            "title": "Department"
+          },
+          "manager_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manager Id"
+          },
+          "reports": {
+            "type": "integer",
+            "title": "Reports"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "job_title",
+          "department",
+          "manager_id",
+          "reports"
+        ],
+        "title": "OrgChartPerson"
+      },
       "OvertimeClaimIn": {
         "properties": {
           "work_date": {
@@ -36087,6 +36608,66 @@
         },
         "type": "object",
         "title": "RegistrationIn"
+      },
+      "RequestRow": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "leave",
+              "wfh",
+              "correction",
+              "overtime"
+            ],
+            "title": "Kind"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "employee_id": {
+            "type": "string",
+            "title": "Employee Id"
+          },
+          "employee_name": {
+            "type": "string",
+            "title": "Employee Name"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "link": {
+            "type": "string",
+            "title": "Link"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "status",
+          "reason",
+          "employee_id",
+          "employee_name",
+          "created_at",
+          "link"
+        ],
+        "title": "RequestRow"
       },
       "ResetRequest": {
         "properties": {

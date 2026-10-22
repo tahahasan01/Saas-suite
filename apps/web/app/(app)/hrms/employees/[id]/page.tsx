@@ -72,9 +72,9 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
 
 function Details({ p, onSaved }: { p: EmployeeProfile; onSaved: () => void }) {
   const can = useCan();
-  const [f, setF] = useState({ name: p.name, email: p.email, phone: p.phone });
+  const [f, setF] = useState({ name: p.name, email: p.email, phone: p.phone, date_of_birth: p.date_of_birth ?? "" });
   const save = useAction(
-    () => api(`/hrms/employees/${p.id}`, { method: "PATCH", body: JSON.stringify(f) }),
+    () => api(`/hrms/employees/${p.id}`, { method: "PATCH", body: JSON.stringify({ ...f, date_of_birth: f.date_of_birth || null }) }),
     { success: "Saved", failure: "Couldn't save" },
   );
   const invite = useAction(
@@ -91,6 +91,7 @@ function Details({ p, onSaved }: { p: EmployeeProfile; onSaved: () => void }) {
       >
         <Field label="Name"><Input value={f.name} required disabled={!editable} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
         <Field label="Phone"><Input type="tel" value={f.phone} disabled={!editable} placeholder="03XX-XXXXXXX" onChange={(e) => setF({ ...f, phone: e.target.value })} /></Field>
+        <Field label="Date of birth (for birthdays; the year is never shown)"><Input type="date" value={f.date_of_birth} disabled={!editable} onChange={(e) => setF({ ...f, date_of_birth: e.target.value })} /></Field>
         <div className="sm:col-span-2">
           <Field label="Email (for their own login)"><Input type="email" value={f.email} disabled={!editable} onChange={(e) => setF({ ...f, email: e.target.value })} /></Field>
         </div>
