@@ -3550,6 +3550,129 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/hrms/assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Assets */
+        get: operations["list_assets_hrms_assets_get"];
+        put?: never;
+        /** Create Asset */
+        post: operations["create_asset_hrms_assets_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/assets/{asset_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Asset */
+        patch: operations["update_asset_hrms_assets__asset_id__patch"];
+        trace?: never;
+    };
+    "/hrms/assets/{asset_id}/issue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Issue */
+        post: operations["issue_hrms_assets__asset_id__issue_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/assets/{asset_id}/return": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Take Back */
+        post: operations["take_back_hrms_assets__asset_id__return_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/assets/{asset_id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** History */
+        get: operations["history_hrms_assets__asset_id__history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/employees/{employee_id}/assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Employee Assets
+         * @description What someone holds now (offboarding lists it, wave C).
+         */
+        get: operations["employee_assets_hrms_employees__employee_id__assets_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My Assets */
+        get: operations["my_assets_me_assets_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/hrms/leave-types": {
         parameters: {
             query?: never;
@@ -5530,6 +5653,143 @@ export interface components {
             rows?: {
                 [key: string]: unknown;
             }[];
+        };
+        /** AssetAssignmentOut */
+        AssetAssignmentOut: {
+            /** Id */
+            id: string;
+            /** Asset Id */
+            asset_id: string;
+            /** Asset Name */
+            asset_name: string;
+            /** Employee Id */
+            employee_id: string;
+            /** Employee Name */
+            employee_name: string;
+            /**
+             * Issued At
+             * Format: date-time
+             */
+            issued_at: string;
+            /** Issue Note */
+            issue_note: string;
+            /** Returned At */
+            returned_at: string | null;
+            /** Return Condition */
+            return_condition: ("new" | "good" | "fair" | "damaged") | null;
+            /** Return Note */
+            return_note: string;
+        };
+        /** AssetCreate */
+        AssetCreate: {
+            /** Name */
+            name: string;
+            /**
+             * Category
+             * @default other
+             * @enum {string}
+             */
+            category: "laptop" | "desktop" | "phone" | "tablet" | "sim" | "vehicle" | "furniture" | "tool" | "uniform" | "other";
+            /** Tag */
+            tag?: string | null;
+            /**
+             * Serial No
+             * @default
+             */
+            serial_no: string;
+            /** Purchased On */
+            purchased_on?: string | null;
+            /** Value Minor */
+            value_minor?: number | null;
+            /**
+             * Condition
+             * @default good
+             * @enum {string}
+             */
+            condition: "new" | "good" | "fair" | "damaged";
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /** AssetIssue */
+        AssetIssue: {
+            /**
+             * Employee Id
+             * Format: uuid
+             */
+            employee_id: string;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /** AssetOut */
+        AssetOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "laptop" | "desktop" | "phone" | "tablet" | "sim" | "vehicle" | "furniture" | "tool" | "uniform" | "other";
+            /** Tag */
+            tag: string | null;
+            /** Serial No */
+            serial_no: string;
+            /** Purchased On */
+            purchased_on: string | null;
+            /** Value Minor */
+            value_minor: number | null;
+            /**
+             * Condition
+             * @enum {string}
+             */
+            condition: "new" | "good" | "fair" | "damaged";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "available" | "issued" | "retired" | "lost";
+            /** Note */
+            note: string;
+            /** Holder Id */
+            holder_id: string | null;
+            /** Holder Name */
+            holder_name: string | null;
+            /** Issued At */
+            issued_at: string | null;
+        };
+        /** AssetReturn */
+        AssetReturn: {
+            /** Condition */
+            condition?: ("new" | "good" | "fair" | "damaged") | null;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /** AssetUpdate */
+        AssetUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Tag */
+            tag?: string | null;
+            /** Serial No */
+            serial_no?: string | null;
+            /** Value Minor */
+            value_minor?: number | null;
+            /** Condition */
+            condition?: ("new" | "good" | "fair" | "damaged") | null;
+            /** Status */
+            status?: ("available" | "issued" | "retired" | "lost") | null;
+            /** Note */
+            note?: string | null;
         };
         /** AttendanceOut */
         AttendanceOut: {
@@ -19668,6 +19928,280 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OvertimeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_assets_hrms_assets_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssetOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_asset_hrms_assets_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssetCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_asset_hrms_assets__asset_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asset_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssetUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    issue_hrms_assets__asset_id__issue_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asset_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssetIssue"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    take_back_hrms_assets__asset_id__return_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asset_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssetReturn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    history_hrms_assets__asset_id__history_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asset_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssetAssignmentOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    employee_assets_hrms_employees__employee_id__assets_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employee_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssetOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_assets_me_assets_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssetOut"][];
                 };
             };
             /** @description Validation Error */

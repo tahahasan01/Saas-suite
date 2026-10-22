@@ -1949,6 +1949,75 @@ class NoticeOut(BaseModel):
     acknowledged_at: datetime | None = None   # /me only: when this employee acknowledged
 
 
+# ── Assets issued to staff (wave A, 0087) ──
+AssetCategory = Literal["laptop", "desktop", "phone", "tablet", "sim", "vehicle", "furniture", "tool", "uniform", "other"]
+ASSET_CATEGORIES = list(get_args(AssetCategory))
+AssetCondition = Literal["new", "good", "fair", "damaged"]
+ASSET_CONDITIONS = list(get_args(AssetCondition))
+AssetStatus = Literal["available", "issued", "retired", "lost"]
+ASSET_STATUSES = list(get_args(AssetStatus))
+
+
+class AssetCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    category: AssetCategory = "other"
+    tag: str | None = Field(default=None, max_length=40)
+    serial_no: str = Field(default="", max_length=80)
+    purchased_on: date | None = None
+    value_minor: int | None = Field(default=None, ge=0, le=10**12)
+    condition: AssetCondition = "good"
+    note: str = Field(default="", max_length=500)
+
+
+class AssetUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    tag: str | None = Field(default=None, max_length=40)
+    serial_no: str | None = Field(default=None, max_length=80)
+    value_minor: int | None = Field(default=None, ge=0, le=10**12)
+    condition: AssetCondition | None = None
+    status: AssetStatus | None = None
+    note: str | None = Field(default=None, max_length=500)
+
+
+class AssetIssue(BaseModel):
+    employee_id: UUID
+    note: str = Field(default="", max_length=500)
+
+
+class AssetReturn(BaseModel):
+    condition: AssetCondition | None = None
+    note: str = Field(default="", max_length=500)
+
+
+class AssetOut(BaseModel):
+    id: str
+    name: str
+    category: AssetCategory
+    tag: str | None
+    serial_no: str
+    purchased_on: date | None
+    value_minor: int | None           # asset managers only
+    condition: AssetCondition
+    status: AssetStatus
+    note: str
+    holder_id: str | None
+    holder_name: str | None
+    issued_at: datetime | None
+
+
+class AssetAssignmentOut(BaseModel):
+    id: str
+    asset_id: str
+    asset_name: str
+    employee_id: str
+    employee_name: str
+    issued_at: datetime
+    issue_note: str
+    returned_at: datetime | None
+    return_condition: AssetCondition | None
+    return_note: str
+
+
 # ── Overtime claims (wave A, 0086) ──
 OvertimeStatus = Literal["pending", "approved", "rejected"]
 OVERTIME_STATUSES = list(get_args(OvertimeStatus))

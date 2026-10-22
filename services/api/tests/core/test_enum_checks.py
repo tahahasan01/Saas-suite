@@ -77,6 +77,10 @@ ENUM_COLUMNS = {
     ("hrms_employee_documents", "kind"): models.DOCUMENT_KINDS,
     ("hrms_notices", "audience"): models.NOTICE_AUDIENCES,
     ("hrms_overtime_claims", "status"): models.OVERTIME_STATUSES,
+    ("hrms_assets", "category"): models.ASSET_CATEGORIES,
+    ("hrms_assets", "condition"): models.ASSET_CONDITIONS,
+    ("hrms_assets", "status"): models.ASSET_STATUSES,
+    ("hrms_asset_assignments", "return_condition"): models.ASSET_CONDITIONS,
     # attendance v2 (0066)
     ("hrms_punches", "geo_status"): models.GEO_STATUSES,
     ("hrms_attendance", "geo_status"): models.GEO_STATUSES,

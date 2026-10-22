@@ -56,6 +56,8 @@ KIND_OF = {
     "notice_id": "notice",
     # overtime claims (wave A, 0086)
     "claim_id": "overtime_claim",
+    # assets (wave A, 0087)
+    "asset_id": "asset",
 }
 
 # Path parameters that are not ids: a fixed, valid value. (scheme_code names
@@ -146,6 +148,7 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
     advance = (await c.post("/payroll/advances", json={"employee_id": employee["id"], "principal_minor": 100,
                                                        "installment_minor": 100, "start_month": "2026-09"})).json()
     notice = (await c.post("/hrms/notices", json={"title": "Probe notice"})).json()
+    asset = (await c.post("/hrms/assets", json={"name": "Probe laptop", "category": "laptop"})).json()
     return {
         "activity_type": activity_type["id"], "activity": activity["id"],
         "lost_reason": (await c.get("/crm/lost-reasons")).json()[0]["id"],
@@ -157,7 +160,7 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
         "leave_type": leave_type["id"], "correction": str(correction),
         "payroll_run": run["id"], "pay_component": component["id"], "pay_structure": structure["id"],
         "one_off": one_off["id"], "advance": advance["id"], "notice": notice["id"],
-        "overtime_claim": str(overtime_claim),
+        "overtime_claim": str(overtime_claim), "asset": asset["id"],
         # No payslip exists before a run is calculated; any id stands in (it must still 404).
         "payslip": str(uuid.uuid4()),
         "role": (await c.get("/team/roles")).json()[0]["id"],

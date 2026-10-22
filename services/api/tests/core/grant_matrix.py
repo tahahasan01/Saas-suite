@@ -97,6 +97,8 @@ APP_USER: dict[str, set[str]] = {
     "hrms_notices":            {S, I, U},       # archived, never deleted (0085)
     "hrms_notice_acks":        {S, I},          # append-only acknowledgements
     "hrms_overtime_claims":    {S, I, U},       # decided, never deleted (0086)
+    "hrms_assets":             {S, I, U},       # retired, never deleted (0087)
+    "hrms_asset_assignments":  {S, I, U},       # closed on return, never deleted
     # attendance v2 (0066)
     "hrms_kiosks":          {S, I, U},          # revoke; last_seen_at is written by the owner
     "hrms_attendance_corrections": {S, I, U},   # decided in place, audited by trigger
