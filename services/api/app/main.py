@@ -14,6 +14,7 @@ from .bodylimit import BodyLimitMiddleware
 from .config import settings
 from .context import REQUEST_ID_HEADER, RequestContextMiddleware
 from .routers import activities as activities_router  # crm v2 (3B)
+from .routers import crm_selling  # CRM selling (wave D)
 from .routers import (  # org data (3A, p3-orgdata)
     ai,
     auth,
@@ -126,6 +127,7 @@ app.include_router(hrms.portal)
 app.include_router(billing.router)
 app.include_router(crm_pipelines.router)
 app.include_router(crm_reports.router)
+app.include_router(crm_selling.router)
 app.include_router(activities_router.router)
 app.include_router(contacts_router.router)
 # Org data (3A, p3-orgdata)

@@ -1851,6 +1851,65 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/crm/leads/{lead_id}/lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Lines */
+        get: operations["get_lines_crm_leads__lead_id__lines_get"];
+        /**
+         * Put Lines
+         * @description Replace the deal's lines (an empty list clears them).
+         */
+        put: operations["put_lines_crm_leads__lead_id__lines_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/leads/{lead_id}/lines/update-prices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Update Prices */
+        post: operations["update_prices_crm_leads__lead_id__lines_update_prices_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Settings
+         * @description Reps read the settings too: the line editor shows the discount ceiling.
+         */
+        get: operations["get_settings_crm_settings_get"];
+        /** Put Settings */
+        put: operations["put_settings_crm_settings_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/activities": {
         parameters: {
             query?: never;
@@ -6920,6 +6979,16 @@ export interface components {
             /** Amount Minor */
             amount_minor?: number | null;
         };
+        /** CrmSettingsIn */
+        CrmSettingsIn: {
+            /** Max Discount Pct */
+            max_discount_pct?: number | string | null;
+        };
+        /** CrmSettingsOut */
+        CrmSettingsOut: {
+            /** Max Discount Pct */
+            max_discount_pct?: number | null;
+        };
         /** CrmSummary */
         CrmSummary: {
             /** Total Leads */
@@ -6947,6 +7016,93 @@ export interface components {
             alerts: components["schemas"]["Alert"][];
             /** Activity */
             activity: components["schemas"]["ActivityItem"][];
+        };
+        /**
+         * DealLineIn
+         * @description The shape of an invoice line, so a deal's lines carry over unchanged.
+         *     With a product, the server snapshots its unit and catalog price and marks
+         *     a different price as typed by hand.
+         */
+        DealLineIn: {
+            /** Description */
+            description: string;
+            /** Qty */
+            qty: number | string;
+            /** Unit Price Minor */
+            unit_price_minor: number;
+            /**
+             * Line Discount Minor
+             * @default 0
+             */
+            line_discount_minor: number;
+            /** Tax Code */
+            tax_code?: string | null;
+            /** Product Id */
+            product_id?: string | null;
+        };
+        /** DealLineOut */
+        DealLineOut: {
+            /** Id */
+            id: string;
+            /** Position */
+            position: number;
+            /** Product Id */
+            product_id: string | null;
+            /** Description */
+            description: string;
+            /** Unit */
+            unit: string;
+            /** Qty */
+            qty: number;
+            /** Unit Price Minor */
+            unit_price_minor: number;
+            /** List Price Minor */
+            list_price_minor: number | null;
+            /** Price Overridden */
+            price_overridden: boolean;
+            /** Line Discount Minor */
+            line_discount_minor: number;
+            /** Tax Code */
+            tax_code: string | null;
+            /** Tax Rate Pct */
+            tax_rate_pct: number;
+            /** Gross Minor */
+            gross_minor: number;
+            /** Net Excl Minor */
+            net_excl_minor: number;
+            /** Tax Minor */
+            tax_minor: number;
+            /** Total Minor */
+            total_minor: number;
+        };
+        /** DealLines */
+        DealLines: {
+            /** Lead Id */
+            lead_id: string;
+            /** Tax Inclusive */
+            tax_inclusive: boolean;
+            /** Lines */
+            lines: components["schemas"]["DealLineOut"][];
+            /** Subtotal Minor */
+            subtotal_minor: number;
+            /** Line Discount Minor */
+            line_discount_minor: number;
+            /** Net Minor */
+            net_minor: number;
+            /** Tax Minor */
+            tax_minor: number;
+            /** Total Minor */
+            total_minor: number;
+        };
+        /** DealLinesPut */
+        DealLinesPut: {
+            /** Lines */
+            lines: components["schemas"]["DealLineIn"][];
+            /**
+             * Tax Inclusive
+             * @default false
+             */
+            tax_inclusive: boolean;
         };
         /** Decision */
         Decision: {
@@ -8303,6 +8459,11 @@ export interface components {
              * @default []
              */
             tags: components["schemas"]["TagOut"][];
+            /**
+             * Line Count
+             * @default 0
+             */
+            line_count: number;
         };
         /** LeadUpdate */
         LeadUpdate: {
@@ -16133,6 +16294,175 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SourcesReport"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_lines_crm_leads__lead_id__lines_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lead_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealLines"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_lines_crm_leads__lead_id__lines_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lead_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DealLinesPut"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealLines"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_prices_crm_leads__lead_id__lines_update_prices_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lead_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealLines"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_settings_crm_settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CrmSettingsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_settings_crm_settings_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CrmSettingsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CrmSettingsOut"];
                 };
             };
             /** @description Validation Error */

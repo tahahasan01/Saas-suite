@@ -341,6 +341,8 @@ class LeadOut(BaseModel):
     activity_state: Literal["overdue", "today", "planned"] | None = None
     next_activity_date: date | None = None
     tags: list[TagOut] = []
+    # Products on the deal (0120): with lines, value_minor is their pre-tax total.
+    line_count: int = 0
 
 
 class LeadCreate(BaseModel):

@@ -7367,6 +7367,296 @@
         }
       }
     },
+    "/crm/leads/{lead_id}/lines": {
+      "get": {
+        "tags": [
+          "crm-selling"
+        ],
+        "summary": "Get Lines",
+        "operationId": "get_lines_crm_leads__lead_id__lines_get",
+        "parameters": [
+          {
+            "name": "lead_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Lead Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealLines"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "crm-selling"
+        ],
+        "summary": "Put Lines",
+        "description": "Replace the deal's lines (an empty list clears them).",
+        "operationId": "put_lines_crm_leads__lead_id__lines_put",
+        "parameters": [
+          {
+            "name": "lead_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Lead Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DealLinesPut"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealLines"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/leads/{lead_id}/lines/update-prices": {
+      "post": {
+        "tags": [
+          "crm-selling"
+        ],
+        "summary": "Update Prices",
+        "operationId": "update_prices_crm_leads__lead_id__lines_update_prices_post",
+        "parameters": [
+          {
+            "name": "lead_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Lead Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealLines"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/settings": {
+      "get": {
+        "tags": [
+          "crm-selling"
+        ],
+        "summary": "Get Settings",
+        "description": "Reps read the settings too: the line editor shows the discount ceiling.",
+        "operationId": "get_settings_crm_settings_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CrmSettingsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "crm-selling"
+        ],
+        "summary": "Put Settings",
+        "operationId": "put_settings_crm_settings_put",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrmSettingsIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CrmSettingsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/activities": {
       "get": {
         "tags": [
@@ -26949,6 +27239,46 @@
         "title": "CreditNoteIn",
         "description": "No amount = credit the whole invoice, line by line (tax included)."
       },
+      "CrmSettingsIn": {
+        "properties": {
+          "max_discount_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Discount Pct"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "CrmSettingsIn"
+      },
+      "CrmSettingsOut": {
+        "properties": {
+          "max_discount_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Discount Pct"
+          }
+        },
+        "type": "object",
+        "title": "CrmSettingsOut"
+      },
       "CrmSummary": {
         "properties": {
           "total_leads": {
@@ -27040,6 +27370,258 @@
           "activity"
         ],
         "title": "DashboardOverview"
+      },
+      "DealLineIn": {
+        "properties": {
+          "description": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Description"
+          },
+          "qty": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 999999999.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Qty"
+          },
+          "unit_price_minor": {
+            "type": "integer",
+            "maximum": 10000000000000.0,
+            "minimum": 0.0,
+            "title": "Unit Price Minor"
+          },
+          "line_discount_minor": {
+            "type": "integer",
+            "maximum": 10000000000000.0,
+            "minimum": 0.0,
+            "title": "Line Discount Minor",
+            "default": 0
+          },
+          "tax_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tax Code"
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "description",
+          "qty",
+          "unit_price_minor"
+        ],
+        "title": "DealLineIn",
+        "description": "The shape of an invoice line, so a deal's lines carry over unchanged.\nWith a product, the server snapshots its unit and catalog price and marks\na different price as typed by hand."
+      },
+      "DealLineOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "position": {
+            "type": "integer",
+            "title": "Position"
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "qty": {
+            "type": "number",
+            "title": "Qty"
+          },
+          "unit_price_minor": {
+            "type": "integer",
+            "title": "Unit Price Minor"
+          },
+          "list_price_minor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "List Price Minor"
+          },
+          "price_overridden": {
+            "type": "boolean",
+            "title": "Price Overridden"
+          },
+          "line_discount_minor": {
+            "type": "integer",
+            "title": "Line Discount Minor"
+          },
+          "tax_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tax Code"
+          },
+          "tax_rate_pct": {
+            "type": "number",
+            "title": "Tax Rate Pct"
+          },
+          "gross_minor": {
+            "type": "integer",
+            "title": "Gross Minor"
+          },
+          "net_excl_minor": {
+            "type": "integer",
+            "title": "Net Excl Minor"
+          },
+          "tax_minor": {
+            "type": "integer",
+            "title": "Tax Minor"
+          },
+          "total_minor": {
+            "type": "integer",
+            "title": "Total Minor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "position",
+          "product_id",
+          "description",
+          "unit",
+          "qty",
+          "unit_price_minor",
+          "list_price_minor",
+          "price_overridden",
+          "line_discount_minor",
+          "tax_code",
+          "tax_rate_pct",
+          "gross_minor",
+          "net_excl_minor",
+          "tax_minor",
+          "total_minor"
+        ],
+        "title": "DealLineOut"
+      },
+      "DealLines": {
+        "properties": {
+          "lead_id": {
+            "type": "string",
+            "title": "Lead Id"
+          },
+          "tax_inclusive": {
+            "type": "boolean",
+            "title": "Tax Inclusive"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/DealLineOut"
+            },
+            "type": "array",
+            "title": "Lines"
+          },
+          "subtotal_minor": {
+            "type": "integer",
+            "title": "Subtotal Minor"
+          },
+          "line_discount_minor": {
+            "type": "integer",
+            "title": "Line Discount Minor"
+          },
+          "net_minor": {
+            "type": "integer",
+            "title": "Net Minor"
+          },
+          "tax_minor": {
+            "type": "integer",
+            "title": "Tax Minor"
+          },
+          "total_minor": {
+            "type": "integer",
+            "title": "Total Minor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lead_id",
+          "tax_inclusive",
+          "lines",
+          "subtotal_minor",
+          "line_discount_minor",
+          "net_minor",
+          "tax_minor",
+          "total_minor"
+        ],
+        "title": "DealLines"
+      },
+      "DealLinesPut": {
+        "properties": {
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/DealLineIn"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "title": "Lines"
+          },
+          "tax_inclusive": {
+            "type": "boolean",
+            "title": "Tax Inclusive",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "lines"
+        ],
+        "title": "DealLinesPut"
       },
       "Decision": {
         "properties": {
@@ -31028,6 +31610,11 @@
             "type": "array",
             "title": "Tags",
             "default": []
+          },
+          "line_count": {
+            "type": "integer",
+            "title": "Line Count",
+            "default": 0
           }
         },
         "type": "object",

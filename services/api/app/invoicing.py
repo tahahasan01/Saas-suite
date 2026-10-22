@@ -65,7 +65,7 @@ def summary_out(r: asyncpg.Record, today: date) -> InvoiceSummary:
 
 # ── Pricing ─────────────────────────────────────────────────────────────────
 @dataclass
-class _Rate:
+class Rate:
     code: str | None
     rate_id: Any
     pct: Decimal
@@ -79,18 +79,20 @@ async def _region(conn: asyncpg.Connection) -> str | None:
     return region
 
 
-async def _rates(conn: asyncpg.Connection, lines: list[InvoiceLineIn], on: date) -> list[_Rate]:
+async def rates_for(conn: asyncpg.Connection, codes: list[str | None], on: date) -> list[Rate]:
+    """The rate in force on `on` for each tax code (none: no tax). Deal lines
+    and quotes price with it too."""
     region = await _region(conn)
-    out: list[_Rate] = []
-    for line in lines:
-        if not line.tax_code:
-            out.append(_Rate(None, None, Decimal(0), True))
+    out: list[Rate] = []
+    for code in codes:
+        if not code:
+            out.append(Rate(None, None, Decimal(0), True))
             continue
-        r = await tax.rate_for(conn, line.tax_code, on, region)
+        r = await tax.rate_for(conn, code, on, region)
         if r is None:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
-                                f"No tax rate '{line.tax_code}' is in force on {on.isoformat()}")
-        out.append(_Rate(line.tax_code, r["id"], Decimal(r["rate_pct"]), bool(r["verified"])))
+                                f"No tax rate '{code}' is in force on {on.isoformat()}")
+        out.append(Rate(code, r["id"], Decimal(r["rate_pct"]), bool(r["verified"])))
     return out
 
 
@@ -104,7 +106,7 @@ async def _write_lines(conn: asyncpg.Connection, tenant_id: str, invoice_id: Any
                                                   list(wanted))}
         if wanted - seen:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Product not found")
-    rates = await _rates(conn, lines, on)
+    rates = await rates_for(conn, [ln.tax_code for ln in lines], on)
     priced = price_sale([(ln.unit_price_minor, ln.qty, r.pct) for ln, r in zip(lines, rates)], discount_minor,
                         tax_on=True, inclusive=inclusive, line_discounts=[ln.line_discount_minor for ln in lines])
     await conn.execute("delete from invoice_lines where invoice_id = $1", invoice_id)

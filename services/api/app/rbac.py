@@ -179,6 +179,11 @@ register("crm", {
     "crm.settings.manage": ("crm", "admin"),
     "crm.report.read": ("crm", "read"),
 })
+# CRM selling (wave D, 0120+): a line discount above the tenant's ceiling is
+# a manager's call.
+register("crm", {
+    "crm.deal.discount_override": ("crm", "admin"),
+})
 # Contacts (D-30) is a supporting module of CRM, POS and invoicing. Until the
 # module registry lands its keys ride on the `crm` grant; the till reaches
 # lookup and quick-add through `pos.sale.create` (routers/contacts.py).

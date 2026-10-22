@@ -150,6 +150,9 @@ APP_USER: dict[str, set[str]] = {
     "invoices":             {S, I, U},
     "invoice_lines":        {S, I, D},          # replaced wholesale while editable
     "invoice_payments":     {S, I},             # append-only
+    # CRM selling (wave D, 0120+)
+    "crm_deal_lines":       {S, I, D},          # replaced wholesale
+    "crm_settings":         {S, I, U},          # upsert from CRM settings
     # catalog v2 and stock (0075)
     "pos_categories":       {S, I, U},          # retired, never deleted
     "pos_product_barcodes": {S, I, D},

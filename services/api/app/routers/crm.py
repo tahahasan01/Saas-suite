@@ -254,6 +254,8 @@ async def update_lead(lead_id: str, body: LeadUpdate, auth: AuthContext = Depend
     async with db.tenant_conn(auth.tenant_id) as conn:
         await leads.ensure_in_scope(conn, auth, "crm.lead.update", lead_id)
         before = await leads.lock(conn, lead_id)
+        if "value_minor" in fields and before["line_count"]:
+            raise HTTPException(status.HTTP_409_CONFLICT, "This deal's value comes from its products")
         await refs.ensure_visible(conn, "users", fields.get("owner_id"))
         if tag_ids is not None:
             await contacts.set_tags(conn, auth.tenant_id, "lead", lead_id, tag_ids)

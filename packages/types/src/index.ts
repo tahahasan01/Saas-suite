@@ -148,6 +148,8 @@ export const PERMISSION_KEYS = [
   "crm.pipeline.manage",
   "crm.settings.manage",
   "crm.report.read",
+  // crm selling (wave D)
+  "crm.deal.discount_override",
   // contacts
   "contacts.contact.read",
   "contacts.contact.create",
