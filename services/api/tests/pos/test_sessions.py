@@ -291,8 +291,8 @@ async def test_ten_wrong_pins_in_a_day_switch_the_pin_off_and_tell_the_approver(
     await client.put("/pos/pin", json={"pin": "246813"})
     s = await _open(client, reg["id"], 0)
     await _sale(client, item)
-    for _ in range(pins.DAILY_FAILS):
-        await pins.record_daily_failure(f"user:{me}")
+    for i in range(pins.DAILY_FAILS):
+        await pins.record_daily_failure(f"user:{me}", f"caller-{i % pins.DAILY_DISTINCT}")
     r = await client.post(f"/pos/sessions/{s['id']}/close",
                           json={"counted": {"cash": 0}, "approver_id": me, "approver_pin": "246813"})
     assert r.status_code == 423 and "switched off" in r.json()["detail"].lower()
@@ -314,3 +314,31 @@ async def test_a_refund_leaves_the_drawer_of_the_till_that_pays_it(client, pos_t
     cash = lambda s: next(m for m in s["methods"] if m["method"] == "cash")  # noqa: E731
     assert cash((await client.get(f"/pos/sessions/{second['id']}")).json())["expected_minor"] == 50_000 - 10_000
     assert cash((await client.get(f"/pos/sessions/{first['id']}")).json())["expected_minor"] == 20_000
+
+
+async def test_one_caller_alone_cannot_switch_a_managers_pin_off(client, pos_tenant):
+    from app import pins
+    for _ in range(pins.DAILY_FAILS * 2):
+        await pins.record_daily_failure("user:manager-x", "user:cashier-y")
+    assert not await pins.daily_off("user:manager-x")
+
+
+async def test_an_admin_can_switch_a_pin_back_on(client, pos_tenant):
+    from app import pins
+    me = (await client.get("/auth/me")).json()["user"]["id"]
+    for i in range(pins.DAILY_FAILS):
+        await pins.record_daily_failure(f"user:{me}", f"caller-{i % pins.DAILY_DISTINCT}")
+    assert await pins.daily_off(f"user:{me}")
+    assert (await client.delete(f"/pos/pin-locks/{me}")).status_code == 204
+    assert not await pins.daily_off(f"user:{me}")
+
+
+async def test_a_refund_at_another_till_needs_it_open(client, pos_tenant, item):
+    reg = await _register(client)
+    other = (await client.post("/pos/registers", json={"code": "R3", "name": "Counter 3"})).json()
+    await _open(client, reg["id"], 0)
+    sale = await _sale(client, item, register_id=reg["id"], qty=2)
+    detail = (await client.get(f"/pos/sales/{sale['id']}")).json()
+    r = await client.post(f"/pos/sales/{sale['id']}/returns", json={
+        "items": [{"sale_item_id": detail["returnable"][0]["sale_item_id"], "qty": 1}], "register_id": other["id"]})
+    assert r.status_code == 409 and "open session" in r.json()["detail"]

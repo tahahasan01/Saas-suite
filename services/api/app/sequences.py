@@ -46,7 +46,7 @@ class SequenceDefault:
 DEFAULTS: dict[str, SequenceDefault] = {
     "sales.invoice": SequenceDefault("Sales invoices", "INV-{FY}-{N}"),
     "sales.credit_note": SequenceDefault("Credit notes", "CN-{FY}-{N}"),
-    "pos.receipt": SequenceDefault("POS receipts", "{BR}-{FY}-{N}", padding=6, scope="branch"),
+    "pos.receipt": SequenceDefault("POS receipts", "{REG}-{FY}-{N}", padding=6, scope="register"),
     "pos.return": SequenceDefault("POS returns", "{BR}-R-{FY}-{N}", scope="branch"),
     "purchase.order": SequenceDefault("Purchase orders", "PO-{FY}-{N}", gapless=False),
     "payroll.run": SequenceDefault("Payroll runs", "PR-{FY}-{N}", padding=4),

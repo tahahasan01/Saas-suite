@@ -947,7 +947,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Sales History
+         * @description Search by receipt number, customer name or phone; filter by method,
+         *     status, register and local day. Own-scope cashiers see their own sales.
+         */
+        get: operations["sales_history_pos_sales_get"];
         put?: never;
         /** Checkout */
         post: operations["checkout_pos_sales_post"];
@@ -4440,7 +4445,8 @@ export interface paths {
         put?: never;
         /**
          * Heartbeat
-         * @description The till says it's alive and how many sales it still holds.
+         * @description The till says it's alive and how many sales it still holds. Only the
+         *     device itself, with its own token, may say so.
          */
         post: operations["heartbeat_pos_devices__device_id__heartbeat_post"];
         delete?: never;
@@ -4550,6 +4556,105 @@ export interface paths {
         put: operations["set_my_pin_pos_pin_put"];
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/sales/{sale_id}/print": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Print Receipt
+         * @description Count a print: the first is the original, every later one a DUPLICATE.
+         */
+        post: operations["print_receipt_pos_sales__sale_id__print_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/sales/{sale_id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Void Sale
+         * @description A full return of what is left (refund into the session, stock back,
+         *     FBR debit note), then the sale is marked void — audited.
+         */
+        post: operations["void_sale_pos_sales__sale_id__void_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/held": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Held */
+        get: operations["list_held_pos_held_get"];
+        put?: never;
+        /** Hold Bill */
+        post: operations["hold_bill_pos_held_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/held/{held_id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resume Bill
+         * @description Take a held bill back to the till: it leaves the list (once).
+         */
+        post: operations["resume_bill_pos_held__held_id__resume_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/pin-locks/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Unlock Pin
+         * @description Switch an approver's till PIN back on after a lockout.
+         */
+        delete: operations["unlock_pin_pos_pin_locks__user_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -5973,6 +6078,25 @@ export interface components {
             /** Active */
             active?: boolean | null;
         };
+        /** DeviceCreated */
+        DeviceCreated: {
+            /** Id */
+            id: string;
+            /** Register Id */
+            register_id: string;
+            /** Device Code */
+            device_code: string;
+            /** Name */
+            name: string;
+            /** Last Seen At */
+            last_seen_at: string | null;
+            /** Outbox Count */
+            outbox_count: number;
+            /** Oldest Pending At */
+            oldest_pending_at: string | null;
+            /** Token */
+            token: string;
+        };
         /** DeviceIn */
         DeviceIn: {
             /**
@@ -6533,6 +6657,40 @@ export interface components {
             outbox_count: number;
             /** Oldest Pending At */
             oldest_pending_at?: string | null;
+        };
+        /** HeldIn */
+        HeldIn: {
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+            /** Register Id */
+            register_id?: string | null;
+            /** Cart */
+            cart: {
+                [key: string]: unknown;
+            };
+        };
+        /** HeldOut */
+        HeldOut: {
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /** Register Id */
+            register_id: string | null;
+            /** Cart */
+            cart: {
+                [key: string]: unknown;
+            };
+            /** Held By */
+            held_by: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** HolidayCalendarCreate */
         HolidayCalendarCreate: {
@@ -8646,6 +8804,17 @@ export interface components {
             /** Lines */
             lines?: components["schemas"]["LineOut"][];
         };
+        /** PrintOut */
+        PrintOut: {
+            /** Sale Id */
+            sale_id: string;
+            /** Receipt No */
+            receipt_no: string | null;
+            /** Copy */
+            copy: number;
+            /** Duplicate */
+            duplicate: boolean;
+        };
         /** ProductCreate */
         ProductCreate: {
             /** Name */
@@ -9083,6 +9252,8 @@ export interface components {
              * @default true
              */
             restock: boolean;
+            /** Register Id */
+            register_id?: string | null;
         };
         /** ReturnItemOut */
         ReturnItemOut: {
@@ -9476,6 +9647,10 @@ export interface components {
             register_id?: string | null;
             /** Device Id */
             device_id?: string | null;
+            /** Approver Id */
+            approver_id?: string | null;
+            /** Approver Pin */
+            approver_pin?: string | null;
             /** Contact Id */
             contact_id?: string | null;
         };
@@ -9496,6 +9671,12 @@ export interface components {
             product_id: string;
             /** Qty */
             qty: number;
+            /** Discount Minor */
+            discount_minor?: number | null;
+            /** Discount Pct */
+            discount_pct?: number | null;
+            /** Price Minor */
+            price_minor?: number | null;
         };
         /** SaleLookup */
         SaleLookup: {
@@ -9547,6 +9728,18 @@ export interface components {
             session_id?: string | null;
             /** Payments */
             payments?: components["schemas"]["PaymentLine"][];
+            /** Receipt No */
+            receipt_no?: string | null;
+            /**
+             * Status
+             * @default completed
+             */
+            status: string;
+            /**
+             * Void Reason
+             * @default
+             */
+            void_reason: string;
             /** Returnable */
             returnable?: components["schemas"]["RefundableLine"][];
             /**
@@ -9605,6 +9798,18 @@ export interface components {
             session_id?: string | null;
             /** Payments */
             payments?: components["schemas"]["PaymentLine"][];
+            /** Receipt No */
+            receipt_no?: string | null;
+            /**
+             * Status
+             * @default completed
+             */
+            status: string;
+            /**
+             * Void Reason
+             * @default
+             */
+            void_reason: string;
         };
         /** SaleQuote */
         SaleQuote: {
@@ -9644,6 +9849,32 @@ export interface components {
             payment_method: "cash" | "card" | "jazzcash" | "easypaisa" | "raast" | "bank" | "khata";
             /** Register Id */
             register_id?: string | null;
+        };
+        /** SaleRow */
+        SaleRow: {
+            /** Id */
+            id: string;
+            /** Receipt No */
+            receipt_no: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Total Minor */
+            total_minor: number;
+            /** Payment Method */
+            payment_method: string;
+            /** Item Count */
+            item_count: number;
+            /** Status */
+            status: string;
+            /** Cashier */
+            cashier: string | null;
+            /** Customer */
+            customer: string | null;
+            /** Register Code */
+            register_code: string | null;
         };
         /** SequenceOut */
         SequenceOut: {
@@ -10451,6 +10682,24 @@ export interface components {
         VerifyRequest: {
             /** Token */
             token: string;
+        };
+        /** VoidIn */
+        VoidIn: {
+            /** Reason */
+            reason: string;
+            /** Register Id */
+            register_id?: string | null;
+        };
+        /** VoidOut */
+        VoidOut: {
+            /** Sale Id */
+            sale_id: string;
+            /** Status */
+            status: string;
+            /** Void Reason */
+            void_reason: string;
+            /** Refund Minor */
+            refund_minor: number;
         };
         /** WeekOut */
         WeekOut: {
@@ -12546,6 +12795,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProductOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sales_history_pos_sales_get: {
+        parameters: {
+            query?: {
+                q?: string | null;
+                method?: ("cash" | "card" | "jazzcash" | "easypaisa" | "raast" | "bank" | "khata") | null;
+                status?: string | null;
+                register_id?: string | null;
+                from?: string | null;
+                to?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaleRow"][];
                 };
             };
             /** @description Validation Error */
@@ -20679,7 +20968,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DeviceOut"];
+                    "application/json": components["schemas"]["DeviceCreated"];
                 };
             };
             /** @description Validation Error */
@@ -20696,7 +20985,9 @@ export interface operations {
     heartbeat_pos_devices__device_id__heartbeat_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Device-Token"?: string | null;
+            };
             path: {
                 device_id: string;
             };
@@ -20956,6 +21247,208 @@ export interface operations {
                 "application/json": components["schemas"]["PinIn"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    print_receipt_pos_sales__sale_id__print_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sale_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrintOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    void_sale_pos_sales__sale_id__void_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sale_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VoidIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VoidOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_held_pos_held_get: {
+        parameters: {
+            query?: {
+                register_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HeldOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hold_bill_pos_held_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HeldIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HeldOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resume_bill_pos_held__held_id__resume_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                held_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HeldOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unlock_pin_pos_pin_locks__user_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             204: {

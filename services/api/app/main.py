@@ -39,6 +39,7 @@ from .routers import (  # org data (3A, p3-orgdata)
     pos,
     pos_catalog,
     pos_registers,
+    pos_sales,
     profile,
     roles,
     sequences,
@@ -141,6 +142,7 @@ app.include_router(payroll_run_routes.public)
 app.include_router(payroll_settings_routes.router)
 app.include_router(pos_catalog.router)   # catalog v2 and stock (3C, 0075)
 app.include_router(pos_registers.router)   # registers and sessions (3C, 0076)
+app.include_router(pos_sales.router)   # sales history, reprint, void, held bills (3C, 0078)
 
 
 @app.exception_handler(asyncpg.DataError)

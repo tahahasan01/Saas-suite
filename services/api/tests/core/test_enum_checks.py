@@ -108,6 +108,7 @@ ENUM_COLUMNS = {
     ("pos_payments", "method"): models.TENDER_METHODS,
     ("pos_returns", "refund_method"): models.TENDER_METHODS,
     ("pos_cash_moves", "kind"): models.CASH_MOVE_KINDS,
+    ("pos_sales", "status"): models.SALE_STATUSES,
     # payroll (3F)
     ("hrms_compensation", "reason"): models.COMPENSATION_REASONS,
     ("hrms_employees", "payment_mode"): models.PAYMENT_MODES,

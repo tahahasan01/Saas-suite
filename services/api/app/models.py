@@ -670,6 +670,11 @@ class ProductUpdate(BaseModel):
 class SaleLine(BaseModel):
     product_id: str
     qty: float = Field(gt=0)
+    # A line discount (an amount, or a percentage of the line) and a price
+    # override need their keys or a manager's PIN (0078).
+    discount_minor: int | None = Field(default=None, ge=0, le=10**12)
+    discount_pct: float | None = Field(default=None, gt=0, le=100)
+    price_minor: int | None = Field(default=None, ge=0, le=10**12)
 
 
 class TenderIn(BaseModel):
@@ -692,6 +697,9 @@ class SaleCreate(BaseModel):
     payments: list[TenderIn] | None = Field(default=None, min_length=1, max_length=7)
     register_id: UUID | None = None     # None: the default register
     device_id: UUID | None = None
+    # Who approved a discount or override the cashier can't give themselves.
+    approver_id: UUID | None = None
+    approver_pin: str | None = Field(default=None, pattern=r"^\d{6}$")
     contact_id: UUID | None = None   # the customer; None for a walk-in (St02 P0)
 
 
@@ -738,6 +746,9 @@ class SaleOut(BaseModel):
     contact_id: str | None = None       # the customer; None for a walk-in
     session_id: str | None = None       # the register session it was rung up in (0076)
     payments: list["PaymentLine"] = Field(default_factory=list)
+    receipt_no: str | None = None       # R1-2026-27-000042 (0078)
+    status: str = "completed"           # 'completed' | 'void'
+    void_reason: str = ""
 
 
 class PaymentLine(BaseModel):
@@ -2396,6 +2407,8 @@ AdjustReason = Literal["adjustment", "damage", "count"]
 
 # ─── Registers, sessions, split tender (3C, migration 0076) ─────────────────
 TenderMethod = Literal["cash", "card", "jazzcash", "easypaisa", "raast", "bank", "khata"]
+SaleStatus = Literal["completed", "void"]
+SALE_STATUSES = list(get_args(SaleStatus))
 TENDER_METHODS = list(get_args(TenderMethod))
 CashMoveKind = Literal["pay_in", "pay_out", "drop"]
 CASH_MOVE_KINDS = list(get_args(CashMoveKind))

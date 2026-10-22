@@ -47,6 +47,8 @@ KIND_OF = {
     "blackout_id": "blackout", "leave_type_id": "leave_type",
     # catalog v2 (0075)
     "category_id": "category", "barcode_id": "barcode", "rule_id": "barcode_rule",
+    # registers, sessions, held bills (0076-0078)
+    "register_id": "register", "session_id": "session", "device_id": "device", "held_id": "held",
     # payroll (3F)
     "run_id": "payroll_run", "payslip_id": "payslip", "component_id": "pay_component",
     "structure_id": "pay_structure", "one_off_id": "one_off", "advance_id": "advance",
@@ -59,6 +61,8 @@ PLAIN_PARAMS = {"section": "crm", "decision": "approve", "key": "crm", "scheme_c
 # The /me/* portal never takes an id from the caller — it acts on the logged-in
 # employee only (tests/hrms/test_employee_portal.py proves the forcing).
 SKIP_PREFIXES = ("/me/", "/kiosk/")   # /kiosk/{token}: the token is the credential (3F), no tenant ids
+# The device token is the credential (0077): a foreign device id fails it with 401 (test_sessions.py).
+SKIP_ROUTES = {"/pos/devices/{device_id}/heartbeat"}
 
 
 async def _ids(c: AsyncClient) -> dict[str, str]:
@@ -70,12 +74,16 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
     barcode = (await c.post(f"/pos/products/{product['id']}/barcodes",
                             json={"barcode": "PROBE" + uuid.uuid4().hex[:8], "qty": 6})).json()
     rule = (await c.post("/pos/barcode-rules", json={"prefix": "29", "kind": "weight"})).json()
+    register = next(r for r in (await c.get("/pos/registers")).json() if r["is_default"])
+    session = (await c.post("/pos/sessions", json={"register_id": register["id"]})).json()
+    device = (await c.post("/pos/devices", json={"register_id": register["id"], "device_code": "PRB"})).json()
+    held = (await c.post("/pos/held", json={"label": "Probe", "cart": {"items": []}})).json()
     employee = (await c.get("/hrms/employees")).json()[0]
     supplier = (await c.post("/pos/suppliers", json={"name": "Supplier"})).json()
     po = (await c.post("/pos/purchase-orders", json={
         "supplier_id": supplier["id"], "items": [{"product_id": product["id"], "qty": 1}]})).json()
     sale = (await c.post("/pos/sales", json={"items": [{"product_id": product["id"], "qty": 1}],
-                                             "payment_method": "card", "paid_minor": 10_000_000})).json()
+                                             "payment_method": "card"})).json()
     detail = (await c.get(f"/pos/sales/{sale['id']}")).json()
     leave = (await c.post("/hrms/leave", json={"employee_id": employee["id"], "leave_type": "casual",
                                                "from_date": "2027-03-01", "to_date": "2027-03-01"})).json()
@@ -146,6 +154,7 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
         "workflow": workflow["id"], "invoice": invoice["id"],
         "product": product["id"], "supplier": supplier["id"],
         "category": category["id"], "barcode": barcode["id"], "barcode_rule": rule["id"],
+        "register": register["id"], "session": session["id"], "device": device["id"], "held": held["id"],
         "po": po["id"], "po_item": po["items"][0]["id"],
         "sale": sale["id"], "sale_item": detail["returnable"][0]["sale_item_id"],
         "employee": employee["id"], "leave": leave["id"], "holiday": holiday["id"],
@@ -227,6 +236,8 @@ def _value(name: str, schema: dict, own: dict):
         return "2027-04-05"
     if name.endswith("month"):  # payroll months are 'YYYY-MM'
         return "2027-04"
+    if name in ("code", "device_code"):  # register and device codes: A-Z0-9, unique
+        return "P" + uuid.uuid4().hex[:4].upper()
     return "Probe"
 
 
@@ -272,7 +283,7 @@ def _set(body: dict, slot: tuple, value: str, schema: dict, own: dict) -> None:
 def _cases():
     """(method, path template, slot) for every id of every write endpoint."""
     for path, ops in _SCHEMA["paths"].items():
-        if path.startswith(SKIP_PREFIXES):
+        if path.startswith(SKIP_PREFIXES) or path in SKIP_ROUTES:
             continue
         for method, op in ops.items():
             if method not in ("post", "put", "patch", "delete"):

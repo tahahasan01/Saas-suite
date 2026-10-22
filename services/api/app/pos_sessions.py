@@ -212,6 +212,9 @@ async def close(conn: asyncpg.Connection, auth: AuthContext, session_id: str, co
     if s["status"] != "open":
         raise HTTPException(status.HTTP_409_CONFLICT, "This session is already closed")
     reg = await conn.fetchrow("select * from pos_registers where id = $1", s["register_id"])
+    if device_id is not None and not await conn.fetchval(
+            "select 1 from pos_devices where id = $1 and register_id = $2", device_id, s["register_id"]):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Device not found on this register")
     warnings: list[str] = []
     for d in await conn.fetch(
             "select id, name, device_code, outbox_count from pos_devices where register_id = $1 and outbox_count > 0",
@@ -241,7 +244,7 @@ async def close(conn: asyncpg.Connection, auth: AuthContext, session_id: str, co
         if mgr is None or "pos.session.approve" not in held:
             raise HTTPException(status.HTTP_403_FORBIDDEN, "That person can't approve a variance")
         key = f"user:{mgr['id']}"
-        if await pins.daily_failures(key) >= pins.DAILY_FAILS or await pins.check_approval(
+        if await pins.daily_off(key) or await pins.check_approval(
                 key, f"user:{auth.user_id}", mgr["pos_pin_hash"], approver_pin):
             await _tell_approver_pin_off(auth.tenant_id, str(mgr["id"]))
             raise pins.switched_off()

@@ -14,6 +14,7 @@ import { Sheet } from "@/components/Dialog";
 import { keepFocus, ProductGrid } from "@/components/pos/ProductGrid";
 import { CartPanel, chargeLabel, type Line, type Quote, type QuoteState } from "@/components/pos/CartPanel";
 import { Receipt } from "@/components/pos/Receipt";
+import { HeldBills } from "@/components/pos/HeldBills";
 import { CustomerPicker, type Customer } from "@/components/contacts/CustomerPicker";
 
 interface DrawerLite {
@@ -359,6 +360,11 @@ export default function PosBilling() {
               Drawer: <span className="font-semibold text-fg">{moneyCompact(drawer.expected_minor)}</span> expected
             </Link>
           )}
+          <span className="ml-auto flex gap-1.5">
+            <HeldBills cart={cart} discount={discount} customer={customer} disabled={locked}
+                       onHeld={clearCart}
+                       onResume={(c) => { setCart(c.lines); setDiscount(c.discount || "0"); setCustomer(c.customer); }} />
+          </span>
         </div>
 
         <Input

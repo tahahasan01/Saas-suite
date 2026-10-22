@@ -89,6 +89,9 @@ export const PERMISSION_KEYS = [
   "pos.session.approve",
   "pos.register.manage",
   "pos.cash.move",
+  "pos.sale.void",
+  "pos.sale.discount",
+  "pos.price.override",
   "pos.report.sales",
   // products
   "products.product.read",
@@ -556,6 +559,10 @@ export interface Sale {
   fbr_status: string | null;
   /** The customer; null for a walk-in. */
   contact_id?: string | null;
+  /** R1-2026-27-000042: the register's gap-free receipt number (0078). */
+  receipt_no?: string | null;
+  status?: "completed" | "void";
+  void_reason?: string;
 }
 
 export interface ReturnableLine {

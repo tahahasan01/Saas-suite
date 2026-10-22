@@ -78,6 +78,7 @@ _MANIFESTS = [
             NavItem("pos", "/pos", "nav.pos", "cart", "sell", perm="pos.sale.read",
                     children=(
                         NavChild("/pos", "nav.pos.register", "pos.sale.create"),
+                        NavChild("/pos/sales", "nav.pos.sales", "pos.sale.read"),
                         NavChild("/pos/products", "nav.pos.products", "products.product.read"),
                         NavChild("/pos/purchase-orders", "nav.pos.purchase_orders", "purchasing.po.read"),
                         NavChild("/pos/drawer", "nav.pos.drawer", "pos.session.read"),

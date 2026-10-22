@@ -48,7 +48,7 @@ WIRED: dict[str, tuple[str, ...]] = {
     "crm.lead.update": ("PATCH /crm/leads/{lead_id}", "POST /crm/leads/{lead_id}/won",
                         "POST /crm/leads/{lead_id}/lost", "POST /crm/leads/{lead_id}/restore",
                         "POST /crm/leads/{lead_id}/notes", "POST /contacts/review/{item_id}/dismiss"),
-    "pos.sale.read": ("GET /pos/sales/{sale_id}",),
+    "pos.sale.read": ("GET /pos/sales/{sale_id}", "GET /pos/sales", "POST /pos/sales/{sale_id}/print"),
     "pos.sale.refund": ("POST /pos/sales/{sale_id}/returns",),
 }
 

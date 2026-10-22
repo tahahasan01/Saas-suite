@@ -9,7 +9,7 @@ from decimal import Decimal
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 
-from .. import audit, catalog, csv_io, db, fbr, fbr_submit, field_guards, pos_sessions, pricing, rbac, refs
+from .. import audit, catalog, csv_io, db, fbr, fbr_submit, field_guards, pins, pos_sessions, pricing, rbac, refs, sequences
 from ..deps import AuthContext
 from ..models import (
     DrawerClose,
@@ -194,6 +194,9 @@ def _fingerprint(body: SaleCreate) -> str:
     """What the cart *was*: a replay of the same client_uuid must match it."""
     canonical = {
         "items": sorted([str(i.product_id), float(i.qty)] for i in body.items),
+        **({"lines": sorted([str(i.product_id), float(i.qty), i.discount_minor, i.discount_pct, i.price_minor]
+                            for i in body.items)}
+           if any(i.discount_minor or i.discount_pct or i.price_minor is not None for i in body.items) else {}),
         "discount_minor": body.discount_minor,
         "paid_minor": body.paid_minor,
         "payment_method": body.payment_method,
@@ -235,7 +238,8 @@ async def _replay_sale(tenant_id: str, client_uuid, fingerprint: str) -> SaleOut
         fbr_invoice_number=fbr_row["fbr_invoice_number"] if fbr_row else None,
         fbr_status=fbr_row["status"] if fbr_row else None,
         contact_id=str(sale["contact_id"]) if sale["contact_id"] else None,
-        session_id=str(sale["session_id"]) if sale["session_id"] else None, payments=pays)
+        session_id=str(sale["session_id"]) if sale["session_id"] else None, payments=pays,
+        receipt_no=sale["receipt_no"], status=sale["status"], void_reason=sale["void_reason"])
 
 
 async def _payments(conn, sale_id) -> list[PaymentLine]:
@@ -247,7 +251,7 @@ async def _payments(conn, sale_id) -> list[PaymentLine]:
 
 @router.post("/sales", response_model=SaleOut, status_code=status.HTTP_201_CREATED)
 async def checkout(body: SaleCreate, response: Response,
-                   auth: AuthContext = Depends(require("pos", "write"))):
+                   auth: AuthContext = Depends(perm("pos.sale.create"))):
     fingerprint = _fingerprint(body)
     if body.client_uuid is not None:
         replay = await _replay_sale(auth.tenant_id, body.client_uuid, fingerprint)
@@ -268,7 +272,9 @@ async def checkout(body: SaleCreate, response: Response,
 
 async def _price_cart(conn, tenant_id: str, items, discount_minor: int):
     """The one way a cart is priced, for a quote and for the sale itself:
-    returns (lines as (product, qty, PricedLine), fbr settings, PricedSale)."""
+    returns (lines as (product, qty, PricedLine, unit price), fbr settings,
+    PricedSale). A line may override the unit price and carry a discount
+    (an amount or a percentage of the line)."""
     products = []
     for it in items:
         p = await conn.fetchrow(
@@ -276,14 +282,57 @@ async def _price_cart(conn, tenant_id: str, items, discount_minor: int):
                  from pos_products where id=$1 and active""", it.product_id)
         if p is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, f"Product {it.product_id} not found")
-        products.append((p, it.qty))
+        unit = p["price_minor"] if getattr(it, "price_minor", None) is None else it.price_minor
+        products.append((p, it.qty, unit))
+
+    discounts = []
+    for (p, qty, unit), it in zip(products, items):
+        gross = pricing.round_half_up(Decimal(unit) * Decimal(str(qty)))
+        d = getattr(it, "discount_minor", None) or 0
+        if getattr(it, "discount_pct", None):
+            d = pricing.round_half_up(Decimal(gross) * Decimal(str(it.discount_pct)) / 100)
+        if d > gross:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+                                f"The discount on {p['name']} is more than the line")
+        discounts.append(d)
 
     fbr_cfg = await conn.fetchrow("select * from fbr_settings where tenant_id=$1", tenant_id)
     fbr_on = bool(fbr_cfg and fbr_cfg["enabled"])
     priced = pricing.price_sale(
-        [(p["price_minor"], qty, Decimal(str(p["tax_rate"] or 0))) for p, qty in products],
-        discount_minor, tax_on=fbr_on, inclusive=bool(fbr_on and fbr_cfg["prices_include_tax"]))
-    return [(p, qty, pl) for (p, qty), pl in zip(products, priced.lines)], fbr_cfg, priced
+        [(unit, qty, Decimal(str(p["tax_rate"] or 0))) for p, qty, unit in products],
+        discount_minor, tax_on=fbr_on, inclusive=bool(fbr_on and fbr_cfg["prices_include_tax"]),
+        line_discounts=discounts)
+    return [(p, qty, pl, unit) for (p, qty, unit), pl in zip(products, priced.lines)], fbr_cfg, priced
+
+
+async def _approve_lines(conn, auth: AuthContext, body: SaleCreate, lines) -> str | None:
+    """A line discount needs pos.sale.discount, a price override
+    pos.price.override: the cashier's own, or a manager's PIN. Returns who
+    approved (None when nothing needed it)."""
+    needs = set()
+    for it, (p, _qty, _pl, unit) in zip(body.items, lines):
+        if it.discount_minor or it.discount_pct:
+            needs.add("pos.sale.discount")
+        if it.price_minor is not None and unit != p["price_minor"]:
+            needs.add("pos.price.override")
+    if not needs:
+        return None
+    held = await rbac.effective_permissions(conn, auth.tenant_id, auth.role_id, auth.user_id)
+    if needs <= set(held):
+        return auth.user_id
+    if body.approver_id is None or not body.approver_pin:
+        raise HTTPException(status.HTTP_403_FORBIDDEN,
+                            "A discount or price change needs a manager to approve with their PIN")
+    mgr = await conn.fetchrow("select id, role_id, pos_pin_hash from users where id = $1 and status = 'active'",
+                              body.approver_id)
+    mgr_held = await rbac.effective_permissions(conn, auth.tenant_id, mgr["role_id"], str(mgr["id"])) if mgr else {}
+    if mgr is None or not needs <= set(mgr_held):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "That person can't approve this")
+    key = f"user:{mgr['id']}"
+    if await pins.daily_off(key) or await pins.check_approval(key, f"user:{auth.user_id}", mgr["pos_pin_hash"],
+                                                              body.approver_pin):
+        raise pins.switched_off()
+    return str(mgr["id"])
 
 
 async def _amount_due(conn, total_minor: int, payment_method: str, register_id=None) -> tuple[int, int]:
@@ -296,7 +345,7 @@ async def _amount_due(conn, total_minor: int, payment_method: str, register_id=N
 
 
 @router.post("/sales/quote", response_model=SaleQuote)
-async def quote_sale(body: SaleQuoteRequest, auth: AuthContext = Depends(require("pos", "write"))):
+async def quote_sale(body: SaleQuoteRequest, auth: AuthContext = Depends(perm("pos.sale.create"))):
     """Price a cart exactly as a sale would be priced, without recording it, so
     the till shows the server's own total (tax-exclusive prices included)."""
     async with db.tenant_conn(auth.tenant_id) as conn:
@@ -320,6 +369,7 @@ async def _record_sale(body: SaleCreate, auth: AuthContext, fingerprint: str) ->
     async with db.tenant_conn(auth.tenant_id) as conn:
         await _check_customer(conn, body.contact_id)
         lines, fbr_cfg, priced = await _price_cart(conn, auth.tenant_id, body.items, body.discount_minor)
+        approved_by = await _approve_lines(conn, auth, body, lines)
         total = priced.total_minor
         reg = await pos_sessions.register(conn, body.register_id)
         if not reg["active"]:
@@ -349,23 +399,25 @@ async def _record_sale(body: SaleCreate, auth: AuthContext, fingerprint: str) ->
         fbr_on = bool(fbr_cfg and fbr_cfg["enabled"])
         inclusive = bool(fbr_on and fbr_cfg["prices_include_tax"])
         items = []
-        for p, qty, pl in lines:
+        for (p, qty, pl, unit), it in zip(lines, body.items):
+            changed = bool(it.discount_minor or it.discount_pct) or unit != p["price_minor"]
             # The line snapshots what FBR needs as it is right now (0034): a retry,
             # a debit note or a refund later reads these, never the product.
             await conn.execute(
                 """insert into pos_sale_items (tenant_id, sale_id, product_id, name, qty, price_minor,
                                                line_total_minor, discount_minor, tax_minor, total_minor,
                                                excl_minor, hs_code, fbr_uom, tax_rate, tax_inclusive,
-                                               snapshot_source)
-                   values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'sale')""",
-                auth.tenant_id, sale_id, p["id"], p["name"], qty, p["price_minor"],
+                                               snapshot_source, list_price_minor, approved_by)
+                   values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'sale',$16,$17)""",
+                auth.tenant_id, sale_id, p["id"], p["name"], qty, unit,
                 pl.gross_minor, pl.discount_minor, pl.tax_minor, pl.total_minor,
                 pl.excl_minor, p["hs_code"] or "", p["fbr_uom"],
                 # The rate that applied: none while tax is off, whatever the product says.
-                (p["tax_rate"] or 0) if fbr_on else 0, inclusive)
+                (p["tax_rate"] or 0) if fbr_on else 0, inclusive,
+                p["price_minor"], approved_by if changed else None)
             await catalog.move(conn, auth.tenant_id, p["id"], -Decimal(str(qty)), "sale", ref_id=sale_id,
                                user_id=auth.user_id)
-            items.append(SaleItemOut(name=p["name"], qty=qty, price_minor=p["price_minor"],
+            items.append(SaleItemOut(name=p["name"], qty=qty, price_minor=unit,
                                      line_total_minor=pl.gross_minor))
         sale = await conn.fetchrow("select * from pos_sales where id=$1", sale_id)
         pays = await _payments(conn, sale_id)
@@ -375,6 +427,11 @@ async def _record_sale(body: SaleCreate, auth: AuthContext, fingerprint: str) ->
             # transaction: if the process dies before transmission, the worker
             # still finds this sale (P0-4, D-09).
             outbox_id = await fbr_submit.enqueue_sale(conn, auth.tenant_id, str(sale_id), fbr_cfg)
+        # The receipt number is the transaction's last step (D-06): a refused
+        # sale never takes one.
+        got = await sequences.next_number(conn, "pos.receipt", register_id=str(reg["id"]), register_code=reg["code"])
+        await conn.execute("update pos_sales set receipt_no = $2 where id = $1", sale_id, got.number)
+        sale = await conn.fetchrow("select * from pos_sales where id=$1", sale_id)
 
     fbr_number = fbr_status = None
     if outbox_id is not None:
@@ -391,7 +448,8 @@ async def _record_sale(body: SaleCreate, auth: AuthContext, fingerprint: str) ->
         items=items, tax_minor=sale["tax_minor"], rounding_minor=sale["rounding_minor"],
         amount_due_minor=sale["total_minor"] + sale["rounding_minor"], fbr_invoice_number=fbr_number, fbr_status=fbr_status,
         contact_id=str(sale["contact_id"]) if sale["contact_id"] else None,
-        session_id=str(sale["session_id"]) if sale["session_id"] else None, payments=pays)
+        session_id=str(sale["session_id"]) if sale["session_id"] else None, payments=pays,
+        receipt_no=sale["receipt_no"], status=sale["status"], void_reason=sale["void_reason"])
 
 
 # ── Suppliers & purchase orders ──────────────────────────────────────────────
@@ -687,6 +745,7 @@ async def get_sale(sale_id: str, auth: AuthContext = Depends(perm("pos.sale.read
             sale_id)
         already = await conn.fetchval(
             "select coalesce(sum(refund_minor), 0) from pos_returns where sale_id=$1", sale_id)
+        pays = await _payments(conn, sale_id)
     returnable = [RefundableLine(
         sale_item_id=str(r["sale_item_id"]),
         product_id=str(r["product_id"]) if r["product_id"] else None,
@@ -703,6 +762,9 @@ async def get_sale(sale_id: str, auth: AuthContext = Depends(perm("pos.sale.read
         fbr_invoice_number=fbr_row["fbr_invoice_number"] if fbr_row else None,
         fbr_status=fbr_row["status"] if fbr_row else None,
         contact_id=str(sale["contact_id"]) if sale["contact_id"] else None,
+        session_id=str(sale["session_id"]) if sale["session_id"] else None,
+        payments=pays,
+        receipt_no=sale["receipt_no"], status=sale["status"], void_reason=sale["void_reason"],
         items=[SaleItemOut(name=r["name"], qty=float(r["qty_sold"]), price_minor=r["price_minor"],
                            line_total_minor=round(r["price_minor"] * float(r["qty_sold"])))
                for r in lines],
@@ -713,16 +775,33 @@ async def get_sale(sale_id: str, auth: AuthContext = Depends(perm("pos.sale.read
 @router.post("/sales/{sale_id}/returns", response_model=ReturnOut, status_code=status.HTTP_201_CREATED)
 async def create_return(sale_id: str, body: ReturnCreate,
                         auth: AuthContext = Depends(perm("pos.sale.refund"))):
+    return await do_return(sale_id, body, auth, "pos.sale.refund")
+
+
+async def do_return(sale_id: str, body: ReturnCreate, auth: AuthContext, key: str,
+                    void_reason: str | None = None) -> ReturnOut:
+    """A return (or, with `void_reason`, a void: a full return that marks the
+    sale void) in one transaction."""
     async with db.tenant_conn(auth.tenant_id) as conn:
         # Lock the sale: two returns of its last unit must be checked one after
         # the other, or both see it as still returnable. Out of scope = 404.
-        scope = await scope_of(conn, auth, "pos.sale.refund")
+        scope = await scope_of(conn, auth, key)
         sale = await conn.fetchrow(
-            f"""select total_minor, rounding_minor, register_id, payment_method from pos_sales s
+            f"""select total_minor, rounding_minor, register_id, payment_method, status, branch_id from pos_sales s
                  where s.id=$1 and {where('pos.sale', scope, 's')} for update""", sale_id)
         if sale is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Sale not found")
+        if sale["status"] == "void":
+            raise HTTPException(status.HTTP_409_CONFLICT, "This sale was voided")
         available = {str(r["sale_item_id"]): r for r in await conn.fetch(_RETURNABLE, sale_id)}
+        if void_reason is not None:
+            from ..models import ReturnLine
+            left = [ReturnLine(sale_item_id=k, qty=float(r["qty_sold"]) - float(r["qty_returned"]))
+                    for k, r in available.items() if float(r["qty_sold"]) > float(r["qty_returned"])]
+            if not left:
+                raise HTTPException(status.HTTP_409_CONFLICT, "Everything on this sale has already come back")
+            body = ReturnCreate(items=left, reason=f"Void: {void_reason}", restock=True,
+                                register_id=body.register_id)
 
         refund = tax_total = 0
         lines = []
@@ -774,9 +853,15 @@ async def create_return(sale_id: str, body: ReturnCreate,
         # A refund goes back the way the money came (khata back to the
         # customer's ledger); a split sale is refunded in cash.
         refund_method = sale["payment_method"] if sale["payment_method"] not in ("split",) else "cash"
-        # The till that pays it out, not necessarily the one that sold it.
+        # The till that pays it out, not necessarily the one that sold it: a
+        # named till must be in the sale's branch and have an open session.
         reg = await pos_sessions.register(conn, body.register_id or sale["register_id"])
         session_id = await pos_sessions.open_session_id(conn, reg["id"])
+        if body.register_id is not None:
+            if reg["branch_id"] != sale["branch_id"]:
+                raise HTTPException(status.HTTP_404_NOT_FOUND, "Register not found")
+            if session_id is None:
+                raise HTTPException(status.HTTP_409_CONFLICT, f"{reg['name']} has no open session to pay this from")
         return_id = await conn.fetchval(
             """insert into pos_returns (tenant_id, sale_id, cashier_id, reason, refund_minor, tax_minor,
                                         session_id, refund_method)
@@ -804,6 +889,12 @@ async def create_return(sale_id: str, body: ReturnCreate,
             outbox_id = await fbr_submit.enqueue_return(
                 conn, auth.tenant_id, sale_id, str(return_id), fbr_cfg)
         created_at = await conn.fetchval("select created_at from pos_returns where id=$1", return_id)
+        if void_reason is not None:
+            await conn.execute(
+                """update pos_sales set status = 'void', void_reason = $2, voided_by = $3, voided_at = now()
+                    where id = $1""", sale_id, void_reason, auth.user_id)
+            await audit.track(conn, entity_type="pos_sale", entity_id=sale_id, kind="system",
+                              body=f"Voided: {void_reason}", event="pos.sale.void")
 
     fbr_number = fbr_status = None
     if outbox_id is not None:

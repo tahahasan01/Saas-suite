@@ -99,6 +99,11 @@ register("pos", {
     "pos.session.approve": ("pos", "admin"),
     "pos.register.manage": ("pos", "admin"),
     "pos.cash.move": ("pos", "write"),
+    # Sales operations (0078): undoing a sale, discounting a line or changing
+    # a price are a manager's call (or their PIN at the till).
+    "pos.sale.void": ("pos", "admin"),
+    "pos.sale.discount": ("pos", "admin"),
+    "pos.price.override": ("pos", "admin"),
     "pos.report.sales": ("pos", "read"),
 })
 register("products", {

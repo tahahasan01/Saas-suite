@@ -72,6 +72,7 @@ export const MODULES: Module[] = [
     href: "/pos", group: "sell", requires: "pos",
     tabs: [
       { href: "/pos", label: "Register" },
+      { href: "/pos/sales", label: "Sales" },
       { href: "/pos/products", label: "Products" },
       { href: "/pos/purchase-orders", label: "Purchase orders" },
       { href: "/pos/drawer", label: "Cash drawer" },

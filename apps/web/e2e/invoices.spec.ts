@@ -51,11 +51,12 @@ test.describe("invoices v2", () => {
     await ready(page);
     await page.getByRole("tab", { name: "Overdue" }).click();
     await expect(page.getByRole("tab", { name: "Overdue" })).toHaveAttribute("aria-selected", "true");
-    // Every row shown carries the overdue badge (or the list is empty).
-    const rows = page.getByRole("main").getByRole("row");
-    for (const row of await rows.all()) {
-      if (await row.getByRole("columnheader").count()) continue;
-      await expect(row).toContainText("Overdue");
+    // Either the empty state, or every invoice row carries the overdue badge.
+    const empty = page.getByText("No invoices here yet");
+    const opens = page.getByRole("main").getByRole("button", { name: /^Open/ });
+    await expect(empty.or(opens.first())).toBeVisible();
+    for (const open of await opens.all()) {
+      await expect(page.getByRole("row").filter({ has: open })).toContainText("Overdue");
     }
   });
 });

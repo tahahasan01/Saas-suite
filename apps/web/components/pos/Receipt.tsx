@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Sale } from "@business-os/types";
+import { api } from "@/lib/api";
 import { formatDateTime, money } from "@/lib/format";
 import { BUSINESS_TZ } from "@/lib/dates";
 import { Dialog } from "@/components/Dialog";
@@ -15,29 +16,45 @@ const when = (iso: string) => formatDateTime(iso, BUSINESS_TZ);
 /* The receipt is a real dialog (P11): Escape and ✕ close it, it scrolls inside
  * itself on a landscape phone, and Print / New sale sit in the footer so they
  * are always on screen. Only `.receipt-print` reaches paper (globals.css). */
-export function Receipt({ sale, open, business, onClose, onCloseAutoFocus }: {
+export function Receipt({ sale, open, business, onClose, onCloseAutoFocus, title = "Sale complete", closeLabel = "New sale" }: {
   /** Kept after closing, so the dialog doesn't empty out while it animates away. */
   sale: Sale | null;
   open: boolean;
   business: string;
   onClose: () => void;
-  onCloseAutoFocus: (e: Event) => void;
+  onCloseAutoFocus?: (e: Event) => void;
+  title?: string;
+  closeLabel?: string;
 }) {
+  // Every print is counted by the server: the first is the original, later
+  // ones print a DUPLICATE stamp (0078).
+  const [duplicate, setDuplicate] = useState(false);
+  useEffect(() => { setDuplicate(false); }, [sale?.id]);
+  async function print() {
+    if (sale) {
+      try {
+        const r = await api<{ duplicate: boolean }>(`/pos/sales/${sale.id}/print`, { method: "POST", notify: false });
+        setDuplicate(r.duplicate);
+        await new Promise((ok) => setTimeout(ok, 0));   // let the stamp render before the print dialog
+      } catch { /* printing still works offline; the count catches up later */ }
+    }
+    window.print();
+  }
   return (
     <Dialog
       open={open && sale !== null}
       onOpenChange={(o) => { if (!o) onClose(); }}
-      title="Sale complete"
+      title={title}
       size="sm"
       onCloseAutoFocus={onCloseAutoFocus}
       footer={
         <>
-          <Button variant="subtle" onClick={() => window.print()} className="flex-1">Print</Button>
-          <Button onClick={onClose} className="flex-1">New sale</Button>
+          <Button variant="subtle" onClick={() => void print()} className="flex-1">Print</Button>
+          <Button onClick={onClose} className="flex-1">{closeLabel}</Button>
         </>
       }
     >
-      {sale && <ReceiptBody sale={sale} business={business} />}
+      {sale && <ReceiptBody sale={sale} business={business} duplicate={duplicate} />}
     </Dialog>
   );
 }
@@ -72,7 +89,7 @@ function usePrintPageSize(ref: React.RefObject<HTMLDivElement | null>) {
   }, [ref]);
 }
 
-function ReceiptBody({ sale, business }: { sale: Sale; business: string }) {
+function ReceiptBody({ sale, business, duplicate }: { sale: Sale; business: string; duplicate: boolean }) {
   const due = sale.amount_due_minor || sale.total_minor;
   const ref = useRef<HTMLDivElement>(null);
   usePrintPageSize(ref);
@@ -80,6 +97,9 @@ function ReceiptBody({ sale, business }: { sale: Sale; business: string }) {
     <div ref={ref} className="receipt-print space-y-2 text-sm">
       <div className="text-center">
         {business && <p className="text-base font-semibold break-words">{business}</p>}
+        {duplicate && <p className="my-1 border-y border-dashed border-fg py-0.5 text-sm font-bold tracking-widest">DUPLICATE</p>}
+        {sale.status === "void" && <p className="my-1 text-sm font-bold tracking-widest text-danger">VOID</p>}
+        {sale.receipt_no && <p className="font-mono text-sm font-semibold">{sale.receipt_no}</p>}
         <p className="text-xs text-fg-muted">{when(sale.created_at)}</p>
         {/* Full id, not a slice: this is what Returns looks the sale up by. */}
         <p className="font-mono text-[10px] break-all text-fg-subtle">{sale.id}</p>

@@ -36,7 +36,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en" className={`${plex.variable} ${bricolage.variable}`} suppressHydrationWarning>
       <head>
-        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
+        {/* Browsers hide a nonce from the DOM after parsing, so hydration sees ""
+            where the server sent the value: expected, not a mismatch to report. */}
+        <script nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
       </head>
       <body>
         <QueryProvider>

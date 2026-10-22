@@ -3597,6 +3597,189 @@
             }
           }
         }
+      },
+      "get": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Sales History",
+        "description": "Search by receipt number, customer name or phone; filter by method,\nstatus, register and local day. Own-scope cashiers see their own sales.",
+        "operationId": "sales_history_pos_sales_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "method",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "cash",
+                    "card",
+                    "jazzcash",
+                    "easypaisa",
+                    "raast",
+                    "bank",
+                    "khata"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Method"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "register_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Register Id"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SaleRow"
+                  },
+                  "title": "Response Sales History Pos Sales Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/pos/sales/quote": {
@@ -18380,7 +18563,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DeviceOut"
+                  "$ref": "#/components/schemas/DeviceCreated"
                 }
               }
             }
@@ -18404,7 +18587,7 @@
           "pos"
         ],
         "summary": "Heartbeat",
-        "description": "The till says it's alive and how many sales it still holds.",
+        "description": "The till says it's alive and how many sales it still holds. Only the\ndevice itself, with its own token, may say so.",
         "operationId": "heartbeat_pos_devices__device_id__heartbeat_post",
         "parameters": [
           {
@@ -18414,6 +18597,22 @@
             "schema": {
               "type": "string",
               "title": "Device Id"
+            }
+          },
+          {
+            "name": "X-Device-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Device-Token"
             }
           },
           {
@@ -18911,6 +19110,373 @@
             }
           }
         },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pos/sales/{sale_id}/print": {
+      "post": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Print Receipt",
+        "description": "Count a print: the first is the original, every later one a DUPLICATE.",
+        "operationId": "print_receipt_pos_sales__sale_id__print_post",
+        "parameters": [
+          {
+            "name": "sale_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Sale Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrintOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pos/sales/{sale_id}/void": {
+      "post": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Void Sale",
+        "description": "A full return of what is left (refund into the session, stock back,\nFBR debit note), then the sale is marked void — audited.",
+        "operationId": "void_sale_pos_sales__sale_id__void_post",
+        "parameters": [
+          {
+            "name": "sale_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Sale Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoidIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoidOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pos/held": {
+      "get": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "List Held",
+        "operationId": "list_held_pos_held_get",
+        "parameters": [
+          {
+            "name": "register_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Register Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HeldOut"
+                  },
+                  "title": "Response List Held Pos Held Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Hold Bill",
+        "operationId": "hold_bill_pos_held_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeldIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeldOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pos/held/{held_id}/resume": {
+      "post": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Resume Bill",
+        "description": "Take a held bill back to the till: it leaves the list (once).",
+        "operationId": "resume_bill_pos_held__held_id__resume_post",
+        "parameters": [
+          {
+            "name": "held_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Held Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeldOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pos/pin-locks/{user_id}": {
+      "delete": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Unlock Pin",
+        "description": "Switch an approver's till PIN back on after a lockout.",
+        "operationId": "unlock_pin_pos_pin_locks__user_id__delete",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
         "responses": {
           "204": {
             "description": "Successful Response"
@@ -23096,6 +23662,70 @@
         "title": "DepartmentUpdate",
         "description": "An explicit null clears parent or head."
       },
+      "DeviceCreated": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "register_id": {
+            "type": "string",
+            "title": "Register Id"
+          },
+          "device_code": {
+            "type": "string",
+            "title": "Device Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "last_seen_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen At"
+          },
+          "outbox_count": {
+            "type": "integer",
+            "title": "Outbox Count"
+          },
+          "oldest_pending_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oldest Pending At"
+          },
+          "token": {
+            "type": "string",
+            "title": "Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "register_id",
+          "device_code",
+          "name",
+          "last_seen_at",
+          "outbox_count",
+          "oldest_pending_at",
+          "token"
+        ],
+        "title": "DeviceCreated"
+      },
       "DeviceIn": {
         "properties": {
           "register_id": {
@@ -24755,6 +25385,92 @@
           "outbox_count"
         ],
         "title": "HeartbeatIn"
+      },
+      "HeldIn": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "maxLength": 60,
+            "title": "Label",
+            "default": ""
+          },
+          "register_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Register Id"
+          },
+          "cart": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Cart"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cart"
+        ],
+        "title": "HeldIn"
+      },
+      "HeldOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "register_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Register Id"
+          },
+          "cart": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Cart"
+          },
+          "held_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Held By"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "register_id",
+          "cart",
+          "held_by",
+          "created_at"
+        ],
+        "title": "HeldOut"
       },
       "HolidayCalendarCreate": {
         "properties": {
@@ -30018,7 +30734,7 @@
         "properties": {
           "pin": {
             "type": "string",
-            "pattern": "^\\d{4,6}$",
+            "pattern": "^\\d{6}$",
             "title": "Pin"
           }
         },
@@ -30570,6 +31286,41 @@
         ],
         "title": "PreviewPayslip",
         "description": "The legacy preview payslip plus the full calculation."
+      },
+      "PrintOut": {
+        "properties": {
+          "sale_id": {
+            "type": "string",
+            "title": "Sale Id"
+          },
+          "receipt_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receipt No"
+          },
+          "copy": {
+            "type": "integer",
+            "title": "Copy"
+          },
+          "duplicate": {
+            "type": "boolean",
+            "title": "Duplicate"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sale_id",
+          "receipt_no",
+          "copy",
+          "duplicate"
+        ],
+        "title": "PrintOut"
       },
       "ProductCreate": {
         "properties": {
@@ -31746,6 +32497,18 @@
             "type": "boolean",
             "title": "Restock",
             "default": true
+          },
+          "register_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Register Id"
           }
         },
         "type": "object",
@@ -32807,6 +33570,30 @@
             ],
             "title": "Device Id"
           },
+          "approver_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approver Id"
+          },
+          "approver_pin": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{6}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approver Pin"
+          },
           "contact_id": {
             "anyOf": [
               {
@@ -32864,6 +33651,45 @@
             "type": "number",
             "exclusiveMinimum": 0.0,
             "title": "Qty"
+          },
+          "discount_minor": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discount Minor"
+          },
+          "discount_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discount Pct"
+          },
+          "price_minor": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Minor"
           }
         },
         "type": "object",
@@ -32984,6 +33810,27 @@
             },
             "type": "array",
             "title": "Payments"
+          },
+          "receipt_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receipt No"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "completed"
+          },
+          "void_reason": {
+            "type": "string",
+            "title": "Void Reason",
+            "default": ""
           },
           "returnable": {
             "items": {
@@ -33123,6 +33970,27 @@
             },
             "type": "array",
             "title": "Payments"
+          },
+          "receipt_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receipt No"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "completed"
+          },
+          "void_reason": {
+            "type": "string",
+            "title": "Void Reason",
+            "default": ""
           }
         },
         "type": "object",
@@ -33225,6 +34093,93 @@
           "items"
         ],
         "title": "SaleQuoteRequest"
+      },
+      "SaleRow": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "receipt_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receipt No"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "total_minor": {
+            "type": "integer",
+            "title": "Total Minor"
+          },
+          "payment_method": {
+            "type": "string",
+            "title": "Payment Method"
+          },
+          "item_count": {
+            "type": "integer",
+            "title": "Item Count"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "cashier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cashier"
+          },
+          "customer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer"
+          },
+          "register_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Register Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "receipt_no",
+          "created_at",
+          "total_minor",
+          "payment_method",
+          "item_count",
+          "status",
+          "cashier",
+          "customer",
+          "register_code"
+        ],
+        "title": "SaleRow"
       },
       "SequenceOut": {
         "properties": {
@@ -33395,7 +34350,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "pattern": "^\\d{4,6}$"
+                "pattern": "^\\d{6}$"
               },
               {
                 "type": "null"
@@ -35433,6 +36388,61 @@
           "token"
         ],
         "title": "VerifyRequest"
+      },
+      "VoidIn": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Reason"
+          },
+          "register_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Register Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "VoidIn"
+      },
+      "VoidOut": {
+        "properties": {
+          "sale_id": {
+            "type": "string",
+            "title": "Sale Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "void_reason": {
+            "type": "string",
+            "title": "Void Reason"
+          },
+          "refund_minor": {
+            "type": "integer",
+            "title": "Refund Minor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sale_id",
+          "status",
+          "void_reason",
+          "refund_minor"
+        ],
+        "title": "VoidOut"
       },
       "WeekOut": {
         "properties": {

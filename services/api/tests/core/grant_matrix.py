@@ -155,6 +155,7 @@ APP_USER: dict[str, set[str]] = {
     "pos_devices":          {S, I, U},
     "pos_payments":         {S, I},             # part of the sale, never edited
     "pos_cash_moves":       {S, I},             # append-only
+    "pos_held_bills":       {S, I, D},          # parked carts, resumed once (0078)
 }
 
 # Column-level grants don't appear in role_table_grants, so they are pinned
