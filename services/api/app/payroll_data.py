@@ -24,6 +24,12 @@ from .payroll_province import resolve_work_provinces
 
 FINAL = ("approved", "paid", "locked")   # run statuses whose payslips count as paid
 
+# Money back on advance `a` outside the instalments (0107): cash, or a payroll
+# lump sum whose one-off hasn't been voided.
+REPAID_SQL = """coalesce((select sum(p.amount_minor) from pay_advance_repayments p
+                            left join pay_one_offs o on o.id = p.one_off_id
+                           where p.advance_id = a.id and (o.id is null or o.status <> 'void')), 0)"""
+
 # Absence is derived from evidence, not a status field: a working day with no
 # check-in and no approved leave. (Moved here unchanged from routers/hrms.py.)
 # $1 = first day of the month, $2 = the tenant's weekly rest days (ISO dow),
@@ -290,7 +296,7 @@ async def load_inputs(conn: Any, *, period_start: date, period_end: date, pay_da
                 """select a.*, a.principal_minor - coalesce((
                           select sum(l.amount_minor) from payslip_lines l join payroll_runs pr on pr.id = l.run_id
                            where l.ref_id = a.id and l.code = 'ADVANCE' and pr.status = any($3::text[])
-                             and pr.id is distinct from $4), 0) as outstanding
+                             and pr.id is distinct from $4), 0) - """ + REPAID_SQL + """ as outstanding
                      from pay_advances a
                     where a.employee_id = any($1::uuid[]) and a.status = 'active' and a.start_period <= $2
                     order by a.created_at""", emp_ids, period_start, list(FINAL), run_uuid):

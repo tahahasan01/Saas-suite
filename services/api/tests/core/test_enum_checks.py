@@ -13,7 +13,7 @@ import typing
 import asyncpg
 import pytest
 
-from app import models
+from app import models, payroll_models
 from app.config import settings
 
 # (table, column) -> the model's list of allowed values.
@@ -81,6 +81,7 @@ ENUM_COLUMNS = {
     ("hrms_assets", "condition"): models.ASSET_CONDITIONS,
     ("hrms_assets", "status"): models.ASSET_STATUSES,
     ("hrms_asset_assignments", "return_condition"): models.ASSET_CONDITIONS,
+    ("pay_advance_repayments", "method"): payroll_models.ADVANCE_REPAY_METHODS,
     ("hrms_job_changes", "kind"): models.JOB_CHANGE_KINDS,
     ("hrms_job_changes", "status"): models.JOB_CHANGE_STATUSES,
     ("hrms_letter_templates", "kind"): models.LETTER_KINDS,

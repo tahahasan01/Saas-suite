@@ -5705,6 +5705,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/payroll/advances/{advance_id}/repay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Repay Advance
+         * @description Paying off early (0107): cash for any part of what's left, or the whole
+         *     balance from the next salary as one ADVANCE_SETTLE deduction. Fully paid,
+         *     the advance closes, so payroll takes no instalment on top.
+         */
+        post: operations["repay_advance_payroll_advances__advance_id__repay_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/payroll/statutory": {
         parameters: {
             query?: never;
@@ -6838,6 +6860,22 @@ export interface components {
             /** Status */
             status: string;
             /** Note */
+            note: string;
+        };
+        /** AdvanceRepay */
+        AdvanceRepay: {
+            /**
+             * Method
+             * @default cash
+             * @enum {string}
+             */
+            method: "cash" | "payroll";
+            /** Amount Minor */
+            amount_minor?: number | null;
+            /**
+             * Note
+             * @default
+             */
             note: string;
         };
         /** Alert */
@@ -27452,6 +27490,43 @@ export interface operations {
             };
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdvanceOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    repay_advance_payroll_advances__advance_id__repay_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                advance_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdvanceRepay"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

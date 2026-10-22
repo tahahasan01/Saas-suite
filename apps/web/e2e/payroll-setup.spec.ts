@@ -41,8 +41,14 @@ test("payroll is set up from screens: component, structure, salary, loan", async
   await loan.getByLabel("Monthly instalment (PKR)").fill("3000");
   await loan.getByLabel("Note").fill(`Loan ${code}`);
   await loan.getByRole("button", { name: "Record loan" }).click();
-  const row = page.getByRole("list", { name: "Loans and advances" }).getByRole("listitem").filter({ hasText: person.name }).first();
+  const row = page.getByRole("list", { name: "Loans and advances" }).getByRole("listitem").filter({ hasText: `Loan ${code}` });
   await expect(row).toContainText("left Rs 12,000");
+  // Paying part of it back in cash lowers what payroll will take (0107).
+  await row.getByRole("button", { name: `Pay off ${person.name}'s loan` }).click();
+  const pay = page.getByRole("dialog", { name: `Pay off: ${person.name}` });
+  await pay.getByLabel("Amount paid (PKR)").fill("3000");
+  await pay.getByRole("button", { name: "Record" }).click();
+  await expect(row).toContainText("left Rs 9,000");
 
   await page.goto(`/hrms/employees/${person.id}`);
   const salary = page.getByRole("form", { name: "Change salary" });

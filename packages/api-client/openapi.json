@@ -23848,6 +23848,75 @@
         }
       }
     },
+    "/payroll/advances/{advance_id}/repay": {
+      "post": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Repay Advance",
+        "description": "Paying off early (0107): cash for any part of what's left, or the whole\nbalance from the next salary as one ADVANCE_SETTLE deduction. Fully paid,\nthe advance closes, so payroll takes no instalment on top.",
+        "operationId": "repay_advance_payroll_advances__advance_id__repay_post",
+        "parameters": [
+          {
+            "name": "advance_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Advance Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdvanceRepay"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvanceOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/payroll/statutory": {
       "get": {
         "tags": [
@@ -28202,6 +28271,40 @@
           "note"
         ],
         "title": "AdvanceOut"
+      },
+      "AdvanceRepay": {
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "cash",
+              "payroll"
+            ],
+            "title": "Method",
+            "default": "cash"
+          },
+          "amount_minor": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Minor"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "AdvanceRepay"
       },
       "Alert": {
         "properties": {

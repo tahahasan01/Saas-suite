@@ -9,6 +9,7 @@ import { money } from "@/lib/format";
 import { errorText, useAction } from "@/lib/useAction";
 import { Tabs } from "@/components/Tabs";
 import { Combobox } from "@/components/Combobox";
+import { Dialog } from "@/components/Dialog";
 import { Badge, Button, Card, EmptyState, ErrorState, Field, Input, LoadingRows, Select } from "@/components/ui";
 
 type Component = Schema<"ComponentOut">;
@@ -285,8 +286,34 @@ function OneOffs() {
 }
 
 // ── Loans and advances ──────────────────────────────────────────────────────
+function PayOffDialog({ a, onClose, onDone }: { a: Advance; onClose: () => void; onDone: () => void }) {
+  const [method, setMethod] = useState<"cash" | "payroll">("cash");
+  const [amount, setAmount] = useState(String(a.outstanding_minor / 100));
+  const pay = useAction(() => api(`/payroll/advances/${a.id}/repay`, { method: "POST", body: JSON.stringify({
+    method, amount_minor: method === "cash" ? Math.round(Number(amount) * 100) : null }) }),
+  { success: "Recorded", failure: "Couldn't record it" });
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }} title={`Pay off: ${a.employee_name}`}>
+      <form className="space-y-3" onSubmit={async (e) => { e.preventDefault(); if ((await pay.run()) !== undefined) onDone(); }}>
+        <p className="text-sm text-fg-muted">{money(a.outstanding_minor)} is left.</p>
+        <Field label="How">
+          <Select value={method} onChange={(e) => setMethod(e.target.value as "cash" | "payroll")}>
+            <option value="cash">Paid back in cash</option><option value="payroll">All of it from the next salary</option>
+          </Select>
+        </Field>
+        {method === "cash" && <Field label="Amount paid (PKR)"><Input type="number" min={0.01} step="0.01" max={a.outstanding_minor / 100} value={amount} onChange={(e) => setAmount(e.target.value)} /></Field>}
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button type="submit" disabled={pay.busy || (method === "cash" && !(Number(amount) > 0))}>Record</Button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
+
 function Loans() {
   const { rows, error, load } = useList<Advance[]>("/payroll/advances");
+  const [paying, setPaying] = useState<Advance | null>(null);
   const people = useEmployees();
   const blank = { employee_id: "", principal: "", installment: "", start: monthPKT(), note: "" };
   const [f, setF] = useState(blank);
@@ -314,12 +341,14 @@ function Loans() {
                 <span className="block text-xs text-fg-muted">
                   {money(a.installment_minor)} a month from {a.start_month} · repaid {money(a.recovered_minor)} · left {money(a.outstanding_minor)}
                   {a.status === "active" && a.outstanding_minor > 0 ? ` (about ${months(a)} more month${months(a) === 1 ? "" : "s"})` : ""}
+                  {a.note ? ` · ${a.note}` : ""}
                 </span>
               </span>
               <span className="flex items-center gap-2">
                 <Badge tone={a.status === "active" ? "brand" : "neutral"}>{a.outstanding_minor === 0 && a.status !== "void" ? "repaid" : a.status}</Badge>
                 {a.status === "active" && (
                   <Can perm="payroll.salary.update">
+                    <Button size="sm" variant="subtle" onClick={() => setPaying(a)} aria-label={`Pay off ${a.employee_name}'s loan`}>Pay off</Button>
                     <Button size="sm" variant="ghost" disabled={stop.busy} onClick={async () => { if ((await stop.run(a)) !== undefined) load(); }}>Stop recovery</Button>
                   </Can>
                 )}
@@ -328,6 +357,7 @@ function Loans() {
           ))}
         </ul>
       ))}
+      {paying && <PayOffDialog a={paying} onClose={() => setPaying(null)} onDone={() => { setPaying(null); load(); }} />}
       <Can perm="payroll.salary.update">
         <Card>
           <form onSubmit={submit} className="grid gap-3 sm:grid-cols-3" aria-label="Record a loan or advance">

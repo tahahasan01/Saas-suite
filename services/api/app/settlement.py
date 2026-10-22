@@ -94,7 +94,8 @@ async def outstanding_advances(conn: asyncpg.Connection, employee_id: Any) -> li
     rows: list[asyncpg.Record] = await conn.fetch(
         """select a.id, a.principal_minor - coalesce((
                   select sum(l.amount_minor) from payslip_lines l join payroll_runs pr on pr.id = l.run_id
-                   where l.ref_id = a.id and l.code = 'ADVANCE' and pr.status = any($2::text[])), 0) as outstanding
+                   where l.ref_id = a.id and l.code = 'ADVANCE' and pr.status = any($2::text[])), 0)
+                  - """ + payroll_data.REPAID_SQL + """ as outstanding
              from pay_advances a where a.employee_id = $1 and a.status = 'active' order by a.created_at""",
         employee_id, list(FINAL_RUNS))
     return [r for r in rows if r["outstanding"] > 0]
