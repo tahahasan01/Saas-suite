@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { RefundableLine, SaleLookup } from "@business-os/types";
 import { api, ApiError } from "@/lib/api";
+import { Can } from "@/lib/can";
 import { money, relativeDate } from "@/lib/format";
 import { useAction } from "@/lib/useAction";
 import { Badge, Button, Card, ErrorState, Input } from "@/components/ui";
@@ -162,9 +163,11 @@ export default function ReturnsPage() {
             </label>
             {over && <p role="alert" className="text-xs text-danger">Only {over.qty_returnable} of {over.name} can be returned.</p>}
             {submit.error && <p role="alert" className="text-xs text-danger">{submit.error}</p>}
-            <Button onClick={() => void submit.run()} disabled={submit.busy || !chosen || !!over || refund === 0} className="w-full">
-              {submit.busy ? "Refunding…" : `Refund ${money(refund)}`}
-            </Button>
+            <Can perm="pos.sale.refund" fallback={<p className="text-sm text-fg-muted">Ask a manager to give the refund.</p>}>
+              <Button onClick={() => void submit.run()} disabled={submit.busy || !chosen || !!over || refund === 0} className="w-full">
+                {submit.busy ? "Refunding…" : `Refund ${money(refund)}`}
+              </Button>
+            </Can>
           </Card>
         </div>
       )}

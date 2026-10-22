@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Employee } from "@business-os/types";
 import { api } from "@/lib/api";
+import { Can } from "@/lib/can";
 import { money } from "@/lib/format";
 import { errorText, useAction } from "@/lib/useAction";
 import { Dialog } from "@/components/Dialog";
@@ -88,9 +89,11 @@ export default function EmployeesPage() {
             {items.filter((e) => e.present_today).length} of {items.length} in today
           </span>
         )}
-        <Button className="ml-auto" onClick={() => setAdding((v) => !v)} variant={adding ? "subtle" : "primary"} aria-expanded={adding}>
-          {adding ? "Cancel" : "Add employee"}
-        </Button>
+        <Can perm="hrms.employee.create">
+          <Button className="ml-auto" onClick={() => setAdding((v) => !v)} variant={adding ? "subtle" : "primary"} aria-expanded={adding}>
+            {adding ? "Cancel" : "Add employee"}
+          </Button>
+        </Can>
       </div>
 
       {adding && (
@@ -185,11 +188,15 @@ function Row({ e, onChanged, onEdit }: { e: Employee; onChanged: () => void; onE
           ) : sent ? (
             <span className="text-xs text-success">Invite sent</span>
           ) : (
-            <Button size="sm" variant="ghost" onClick={sendInvite} disabled={invite.busy}>
-              {invite.busy ? "Sending…" : "Enable login"}
-            </Button>
+            <Can perm="hrms.employee.invite">
+              <Button size="sm" variant="ghost" onClick={sendInvite} disabled={invite.busy}>
+                {invite.busy ? "Sending…" : "Enable login"}
+              </Button>
+            </Can>
           )}
-          <Button size="sm" variant="subtle" onClick={onEdit} aria-label={`Edit ${e.name}`}>Edit</Button>
+          <Can perm="hrms.employee.update">
+            <Button size="sm" variant="subtle" onClick={onEdit} aria-label={`Edit ${e.name}`}>Edit</Button>
+          </Can>
         </div>
       </div>
     </li>

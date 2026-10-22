@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { WORKFLOW_TRIGGERS, type ActivityType, type Workflow } from "@business-os/types";
 import { X } from "lucide-react";
 import { api } from "@/lib/api";
+import { Can } from "@/lib/can";
 import { errorText, useAction } from "@/lib/useAction";
 import { Button, Card, EmptyState, ErrorState, Field, Input, LoadingRows, Select, Switch } from "@/components/ui";
 import { useConfirm } from "@/components/Confirm";
@@ -120,6 +121,7 @@ export default function AutomationsPage() {
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
+                  <Can perm="settings.workflows.manage" fallback={<span className="text-xs text-fg-subtle">{w.enabled ? "On" : "Off"}</span>}>
                   <Switch
                     checked={w.enabled}
                     onChange={() => onToggle(w)}
@@ -137,12 +139,14 @@ export default function AutomationsPage() {
                       <X size={16} aria-hidden />
                     </button>
                   )}
+                  </Can>
                 </div>
               </Card>
             ))
           )}
         </div>
 
+        <Can perm="settings.workflows.manage">
         <Card className="space-y-3">
           <h2 className="text-sm font-semibold">New automation</h2>
           <form onSubmit={onCreate} className="space-y-3">
@@ -189,6 +193,7 @@ export default function AutomationsPage() {
             <Button type="submit" disabled={create.busy} className="w-full">{create.busy ? "Saving…" : "Create automation"}</Button>
           </form>
         </Card>
+        </Can>
       </div>
     </>
   );

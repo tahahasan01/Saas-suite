@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Product } from "@business-os/types";
 import { X } from "lucide-react";
 import { api } from "@/lib/api";
+import { Can } from "@/lib/can";
 import { money, relativeDate } from "@/lib/format";
 import { errorText, useAction } from "@/lib/useAction";
 import { Badge, Button, Card, EmptyState, ErrorState, Field, Input, LoadingRows, Select } from "@/components/ui";
@@ -51,9 +52,11 @@ export default function PurchaseOrdersPage() {
     <>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-fg-muted">Order from suppliers, receive deliveries, stock rises automatically.</p>
-        <Button size="sm" variant={creating ? "subtle" : "primary"} onClick={() => setCreating((v) => !v)}>
-          {creating ? "Close form" : "New order"}
-        </Button>
+        <Can perm="purchasing.po.create">
+          <Button size="sm" variant={creating ? "subtle" : "primary"} onClick={() => setCreating((v) => !v)}>
+            {creating ? "Close form" : "New order"}
+          </Button>
+        </Can>
       </div>
 
       {creating && listsError && (
@@ -161,8 +164,12 @@ function PoDetail({ po, onChanged }: { po: Po; onChanged: () => void }) {
       <DataTable columns={columns} rows={po.items} rowKey={(l) => l.id} caption="Order lines" />
       {po.status === "ordered" && (
         <div className="mt-3 flex flex-wrap justify-end gap-2">
-          <Button size="sm" variant="ghost" onClick={() => void onCancel()}>Cancel order</Button>
-          <Button size="sm" onClick={() => void doReceive()} disabled={receive.busy}>{receive.busy ? "Receiving…" : "Receive delivery"}</Button>
+          <Can perm="purchasing.po.cancel">
+            <Button size="sm" variant="ghost" onClick={() => void onCancel()}>Cancel order</Button>
+          </Can>
+          <Can perm="purchasing.po.receive">
+            <Button size="sm" onClick={() => void doReceive()} disabled={receive.busy}>{receive.busy ? "Receiving…" : "Receive delivery"}</Button>
+          </Can>
         </div>
       )}
     </div>

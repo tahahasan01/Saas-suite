@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { FbrInvoice, FbrSettings } from "@business-os/types";
 import { api } from "@/lib/api";
+import { Can } from "@/lib/can";
 import type { Region } from "@/lib/org";
 import { relativeDate } from "@/lib/format";
 import { errorText, useAction } from "@/lib/useAction";
@@ -120,6 +121,7 @@ export default function FbrSettingsPage() {
         <p className="text-xs text-fg-subtle">
           Generate this at e.fbr.gov.pk. It&apos;s valid for 5 years. We store it and never show it again.
         </p>
+        <Can perm="fbr.settings.manage" fallback={<p className="text-sm text-fg-muted">{cfg.token_set ? "A token is saved." : "No token yet."} An admin manages it.</p>}>
         <form className="flex flex-col gap-2 sm:flex-row sm:items-end" onSubmit={(e) => { e.preventDefault(); saveToken(); }}>
           <div className="min-w-0 flex-1">
             <Field label="FBR API token">
@@ -129,6 +131,7 @@ export default function FbrSettingsPage() {
           </div>
           <Button type="submit" disabled={save.busy || !token}>Save token</Button>
         </form>
+        </Can>
       </Card>
 
       <Card className="space-y-3">
@@ -169,10 +172,12 @@ export default function FbrSettingsPage() {
               {cfg.enabled ? "Every sale is transmitted to FBR." : "Sales are not being reported to FBR."}
             </p>
           </div>
-          <Button variant={cfg.enabled ? "subtle" : "primary"} disabled={save.busy}
-                  onClick={() => save.run({ enabled: !cfg.enabled })}>
-            {cfg.enabled ? "Turn off" : "Turn on"}
-          </Button>
+          <Can perm="fbr.settings.manage">
+            <Button variant={cfg.enabled ? "subtle" : "primary"} disabled={save.busy}
+                    onClick={() => save.run({ enabled: !cfg.enabled })}>
+              {cfg.enabled ? "Turn off" : "Turn on"}
+            </Button>
+          </Can>
         </div>
         {save.error && <p role="alert" className="text-xs text-danger">{save.error}</p>}
       </Card>

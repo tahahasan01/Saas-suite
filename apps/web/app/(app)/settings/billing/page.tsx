@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Copy } from "lucide-react";
 import type { Billing, PaymentInstructions, Plan } from "@business-os/types";
 import { api } from "@/lib/api";
+import { Can } from "@/lib/can";
 import { formatDate, formatNumber, money } from "@/lib/format";
 import { errorText, useAction } from "@/lib/useAction";
 import { Badge, Button, Card, ErrorState, LoadingRows } from "@/components/ui";
@@ -125,9 +126,11 @@ export default function BillingPage() {
                     Contact sales
                   </a>
                 ) : (
-                  <Button onClick={() => choose(p.key)} disabled={upgrade.busy} className="w-full">
-                    {pending ? "Show transfer details" : `Choose ${p.name}`}
-                  </Button>
+                  <Can perm="settings.billing.manage" fallback={<p className="text-center text-xs text-fg-subtle">The owner changes the plan.</p>}>
+                    <Button onClick={() => choose(p.key)} disabled={upgrade.busy} className="w-full">
+                      {pending ? "Show transfer details" : `Choose ${p.name}`}
+                    </Button>
+                  </Can>
                 )}
               </div>
             </Card>
