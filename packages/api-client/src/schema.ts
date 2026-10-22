@@ -1182,7 +1182,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Sale */
+        /**
+         * Get Sale
+         * @description One sale with what can still be returned. `sale_id` is the sale's id
+         *     or the receipt number printed on it (R1-2026-27-000042, 0078; an offline
+         *     till's own number once synced), so a return starts from the paper.
+         */
         get: operations["get_sale_pos_sales__sale_id__get"];
         put?: never;
         post?: never;
@@ -3379,6 +3384,98 @@ export interface paths {
         post?: never;
         /** Delete Blackout */
         delete: operations["delete_blackout_hrms_blackout_days__blackout_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/notices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Notices */
+        get: operations["list_notices_hrms_notices_get"];
+        put?: never;
+        /** Create Notice */
+        post: operations["create_notice_hrms_notices_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/notices/{notice_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Notice */
+        patch: operations["update_notice_hrms_notices__notice_id__patch"];
+        trace?: never;
+    };
+    "/hrms/notices/{notice_id}/acknowledgements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Acknowledgements
+         * @description Everyone the notice is for, with when they acknowledged (null: not yet).
+         */
+        get: operations["acknowledgements_hrms_notices__notice_id__acknowledgements_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/notices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My Notices */
+        get: operations["my_notices_me_notices_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/notices/{notice_id}/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Acknowledge
+         * @description Once: a second call returns the first acknowledgement unchanged.
+         */
+        post: operations["acknowledge_me_notices__notice_id__acknowledge_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -8580,6 +8677,93 @@ export interface components {
         NoteCreate: {
             /** Body */
             body: string;
+        };
+        /** NoticeAck */
+        NoticeAck: {
+            /** Employee Id */
+            employee_id: string;
+            /** Name */
+            name: string;
+            /** Acknowledged At */
+            acknowledged_at: string | null;
+        };
+        /** NoticeCreate */
+        NoticeCreate: {
+            /** Title */
+            title: string;
+            /**
+             * Body
+             * @default
+             */
+            body: string;
+            /**
+             * Requires Ack
+             * @default false
+             */
+            requires_ack: boolean;
+            /**
+             * Audience
+             * @default all
+             * @enum {string}
+             */
+            audience: "all" | "department" | "location";
+            /** Department Id */
+            department_id?: string | null;
+            /** Location Id */
+            location_id?: string | null;
+            /** File Id */
+            file_id?: string | null;
+            /**
+             * Pinned
+             * @default false
+             */
+            pinned: boolean;
+        };
+        /** NoticeOut */
+        NoticeOut: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Body */
+            body: string;
+            /** Requires Ack */
+            requires_ack: boolean;
+            /**
+             * Audience
+             * @enum {string}
+             */
+            audience: "all" | "department" | "location";
+            /** Department Id */
+            department_id: string | null;
+            /** Location Id */
+            location_id: string | null;
+            /** Audience Label */
+            audience_label: string;
+            /** File Id */
+            file_id: string | null;
+            /** Pinned */
+            pinned: boolean;
+            /**
+             * Published At
+             * Format: date-time
+             */
+            published_at: string;
+            /** Archived At */
+            archived_at: string | null;
+            /** Audience Size */
+            audience_size: number;
+            /** Acknowledged */
+            acknowledged: number;
+            /** Acknowledged At */
+            acknowledged_at?: string | null;
+        };
+        /** NoticeUpdate */
+        NoticeUpdate: {
+            /** Pinned */
+            pinned?: boolean | null;
+            /** Archived */
+            archived?: boolean | null;
         };
         /** NotificationList */
         NotificationList: {
@@ -18980,6 +19164,208 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_notices_hrms_notices_get: {
+        parameters: {
+            query?: {
+                archived?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoticeOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_notice_hrms_notices_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoticeCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoticeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_notice_hrms_notices__notice_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                notice_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoticeUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoticeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    acknowledgements_hrms_notices__notice_id__acknowledgements_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                notice_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoticeAck"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_notices_me_notices_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoticeOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    acknowledge_me_notices__notice_id__acknowledge_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                notice_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoticeOut"];
+                };
             };
             /** @description Validation Error */
             422: {

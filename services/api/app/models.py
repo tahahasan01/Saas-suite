@@ -1910,6 +1910,50 @@ GEO_MODES = list(get_args(GeoMode))
 DocumentKind = Literal["cnic", "contract", "certificate", "medical", "license", "passport", "other"]
 DOCUMENT_KINDS = list(get_args(DocumentKind))
 
+# ── Notice board and policy acknowledgement (wave A, 0085) ──
+NoticeAudience = Literal["all", "department", "location"]
+NOTICE_AUDIENCES = list(get_args(NoticeAudience))
+
+
+class NoticeCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=160)
+    body: str = Field(default="", max_length=10000)
+    requires_ack: bool = False          # a policy: each employee confirms it once
+    audience: NoticeAudience = "all"
+    department_id: UUID | None = None
+    location_id: UUID | None = None
+    file_id: UUID | None = None
+    pinned: bool = False
+
+
+class NoticeUpdate(BaseModel):
+    pinned: bool | None = None
+    archived: bool | None = None
+
+
+class NoticeOut(BaseModel):
+    id: str
+    title: str
+    body: str
+    requires_ack: bool
+    audience: NoticeAudience
+    department_id: str | None
+    location_id: str | None
+    audience_label: str
+    file_id: str | None
+    pinned: bool
+    published_at: datetime
+    archived_at: datetime | None
+    audience_size: int
+    acknowledged: int
+    acknowledged_at: datetime | None = None   # /me only: when this employee acknowledged
+
+
+class NoticeAck(BaseModel):
+    employee_id: str
+    name: str
+    acknowledged_at: datetime | None
+
 
 def _networks(v: list[str] | None) -> list[str] | None:
     """Normalised CIDRs ("198.51.100.7" -> "198.51.100.7/32"); 422 on junk."""

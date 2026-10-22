@@ -52,6 +52,8 @@ KIND_OF = {
     # payroll (3F)
     "run_id": "payroll_run", "payslip_id": "payslip", "component_id": "pay_component",
     "structure_id": "pay_structure", "one_off_id": "one_off", "advance_id": "advance",
+    # notice board (wave A, 0085)
+    "notice_id": "notice",
 }
 
 # Path parameters that are not ids: a fixed, valid value. (scheme_code names
@@ -137,6 +139,7 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
                                                        "name": "Bonus", "amount_minor": 100})).json()
     advance = (await c.post("/payroll/advances", json={"employee_id": employee["id"], "principal_minor": 100,
                                                        "installment_minor": 100, "start_month": "2026-09"})).json()
+    notice = (await c.post("/hrms/notices", json={"title": "Probe notice"})).json()
     return {
         "activity_type": activity_type["id"], "activity": activity["id"],
         "lost_reason": (await c.get("/crm/lost-reasons")).json()[0]["id"],
@@ -147,7 +150,7 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
         "kiosk": kiosk["id"], "calendar": calendar["id"], "blackout": blackout["id"],
         "leave_type": leave_type["id"], "correction": str(correction),
         "payroll_run": run["id"], "pay_component": component["id"], "pay_structure": structure["id"],
-        "one_off": one_off["id"], "advance": advance["id"],
+        "one_off": one_off["id"], "advance": advance["id"], "notice": notice["id"],
         # No payslip exists before a run is calculated; any id stands in (it must still 404).
         "payslip": str(uuid.uuid4()),
         "role": (await c.get("/team/roles")).json()[0]["id"],

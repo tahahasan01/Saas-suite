@@ -167,6 +167,8 @@ export const PERMISSION_KEYS = [
   // hrms org, kiosks, corrections, leave ledger (3F)
   "hrms.org.manage",
   "hrms.document.read",
+  "hrms.notice.read",
+  "hrms.notice.manage",
   "hrms.document.manage",
   "hrms.kiosk.manage",
   "hrms.attendance.approve",

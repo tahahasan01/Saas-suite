@@ -75,6 +75,7 @@ ENUM_COLUMNS = {
     ("hrms_locations", "ip_mode"): models.GEO_MODES,
     ("hrms_employees", "employment_type"): models.EMPLOYMENT_TYPES,
     ("hrms_employee_documents", "kind"): models.DOCUMENT_KINDS,
+    ("hrms_notices", "audience"): models.NOTICE_AUDIENCES,
     # attendance v2 (0066)
     ("hrms_punches", "geo_status"): models.GEO_STATUSES,
     ("hrms_attendance", "geo_status"): models.GEO_STATUSES,

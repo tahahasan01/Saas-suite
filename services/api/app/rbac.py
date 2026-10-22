@@ -201,6 +201,10 @@ register("hrms", {
     "hrms.kiosk.manage": ("hrms", "admin"),
     "hrms.attendance.approve": ("hrms", "admin"),
     "hrms.leave.adjust": ("hrms", "admin"),
+    # Notice board (wave A, 0085): reading the board and who acknowledged is
+    # HR's view; employees read their own notices through /me.
+    "hrms.notice.read": ("hrms", "read"),
+    "hrms.notice.manage": ("hrms", "write"),
 })
 
 
