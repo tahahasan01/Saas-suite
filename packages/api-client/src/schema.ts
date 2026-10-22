@@ -4787,6 +4787,78 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pos/sync/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sync Orders */
+        post: operations["sync_orders_pos_sync_orders_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/catalog/delta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Catalog Delta
+         * @description Products changed after `since` (a row_version), oldest first. Cost is
+         *     left out: a till never needs it (field-guarded).
+         */
+        get: operations["catalog_delta_pos_catalog_delta_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Review Queue */
+        get: operations["review_queue_pos_review_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/review/{sale_id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resolve */
+        post: operations["resolve_pos_review__sale_id__resolve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/reports/sales": {
         parameters: {
             query?: never;
@@ -8524,6 +8596,47 @@ export interface components {
             /** Items */
             items: components["schemas"]["ForecastItem"][];
         };
+        /** OfflineOrder */
+        OfflineOrder: {
+            /**
+             * Client Uuid
+             * Format: uuid
+             */
+            client_uuid: string;
+            /** Offline Ref */
+            offline_ref: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Items */
+            items: components["schemas"]["SaleLine"][];
+            /**
+             * Discount Minor
+             * @default 0
+             */
+            discount_minor: number;
+            /**
+             * Paid Minor
+             * @default 0
+             */
+            paid_minor: number;
+            /**
+             * Payment Method
+             * @default cash
+             * @enum {string}
+             */
+            payment_method: "cash" | "card" | "jazzcash" | "easypaisa" | "raast" | "bank" | "khata";
+            /** Payments */
+            payments?: components["schemas"]["TenderIn"][] | null;
+            /** Contact Id */
+            contact_id?: string | null;
+            /** Client Total Minor */
+            client_total_minor: number;
+            /** Cashier Token */
+            cashier_token?: string | null;
+        };
         /** OneOffIn */
         OneOffIn: {
             /** Employee Id */
@@ -9485,6 +9598,14 @@ export interface components {
             token: string;
             /** Password */
             password: string;
+        };
+        /** ResolveIn */
+        ResolveIn: {
+            /**
+             * Note
+             * @default
+             */
+            note: string;
         };
         /** RestockItem */
         RestockItem: {
@@ -10653,6 +10774,47 @@ export interface components {
             email: string;
             /** Notes */
             notes: string;
+        };
+        /** SyncIn */
+        SyncIn: {
+            /**
+             * Device Id
+             * Format: uuid
+             */
+            device_id: string;
+            /** Orders */
+            orders: components["schemas"]["OfflineOrder"][];
+        };
+        /** SyncOut */
+        SyncOut: {
+            /** Results */
+            results: components["schemas"]["SyncResult"][];
+        };
+        /** SyncResult */
+        SyncResult: {
+            /** Client Uuid */
+            client_uuid: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "created" | "duplicate" | "conflict";
+            /** Sale Id */
+            sale_id?: string | null;
+            /** Receipt No */
+            receipt_no?: string | null;
+            /**
+             * Needs Review
+             * @default false
+             */
+            needs_review: boolean;
+            /**
+             * Reasons
+             * @default []
+             */
+            reasons: string[];
+            /** Error */
+            error?: string | null;
         };
         /** TagCreate */
         TagCreate: {
@@ -22064,6 +22226,151 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     }[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sync_orders_pos_sync_orders_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Device-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SyncIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    catalog_delta_pos_catalog_delta_get: {
+        parameters: {
+            query?: {
+                since?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_queue_pos_review_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resolve_pos_review__sale_id__resolve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sale_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolveIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */

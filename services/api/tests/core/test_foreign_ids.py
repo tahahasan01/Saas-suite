@@ -62,7 +62,9 @@ PLAIN_PARAMS = {"section": "crm", "decision": "approve", "key": "crm", "scheme_c
 # employee only (tests/hrms/test_employee_portal.py proves the forcing).
 SKIP_PREFIXES = ("/me/", "/kiosk/")   # /kiosk/{token}: the token is the credential (3F), no tenant ids
 # The device token is the credential (0077): a foreign device id fails it with 401 (test_sessions.py).
-SKIP_ROUTES = {"/pos/devices/{device_id}/heartbeat"}
+# Device-token routes: the token gate answers before any id is read. Their
+# foreign-id cases are tested in tests/pos/test_offline_sync.py.
+SKIP_ROUTES = {"/pos/devices/{device_id}/heartbeat", "/pos/sync/orders"}
 
 
 async def _ids(c: AsyncClient) -> dict[str, str]:

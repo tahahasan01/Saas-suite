@@ -4,6 +4,8 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
 
@@ -273,7 +275,7 @@ async def checkout(body: SaleCreate, response: Response,
         return replay
 
 
-async def _price_cart(conn, tenant_id: str, items, discount_minor: int):
+async def _price_cart(conn, tenant_id: str, items, discount_minor: int, archived_ok: bool = False):
     """The one way a cart is priced, for a quote and for the sale itself:
     returns (lines as (product, qty, PricedLine, unit price), fbr settings,
     PricedSale). A line may override the unit price and carry a discount
@@ -281,8 +283,8 @@ async def _price_cart(conn, tenant_id: str, items, discount_minor: int):
     products = []
     for it in items:
         p = await conn.fetchrow(
-            """select id, name, price_minor, hs_code, tax_rate, fbr_uom
-                 from pos_products where id=$1 and active""", it.product_id)
+            """select id, name, price_minor, hs_code, tax_rate, fbr_uom, active
+                 from pos_products where id=$1 and (active or $2)""", it.product_id, archived_ok)
         if p is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, f"Product {it.product_id} not found")
         unit = p["price_minor"] if getattr(it, "price_minor", None) is None else it.price_minor
@@ -369,44 +371,110 @@ async def _check_customer(conn, contact_id) -> None:
         raise HTTPException(status.HTTP_409_CONFLICT, "That customer is archived")
 
 
+@dataclass
+class Offline:
+    """An offline till's sale (3D): it already happened and was paid, so
+    what the online path refuses is recorded and flagged instead (D-23)."""
+    created_at: datetime
+    offline_ref: str
+    client_total_minor: int
+    reasons: list[str] = field(default_factory=list)
+
+
+# How far a till's clock may drift before its sale time isn't trusted.
+_SKEW_AHEAD = timedelta(minutes=10)
+_SKEW_BEHIND = timedelta(days=30)
+
+
+async def _flag(off: Offline | None, reason: str, step: Any) -> Any:
+    """Online: the step's refusal stands. Offline: note why and go on (None)."""
+    try:
+        return await step() if callable(step) else step
+    except HTTPException:
+        if off is None:
+            raise
+        off.reasons.append(reason)
+        return None
+
+
 async def _record_sale(body: SaleCreate, auth: AuthContext, fingerprint: str,
-                       cashier_token: str | None = None) -> SaleOut:
+                       cashier_token: str | None = None, offline: Offline | None = None) -> SaleOut:
+    off = offline
     async with db.tenant_conn(auth.tenant_id) as conn:
         await _check_customer(conn, body.contact_id)
-        lines, fbr_cfg, priced = await _price_cart(conn, auth.tenant_id, body.items, body.discount_minor)
-        approved_by = await _approve_lines(conn, auth, body, lines)
+        lines, fbr_cfg, priced = await _price_cart(conn, auth.tenant_id, body.items, body.discount_minor,
+                                                   archived_ok=off is not None)
+        if off and any(not p["active"] for p, *_ in lines):
+            off.reasons.append("archived_product")
+        approved_by = await _flag(off, "unapproved_discount", lambda: _approve_lines(conn, auth, body, lines))
         total = priced.total_minor
         reg = await pos_sessions.register(conn, body.register_id)
         if not reg["active"]:
-            raise HTTPException(status.HTTP_409_CONFLICT, "This register is switched off")
+            if off is None:
+                raise HTTPException(status.HTTP_409_CONFLICT, "This register is switched off")
+            off.reasons.append("register_off")
+        unit = await pos_sessions.rounding_unit(conn, reg)
         # 0 means the exact amount was tendered (card, wallet, bank). Anything
         # less than what's due is a short payment, never a silent zero change.
-        plan = pos_sessions.tenders(total, await pos_sessions.rounding_unit(conn, reg), body.payments,
-                                    body.payment_method, body.paid_minor, list(reg["payment_methods"]))
+        try:
+            plan = pos_sessions.tenders(total, unit, body.payments, body.payment_method, body.paid_minor,
+                                        list(reg["payment_methods"]))
+        except HTTPException:
+            if off is None:
+                raise
+            # Taken offline for less than the server's price: recorded as paid
+            # in full by its first method, and the shortfall goes to review.
+            off.reasons.append("underpaid")
+            method = body.payments[0].method if body.payments else body.payment_method
+            plan = pos_sessions.tenders(total, unit, None, method, 0, None)
+        if off and abs(off.client_total_minor - (plan.paid_minor - plan.change_minor)) > len(lines):
+            off.reasons.append("price_mismatch")   # 1 paisa a line of tolerance (St01 risk 3)
+        sold_at: datetime | None = None
+        if off:
+            now = datetime.now(timezone.utc)
+            sold_at = off.created_at if now - _SKEW_BEHIND <= off.created_at <= now + _SKEW_AHEAD else now
+            if sold_at is not off.created_at:
+                off.reasons.append("clock_skew")
         if any(t.method == "khata" for t in plan.tenders) and body.contact_id is None:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Khata needs a customer: add who is buying")
         if body.device_id is not None and not await conn.fetchval(
                 "select 1 from pos_devices where id=$1 and register_id=$2", body.device_id, reg["id"]):
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Device not found on this register")
-        session_id = await pos_sessions.open_session_id(conn, reg["id"])
+        if off is None:
+            session_id = await pos_sessions.open_session_id(conn, reg["id"])
+        else:
+            # The session that was open when it sold; one closed since still
+            # takes it, as late-synced on its Z-report.
+            s = await conn.fetchrow(
+                """select id, status from pos_sessions where register_id = $1 and opened_at <= $2
+                     and (closed_at is null or closed_at >= $2) order by opened_at desc limit 1""", reg["id"], sold_at)
+            session_id = s["id"] if s else None
+            if s and s["status"] != "open":
+                off.reasons.append("session_closed")
         # The cashier signed in with their PIN (pos_hrms): their name on the sale.
-        employee_id = await cashiers.employee_for(conn, cashier_token)
+        employee_id = await _flag(off, "cashier_signed_out", lambda: cashiers.employee_for(conn, cashier_token))
 
         sale_id = await conn.fetchval(
             """insert into pos_sales (tenant_id, cashier_id, subtotal_minor, discount_minor, total_minor,
                                       paid_minor, change_minor, payment_method, item_count, tax_minor,
                                       client_uuid, payload_sha256, rounding_minor, contact_id,
-                                      session_id, register_id, device_id, employee_id)
-               values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) returning id""",
+                                      session_id, register_id, device_id, employee_id,
+                                      created_at, offline_ref, client_total_minor)
+               values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,
+                       coalesce($19, now()),$20,$21) returning id""",
             auth.tenant_id, auth.user_id, priced.subtotal_minor, priced.discount_minor, total,
             plan.paid_minor, plan.change_minor, plan.payment_method, len(lines), priced.tax_minor,
             body.client_uuid, fingerprint, plan.rounding_minor, body.contact_id, session_id, reg["id"],
-            body.device_id, employee_id)
+            body.device_id, employee_id, sold_at, off.offline_ref if off else None,
+            off.client_total_minor if off else None)
         await pos_sessions.record_tenders(conn, auth.tenant_id, sale_id, session_id, plan, employee_id)
         # The khata part goes on the customer's account, in this transaction.
         on_credit = sum(t.amount_minor for t in plan.tenders if t.method == "khata")
         if on_credit:
-            await khata.post_sale(conn, auth.tenant_id, body.contact_id, sale_id, on_credit, auth.user_id)
+            over = await khata.post_sale(conn, auth.tenant_id, body.contact_id, sale_id, on_credit, auth.user_id,
+                                         over_limit_ok=off is not None)
+            if over and off:
+                off.reasons.append("over_credit_limit")
         fbr_on = bool(fbr_cfg and fbr_cfg["enabled"])
         inclusive = bool(fbr_on and fbr_cfg["prices_include_tax"])
         items = []
@@ -426,8 +494,11 @@ async def _record_sale(body: SaleCreate, auth: AuthContext, fingerprint: str,
                 # The rate that applied: none while tax is off, whatever the product says.
                 (p["tax_rate"] or 0) if fbr_on else 0, inclusive,
                 p["price_minor"], approved_by if changed else None)
-            await catalog.move(conn, auth.tenant_id, p["id"], -Decimal(str(qty)), "sale", ref_id=sale_id,
-                               user_id=auth.user_id)
+            # Offline overselling is flagged, not blocked: the goods are gone (M10).
+            after = await catalog.move(conn, auth.tenant_id, p["id"], -Decimal(str(qty)), "sale", ref_id=sale_id,
+                                       user_id=auth.user_id, allow_negative=True if off else None)
+            if off and after is not None and after < 0 and "oversold" not in off.reasons:
+                off.reasons.append("oversold")
             items.append(SaleItemOut(name=p["name"], qty=qty, price_minor=unit,
                                      line_total_minor=pl.gross_minor))
         sale = await conn.fetchrow("select * from pos_sales where id=$1", sale_id)
@@ -439,13 +510,21 @@ async def _record_sale(body: SaleCreate, auth: AuthContext, fingerprint: str,
             # still finds this sale (P0-4, D-09).
             outbox_id = await fbr_submit.enqueue_sale(conn, auth.tenant_id, str(sale_id), fbr_cfg)
         # The receipt number is the transaction's last step (D-06): a refused
-        # sale never takes one.
-        got = await sequences.next_number(conn, "pos.receipt", register_id=str(reg["id"]), register_code=reg["code"])
-        await conn.execute("update pos_sales set receipt_no = $2 where id = $1", sale_id, got.number)
+        # sale never takes one. An offline sale keeps the number its paper
+        # receipt already shows (<REG>-<DEV>-NNNNNN).
+        if off:
+            await conn.execute(
+                """update pos_sales set receipt_no = $2, needs_review = $3, review_reasons = $4 where id = $1""",
+                sale_id, off.offline_ref, bool(off.reasons), off.reasons)
+        else:
+            got = await sequences.next_number(conn, "pos.receipt", register_id=str(reg["id"]),
+                                              register_code=reg["code"])
+            await conn.execute("update pos_sales set receipt_no = $2 where id = $1", sale_id, got.number)
         sale = await conn.fetchrow("select * from pos_sales where id=$1", sale_id)
 
     fbr_number = fbr_status = None
-    if outbox_id is not None:
+    # A synced batch leaves FBR to the outbox worker: the till shows "FBR pending".
+    if outbox_id is not None and off is None:
         # The sale is already committed. FBR transmission happens after, and its
         # failure is recorded rather than raised: a government outage must never
         # stop a shop from selling. Anything not filed is retried by jobs.py.

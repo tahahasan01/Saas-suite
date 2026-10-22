@@ -262,12 +262,14 @@ async def close(conn: asyncpg.Connection, auth: AuthContext, session_id: str, co
 
 
 async def z_report(conn: asyncpg.Connection, s: asyncpg.Record) -> dict[str, Any]:
-    """The closed (or still open) session's own sales, by FK."""
+    """The closed (or still open) session's own sales, by FK. The totals are
+    what had reached the server by close; offline sales synced after it are
+    listed apart as late-synced (0081)."""
     totals = await conn.fetchrow(
         """select count(*) as n, coalesce(sum(subtotal_minor), 0)::bigint as gross,
                   coalesce(sum(discount_minor), 0)::bigint as discount, coalesce(sum(tax_minor), 0)::bigint as tax,
                   coalesce(sum(total_minor), 0)::bigint as total, coalesce(sum(rounding_minor), 0)::bigint as rounding
-             from pos_sales where session_id = $1 and ($2::timestamptz is null or created_at <= $2)""",
+             from pos_sales where session_id = $1 and ($2::timestamptz is null or synced_at <= $2)""",
         s["id"], s["closed_at"])
     refunds = await conn.fetchrow(
         """select count(*) as n, coalesce(sum(refund_minor), 0)::bigint as total,
@@ -279,7 +281,7 @@ async def z_report(conn: asyncpg.Connection, s: asyncpg.Record) -> dict[str, Any
             where s.session_id = $1 group by u.name order by total desc""", s["id"])
     late = await conn.fetch(
         """select id, total_minor, created_at from pos_sales
-            where session_id = $1 and $2::timestamptz is not null and created_at > $2 order by created_at""",
+            where session_id = $1 and $2::timestamptz is not null and synced_at > $2 order by synced_at""",
         s["id"], s["closed_at"])
     out = await session_out(conn, s)
     return {
