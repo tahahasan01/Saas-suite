@@ -8,6 +8,7 @@ export default defineConfig({
     alias: [
       { find: /^@\//, replacement: fileURLToPath(new URL("./", import.meta.url)) },
       { find: "@business-os/types", replacement: fileURLToPath(new URL("../../packages/types/src/index.ts", import.meta.url)) },
+      { find: "@business-os/pos-core", replacement: fileURLToPath(new URL("../../packages/pos-core/src/index.ts", import.meta.url)) },
     ],
   },
   test: {

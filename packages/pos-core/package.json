@@ -1,0 +1,9 @@
+{
+  "name": "@business-os/pos-core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The POS money rules in TypeScript for the offline till (D-21). Must pass vectors/pricing.json, the same file the Python pricing tests run.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts"
+}
