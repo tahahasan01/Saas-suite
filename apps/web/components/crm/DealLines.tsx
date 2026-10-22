@@ -114,11 +114,11 @@ function Totals({ data }: { data: Pick<DealLines, "net_minor" | "tax_minor" | "t
   return (
     <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-0.5 border-t border-line pt-2 text-sm tabular-nums">
       <dt className="text-fg-muted">Before tax{data.tax_inclusive ? " (prices include tax)" : ""}</dt>
-      <dd className="text-right">{money(data.net_minor)}</dd>
+      <dd className="text-end">{money(data.net_minor)}</dd>
       <dt className="text-fg-muted">Tax</dt>
-      <dd className="text-right">{money(data.tax_minor)}</dd>
+      <dd className="text-end">{money(data.tax_minor)}</dd>
       <dt className="font-medium">Total</dt>
-      <dd className="text-right font-medium">{money(data.total_minor)}</dd>
+      <dd className="text-end font-medium">{money(data.total_minor)}</dd>
     </dl>
   );
 }
@@ -251,7 +251,7 @@ function ProductSearch({ onPick }: { onPick: (p: DealProduct) => void }) {
           {hits.map((p) => (
             <li key={p.id}>
               <button type="button"
-                      className="flex w-full items-center justify-between gap-2 px-2 py-1.5 text-left text-sm hover:bg-elevated"
+                      className="flex w-full items-center justify-between gap-2 px-2 py-1.5 text-start text-sm hover:bg-elevated"
                       onClick={() => { onPick(p); setQ(""); setHits([]); }}>
                 <span className="min-w-0 truncate">{p.name}</span>
                 <span className="shrink-0 tabular-nums text-fg-muted">{money(p.price_minor)}</span>
