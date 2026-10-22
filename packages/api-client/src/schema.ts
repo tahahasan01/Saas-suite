@@ -3673,6 +3673,216 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/hrms/letter-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Templates */
+        get: operations["list_templates_hrms_letter_templates_get"];
+        put?: never;
+        /** Create Template */
+        post: operations["create_template_hrms_letter_templates_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/letter-placeholders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Placeholders */
+        get: operations["placeholders_hrms_letter_placeholders_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/letter-templates/{template_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Template */
+        patch: operations["update_template_hrms_letter_templates__template_id__patch"];
+        trace?: never;
+    };
+    "/hrms/employees/{employee_id}/letters/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview */
+        post: operations["preview_hrms_employees__employee_id__letters_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/employees/{employee_id}/letters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Employee Letters */
+        get: operations["employee_letters_hrms_employees__employee_id__letters_get"];
+        put?: never;
+        /** Issue */
+        post: operations["issue_hrms_employees__employee_id__letters_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/letters/{letter_id}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Letter Pdf */
+        get: operations["letter_pdf_hrms_letters__letter_id__pdf_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/letter-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Requests */
+        get: operations["list_requests_hrms_letter_requests_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/letter-requests/{request_id}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decline */
+        post: operations["decline_hrms_letter_requests__request_id__decline_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/letter-requests/{request_id}/done": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Done
+         * @description Answered without a letter (an ID card handed over, say).
+         */
+        post: operations["done_hrms_letter_requests__request_id__done_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/letter-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My Requests */
+        get: operations["my_requests_me_letter_requests_get"];
+        put?: never;
+        /** Ask */
+        post: operations["ask_me_letter_requests_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/letters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My Letters */
+        get: operations["my_letters_me_letters_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/letters/{letter_id}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My Letter Pdf */
+        get: operations["my_letter_pdf_me_letters__letter_id__pdf_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/payroll/gratuity-settings": {
         parameters: {
             query?: never;
@@ -10323,6 +10533,153 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** LetterDecline */
+        LetterDecline: {
+            /** Note */
+            note: string;
+        };
+        /** LetterIssue */
+        LetterIssue: {
+            /**
+             * Template Id
+             * Format: uuid
+             */
+            template_id: string;
+            /** Title */
+            title?: string | null;
+            /** Body */
+            body?: string | null;
+            /** Request Id */
+            request_id?: string | null;
+        };
+        /** LetterOut */
+        LetterOut: {
+            /** Id */
+            id: string;
+            /** Employee Id */
+            employee_id: string;
+            /** Employee Name */
+            employee_name: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "offer" | "appointment" | "experience" | "salary" | "noc" | "employment" | "relieving" | "warning" | "other";
+            /** Number */
+            number: string;
+            /** Title */
+            title: string;
+            /** Body */
+            body: string;
+            /**
+             * Issued At
+             * Format: date-time
+             */
+            issued_at: string;
+        };
+        /** LetterPreview */
+        LetterPreview: {
+            /** Title */
+            title: string;
+            /** Body */
+            body: string;
+        };
+        /** LetterPreviewIn */
+        LetterPreviewIn: {
+            /**
+             * Template Id
+             * Format: uuid
+             */
+            template_id: string;
+        };
+        /** LetterRequestIn */
+        LetterRequestIn: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "experience" | "salary" | "noc" | "employment" | "id_card" | "other";
+            /**
+             * Purpose
+             * @default
+             */
+            purpose: string;
+        };
+        /** LetterRequestOut */
+        LetterRequestOut: {
+            /** Id */
+            id: string;
+            /** Employee Id */
+            employee_id: string;
+            /** Employee Name */
+            employee_name: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "experience" | "salary" | "noc" | "employment" | "id_card" | "other";
+            /** Purpose */
+            purpose: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "issued" | "declined";
+            /** Letter Id */
+            letter_id: string | null;
+            /** Note */
+            note: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Decided At */
+            decided_at: string | null;
+        };
+        /** LetterTemplateIn */
+        LetterTemplateIn: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "offer" | "appointment" | "experience" | "salary" | "noc" | "employment" | "relieving" | "warning" | "other";
+            /** Name */
+            name: string;
+            /** Title */
+            title: string;
+            /** Body */
+            body: string;
+        };
+        /** LetterTemplateOut */
+        LetterTemplateOut: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "offer" | "appointment" | "experience" | "salary" | "noc" | "employment" | "relieving" | "warning" | "other";
+            /** Name */
+            name: string;
+            /** Title */
+            title: string;
+            /** Body */
+            body: string;
+            /** Id */
+            id: string;
+            /** Active */
+            active: boolean;
+        };
+        /** LetterTemplateUpdate */
+        LetterTemplateUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Title */
+            title?: string | null;
+            /** Body */
+            body?: string | null;
+            /** Active */
+            active?: boolean | null;
         };
         /** LimitIn */
         LimitIn: {
@@ -22218,6 +22575,519 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AssetOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_templates_hrms_letter_templates_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LetterTemplateOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_template_hrms_letter_templates_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LetterTemplateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LetterTemplateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    placeholders_hrms_letter_placeholders_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_template_hrms_letter_templates__template_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LetterTemplateUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LetterTemplateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_hrms_employees__employee_id__letters_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employee_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LetterPreviewIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LetterPreview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    employee_letters_hrms_employees__employee_id__letters_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employee_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LetterOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    issue_hrms_employees__employee_id__letters_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employee_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LetterIssue"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LetterOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    letter_pdf_hrms_letters__letter_id__pdf_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                letter_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_requests_hrms_letter_requests_get: {
+        parameters: {
+            query?: {
+                status?: ("pending" | "issued" | "declined") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LetterRequestOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decline_hrms_letter_requests__request_id__decline_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LetterDecline"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LetterRequestOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    done_hrms_letter_requests__request_id__done_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LetterDecline"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LetterRequestOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_requests_me_letter_requests_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LetterRequestOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ask_me_letter_requests_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LetterRequestIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LetterRequestOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_letters_me_letters_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LetterOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_letter_pdf_me_letters__letter_id__pdf_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                letter_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

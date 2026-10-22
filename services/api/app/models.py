@@ -3124,3 +3124,81 @@ class SettlementOut(BaseModel):
     approved_at: datetime | None
     paid_at: datetime | None
     lines: list[SettlementLineOut] = Field(default_factory=list)
+
+
+# ─── HR letters and letter requests (wave C, H17/H37, 0105) ─────────────────
+LetterKind = Literal["offer", "appointment", "experience", "salary", "noc", "employment", "relieving", "warning",
+                     "other"]
+LETTER_KINDS = list(get_args(LetterKind))
+LetterRequestKind = Literal["experience", "salary", "noc", "employment", "id_card", "other"]
+LETTER_REQUEST_KINDS = list(get_args(LetterRequestKind))
+LetterRequestStatus = Literal["pending", "issued", "declined"]
+LETTER_REQUEST_STATUSES = list(get_args(LetterRequestStatus))
+
+
+class LetterTemplateIn(BaseModel):
+    kind: LetterKind
+    name: str = Field(min_length=1, max_length=120)
+    title: str = Field(min_length=1, max_length=160)
+    body: str = Field(min_length=1, max_length=20000)
+
+
+class LetterTemplateUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    title: str | None = Field(default=None, min_length=1, max_length=160)
+    body: str | None = Field(default=None, min_length=1, max_length=20000)
+    active: bool | None = None
+
+
+class LetterTemplateOut(LetterTemplateIn):
+    id: str
+    active: bool
+
+
+class LetterPreviewIn(BaseModel):
+    template_id: UUID
+
+
+class LetterIssue(BaseModel):
+    template_id: UUID
+    title: str | None = Field(default=None, min_length=1, max_length=160)
+    body: str | None = Field(default=None, min_length=1, max_length=20000)    # edited text; the template's when left out
+    request_id: UUID | None = None
+
+
+class LetterPreview(BaseModel):
+    title: str
+    body: str
+
+
+class LetterOut(BaseModel):
+    id: str
+    employee_id: str
+    employee_name: str
+    kind: LetterKind
+    number: str
+    title: str
+    body: str
+    issued_at: datetime
+
+
+class LetterRequestIn(BaseModel):
+    kind: LetterRequestKind
+    purpose: str = Field(default="", max_length=500)
+
+
+class LetterDecline(BaseModel):
+    note: str = Field(max_length=500)
+
+
+class LetterRequestOut(BaseModel):
+    id: str
+    employee_id: str
+    employee_name: str
+    kind: LetterRequestKind
+    purpose: str
+    status: LetterRequestStatus
+    letter_id: str | None
+    note: str
+    created_at: datetime
+    decided_at: datetime | None

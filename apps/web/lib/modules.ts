@@ -106,6 +106,7 @@ export const MODULES: Module[] = [
       { href: "/hrms/boarding", label: "Joining & leaving" },
       { href: "/hrms/performance", label: "Performance" },
       { href: "/hrms/expenses", label: "Expenses" },
+      { href: "/hrms/letters", label: "Letters" },
     ],
   },
   {
@@ -160,6 +161,8 @@ export const PORTAL_MODULES: Module[] = [
     href: "/me/appraisals", group: "people" },
   { key: "me-expenses", label: () => "Expenses", icon: Receipt, color: "--color-mod-hrms",
     href: "/me/expenses", group: "people" },
+  { key: "me-letters", label: () => "Letters", icon: FileText, color: "--color-mod-hrms",
+    href: "/me/letters", group: "people" },
   { key: "me-requests", label: () => "My requests", icon: ClipboardList, color: "--color-mod-hrms",
     href: "/me/requests", group: "people" },
 ];

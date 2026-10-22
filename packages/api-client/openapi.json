@@ -15220,6 +15220,927 @@
         }
       }
     },
+    "/hrms/letter-templates": {
+      "get": {
+        "tags": [
+          "hrms"
+        ],
+        "summary": "List Templates",
+        "operationId": "list_templates_hrms_letter_templates_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LetterTemplateOut"
+                  },
+                  "title": "Response List Templates Hrms Letter Templates Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "hrms"
+        ],
+        "summary": "Create Template",
+        "operationId": "create_template_hrms_letter_templates_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LetterTemplateIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LetterTemplateOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hrms/letter-placeholders": {
+      "get": {
+        "tags": [
+          "hrms"
+        ],
+        "summary": "Placeholders",
+        "operationId": "placeholders_hrms_letter_placeholders_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Placeholders Hrms Letter Placeholders Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hrms/letter-templates/{template_id}": {
+      "patch": {
+        "tags": [
+          "hrms"
+        ],
+        "summary": "Update Template",
+        "operationId": "update_template_hrms_letter_templates__template_id__patch",
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Template Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LetterTemplateUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LetterTemplateOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hrms/employees/{employee_id}/letters/preview": {
+      "post": {
+        "tags": [
+          "hrms"
+        ],
+        "summary": "Preview",
+        "operationId": "preview_hrms_employees__employee_id__letters_preview_post",
+        "parameters": [
+          {
+            "name": "employee_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Employee Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LetterPreviewIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LetterPreview"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hrms/employees/{employee_id}/letters": {
+      "post": {
+        "tags": [
+          "hrms"
+        ],
+        "summary": "Issue",
+        "operationId": "issue_hrms_employees__employee_id__letters_post",
+        "parameters": [
+          {
+            "name": "employee_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Employee Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LetterIssue"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LetterOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "hrms"
+        ],
+        "summary": "Employee Letters",
+        "operationId": "employee_letters_hrms_employees__employee_id__letters_get",
+        "parameters": [
+          {
+            "name": "employee_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Employee Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LetterOut"
+                  },
+                  "title": "Response Employee Letters Hrms Employees  Employee Id  Letters Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hrms/letters/{letter_id}/pdf": {
+      "get": {
+        "tags": [
+          "hrms"
+        ],
+        "summary": "Letter Pdf",
+        "operationId": "letter_pdf_hrms_letters__letter_id__pdf_get",
+        "parameters": [
+          {
+            "name": "letter_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Letter Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hrms/letter-requests": {
+      "get": {
+        "tags": [
+          "hrms"
+        ],
+        "summary": "List Requests",
+        "operationId": "list_requests_hrms_letter_requests_get",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "pending",
+                    "issued",
+                    "declined"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LetterRequestOut"
+                  },
+                  "title": "Response List Requests Hrms Letter Requests Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hrms/letter-requests/{request_id}/decline": {
+      "post": {
+        "tags": [
+          "hrms"
+        ],
+        "summary": "Decline",
+        "operationId": "decline_hrms_letter_requests__request_id__decline_post",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Request Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LetterDecline"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LetterRequestOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hrms/letter-requests/{request_id}/done": {
+      "post": {
+        "tags": [
+          "hrms"
+        ],
+        "summary": "Done",
+        "description": "Answered without a letter (an ID card handed over, say).",
+        "operationId": "done_hrms_letter_requests__request_id__done_post",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Request Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LetterDecline"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LetterRequestOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/letter-requests": {
+      "post": {
+        "tags": [
+          "portal"
+        ],
+        "summary": "Ask",
+        "operationId": "ask_me_letter_requests_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LetterRequestIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LetterRequestOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "portal"
+        ],
+        "summary": "My Requests",
+        "operationId": "my_requests_me_letter_requests_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LetterRequestOut"
+                  },
+                  "title": "Response My Requests Me Letter Requests Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/letters": {
+      "get": {
+        "tags": [
+          "portal"
+        ],
+        "summary": "My Letters",
+        "operationId": "my_letters_me_letters_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LetterOut"
+                  },
+                  "title": "Response My Letters Me Letters Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/letters/{letter_id}/pdf": {
+      "get": {
+        "tags": [
+          "portal"
+        ],
+        "summary": "My Letter Pdf",
+        "operationId": "my_letter_pdf_me_letters__letter_id__pdf_get",
+        "parameters": [
+          {
+            "name": "letter_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Letter Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/payroll/gratuity-settings": {
       "get": {
         "tags": [
@@ -37871,6 +38792,434 @@
           "created_at"
         ],
         "title": "LedgerEntryOut"
+      },
+      "LetterDecline": {
+        "properties": {
+          "note": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "note"
+        ],
+        "title": "LetterDecline"
+      },
+      "LetterIssue": {
+        "properties": {
+          "template_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Template Id"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "body": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20000,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "template_id"
+        ],
+        "title": "LetterIssue"
+      },
+      "LetterOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "employee_id": {
+            "type": "string",
+            "title": "Employee Id"
+          },
+          "employee_name": {
+            "type": "string",
+            "title": "Employee Name"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "offer",
+              "appointment",
+              "experience",
+              "salary",
+              "noc",
+              "employment",
+              "relieving",
+              "warning",
+              "other"
+            ],
+            "title": "Kind"
+          },
+          "number": {
+            "type": "string",
+            "title": "Number"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          },
+          "issued_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Issued At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "employee_id",
+          "employee_name",
+          "kind",
+          "number",
+          "title",
+          "body",
+          "issued_at"
+        ],
+        "title": "LetterOut"
+      },
+      "LetterPreview": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "body"
+        ],
+        "title": "LetterPreview"
+      },
+      "LetterPreviewIn": {
+        "properties": {
+          "template_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Template Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "template_id"
+        ],
+        "title": "LetterPreviewIn"
+      },
+      "LetterRequestIn": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "experience",
+              "salary",
+              "noc",
+              "employment",
+              "id_card",
+              "other"
+            ],
+            "title": "Kind"
+          },
+          "purpose": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Purpose",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "title": "LetterRequestIn"
+      },
+      "LetterRequestOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "employee_id": {
+            "type": "string",
+            "title": "Employee Id"
+          },
+          "employee_name": {
+            "type": "string",
+            "title": "Employee Name"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "experience",
+              "salary",
+              "noc",
+              "employment",
+              "id_card",
+              "other"
+            ],
+            "title": "Kind"
+          },
+          "purpose": {
+            "type": "string",
+            "title": "Purpose"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "issued",
+              "declined"
+            ],
+            "title": "Status"
+          },
+          "letter_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Letter Id"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "employee_id",
+          "employee_name",
+          "kind",
+          "purpose",
+          "status",
+          "letter_id",
+          "note",
+          "created_at",
+          "decided_at"
+        ],
+        "title": "LetterRequestOut"
+      },
+      "LetterTemplateIn": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "offer",
+              "appointment",
+              "experience",
+              "salary",
+              "noc",
+              "employment",
+              "relieving",
+              "warning",
+              "other"
+            ],
+            "title": "Kind"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Body"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "name",
+          "title",
+          "body"
+        ],
+        "title": "LetterTemplateIn"
+      },
+      "LetterTemplateOut": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "offer",
+              "appointment",
+              "experience",
+              "salary",
+              "noc",
+              "employment",
+              "relieving",
+              "warning",
+              "other"
+            ],
+            "title": "Kind"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Body"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "name",
+          "title",
+          "body",
+          "id",
+          "active"
+        ],
+        "title": "LetterTemplateOut"
+      },
+      "LetterTemplateUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "body": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20000,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active"
+          }
+        },
+        "type": "object",
+        "title": "LetterTemplateUpdate"
       },
       "LimitIn": {
         "properties": {

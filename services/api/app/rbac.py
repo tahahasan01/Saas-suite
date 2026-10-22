@@ -213,6 +213,9 @@ register("hrms", {
     # Assets issued to staff (wave A, 0087); the value is for managers only.
     "hrms.asset.read": ("hrms", "read"),
     "hrms.asset.manage": ("hrms", "write"),
+    # HR letters (wave C, 0105); salary placeholders also need payroll.salary.read.
+    "hrms.letter.read": ("hrms", "read"),
+    "hrms.letter.manage": ("hrms", "write"),
     # Expense claims (wave C, 0102): approval pays through payroll.
     "hrms.expense.read": ("hrms", "read"),
     "hrms.expense.manage": ("hrms", "write"),
