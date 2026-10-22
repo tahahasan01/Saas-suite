@@ -1107,6 +1107,8 @@ export interface TimelineItem {
   actor_id: string | null;
   actor_name: string | null;
   occurred_at: string;
+  /** Set on `activity_done` only: what was done. */
+  activity?: { summary: string | null; type_name: string | null; outcome: string | null } | null;
 }
 
 export interface ContactLookup {

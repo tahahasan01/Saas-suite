@@ -28,7 +28,7 @@ from ..models import (
     ActivityTypeUpdate,
     ActivityUpdate,
 )
-from ..rbac import perm, scope_of
+from ..rbac import holds_key, perm, scope_of
 from ..scopes import where
 
 router = APIRouter(tags=["activities"])
@@ -42,6 +42,12 @@ def _states(raw: str | None) -> list[str]:
     if bad:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"Unknown state: {', '.join(bad)}")
     return wanted
+
+
+async def _guard(conn: asyncpg.Connection, auth: AuthContext, activity_id: str) -> None:
+    entity_type = await conn.fetchval("select entity_type from activities where id = $1", activity_id)
+    if entity_type is not None:
+        await activities.ensure_readable(conn, auth, entity_type)
 
 
 @router.get("/activities", response_model=list[ActivityOut])
@@ -59,17 +65,20 @@ async def list_activities(
     async with db.tenant_conn(auth.tenant_id) as conn:
         # A lead's activities follow the lead's record scope (D-04).
         scope = await scope_of(conn, auth, "crm.lead.read")
+        # A contact's activities need contacts read (Contact 360).
+        contacts_ok = await holds_key(conn, auth, "contacts.contact.read")
         rows = await conn.fetch(
             f"""select * from ({activities.SELECT}) a
                  where a.state = any($1::text[])
                    and (a.entity_type <> 'lead' or exists (
                         select 1 from crm_leads l where l.id = a.entity_id and {where('crm.lead', scope, 'l')}))
+                   and (a.entity_type <> 'contact' or $6)
                    and ($2::uuid is null or a.assigned_to = $2)
                    and ($3::text is null or a.entity_type = $3)
                    and ($4::uuid is null or a.entity_id = $4)
                  order by a.due_date, a.due_at nulls last, a.created_at
                  limit $5""",
-            states, auth.user_id if who == "me" else None, entity_type, entity_id, limit)
+            states, auth.user_id if who == "me" else None, entity_type, entity_id, limit, contacts_ok)
     return [activities.out(r) for r in rows]
 
 
@@ -88,6 +97,7 @@ async def activity_summary(auth: AuthContext = Depends(perm("crm.lead.read"))) -
 @router.post("/activities", response_model=ActivityOut, status_code=status.HTTP_201_CREATED)
 async def create_activity(body: ActivityCreate, auth: AuthContext = Depends(perm("crm.activity.manage"))) -> ActivityOut:
     async with db.tenant_conn(auth.tenant_id) as conn:
+        await activities.ensure_readable(conn, auth, body.entity_type)
         row = await activities.create(
             conn, entity_type=body.entity_type, entity_id=body.entity_id, type_id=body.type_id,
             due_date=body.due_date, due_at=body.due_at, created_by=auth.user_id, summary=body.summary,
@@ -100,6 +110,7 @@ async def update_activity(activity_id: str, body: ActivityUpdate,
                           auth: AuthContext = Depends(perm("crm.activity.manage"))) -> ActivityOut:
     fields = {k: v for k, v in body.model_dump(exclude_unset=True).items() if v is not None or k == "due_at"}
     async with db.tenant_conn(auth.tenant_id) as conn:
+        await _guard(conn, auth, activity_id)
         await activities.lock_open(conn, activity_id)
         if "type_id" in fields:
             await activities.active_type(conn, fields["type_id"])
@@ -117,6 +128,7 @@ async def update_activity(activity_id: str, body: ActivityUpdate,
 async def complete_activity(activity_id: str, body: ActivityDone,
                             auth: AuthContext = Depends(perm("crm.activity.manage"))) -> ActivityOut:
     async with db.tenant_conn(auth.tenant_id) as conn:
+        await _guard(conn, auth, activity_id)
         row = await activities.complete(conn, auth.user_id, activity_id, outcome=body.outcome, feedback=body.feedback)
         if body.next is not None:
             await activities.create(
@@ -130,6 +142,7 @@ async def complete_activity(activity_id: str, body: ActivityDone,
 async def snooze_activity(activity_id: str, body: ActivitySnooze,
                           auth: AuthContext = Depends(perm("crm.activity.manage"))) -> ActivityOut:
     async with db.tenant_conn(auth.tenant_id) as conn:
+        await _guard(conn, auth, activity_id)
         await activities.lock_open(conn, activity_id)
         await conn.execute(
             """update activities set due_date = due_date + $2::int, due_at = due_at + make_interval(days => $2::int),
@@ -141,6 +154,7 @@ async def snooze_activity(activity_id: str, body: ActivitySnooze,
 @router.post("/activities/{activity_id}/cancel", response_model=ActivityOut)
 async def cancel_activity(activity_id: str, auth: AuthContext = Depends(perm("crm.activity.manage"))) -> ActivityOut:
     async with db.tenant_conn(auth.tenant_id) as conn:
+        await _guard(conn, auth, activity_id)
         await activities.lock_open(conn, activity_id)
         await conn.execute("update activities set cancelled_at = now(), updated_at = now() where id = $1", activity_id)
         return activities.out(await activities.fetch(conn, activity_id))

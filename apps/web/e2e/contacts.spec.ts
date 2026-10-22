@@ -118,4 +118,18 @@ test.describe("contacts", () => {
     const detail = await (await request.get(`${API}/contacts/${c.id}`)).json();
     expect(detail.sales).toHaveLength(1);
   });
+  test("an activity planned on a contact shows on Contact 360 and Done clears it", async ({ page, request }) => {
+    const c = await newContact(request, { name: `Planner ${uniq()}` });
+    await page.goto(`/contacts/${c.id}`);
+    await ready(page);
+    await page.getByRole("tab", { name: "Activities" }).click();
+    const summary = `Visit ${uniq()}`;
+    await page.getByLabel("What to do").fill(summary);
+    await page.getByRole("button", { name: "Schedule" }).click();
+    await expect(page.getByText(summary)).toBeVisible();
+    await page.getByRole("button", { name: `Done: ${summary}` }).click();
+    await expect(page.getByText(summary)).toHaveCount(0);
+    await page.getByRole("tab", { name: "Timeline" }).click();
+    await expect(page.getByRole("tabpanel")).toContainText(summary);
+  });
 });

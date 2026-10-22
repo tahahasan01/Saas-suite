@@ -12,6 +12,7 @@ import { useConfirm } from "@/components/Confirm";
 import { Badge, Button, Card, cx, EmptyState, ErrorState, Field, Input, LoadingRows, Select, Textarea } from "@/components/ui";
 import { ContactForm, TagChip } from "@/components/contacts/ContactForm";
 import { MergeDialog } from "@/components/contacts/MergeDialog";
+import { RecordActivities } from "@/components/crm/bits";
 import { ROLE_LABELS, telHref, useContactLabels, whatsappHref } from "@/components/contacts/labels";
 
 type Tab = "timeline" | "deals" | "sales" | "invoices" | "activities" | "details";
@@ -190,7 +191,9 @@ export default function ContactPage() {
           </ul>
         ))}
         {/* Slot for CRM activities (calls, visits, to-dos) once they land. */}
-        {tab === "activities" && <EmptyState title="No activities yet" hint="Planned calls, visits and to-dos for this record will show here." />}
+        {tab === "activities" && (can("crm.lead.read")
+          ? <RecordActivities entityType="contact" entityId={id} canPlan={can("crm.activity.manage")} />
+          : <EmptyState title="Activities aren't available" hint="Your role can't see planned work." />)}
         {tab === "details" && <Details data={data} onChanged={load} />}
       </div>
 
@@ -213,6 +216,15 @@ function Kpi({ label, value }: { label: string; value: string }) {
 }
 
 const ENTITY_LABEL: Record<string, string> = { contact: "", lead: "Deal", invoice_request: "Invoice", invoice: "Invoice", pos_sale: "Sale" };
+
+/** One timeline line: a done activity says what was done (and the feedback). */
+function headline(e: TimelineItem): string {
+  if (e.kind === "activity_done" && e.activity) {
+    const what = String(e.activity.summary || e.activity.type_name || "activity");
+    return e.body ? `Done: ${what} — ${e.body}` : `Done: ${what}`;
+  }
+  return e.body ?? e.kind.replace("_", " ");
+}
 
 function Timeline({ contactId, refreshKey, onNoted }: { contactId: string; refreshKey: number; onNoted: () => void }) {
   const [items, setItems] = useState<TimelineItem[] | null>(null);
@@ -250,7 +262,7 @@ function Timeline({ contactId, refreshKey, onNoted }: { contactId: string; refre
             <li key={e.id} className="border-s-2 border-line ps-3 text-sm">
               <p className="text-fg">
                 {ENTITY_LABEL[e.entity_type] && <span className="me-1 text-xs font-medium text-fg-muted">{ENTITY_LABEL[e.entity_type]} ·</span>}
-                <span className={e.kind === "note" ? "" : "font-medium"}>{e.body ?? e.kind.replace("_", " ")}</span>
+                <span className={e.kind === "note" ? "" : "font-medium"}>{headline(e)}</span>
               </p>
               <p className="text-xs text-fg-subtle">{relativeDate(e.occurred_at)}{e.actor_name && ` · ${e.actor_name}`}</p>
             </li>

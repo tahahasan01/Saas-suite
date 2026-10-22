@@ -34,8 +34,10 @@ STATE_SQL = """case when a.done_at is not null then 'done'
 SELECT = f"""
 select a.*, {STATE_SQL} as state, t.name as type_name, t.icon as type_icon, t.code as type_code,
        u.name as assigned_name,
-       case a.entity_type when 'lead' then (select l.name from crm_leads l where l.id = a.entity_id) end as entity_name,
-       case a.entity_type when 'lead' then (select l.owner_id from crm_leads l where l.id = a.entity_id) end as entity_owner
+       case a.entity_type when 'lead' then (select l.name from crm_leads l where l.id = a.entity_id)
+                          when 'contact' then (select c.name from contacts c where c.id = a.entity_id) end as entity_name,
+       case a.entity_type when 'lead' then (select l.owner_id from crm_leads l where l.id = a.entity_id)
+                          when 'contact' then (select c.owner_id from contacts c where c.id = a.entity_id) end as entity_owner
   from activities a
   join activity_types t on t.id = a.type_id
   left join users u on u.id = a.assigned_to"""
@@ -66,6 +68,14 @@ async def ensure_entity(conn: asyncpg.Connection, entity_type: str, entity_id: s
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"Activities on {entity_type} aren't available yet")
     if await conn.fetchval(f"select 1 from {table} where id = $1", entity_id) is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Record not found")
+
+
+async def ensure_readable(conn: asyncpg.Connection, auth: Any, entity_type: str) -> None:
+    """A contact's activities are Contact 360 data: planning or touching one
+    needs contacts.contact.read on top of the activity key."""
+    from .rbac import holds_key
+    if entity_type == "contact" and not await holds_key(conn, auth, "contacts.contact.read"):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "You can't see this contact")
 
 
 async def active_type(conn: asyncpg.Connection, type_id: str) -> asyncpg.Record:

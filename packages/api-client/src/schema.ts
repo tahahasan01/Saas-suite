@@ -11067,6 +11067,10 @@ export interface components {
              * Format: date-time
              */
             occurred_at: string;
+            /** Activity */
+            activity?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** TimelinePage */
         TimelinePage: {

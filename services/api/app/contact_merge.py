@@ -17,8 +17,8 @@ missing here (St02 risk 8). Strategies:
   kept one hop deep by repointing contacts.merged_into_id).
 
 Polymorphic references (no contact_id column) are handled in merge() too:
-record_tags rows with entity_type 'contact', and timeline events with
-entity_type 'contact' (followed, like the column).
+record_tags rows and activities with entity_type 'contact' (moved), and
+timeline events with entity_type 'contact' (followed, like the column).
 """
 from __future__ import annotations
 
@@ -168,6 +168,10 @@ async def merge(conn: asyncpg.Connection, tenant_id: str, winner_id: UUID, loser
            on conflict do nothing""", tenant_id, winner_id, losers_ids)
     await conn.execute(
         "delete from record_tags where entity_type = 'contact' and entity_id = any($1::uuid[])", losers_ids)
+    done = await conn.execute(
+        "update activities set entity_id = $1 where entity_type = 'contact' and entity_id = any($2::uuid[])",
+        winner_id, losers_ids)
+    moved["activities.contact"] = int(done.split()[-1])
 
     cols["roles"] = roles
     sets = ", ".join(f"{k} = ${i}" for i, k in enumerate(cols, start=2))

@@ -37908,6 +37908,18 @@
             "type": "string",
             "format": "date-time",
             "title": "Occurred At"
+          },
+          "activity": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activity"
           }
         },
         "type": "object",

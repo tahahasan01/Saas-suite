@@ -6,6 +6,8 @@ phone and add a new one, so lookup and create also accept `pos.sale.create`.
 """
 from __future__ import annotations
 
+import json
+
 from collections.abc import Awaitable, Callable
 from typing import Any
 from uuid import UUID
@@ -503,7 +505,14 @@ async def contact_timeline(contact_id: str, limit: int = Query(100, ge=1, le=500
     return [TimelineItem(id=str(r["id"]), entity_type=r["entity_type"], entity_id=str(r["entity_id"]),
                          kind=r["kind"], body=r["body"], changes=r["changes"],
                          actor_id=str(r["actor_id"]) if r["actor_id"] else None, actor_name=r["actor_name"],
-                         occurred_at=r["occurred_at"]) for r in rows]
+                         occurred_at=r["occurred_at"], activity=_activity(r)) for r in rows]
+
+
+def _activity(r: asyncpg.Record) -> dict[str, Any] | None:
+    if r["kind"] != "activity_done" or not r["payload"]:
+        return None
+    p = r["payload"] if isinstance(r["payload"], dict) else json.loads(r["payload"])
+    return {k: p.get(k) for k in ("summary", "type_name", "outcome")}
 
 
 @router.post("/contacts/{contact_id}/notes", status_code=status.HTTP_201_CREATED)

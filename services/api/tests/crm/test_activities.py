@@ -172,3 +172,63 @@ async def test_logging_an_interaction_now_lands_on_the_timeline(client, crm_tena
     assert ev["body"] == "Busy at shop" and ev["payload"]["channel"] == "whatsapp"
     [planned] = (await client.get("/activities", params={"entity_id": lead["id"]})).json()
     assert planned["type_name"] == "WhatsApp" and planned["due_at"] is not None
+
+
+# ── Activities on a contact (Contact 360) ───────────────────────────────────
+async def _contact(client, name: str = "Activity Contact") -> dict:
+    r = await client.post("/contacts", json={"name": name, "force": True})
+    assert r.status_code == 201, r.text
+    return r.json()
+
+
+async def test_a_contact_can_have_activities_and_done_lands_on_its_timeline(client, crm_tenant):
+    c = await _contact(client)
+    types = await _types(client)
+    r = await client.post("/activities", json={"entity_type": "contact", "entity_id": c["id"],
+                                               "type_id": types["Call"], "summary": "Call back",
+                                               "due_date": str(_today())})
+    assert r.status_code == 201, r.text
+    act = r.json()
+    assert act["entity_name"] == c["name"]
+    listed = (await client.get(f"/activities?entity_type=contact&entity_id={c['id']}")).json()
+    assert [a["id"] for a in listed] == [act["id"]]
+    assert act["id"] in [a["id"] for a in (await client.get("/activities")).json()]     # in My day
+    assert (await client.post(f"/activities/{act['id']}/done", json={})).status_code == 200
+    kinds = [e["kind"] for e in (await client.get(f"/contacts/{c['id']}/timeline")).json()]
+    assert "activity_done" in kinds
+    done = next(e for e in (await client.get(f"/contacts/{c['id']}/timeline")).json() if e["kind"] == "activity_done")
+    assert done["activity"]["summary"] == "Call back"
+
+
+async def test_a_merge_moves_the_losers_activities(client, crm_tenant):
+    keep, lose = await _contact(client, "Keep Me"), await _contact(client, "Lose Me")
+    types = await _types(client)
+    act = (await client.post("/activities", json={"entity_type": "contact", "entity_id": lose["id"],
+                                                  "type_id": types["Call"], "due_date": str(_today())})).json()
+    r = await client.post("/contacts/merge", json={"winner_id": keep["id"], "loser_ids": [lose["id"]]})
+    assert r.status_code == 200, r.text
+    listed = (await client.get(f"/activities?entity_type=contact&entity_id={keep['id']}")).json()
+    assert [a["id"] for a in listed] == [act["id"]]
+
+
+async def test_contact_activities_need_contacts_read(client, crm_tenant, monkeypatch):
+    from app.config import settings
+
+    from ..core.test_rbac_v2 import _role, _user_on
+    c = await _contact(client)
+    types = await _types(client)
+    mine = (await client.post("/activities", json={"entity_type": "contact", "entity_id": c["id"],
+                                                   "type_id": types["Call"], "due_date": str(_today())})).json()
+    monkeypatch.setattr(settings, "rbac_mode", "v2")
+    rid = await _role(client, [{"permission_key": "crm.lead.read", "scope": "all"},
+                               {"permission_key": "crm.activity.manage", "scope": "all"}])
+    mate, _, _ = await _user_on(client, [rid])
+    try:
+        listed = (await mate.get("/activities?assigned=all")).json()
+        assert mine["id"] not in [a["id"] for a in listed]
+        assert (await mate.post("/activities", json={"entity_type": "contact", "entity_id": c["id"],
+                                                     "type_id": types["Call"], "due_date": str(_today())})
+                ).status_code == 403
+        assert (await mate.post(f"/activities/{mine['id']}/done", json={})).status_code == 403
+    finally:
+        await mate.aclose()

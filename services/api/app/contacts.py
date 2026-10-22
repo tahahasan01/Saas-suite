@@ -12,9 +12,12 @@ from typing import Any
 
 import asyncpg
 
-from . import audit
+from . import activities, audit
 from .models import ContactBrief, ContactDuplicate, ContactOut, DuplicateReason, TagOut
 from .phone import normalize_email, normalize_phone
+
+# Contact 360 plans activities too; reading them needs contacts.contact.read.
+activities.ENTITY_TABLES["contact"] = "contacts"
 
 SHARED_THRESHOLD = 5
 

@@ -1746,6 +1746,9 @@ class TimelineItem(BaseModel):
     actor_id: str | None
     actor_name: str | None
     occurred_at: datetime
+    # Only what an activity_done line needs (summary, type, outcome); other
+    # payloads (merge snapshots…) stay server-side.
+    activity: dict | None = None
 
 
 # ─── Org data: regions, sequences, files, tax, branding (3A, 0055–0058) ─────

@@ -7,9 +7,10 @@ import {
 import type { Activity, ActivityIcon, ActivityType, LostReason } from "@business-os/types";
 import { api } from "@/lib/api";
 import { dayPKT } from "@/lib/dates";
-import { useAction } from "@/lib/useAction";
+import { formatDay } from "@/lib/format";
+import { errorText, useAction } from "@/lib/useAction";
 import { Dialog } from "@/components/Dialog";
-import { Button, Field, Input, Select, Textarea } from "@/components/ui";
+import { Badge, Button, EmptyState, ErrorState, Field, Input, LoadingRows, Select, Textarea } from "@/components/ui";
 import { announceActivitiesChanged } from "./ActivityBadge";
 
 export const ACTIVITY_ICON: Record<ActivityIcon, LucideIcon> = {
@@ -138,8 +139,8 @@ export function LostDialog({ leadId, name, open, onClose, onDone }: {
 }
 
 /** Plan the next thing to do on a record. */
-export function ScheduleActivity({ entityId, onSaved, compact }: {
-  entityId: string; onSaved: () => void; compact?: boolean;
+export function ScheduleActivity({ entityId, entityType = "lead", onSaved, compact }: {
+  entityId: string; entityType?: Activity["entity_type"]; onSaved: () => void; compact?: boolean;
 }) {
   const types = useActivityTypes();
   const [f, setF] = useState({ type_id: "", summary: "", due_date: dayPKT() });
@@ -147,7 +148,7 @@ export function ScheduleActivity({ entityId, onSaved, compact }: {
   const save = useAction(
     () => api<Activity>("/activities", {
       method: "POST",
-      body: JSON.stringify({ entity_type: "lead", entity_id: entityId, type_id: typeId,
+      body: JSON.stringify({ entity_type: entityType, entity_id: entityId, type_id: typeId,
                              summary: f.summary, due_date: f.due_date }),
     }),
     { success: "Activity scheduled", failure: "Couldn't schedule it" },
@@ -220,3 +221,51 @@ export function ActivityActions({ activity: a, onChanged, label }: {
   );
 }
 
+
+export const ACTIVITY_STATE_TONE = {
+  overdue: "danger", today: "warning", planned: "neutral", done: "success", cancelled: "neutral",
+} as const;
+
+/** A record's open activities with Done/Snooze and a schedule form; Contact 360 uses it. */
+export function RecordActivities({ entityType, entityId, canPlan }: {
+  entityType: Activity["entity_type"]; entityId: string; canPlan: boolean;
+}) {
+  const [items, setItems] = useState<Activity[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const load = useCallback(() => {
+    setError(null);
+    api<Activity[]>(`/activities?entity_type=${entityType}&entity_id=${entityId}`)
+      .then(setItems)
+      .catch((e) => setError(errorText(e)));
+  }, [entityType, entityId]);
+  useEffect(load, [load]);
+
+  if (error) return <ErrorState message={error} onRetry={load} />;
+  if (items === null) return <LoadingRows label="Loading activities" />;
+  return (
+    <div className="space-y-4">
+      {items.length === 0 ? (
+        <EmptyState title="Nothing planned" hint="Schedule the next call or visit so it shows up in My day." />
+      ) : (
+        <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
+          {items.map((a) => (
+            <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm">
+              <span className="flex min-w-0 items-center gap-2">
+                <TypeIcon icon={a.type_icon} />
+                <span className="min-w-0">
+                  <span className="block truncate" title={a.summary}>{a.summary || a.type_name}</span>
+                  <span className="flex items-center gap-1.5 text-xs text-fg-subtle">
+                    <Badge tone={ACTIVITY_STATE_TONE[a.state]}>{a.state === "planned" ? formatDay(a.due_date) : a.state}</Badge>
+                    {a.assigned_name && <span>{a.assigned_name}</span>}
+                  </span>
+                </span>
+              </span>
+              {canPlan && <ActivityActions activity={a} onChanged={load} label={a.summary || a.type_name} />}
+            </li>
+          ))}
+        </ul>
+      )}
+      {canPlan && <ScheduleActivity entityType={entityType} entityId={entityId} onSaved={load} />}
+    </div>
+  );
+}
