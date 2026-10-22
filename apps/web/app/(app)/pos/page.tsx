@@ -2,11 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import type { PosSummary, Product, Sale } from "@business-os/types";
 import { api, ApiError, NetworkError } from "@/lib/api";
 import { can } from "@/lib/can";
 import { lookupOrCached, productsOrCached, sellOffline } from "@/lib/offline/till";
+import { syncOnce } from "@/lib/offline/sync";
+import { BurstDetector, dispatchScan, parseScan, registerScanHandler, type Scan } from "@/lib/scan";
 import { qk } from "@/lib/queryKeys";
 import { useHotkey, useHotkeyScope } from "@/lib/useHotkey";
 import { money, moneyCompact } from "@/lib/format";
@@ -20,6 +23,7 @@ import { HeldBills } from "@/components/pos/HeldBills";
 import { ApprovalPrompt, type Approval } from "@/components/pos/ApprovalPrompt";
 import { CashierSignIn, cashierToken, forgetCashier } from "@/components/pos/CashierSignIn";
 import { SyncPill, useTill } from "@/components/pos/SyncPill";
+import { CameraScan } from "@/components/pos/CameraScan";
 import { CustomerPicker, type Customer } from "@/components/contacts/CustomerPicker";
 
 interface DrawerLite {
@@ -43,6 +47,12 @@ function newCartKey(): string {
 /** What a keyboard-wedge scanner sends: digits only, EAN-8 and up. Something
  *  that looks like this is never "searched" — a miss adds nothing. */
 const BARCODE = /^\d{6,}$/;
+const PRODUCT_SCANS = ["ean13", "ean8", "upca", "code"] as const;
+
+/** Whether keys typed here belong to the element (a field) rather than to the
+ *  till's global scanner listener. */
+const editable = (el: EventTarget | null) =>
+  el instanceof HTMLElement && (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName));
 
 const LOCKED_MSG = "The cart is locked until the last sale is charged again or cleared.";
 const OTHER_TAB_MSG = "This till is already open in another tab. Sell from that tab; this one is view-only.";
@@ -52,6 +62,7 @@ const finePointer = () => typeof window !== "undefined" && window.matchMedia("(p
 
 export default function PosBilling() {
   const { t, me } = useSession();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [q, setQ] = useState("");
   const [results, setResults] = useState<Product[] | null>(null); // null = first load
@@ -167,9 +178,55 @@ export default function PosBilling() {
     if (qRef.current.trim() === code) setQ("");
   }
 
-  // Enter in the scan field: an exact barcode first (GET /pos/products/lookup),
-  // never "the first search hit" — that added Lays when Dawn Bread was scanned
-  // because the results were from before the debounce (P2).
+  // An exact barcode (GET /pos/products/lookup, or the till's saved catalogue
+  // offline). True when the scan was dealt with, false for a typed name that
+  // should fall through to search.
+  async function scanProduct(scan: Scan): Promise<boolean> {
+    const text = scan.value;
+    if (lockedRef.current) { setScanMsg(LOCKED_MSG); return true; }
+    try {
+      const p = await lookupOrCached(text);
+      if (p) { addScanned(p, text); return true; }
+    } catch {
+      setScanMsg(`Couldn't look up ${text}. Check the connection and try again.`);
+      return true;
+    }
+    if (!BARCODE.test(text)) return false;
+    // A standard barcode whose check digit is wrong was misread, not unknown.
+    setScanMsg(scan.valid ? `No product with barcode ${text}.` : `Barcode ${text} didn't read cleanly. Scan it again.`);
+    return true;
+  }
+  const scanProductRef = useRef(scanProduct);
+  scanProductRef.current = scanProduct;
+
+  // Scans from anywhere (the global listener, the camera): products go to the
+  // cart; our own receipt number opens that sale in the history.
+  useEffect(() => {
+    const offProduct = registerScanHandler([...PRODUCT_SCANS], async (scan) => { await scanProductRef.current(scan); });
+    const offReceipt = registerScanHandler(["receipt"], (scan) => {
+      router.push(`/pos/sales?q=${encodeURIComponent(scan.value)}`);
+    });
+    return () => { offProduct(); offReceipt(); };
+  }, [router]);
+
+  // A scanner fired while focus is on a button or the page itself (not a
+  // field): catch the burst so its Enter can't press the focused button
+  // (Charge!), and treat it as a scan (F19).
+  useEffect(() => {
+    const burst = new BurstDetector();
+    const onKey = (e: KeyboardEvent) => {
+      if (editable(e.target) || e.ctrlKey || e.metaKey || e.altKey) return;
+      const code = burst.feed(e.key, e.timeStamp);
+      if (code) { e.preventDefault(); e.stopPropagation(); void dispatchScan(code); }
+      else if (burst.inBurst(e.timeStamp)) e.preventDefault();
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, []);
+
+  // Enter in the scan field: an exact barcode first, never "the first search
+  // hit" — that added Lays when Dawn Bread was scanned because the results
+  // were from before the debounce (P2).
   async function onScanKey(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key !== "Enter") return;
     e.preventDefault();
@@ -177,21 +234,11 @@ export default function PosBilling() {
     const text = e.currentTarget.value.trim();
     if (!text) return;
     if (lockedRef.current) { setScanMsg(LOCKED_MSG); return; }
-    const looksLikeBarcode = BARCODE.test(text);
+    const scan = parseScan(text);
+    if (scan.kind === "receipt") { setQ(""); router.push(`/pos/sales?q=${encodeURIComponent(text)}`); return; }
     // Clear at once, so a second scan arriving before this resolves starts clean.
-    if (looksLikeBarcode) setQ("");
-
-    try {
-      const p = await lookupOrCached(text);
-      if (p) { addScanned(p, text); return; }
-    } catch {
-      setScanMsg(`Couldn't look up ${text}. Check the connection and try again.`);
-      return;
-    }
-    if (looksLikeBarcode) {
-      setScanMsg(`No product with barcode ${text}.`);
-      return;
-    }
+    if (BARCODE.test(text)) setQ("");
+    if (await scanProduct(scan)) return;
 
     // A typed name: add only when there's no doubt which product is meant —
     // one exact name match, or a single result.
@@ -315,7 +362,10 @@ export default function PosBilling() {
       setCartOpen(false);
       setReceipt(sale);
       setReceiptOpen(true);
-      search(qRef.current); // stock just changed
+      // Stock just changed. A registered till searches its saved catalogue,
+      // so it pulls the change first (quietly: the sale is already done).
+      if (till.device) void syncOnce().catch(() => undefined).then(() => search(qRef.current));
+      else search(qRef.current);
       loadStatus(); // today's figures and the drawer expectation just changed
       void queryClient.invalidateQueries({ queryKey: qk.dashboard.all }); // so are the dashboard's
       return null;
@@ -412,6 +462,7 @@ export default function PosBilling() {
           </span>
         </div>
 
+        <div className="flex items-center gap-2">
         <Input
           ref={scanRef}
           autoFocus
@@ -425,6 +476,8 @@ export default function PosBilling() {
           spellCheck={false}
           enterKeyHint="search"
         />
+        <CameraScan onClosed={focusScan} />
+        </div>
         <p id="scan-msg" role="status" className={cx("min-h-5 py-1 text-sm", scanMsg ? "text-warning" : "")}>{scanMsg}</p>
 
         {categories.length > 1 && !q && (

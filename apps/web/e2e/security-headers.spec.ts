@@ -18,6 +18,8 @@ for (const path of ["/login", "/"]) {
     expect(h["referrer-policy"]).toBe("strict-origin-when-cross-origin");
     expect(h["x-frame-options"]).toBe("DENY");
     expect(h["x-powered-by"]).toBeUndefined();
+    // Own origin only: the till's camera scan (F19) and USB receipt printer; the rest stay off.
+    expect(h["permissions-policy"]).toBe("camera=(self), microphone=(), payment=(), usb=(self), geolocation=(self)");
 
     const csp = h["content-security-policy"] ?? "";
     expect(directive(csp, "frame-ancestors")).toBe("frame-ancestors 'none'");

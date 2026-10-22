@@ -29,6 +29,25 @@ test.describe("POS register: scanning", () => {
     await expect(cart(page)).toContainText(target.name);
   });
 
+  test("a scan while a product tile has focus adds the scanned product and doesn't press the tile", async ({ page, request }) => {
+    const all = await products(request);
+    const tile = all[0];
+    const target = all.find((p, i) => i > 0 && p.barcode)!;
+    await page.goto("/pos");
+    await page.getByRole("button", { name: new RegExp(tile.name) }).first().focus();
+    await scan(page, target.barcode!);
+    await expect(page.getByRole("heading", { name: "Cart (1)" })).toBeVisible();
+    await expect(cart(page)).toContainText(target.name);
+  });
+
+  test("scanning a receipt number opens that sale in the history", async ({ page }) => {
+    await page.goto("/pos");
+    await scanField(page).focus();
+    await scan(page, "R1-2026-27-000001");
+    await expect(page).toHaveURL(/\/pos\/sales\?q=R1-2026-27-000001/, { timeout: 20_000 });
+    await expect(page.getByRole("searchbox").first()).toHaveValue("R1-2026-27-000001");
+  });
+
   test("an unknown barcode adds nothing", async ({ page }) => {
     await page.goto("/pos");
     await scanField(page).focus();

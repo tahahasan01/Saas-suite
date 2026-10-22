@@ -40,6 +40,11 @@ export default function SalesHistoryPage() {
   const [voiding, setVoiding] = useState<Row | null>(null);
   const seq = useRef(0);
 
+  // ?q= (the till sends a scanned receipt number here) seeds the search once.
+  useEffect(() => {
+    const fromUrl = new URLSearchParams(window.location.search).get("q");
+    if (fromUrl) setQ(fromUrl);
+  }, []);
   useEffect(() => { const t = setTimeout(() => setQuery(q.trim()), 250); return () => clearTimeout(t); }, [q]);
 
   const load = useCallback((target: number) => {

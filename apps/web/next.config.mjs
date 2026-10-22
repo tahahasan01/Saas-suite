@@ -14,9 +14,10 @@ const SECURITY_HEADERS = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   // frame-ancestors 'none' in the CSP is the modern form; this covers old browsers.
   { key: "X-Frame-Options", value: "DENY" },
-  // Nothing uses these yet; a feature that needs one (a camera barcode scanner) opts back in here.
+  // camera=(self): the till's camera scan fallback (F19). usb=(self): the WebUSB receipt printer
+  // (lib/printer.ts); usb=() had blocked it. Both still ask the user. The rest stay off.
   // geolocation=(self): the staff punch reads the browser's location for the server-side geofence (D-43).
-  { key: "Permissions-Policy", value: "camera=(), microphone=(), payment=(), usb=(), geolocation=(self)" },
+  { key: "Permissions-Policy", value: "camera=(self), microphone=(), payment=(), usb=(self), geolocation=(self)" },
 ];
 
 /** @type {(phase: string) => import('next').NextConfig} */

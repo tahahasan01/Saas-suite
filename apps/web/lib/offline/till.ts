@@ -4,12 +4,25 @@
 import type { Product, Sale } from "@business-os/types";
 import { cashDue, priceSale } from "@business-os/pos-core";
 import { api, NetworkError } from "@/lib/api";
+import { buildIndex, searchIndex, type SearchIndex } from "./search";
 import { cachedProducts, device, meta, queueSale, type Pricing } from "./store";
 import { announce } from "./sync";
 
-/** The API's answer, or, on a registered till that can't reach it, the
- *  cached catalogue's. Any other failure is passed on. */
+let local: { cursor: number; index: SearchIndex } | null = null;
+
+/** The saved catalogue's index, rebuilt whenever a sync moved the cursor. */
+async function localIndex(cursor: number): Promise<SearchIndex> {
+  if (local?.cursor !== cursor) local = { cursor, index: buildIndex(await cachedProducts()) };
+  return local.index;
+}
+
+/** A registered till searches its own saved catalogue (F21: no 200-product
+ *  cap, the same answer online or off; stock is as of the last sync, which
+ *  runs every minute and after each sale). Any other browser asks the API,
+ *  falling back to the cache only when it can't be reached. */
 export async function productsOrCached(text: string): Promise<Product[]> {
+  const cursor = device() ? await meta<number>("cursor") : undefined;
+  if (cursor !== undefined) return searchIndex(await localIndex(cursor), text);
   try {
     return await api<Product[]>(`/pos/products${text ? `?q=${encodeURIComponent(text)}` : ""}`, { notify: false });
   } catch (e) {
