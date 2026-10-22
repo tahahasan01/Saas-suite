@@ -16,6 +16,7 @@ import { ExpiryBadge } from "@/components/hrms/ExpiryBadge";
 import { PayrollDetailsCard } from "@/components/hrms/PayrollDetailsCard";
 import { SalaryCard } from "@/components/hrms/SalaryCard";
 import { HeldAssetsCard } from "@/components/hrms/HeldAssetsCard";
+import { BoardingCard } from "@/components/hrms/BoardingCard";
 import { Badge, Button, Card, ErrorState, Field, Input, LoadingRows, Select } from "@/components/ui";
 
 /* One employee: details, their place in the org, kiosk PIN, documents with
@@ -63,6 +64,7 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
           <Can perm="hrms.employee.update"><KioskPin p={p} onSaved={load} /></Can>
           <Can perm="payroll.salary.read"><SalaryCard employeeId={p.id} /></Can>
           <Can perm="hrms.asset.read"><HeldAssetsCard employeeId={p.id} /></Can>
+          <Can perm="hrms.boarding.read"><BoardingCard employeeId={p.id} exitDate={p.exit_date} onChanged={load} /></Can>
           <PayrollDetailsCard employeeId={p.id} />
         </div>
       </div>

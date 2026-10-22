@@ -171,6 +171,8 @@ export const PERMISSION_KEYS = [
   "hrms.notice.manage",
   "hrms.asset.read",
   "hrms.asset.manage",
+  "hrms.boarding.read",
+  "hrms.boarding.manage",
   "hrms.document.manage",
   "hrms.kiosk.manage",
   "hrms.attendance.approve",

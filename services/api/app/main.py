@@ -29,6 +29,7 @@ from .routers import (  # org data (3A, p3-orgdata)
     hrms_attendance,
     hrms_holidays,
     hrms_assets,
+    hrms_boarding,
     hrms_biometric,
     hrms_notices,
     hrms_overtime,
@@ -149,6 +150,8 @@ app.include_router(hrms_overtime.router)
 app.include_router(hrms_overtime.portal)
 app.include_router(hrms_assets.router)
 app.include_router(hrms_assets.portal)
+app.include_router(hrms_boarding.router)
+app.include_router(hrms_boarding.portal)
 app.include_router(hrms_requests.router)
 app.include_router(hrms_requests.portal)
 app.include_router(hrms_people.router)

@@ -159,4 +159,5 @@ def profile_fields(r: asyncpg.Record) -> dict[str, Any]:
         location_id=_s(r["location_id"]), location_name=r["location_name"], province=r["province"],
         manager_id=_s(r["manager_id"]), manager_name=r["manager_name"],
         employment_type=r["employment_type"], probation_end=r["probation_end"],
-        has_kiosk_pin=r["kiosk_pin_hash"] is not None, documents_expiring=r["documents_expiring"])
+        has_kiosk_pin=r["kiosk_pin_hash"] is not None, documents_expiring=r["documents_expiring"],
+        exit_date=r["exit_date"], exit_reason=r["exit_reason"])

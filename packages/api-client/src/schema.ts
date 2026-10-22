@@ -3673,6 +3673,228 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/hrms/boarding-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Templates */
+        get: operations["list_templates_hrms_boarding_templates_get"];
+        put?: never;
+        /** Create Template */
+        post: operations["create_template_hrms_boarding_templates_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/boarding-templates/{template_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Template */
+        patch: operations["update_template_hrms_boarding_templates__template_id__patch"];
+        trace?: never;
+    };
+    "/hrms/employees/{employee_id}/onboarding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Onboarding */
+        post: operations["start_onboarding_hrms_employees__employee_id__onboarding_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/employees/{employee_id}/offboarding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Offboarding */
+        post: operations["start_offboarding_hrms_employees__employee_id__offboarding_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/boardings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Boardings */
+        get: operations["list_boardings_hrms_boardings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/boardings/{boarding_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Boarding */
+        get: operations["get_boarding_hrms_boardings__boarding_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/boardings/{boarding_id}/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Task */
+        post: operations["add_task_hrms_boardings__boarding_id__tasks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/boarding-tasks/{task_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Task */
+        patch: operations["update_task_hrms_boarding_tasks__task_id__patch"];
+        trace?: never;
+    };
+    "/hrms/boardings/{boarding_id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete */
+        post: operations["complete_hrms_boardings__boarding_id__complete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/boardings/{boarding_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel */
+        post: operations["cancel_hrms_boardings__boarding_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/boardings/{boarding_id}/exit-interview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Save Exit Interview */
+        put: operations["save_exit_interview_hrms_boardings__boarding_id__exit_interview_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/boarding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My Tasks */
+        get: operations["my_tasks_me_boarding_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/boarding-tasks/{task_id}/done": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** My Task Done */
+        post: operations["my_task_done_me_boarding_tasks__task_id__done_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/hrms/requests/pending": {
         parameters: {
             query?: never;
@@ -6117,6 +6339,178 @@ export interface components {
             /** Department Id */
             department_id: string | null;
         };
+        /** BoardingClose */
+        BoardingClose: {
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /** BoardingOut */
+        BoardingOut: {
+            /** Id */
+            id: string;
+            /** Employee Id */
+            employee_id: string;
+            /** Employee Name */
+            employee_name: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "onboarding" | "offboarding";
+            /** Template Id */
+            template_id: string | null;
+            /**
+             * Anchor Date
+             * Format: date
+             */
+            anchor_date: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "completed" | "cancelled";
+            /** Reason */
+            reason: ("resigned" | "terminated" | "retired" | "contract_end" | "absconded" | "deceased" | "other") | null;
+            /** Notice Date */
+            notice_date: string | null;
+            /** Last Working Day */
+            last_working_day: string | null;
+            /** Note */
+            note: string;
+            /** Done */
+            done: number;
+            /** Total */
+            total: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Closed At */
+            closed_at: string | null;
+            /** Tasks */
+            tasks?: components["schemas"]["BoardingTaskOut"][];
+            /** Assets Held */
+            assets_held?: components["schemas"]["HeldAsset"][];
+            exit_interview?: components["schemas"]["ExitInterviewOut"] | null;
+        };
+        /** BoardingTaskCreate */
+        BoardingTaskCreate: {
+            /** Title */
+            title: string;
+            /**
+             * Owner
+             * @default hr
+             * @enum {string}
+             */
+            owner: "hr" | "it" | "manager" | "employee" | "admin";
+            /** Due On */
+            due_on?: string | null;
+        };
+        /** BoardingTaskOut */
+        BoardingTaskOut: {
+            /** Id */
+            id: string;
+            /** Boarding Id */
+            boarding_id: string;
+            /** Title */
+            title: string;
+            /**
+             * Owner
+             * @enum {string}
+             */
+            owner: "hr" | "it" | "manager" | "employee" | "admin";
+            /** Due On */
+            due_on: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "done" | "skipped";
+            /** Note */
+            note: string;
+            /** Done At */
+            done_at: string | null;
+        };
+        /** BoardingTaskUpdate */
+        BoardingTaskUpdate: {
+            /** Status */
+            status?: ("open" | "done" | "skipped") | null;
+            /** Note */
+            note?: string | null;
+            /** Due On */
+            due_on?: string | null;
+        };
+        /** BoardingTemplateCreate */
+        BoardingTemplateCreate: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "onboarding" | "offboarding";
+            /** Name */
+            name: string;
+            /** Tasks */
+            tasks?: components["schemas"]["BoardingTemplateTaskIn"][];
+        };
+        /** BoardingTemplateOut */
+        BoardingTemplateOut: {
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "onboarding" | "offboarding";
+            /** Name */
+            name: string;
+            /** Active */
+            active: boolean;
+            /** Tasks */
+            tasks: components["schemas"]["BoardingTemplateTaskOut"][];
+        };
+        /** BoardingTemplateTaskIn */
+        BoardingTemplateTaskIn: {
+            /** Title */
+            title: string;
+            /**
+             * Owner
+             * @default hr
+             * @enum {string}
+             */
+            owner: "hr" | "it" | "manager" | "employee" | "admin";
+            /**
+             * Offset Days
+             * @default 0
+             */
+            offset_days: number;
+        };
+        /** BoardingTemplateTaskOut */
+        BoardingTemplateTaskOut: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /**
+             * Owner
+             * @enum {string}
+             */
+            owner: "hr" | "it" | "manager" | "employee" | "admin";
+            /** Offset Days */
+            offset_days: number;
+        };
+        /** BoardingTemplateUpdate */
+        BoardingTemplateUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Active */
+            active?: boolean | null;
+            /** Tasks */
+            tasks?: components["schemas"]["BoardingTemplateTaskIn"][] | null;
+        };
         /** BranchOut */
         BranchOut: {
             /** Id */
@@ -7374,6 +7768,10 @@ export interface components {
              * @default 0
              */
             documents_expiring: number;
+            /** Exit Date */
+            exit_date?: string | null;
+            /** Exit Reason */
+            exit_reason?: string | null;
         };
         /** EmployeeUpdate */
         EmployeeUpdate: {
@@ -7448,6 +7846,47 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** ExitInterviewIn */
+        ExitInterviewIn: {
+            /** Held On */
+            held_on?: string | null;
+            /** Outcome */
+            outcome?: ("retained" | "leaving") | null;
+            /** Rating */
+            rating?: number | null;
+            /** Primary Reason */
+            primary_reason?: ("pay" | "growth" | "manager" | "workload" | "hours" | "relocation" | "studies" | "health" | "personal" | "other") | null;
+            /** Would Rejoin */
+            would_rejoin?: boolean | null;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+        };
+        /** ExitInterviewOut */
+        ExitInterviewOut: {
+            /** Held On */
+            held_on?: string | null;
+            /** Outcome */
+            outcome?: ("retained" | "leaving") | null;
+            /** Rating */
+            rating?: number | null;
+            /** Primary Reason */
+            primary_reason?: ("pay" | "growth" | "manager" | "workload" | "hours" | "relocation" | "studies" | "health" | "personal" | "other") | null;
+            /** Would Rejoin */
+            would_rejoin?: boolean | null;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /** FbrInvoiceOut */
         FbrInvoiceOut: {
@@ -7630,6 +8069,15 @@ export interface components {
             outbox_count: number;
             /** Oldest Pending At */
             oldest_pending_at?: string | null;
+        };
+        /** HeldAsset */
+        HeldAsset: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Tag */
+            tag: string | null;
         };
         /** HeldIn */
         HeldIn: {
@@ -9179,6 +9627,36 @@ export interface components {
              */
             created_at: string;
         };
+        /** MyBoardingTask */
+        MyBoardingTask: {
+            /** Id */
+            id: string;
+            /** Boarding Id */
+            boarding_id: string;
+            /** Title */
+            title: string;
+            /**
+             * Owner
+             * @enum {string}
+             */
+            owner: "hr" | "it" | "manager" | "employee" | "admin";
+            /** Due On */
+            due_on: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "done" | "skipped";
+            /** Note */
+            note: string;
+            /** Done At */
+            done_at: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "onboarding" | "offboarding";
+        };
         /** NoteCreate */
         NoteCreate: {
             /** Body */
@@ -9311,6 +9789,28 @@ export interface components {
             /** Items */
             items: components["schemas"]["ForecastItem"][];
         };
+        /** OffboardingStart */
+        OffboardingStart: {
+            /** Template Id */
+            template_id?: string | null;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "resigned" | "terminated" | "retired" | "contract_end" | "absconded" | "deceased" | "other";
+            /** Notice Date */
+            notice_date?: string | null;
+            /**
+             * Last Working Day
+             * Format: date
+             */
+            last_working_day: string;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
         /** OfflineOrder */
         OfflineOrder: {
             /**
@@ -9355,6 +9855,18 @@ export interface components {
             approver_id?: string | null;
             /** Approver Pin */
             approver_pin?: string | null;
+        };
+        /** OnboardingStart */
+        OnboardingStart: {
+            /** Template Id */
+            template_id?: string | null;
+            /** Anchor Date */
+            anchor_date?: string | null;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
         };
         /** OneOffIn */
         OneOffIn: {
@@ -20421,6 +20933,501 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AssetOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_templates_hrms_boarding_templates_get: {
+        parameters: {
+            query?: {
+                kind?: ("onboarding" | "offboarding") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoardingTemplateOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_template_hrms_boarding_templates_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BoardingTemplateCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoardingTemplateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_template_hrms_boarding_templates__template_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BoardingTemplateUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoardingTemplateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_onboarding_hrms_employees__employee_id__onboarding_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employee_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OnboardingStart"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoardingOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_offboarding_hrms_employees__employee_id__offboarding_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employee_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OffboardingStart"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoardingOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_boardings_hrms_boardings_get: {
+        parameters: {
+            query?: {
+                kind?: ("onboarding" | "offboarding") | null;
+                status?: ("open" | "completed" | "cancelled") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoardingOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_boarding_hrms_boardings__boarding_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                boarding_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoardingOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_task_hrms_boardings__boarding_id__tasks_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                boarding_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BoardingTaskCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoardingTaskOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_task_hrms_boarding_tasks__task_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BoardingTaskUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoardingTaskOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    complete_hrms_boardings__boarding_id__complete_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                boarding_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["BoardingClose"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoardingOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_hrms_boardings__boarding_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                boarding_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["BoardingClose"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoardingOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_exit_interview_hrms_boardings__boarding_id__exit_interview_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                boarding_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExitInterviewIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoardingOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_tasks_me_boarding_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyBoardingTask"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_task_done_me_boarding_tasks__task_id__done_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyBoardingTask"];
                 };
             };
             /** @description Validation Error */

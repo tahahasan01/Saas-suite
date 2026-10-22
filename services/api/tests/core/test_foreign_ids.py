@@ -58,6 +58,9 @@ KIND_OF = {
     "claim_id": "overtime_claim",
     # assets (wave A, 0087)
     "asset_id": "asset",
+    "template_id": "boarding_template",
+    "boarding_id": "boarding",
+    "task_id": "boarding_task",
 }
 
 # Path parameters that are not ids: a fixed, valid value. (scheme_code names
@@ -149,6 +152,9 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
                                                        "installment_minor": 100, "start_month": "2026-09"})).json()
     notice = (await c.post("/hrms/notices", json={"title": "Probe notice"})).json()
     asset = (await c.post("/hrms/assets", json={"name": "Probe laptop", "category": "laptop"})).json()
+    btemplate = (await c.post("/hrms/boarding-templates", json={"kind": "onboarding", "name": "Probe",
+                                                                "tasks": [{"title": "Probe task"}]})).json()
+    boarding = (await c.post(f"/hrms/employees/{employee['id']}/onboarding", json={})).json()
     return {
         "activity_type": activity_type["id"], "activity": activity["id"],
         "lost_reason": (await c.get("/crm/lost-reasons")).json()[0]["id"],
@@ -161,6 +167,8 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
         "payroll_run": run["id"], "pay_component": component["id"], "pay_structure": structure["id"],
         "one_off": one_off["id"], "advance": advance["id"], "notice": notice["id"],
         "overtime_claim": str(overtime_claim), "asset": asset["id"],
+        "boarding_template": btemplate["id"], "boarding": boarding["id"],
+        "boarding_task": boarding["tasks"][0]["id"],
         # No payslip exists before a run is calculated; any id stands in (it must still 404).
         "payslip": str(uuid.uuid4()),
         "role": (await c.get("/team/roles")).json()[0]["id"],

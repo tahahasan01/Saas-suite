@@ -2250,6 +2250,8 @@ class EmployeeProfile(EmployeeOut):
     probation_end: date | None = None
     has_kiosk_pin: bool = False
     documents_expiring: int = 0     # expired or due within 30 days
+    exit_date: date | None = None   # set by offboarding (wave C, 0100)
+    exit_reason: str | None = None
 
 
 class DocumentCreate(BaseModel):
@@ -2620,3 +2622,145 @@ SALE_STATUSES = list(get_args(SaleStatus))
 TENDER_METHODS = list(get_args(TenderMethod))
 CashMoveKind = Literal["pay_in", "pay_out", "drop"]
 CASH_MOVE_KINDS = list(get_args(CashMoveKind))
+
+
+# ─── Onboarding and offboarding (wave C, H23/H24, 0100) ─────────────────────
+BoardingKind = Literal["onboarding", "offboarding"]
+BOARDING_KINDS = list(get_args(BoardingKind))
+BoardingOwner = Literal["hr", "it", "manager", "employee", "admin"]
+BOARDING_OWNERS = list(get_args(BoardingOwner))
+BoardingStatus = Literal["open", "completed", "cancelled"]
+BOARDING_STATUSES = list(get_args(BoardingStatus))
+BoardingTaskStatus = Literal["open", "done", "skipped"]
+BOARDING_TASK_STATUSES = list(get_args(BoardingTaskStatus))
+ExitReason = Literal["resigned", "terminated", "retired", "contract_end", "absconded", "deceased", "other"]
+EXIT_REASONS = list(get_args(ExitReason))
+ExitOutcome = Literal["retained", "leaving"]
+EXIT_OUTCOMES = list(get_args(ExitOutcome))
+LeavingReason = Literal["pay", "growth", "manager", "workload", "hours", "relocation", "studies", "health",
+                        "personal", "other"]
+LEAVING_REASONS = list(get_args(LeavingReason))
+
+
+class BoardingTemplateTaskIn(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    owner: BoardingOwner = "hr"
+    offset_days: int = Field(default=0, ge=-365, le=365)
+
+
+class BoardingTemplateCreate(BaseModel):
+    kind: BoardingKind
+    name: str = Field(min_length=1, max_length=120)
+    tasks: list[BoardingTemplateTaskIn] = Field(default_factory=list, max_length=100)
+
+
+class BoardingTemplateUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    active: bool | None = None
+    tasks: list[BoardingTemplateTaskIn] | None = Field(default=None, max_length=100)
+
+
+class BoardingTemplateTaskOut(BaseModel):
+    id: str
+    title: str
+    owner: BoardingOwner
+    offset_days: int
+
+
+class BoardingTemplateOut(BaseModel):
+    id: str
+    kind: BoardingKind
+    name: str
+    active: bool
+    tasks: list[BoardingTemplateTaskOut]
+
+
+class OnboardingStart(BaseModel):
+    template_id: UUID | None = None
+    anchor_date: date | None = None          # the joining date when left out
+    note: str = Field(default="", max_length=1000)
+
+
+class OffboardingStart(BaseModel):
+    template_id: UUID | None = None
+    reason: ExitReason
+    notice_date: date | None = None
+    last_working_day: date
+    note: str = Field(default="", max_length=1000)
+
+    @model_validator(mode="after")
+    def _dates(self):
+        if self.notice_date and self.last_working_day < self.notice_date:
+            raise ValueError("The last working day can't come before the notice")
+        return self
+
+
+class BoardingTaskCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    owner: BoardingOwner = "hr"
+    due_on: date | None = None
+
+
+class BoardingTaskUpdate(BaseModel):
+    status: BoardingTaskStatus | None = None
+    note: str | None = Field(default=None, max_length=500)
+    due_on: date | None = None
+
+
+class BoardingTaskOut(BaseModel):
+    id: str
+    boarding_id: str
+    title: str
+    owner: BoardingOwner
+    due_on: date | None
+    status: BoardingTaskStatus
+    note: str
+    done_at: datetime | None
+
+
+class BoardingClose(BaseModel):
+    note: str = Field(default="", max_length=1000)
+
+
+class ExitInterviewIn(BaseModel):
+    held_on: date | None = None
+    outcome: ExitOutcome | None = None
+    rating: int | None = Field(default=None, ge=1, le=5)
+    primary_reason: LeavingReason | None = None
+    would_rejoin: bool | None = None
+    notes: str = Field(default="", max_length=4000)
+
+
+class ExitInterviewOut(ExitInterviewIn):
+    updated_at: datetime
+
+
+class HeldAsset(BaseModel):
+    id: str
+    name: str
+    tag: str | None
+
+
+class BoardingOut(BaseModel):
+    id: str
+    employee_id: str
+    employee_name: str
+    kind: BoardingKind
+    template_id: str | None
+    anchor_date: date
+    status: BoardingStatus
+    reason: ExitReason | None
+    notice_date: date | None
+    last_working_day: date | None
+    note: str
+    done: int
+    total: int
+    created_at: datetime
+    closed_at: datetime | None
+    tasks: list[BoardingTaskOut] = Field(default_factory=list)
+    assets_held: list[HeldAsset] = Field(default_factory=list)
+    exit_interview: ExitInterviewOut | None = None      # boarding managers only
+
+
+class MyBoardingTask(BoardingTaskOut):
+    kind: BoardingKind
