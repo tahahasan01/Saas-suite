@@ -125,6 +125,7 @@ module = [
     "app.routers.hrms_notices",
     "app.routers.hrms_overtime",
     "app.routers.hrms_assets",
+    "app.routers.hrms_expenses",
     "app.routers.hrms_appraisals",
     "app.routers.hrms_boarding",
     "app.routers.hrms_requests",

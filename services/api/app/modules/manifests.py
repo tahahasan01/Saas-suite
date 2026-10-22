@@ -131,6 +131,7 @@ _MANIFESTS = [
                         NavChild("/hrms/assets", "nav.hrms.assets", "hrms.asset.read"),
                         NavChild("/hrms/boarding", "nav.hrms.boarding", "hrms.boarding.read"),
                         NavChild("/hrms/performance", "nav.hrms.performance", "hrms.appraisal.read"),
+                        NavChild("/hrms/expenses", "nav.hrms.expenses", "hrms.expense.read"),
                     )),
         ),
     ),

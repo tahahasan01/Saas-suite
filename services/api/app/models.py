@@ -2924,3 +2924,62 @@ class AppraisalReviewIn(BaseModel):
     ratings: list[RatingIn] = Field(default_factory=list, max_length=30)
     comment: str = Field(default="", max_length=4000)
     submit: bool = False
+
+
+# ─── Expense claims (wave C, H13, 0102) ─────────────────────────────────────
+ExpenseStatus = Literal["submitted", "approved", "rejected", "cancelled"]
+EXPENSE_STATUSES = list(get_args(ExpenseStatus))
+ExpenseCategory = Literal["travel", "fuel", "meals", "phone", "supplies", "medical", "accommodation", "other"]
+EXPENSE_CATEGORIES = list(get_args(ExpenseCategory))
+
+
+class ExpenseLineIn(BaseModel):
+    spent_on: date
+    category: ExpenseCategory = "other"
+    description: str = Field(default="", max_length=300)
+    amount_minor: int = Field(gt=0, le=10**10)
+    receipt_file_id: UUID | None = None
+
+
+class ExpenseClaimIn(BaseModel):
+    title: str = Field(min_length=1, max_length=160)
+    lines: list[ExpenseLineIn] = Field(min_length=1, max_length=30)
+
+
+class ExpenseClaimFor(ExpenseClaimIn):
+    employee_id: UUID
+
+
+class ExpenseApprove(BaseModel):
+    approved_minor: int | None = Field(default=None, gt=0)    # the claimed total when left out
+    note: str = Field(default="", max_length=500)
+
+
+class ExpenseReject(BaseModel):
+    note: str = Field(max_length=500)
+
+
+class ExpenseLineOut(BaseModel):
+    id: str
+    spent_on: date
+    category: ExpenseCategory
+    description: str
+    amount_minor: int
+    receipt_file_id: str | None
+
+
+class ExpenseClaimOut(BaseModel):
+    id: str
+    employee_id: str
+    employee_name: str
+    title: str
+    status: ExpenseStatus
+    total_minor: int
+    approved_minor: int | None
+    one_off_id: str | None
+    pay_month: date | None
+    paid: bool
+    decision_note: str
+    decided_at: datetime | None
+    created_at: datetime
+    lines: list[ExpenseLineOut] = Field(default_factory=list)

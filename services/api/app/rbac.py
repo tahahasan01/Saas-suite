@@ -208,6 +208,10 @@ register("hrms", {
     # Assets issued to staff (wave A, 0087); the value is for managers only.
     "hrms.asset.read": ("hrms", "read"),
     "hrms.asset.manage": ("hrms", "write"),
+    # Expense claims (wave C, 0102): approval pays through payroll.
+    "hrms.expense.read": ("hrms", "read"),
+    "hrms.expense.manage": ("hrms", "write"),
+    "hrms.expense.approve": ("hrms", "admin"),
     # Appraisals (wave C, 0101); managers review their reports via /me/reviews.
     "hrms.appraisal.read": ("hrms", "read"),
     "hrms.appraisal.manage": ("hrms", "admin"),
