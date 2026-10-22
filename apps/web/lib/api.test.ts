@@ -74,6 +74,9 @@ describe("requests", () => {
     ui.path = "/q/some-quote-token";     // the customer's quote page (wave D)
     await api("/notifications").catch(() => undefined);
     expect(ui.toLogin).not.toHaveBeenCalled();
+    ui.path = "/f/some-form-id";          // a web form
+    await api("/notifications").catch(() => undefined);
+    expect(ui.toLogin).not.toHaveBeenCalled();
     ui.path = "/quotes";                 // only the /q page itself, not a lookalike
     await api("/notifications").catch(() => undefined);
     expect(ui.toLogin).toHaveBeenCalledTimes(1);

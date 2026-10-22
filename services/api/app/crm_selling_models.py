@@ -268,3 +268,8 @@ class PoolMemberOut(BaseModel):
     active: bool
     daily_cap: int | None
     assigned_today: int
+
+
+class PersonOut(BaseModel):
+    id: str
+    name: str

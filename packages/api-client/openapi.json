@@ -8500,6 +8500,60 @@
         }
       }
     },
+    "/crm/assignment/people": {
+      "get": {
+        "tags": [
+          "crm-web-forms"
+        ],
+        "summary": "Pool Candidates",
+        "description": "Active teammates, by name only: a CRM admin picks the pool without\nneeding the team screen's rights (emails and roles stay there).",
+        "operationId": "pool_candidates_crm_assignment_people_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PersonOut"
+                  },
+                  "title": "Response Pool Candidates Crm Assignment People Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/public/forms/{public_id}": {
       "get": {
         "tags": [
@@ -36569,6 +36623,24 @@
           "statutory_verified"
         ],
         "title": "PayslipSummary"
+      },
+      "PersonOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "PersonOut"
       },
       "PinIn": {
         "properties": {

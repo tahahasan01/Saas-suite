@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
 from .. import context, db, ratelimit, web_forms
 from ..crm_selling_models import (
+    PersonOut,
     PoolMemberOut,
     PoolPut,
     WebFormAnswer,
@@ -89,6 +90,15 @@ def _member(r: asyncpg.Record) -> PoolMemberOut:
 async def get_pool(auth: AuthContext = Depends(perm("crm.settings.manage"))) -> list[PoolMemberOut]:
     async with db.tenant_conn(auth.tenant_id) as conn:
         return [_member(r) for r in await conn.fetch(_POOL)]
+
+
+@router.get("/assignment/people", response_model=list[PersonOut])
+async def pool_candidates(auth: AuthContext = Depends(perm("crm.settings.manage"))) -> list[PersonOut]:
+    """Active teammates, by name only: a CRM admin picks the pool without
+    needing the team screen's rights (emails and roles stay there)."""
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        rows = await conn.fetch("select id, name from users where status = 'active' order by name, id")
+    return [PersonOut(id=str(r["id"]), name=r["name"]) for r in rows]
 
 
 @router.put("/assignment/pool", response_model=list[PoolMemberOut])

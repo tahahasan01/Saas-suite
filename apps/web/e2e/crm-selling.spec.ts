@@ -91,3 +91,41 @@ test.describe("quotes the customer accepts online", () => {
     expect(after.view_count).toBeGreaterThan(0);   // the page's beacon, not the preview GET
   });
 });
+
+test.describe("web forms", () => {
+  test("an admin makes a form, a visitor fills it in signed out, and it becomes a lead", async ({ page, request, browser }) => {
+    const formName = `Website ${uid()}`;
+    const visitor = `Ayesha ${uid()}`;
+    await page.goto("/crm/settings");
+    const forms = page.getByRole("heading", { name: "Web forms" }).locator("..").locator("..");
+    await forms.getByRole("button", { name: "New form" }).click();
+    await forms.getByLabel("Form name (for you)").fill(formName);
+    await forms.getByLabel("Heading customers see").fill("Get a free survey");
+    await forms.getByLabel("Source on the lead").fill("website");
+    await forms.getByRole("button", { name: "Save form" }).click();
+    await expect(page.getByText("Form saved")).toBeVisible();
+    await expect(forms.getByText(formName)).toBeVisible();
+
+    const list = await (await request.get(`${API}/crm/web-forms`)).json();
+    const form = list.find((f: { name: string }) => f.name === formName);
+
+    const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+    const vp = await ctx.newPage();
+    await vp.goto(`${form.link}?utm_source=facebook&utm_campaign=winter`);
+    await expect(vp.getByRole("heading", { name: "Get a free survey" })).toBeVisible();
+    await vp.getByLabel("Your name").fill(visitor);
+    await vp.getByLabel("Phone").fill("0300 7654321");
+    await vp.getByLabel("Message").fill("Please call after 5pm");
+    // The server drops forms sent faster than a person could fill them (3 s).
+    await vp.waitForTimeout(3_500);
+    await vp.getByRole("button", { name: "Send" }).click();
+    await expect(vp.getByText("Thank you. We'll be in touch soon.")).toBeVisible();
+    await ctx.close();
+
+    const leads = await (await request.get(`${API}/crm/leads`)).json();
+    const lead = leads.find((l: { name: string }) => l.name === visitor);
+    expect(lead).toBeTruthy();
+    expect(lead.source).toBe("website");
+    expect(lead.phone).toBe("+923007654321");
+  });
+});

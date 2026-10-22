@@ -2132,6 +2132,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/crm/assignment/people": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Pool Candidates
+         * @description Active teammates, by name only: a CRM admin picks the pool without
+         *     needing the team screen's rights (emails and roles stay there).
+         */
+        get: operations["pool_candidates_crm_assignment_people_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/public/forms/{public_id}": {
         parameters: {
             query?: never;
@@ -10163,6 +10184,13 @@ export interface components {
              */
             error: string;
         };
+        /** PersonOut */
+        PersonOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+        };
         /** PinIn */
         PinIn: {
             /** Pin */
@@ -17598,6 +17626,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PoolMemberOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pool_candidates_crm_assignment_people_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonOut"][];
                 };
             };
             /** @description Validation Error */

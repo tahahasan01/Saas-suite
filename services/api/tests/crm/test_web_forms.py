@@ -226,3 +226,13 @@ async def test_forms_and_the_pool_are_crm_settings(client, shop, path, method):
     body = {"name": "X"} if method == "post" else {"members": []}
     assert (await getattr(client, method)(path, json=body)).status_code == 403
     assert (await client.get("/crm/web-forms")).status_code == 403
+
+
+async def test_crm_admins_can_list_who_may_join_the_pool(client, shop):
+    a, _ = await add_teammate(client, ["read", "write"])
+    await login_as_rep(client, shop, ["read", "write", "admin"])
+    r = await client.get("/crm/assignment/people")
+    assert r.status_code == 200, r.text
+    people = r.json()
+    assert any(p["id"] == a for p in people)
+    assert set(people[0]) == {"id", "name"}          # no emails or roles
