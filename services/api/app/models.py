@@ -2252,6 +2252,7 @@ class EmployeeProfile(EmployeeOut):
     documents_expiring: int = 0     # expired or due within 30 days
     exit_date: date | None = None   # set by offboarding (wave C, 0100)
     exit_reason: str | None = None
+    confirmed_on: date | None = None  # probation confirmed (wave C, 0101)
 
 
 class DocumentCreate(BaseModel):
@@ -2764,3 +2765,162 @@ class BoardingOut(BaseModel):
 
 class MyBoardingTask(BoardingTaskOut):
     kind: BoardingKind
+
+
+# ─── Probation reviews and appraisals (wave C, H25/H26, 0101) ───────────────
+ProbationOutcome = Literal["confirmed", "extended", "ended"]
+PROBATION_OUTCOMES = list(get_args(ProbationOutcome))
+AppraisalCycleStatus = Literal["draft", "open", "closed"]
+APPRAISAL_CYCLE_STATUSES = list(get_args(AppraisalCycleStatus))
+AppraisalStatus = Literal["self_review", "manager_review", "done", "cancelled"]
+APPRAISAL_STATUSES = list(get_args(AppraisalStatus))
+
+
+class ProbationReviewIn(BaseModel):
+    outcome: ProbationOutcome
+    new_end: date | None = None            # extended only
+    on: date | None = None                 # the confirmation date; today when left out
+    note: str = Field(default="", max_length=1000)
+
+    @model_validator(mode="after")
+    def _new_end(self):
+        if (self.outcome == "extended") != (self.new_end is not None):
+            raise ValueError("An extension needs the new end date (and only an extension has one)")
+        return self
+
+
+class ProbationReviewOut(BaseModel):
+    id: str
+    employee_id: str
+    outcome: ProbationOutcome
+    previous_end: date | None
+    new_end: date | None
+    note: str
+    decided_at: datetime
+
+
+class ProbationDue(BaseModel):
+    employee_id: str
+    name: str
+    designation: str
+    manager_name: str | None
+    join_date: date | None
+    probation_end: date
+    days_left: int                          # negative when overdue
+
+
+class KraIn(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    description: str = Field(default="", max_length=1000)
+    weight: int = Field(ge=1, le=100)
+
+
+def _weights_total_100(kras: list[KraIn] | None) -> list[KraIn] | None:
+    if kras is not None and sum(k.weight for k in kras) != 100:
+        raise ValueError("KRA weights must add up to 100")
+    return kras
+
+
+class AppraisalTemplateCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    kras: list[KraIn] = Field(min_length=1, max_length=30)
+
+    @field_validator("kras")
+    @classmethod
+    def _total(cls, v: list[KraIn]) -> list[KraIn]:
+        return _weights_total_100(v) or v
+
+
+class AppraisalTemplateUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    active: bool | None = None
+    kras: list[KraIn] | None = Field(default=None, min_length=1, max_length=30)
+
+    @field_validator("kras")
+    @classmethod
+    def _total(cls, v: list[KraIn] | None) -> list[KraIn] | None:
+        return _weights_total_100(v)
+
+
+class KraOut(KraIn):
+    id: str
+
+
+class AppraisalTemplateOut(BaseModel):
+    id: str
+    name: str
+    active: bool
+    kras: list[KraOut]
+
+
+class AppraisalCycleCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    period_start: date
+    period_end: date
+    template_id: UUID
+    self_review: bool = True
+    employee_ids: list[UUID] | None = Field(default=None, max_length=5000)
+
+    @model_validator(mode="after")
+    def _period(self):
+        if self.period_end < self.period_start:
+            raise ValueError("The period ends before it starts")
+        return self
+
+
+class AppraisalRatingOut(BaseModel):
+    id: str
+    title: str
+    description: str
+    weight: int
+    self_rating: int | None
+    self_note: str
+    manager_rating: int | None             # hidden from the employee until done
+    manager_note: str
+
+
+class AppraisalOut(BaseModel):
+    id: str
+    cycle_id: str
+    cycle_name: str
+    period_start: date
+    period_end: date
+    employee_id: str
+    employee_name: str
+    reviewer_id: str | None
+    reviewer_name: str | None
+    status: AppraisalStatus
+    self_comment: str
+    self_submitted_at: datetime | None
+    manager_comment: str
+    manager_submitted_at: datetime | None
+    score: float | None
+    ratings: list[AppraisalRatingOut] = Field(default_factory=list)
+
+
+class AppraisalCycleOut(BaseModel):
+    id: str
+    name: str
+    period_start: date
+    period_end: date
+    template_id: str
+    template_name: str
+    self_review: bool
+    status: AppraisalCycleStatus
+    created_at: datetime
+    opened_at: datetime | None
+    closed_at: datetime | None
+    counts: dict[str, int] = Field(default_factory=dict)
+    appraisals: list[AppraisalOut] = Field(default_factory=list)
+
+
+class RatingIn(BaseModel):
+    id: UUID
+    rating: int | None = Field(default=None, ge=1, le=5)
+    note: str = Field(default="", max_length=1000)
+
+
+class AppraisalReviewIn(BaseModel):
+    ratings: list[RatingIn] = Field(default_factory=list, max_length=30)
+    comment: str = Field(default="", max_length=4000)
+    submit: bool = False

@@ -9,7 +9,7 @@
 import {
   Banknote, BarChart3, BookUser, Boxes, CalendarCheck, CalendarDays, ClipboardList, Clock, FileText, Gauge,
   HandCoins, KanbanSquare, Laptop, LayoutGrid, ListChecks, type LucideIcon, Megaphone, Palmtree, Receipt, RotateCcw,
-  Settings, ShoppingCart, Sparkles, Store, Truck, UserRound, Users, Wallet, Workflow,
+  Settings, ShoppingCart, Sparkles, Star, Store, Truck, UserRound, Users, Wallet, Workflow,
 } from "lucide-react";
 import type { MeResponse, Section } from "@business-os/types";
 
@@ -104,6 +104,7 @@ export const MODULES: Module[] = [
       { href: "/hrms/notices", label: "Notices" },
       { href: "/hrms/assets", label: "Assets" },
       { href: "/hrms/boarding", label: "Joining & leaving" },
+      { href: "/hrms/performance", label: "Performance" },
     ],
   },
   {
@@ -153,6 +154,8 @@ export const PORTAL_MODULES: Module[] = [
     href: "/me/assets", group: "people" },
   { key: "me-boarding", label: () => "My checklist", icon: ListChecks, color: "--color-mod-hrms",
     href: "/me/boarding", group: "people" },
+  { key: "me-appraisals", label: () => "Appraisals", icon: Star, color: "--color-mod-hrms",
+    href: "/me/appraisals", group: "people" },
   { key: "me-requests", label: () => "My requests", icon: ClipboardList, color: "--color-mod-hrms",
     href: "/me/requests", group: "people" },
 ];

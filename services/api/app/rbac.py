@@ -208,6 +208,9 @@ register("hrms", {
     # Assets issued to staff (wave A, 0087); the value is for managers only.
     "hrms.asset.read": ("hrms", "read"),
     "hrms.asset.manage": ("hrms", "write"),
+    # Appraisals (wave C, 0101); managers review their reports via /me/reviews.
+    "hrms.appraisal.read": ("hrms", "read"),
+    "hrms.appraisal.manage": ("hrms", "admin"),
     # Onboarding and offboarding (wave C, 0100); the exit interview is for managers only.
     "hrms.boarding.read": ("hrms", "read"),
     "hrms.boarding.manage": ("hrms", "write"),

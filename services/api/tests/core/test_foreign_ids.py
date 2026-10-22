@@ -58,6 +58,8 @@ KIND_OF = {
     "claim_id": "overtime_claim",
     # assets (wave A, 0087)
     "asset_id": "asset",
+    "cycle_id": "appraisal_cycle",
+    "appraisal_id": "appraisal",
     "template_id": "boarding_template",
     "boarding_id": "boarding",
     "task_id": "boarding_task",
@@ -155,6 +157,12 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
     btemplate = (await c.post("/hrms/boarding-templates", json={"kind": "onboarding", "name": "Probe",
                                                                 "tasks": [{"title": "Probe task"}]})).json()
     boarding = (await c.post(f"/hrms/employees/{employee['id']}/onboarding", json={})).json()
+    atemplate = (await c.post("/hrms/appraisal-templates", json={"name": "Probe",
+                                                                 "kras": [{"title": "Probe", "weight": 100}]})).json()
+    cycle = (await c.post("/hrms/appraisal-cycles", json={
+        "name": "Probe", "period_start": "2026-01-01", "period_end": "2026-12-31", "template_id": atemplate["id"],
+        "employee_ids": [employee["id"]]})).json()
+    appraisal = (await c.post(f"/hrms/appraisal-cycles/{cycle['id']}/open")).json()["appraisals"][0]
     return {
         "activity_type": activity_type["id"], "activity": activity["id"],
         "lost_reason": (await c.get("/crm/lost-reasons")).json()[0]["id"],
@@ -169,6 +177,7 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
         "overtime_claim": str(overtime_claim), "asset": asset["id"],
         "boarding_template": btemplate["id"], "boarding": boarding["id"],
         "boarding_task": boarding["tasks"][0]["id"],
+        "appraisal_cycle": cycle["id"], "appraisal": appraisal["id"],
         # No payslip exists before a run is calculated; any id stands in (it must still 404).
         "payslip": str(uuid.uuid4()),
         "role": (await c.get("/team/roles")).json()[0]["id"],
