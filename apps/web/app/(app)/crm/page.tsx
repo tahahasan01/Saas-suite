@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Lead, Pipeline, Stage } from "@business-os/types";
+import type { Lead, Pipeline, Stage, Tag } from "@business-os/types";
 import { api } from "@/lib/api";
 import { formatDate, money, moneyCompact } from "@/lib/format";
 import { useSession } from "@/lib/session";
@@ -15,6 +15,7 @@ import { ImportCsv } from "@/components/ImportCsv";
 import { LeadDrawer } from "@/components/crm/LeadDrawer";
 import { ScorePill } from "@/components/crm/ScorePill";
 import { ActivityDot, Stars } from "@/components/crm/bits";
+import { TagChip } from "@/components/contacts/ContactForm";
 
 type View = "board" | "list";
 type Sort = "newest" | "value" | "score" | "priority";
@@ -49,6 +50,7 @@ export default function CrmBoard() {
   const [show, setShow] = useState<Show>("active");
   const [q, setQ] = useState("");
   const [source, setSource] = useState("");
+  const [tag, setTag] = useState("");
   const [sort, setSort] = useState<Sort>("newest");
 
   const pipeline = pipelines?.find((p) => p.id === pipelineId) ?? null;
@@ -98,6 +100,11 @@ export default function CrmBoard() {
   // Sources that actually occur, not the theoretical enum — a filter offering
   // options with zero hits is noise.
   const sources = useMemo(() => [...new Set((leads ?? []).map((l) => l.source))].sort(), [leads]);
+  const tags = useMemo(() => {
+    const byId = new Map<string, Tag>();
+    for (const l of leads ?? []) for (const x of l.tags) byId.set(x.id, x);
+    return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [leads]);
 
   const shown = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -107,12 +114,13 @@ export default function CrmBoard() {
         [l.name, l.company, l.phone, l.email].some((f) => f.toLowerCase().includes(needle)));
     }
     if (source) out = out.filter((l) => l.source === source);
+    if (tag) out = out.filter((l) => l.tags.some((x) => x.id === tag));
     return [...out].sort((a, b) =>
       sort === "value" ? b.value_minor - a.value_minor
       : sort === "score" ? (b.score ?? 0) - (a.score ?? 0)
       : sort === "priority" ? b.priority - a.priority || +new Date(b.created_at) - +new Date(a.created_at)
       : +new Date(b.created_at) - +new Date(a.created_at));
-  }, [leads, q, source, sort]);
+  }, [leads, q, source, tag, sort]);
 
   if (pipelineError) return <ErrorState message={pipelineError} onRetry={loadPipelines} />;
   if (pipelines === undefined) return <LoadingRows label="Loading pipeline" />;
@@ -171,6 +179,14 @@ export default function CrmBoard() {
             <Select value={source} onChange={(e) => setSource(e.target.value)} aria-label="Source">
               <option value="">All sources</option>
               {sources.map((s) => <option key={s} value={s}>{s}</option>)}
+            </Select>
+          </div>
+        )}
+        {tags.length > 0 && (
+          <div className="w-36">
+            <Select value={tag} onChange={(e) => setTag(e.target.value)} aria-label="Tag">
+              <option value="">All tags</option>
+              {tags.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
             </Select>
           </div>
         )}
@@ -380,6 +396,9 @@ function LeadCard({ lead: l, stage, onOpen, setDragId }: {
       </span>
       <span id={detailsId} className="block">
         {l.company && <span className="block truncate text-xs text-fg-subtle" title={l.company}>{l.company}</span>}
+        {l.tags.length > 0 && (
+          <span className="mt-1.5 flex flex-wrap gap-1">{l.tags.map((x) => <TagChip key={x.id} tag={x} />)}</span>
+        )}
         <span className="mt-2 flex items-center justify-between gap-2">
           <span className="flex items-center gap-1.5">
             <span className="text-xs font-medium tabular-nums">{money(l.value_minor, l.currency)}</span>

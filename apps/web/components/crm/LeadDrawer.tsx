@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { Activity, FulfillmentSchema, Lead, LeadDetail, Stage } from "@business-os/types";
+import type { Activity, FulfillmentSchema, Lead, LeadDetail, Stage, Tag } from "@business-os/types";
 import type { Schema } from "@business-os/api-client";
 import { api, apiUrl } from "@/lib/api";
 import { formatDay, money } from "@/lib/format";
@@ -12,6 +12,7 @@ import { Badge, Button, ErrorState, Field, Input, LoadingRows, Select } from "@/
 import { ActivityActions, LostDialog, PriorityPicker, ScheduleActivity, TypeIcon } from "./bits";
 import { TimelineList } from "./Timeline";
 import { LeadContactCard } from "@/components/contacts/LeadContactCard";
+import { TagChip } from "@/components/contacts/ContactForm";
 
 const invTone = {
   draft: "neutral", pending_approval: "warning", issued: "brand", partially_paid: "warning", paid: "success", void: "danger",
@@ -241,7 +242,45 @@ function DealFields({ lead, disabled, onSaved }: { lead: Lead; disabled: boolean
           Weighted value <span className="font-medium tabular-nums text-fg">{money(lead.weighted_value_minor, lead.currency)}</span>
         </span>
       </div>
+      <LeadTags lead={lead} disabled={disabled} onChange={(ids) => patch({ tag_ids: ids })} />
     </section>
+  );
+}
+
+/** The lead's tags, from the list contacts share; add from a picker, remove with ×. */
+function LeadTags({ lead, disabled, onChange }: { lead: Lead; disabled: boolean; onChange: (ids: string[]) => void }) {
+  const [all, setAll] = useState<Tag[] | null>(null);
+  useEffect(() => {
+    // Reading the tag list needs contacts read; without it the lead's own tags still show.
+    api<Tag[]>("/tags").then(setAll).catch(() => setAll([]));
+  }, []);
+  const mine = lead.tags.map((t) => t.id);
+  const free = (all ?? []).filter((t) => !mine.includes(t.id));
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 text-sm">
+      <span className="text-xs text-fg-muted">Tags</span>
+      {lead.tags.length === 0 && <span className="text-xs text-fg-subtle">None</span>}
+      {lead.tags.map((t) => (
+        <span key={t.id} className="inline-flex items-center gap-0.5">
+          <TagChip tag={t} />
+          {!disabled && (
+            <button type="button" className="rounded px-1 text-xs text-fg-subtle hover:text-fg"
+                    aria-label={`Remove tag ${t.name}`} onClick={() => onChange(mine.filter((id) => id !== t.id))}>
+              ×
+            </button>
+          )}
+        </span>
+      ))}
+      {!disabled && free.length > 0 && (
+        <span className="w-32">
+          <Select value="" aria-label="Add tag" className="py-1 text-xs"
+                  onChange={(e) => e.target.value && onChange([...mine, e.target.value])}>
+            <option value="">Add tag…</option>
+            {free.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </Select>
+        </span>
+      )}
+    </div>
   );
 }
 

@@ -139,14 +139,7 @@ async def _check_company(conn: asyncpg.Connection, kind: str, company_id: Any) -
 
 
 async def _set_tags(conn: asyncpg.Connection, tenant_id: str, contact_id: Any, tag_ids: list[Any]) -> None:
-    ids = list(dict.fromkeys(tag_ids))
-    if ids and await conn.fetchval("select count(*) from tags where id = any($1::uuid[])", ids) != len(ids):
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Tag not found")
-    await conn.execute("delete from record_tags where entity_type = 'contact' and entity_id = $1", contact_id)
-    for tid in ids:
-        await conn.execute(
-            "insert into record_tags (tenant_id, tag_id, entity_type, entity_id) values ($1, $2, 'contact', $3)",
-            tenant_id, tid, contact_id)
+    await contacts.set_tags(conn, tenant_id, "contact", contact_id, tag_ids)
 
 
 # ── List, lookup, create ────────────────────────────────────────────────────

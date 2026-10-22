@@ -7583,6 +7583,8 @@ export interface components {
             priority: number;
             /** Expected Close Date */
             expected_close_date?: string | null;
+            /** Tag Ids */
+            tag_ids?: string[];
             /**
              * Force
              * @default false
@@ -7678,6 +7680,11 @@ export interface components {
             activity_state?: ("overdue" | "today" | "planned") | null;
             /** Next Activity Date */
             next_activity_date?: string | null;
+            /**
+             * Tags
+             * @default []
+             */
+            tags: components["schemas"]["TagOut"][];
         };
         /** LeadUpdate */
         LeadUpdate: {
@@ -7703,6 +7710,8 @@ export interface components {
             priority?: number | null;
             /** Expected Close Date */
             expected_close_date?: string | null;
+            /** Tag Ids */
+            tag_ids?: string[] | null;
         };
         /**
          * LeaveBalance
@@ -12204,6 +12213,7 @@ export interface operations {
                 pipeline_id?: string | null;
                 /** @description Comma list of open, won, lost */
                 status?: string | null;
+                tag_id?: string | null;
             };
             header?: never;
             path?: never;

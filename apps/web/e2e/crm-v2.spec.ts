@@ -151,3 +151,24 @@ test.describe("CRM settings", () => {
     await expect(page.getByRole("button", { name: `Delete ${name}` })).toHaveCount(0);
   });
 });
+
+test.describe("lead tags", () => {
+  test("a tag added in the drawer shows on the card and filters the board", async ({ page, request }) => {
+    const tagName = `Tag ${uid()}`;
+    const tag = await (await request.post(`${API}/tags`, { data: { name: tagName } })).json();
+    const { lead } = await freshLead(request);
+    const { lead: other } = await freshLead(request);
+    await page.goto("/crm");
+    const main = page.getByRole("main");
+    await main.getByRole("button", { name: `Open ${lead.name}` }).click();
+    const drawer = page.getByRole("dialog", { name: lead.name });
+    await drawer.getByLabel("Add tag").selectOption({ label: tagName });
+    await expect(drawer.getByRole("button", { name: `Remove tag ${tagName}` })).toBeVisible();
+    await page.keyboard.press("Escape");
+
+    await expect(main.getByRole("button", { name: `Open ${lead.name}` })).toContainText(tagName);
+    await page.getByLabel("Tag", { exact: true }).selectOption(tag.id);
+    await expect(main.getByRole("button", { name: `Open ${lead.name}` })).toBeVisible();
+    await expect(main.getByRole("button", { name: `Open ${other.name}` })).toHaveCount(0);
+  });
+});

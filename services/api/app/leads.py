@@ -22,7 +22,7 @@ from fastapi import HTTPException, status
 
 from . import rbac, scopes, timeline
 from .deps import AuthContext
-from .models import LeadOut, LeadStatus, TimelineKind
+from .models import LeadOut, LeadStatus, TagOut, TimelineKind
 from .workflow import engine as wf
 
 
@@ -36,7 +36,7 @@ async def ensure_in_scope(conn: asyncpg.Connection, auth: AuthContext, key: str,
 
 LEAD_SELECT = """
 select l.*, s.is_won as stage_is_won, r.name as lost_reason,
-       act.next_date as next_activity_date,
+       act.next_date as next_activity_date, tg.tags,
        case when act.next_date is null then null
             when act.next_date < current_date then 'overdue'
             when act.next_date = current_date then 'today'
@@ -47,7 +47,12 @@ select l.*, s.is_won as stage_is_won, r.name as lost_reason,
   left join lateral (
        select min(a.due_date) as next_date from activities a
         where a.entity_type = 'lead' and a.entity_id = l.id
-          and a.done_at is null and a.cancelled_at is null) act on true"""
+          and a.done_at is null and a.cancelled_at is null) act on true
+  left join lateral (
+       select coalesce(jsonb_agg(jsonb_build_object('id', t.id, 'name', t.name, 'color', t.color)
+                                 order by lower(t.name)), '[]'::jsonb) as tags
+         from record_tags rt join tags t on t.id = rt.tag_id
+        where rt.entity_type = 'lead' and rt.entity_id = l.id) tg on true"""
 
 
 def weighted(value_minor: int, probability: int | None) -> int:
@@ -80,6 +85,7 @@ def lead_out(row: asyncpg.Record) -> LeadOut:
         expected_close_date=d.get("expected_close_date"), priority=d.get("priority") or 0,
         stage_entered_at=d.get("stage_entered_at"), activity_state=d.get("activity_state"),
         next_activity_date=d.get("next_activity_date"),
+        tags=[TagOut(id=str(t["id"]), name=t["name"], color=t["color"]) for t in d.get("tags") or []],
     )
 
 

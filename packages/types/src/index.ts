@@ -487,6 +487,8 @@ export interface Lead {
   /** Worst state among open activities. */
   activity_state: "overdue" | "today" | "planned" | null;
   next_activity_date: string | null;
+  /** The shared contacts tags (record_tags). */
+  tags: Tag[];
 }
 
 export interface FulfillmentField {

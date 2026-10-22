@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import Any
 
 import asyncpg
+from fastapi import HTTPException, status
 
 from . import activities, audit
 from .models import ContactBrief, ContactDuplicate, ContactOut, DuplicateReason, TagOut
@@ -55,6 +56,19 @@ def brief(row: asyncpg.Record) -> ContactBrief:
         phone_e164=row["phone_e164"], email=row["email"],
         company_name=dict(row).get("linked_company_name") or row["company_name"],
         archived=row["archived_at"] is not None)
+
+
+async def set_tags(conn: asyncpg.Connection, tenant_id: str, entity_type: str, entity_id: Any,
+                   tag_ids: list[Any]) -> None:
+    """Replace a record's tags (contacts and leads share the tag list)."""
+    ids = list(dict.fromkeys(tag_ids))
+    if ids and await conn.fetchval("select count(*) from tags where id = any($1::uuid[])", ids) != len(ids):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Tag not found")
+    await conn.execute("delete from record_tags where entity_type = $1 and entity_id = $2", entity_type, entity_id)
+    for tid in ids:
+        await conn.execute(
+            "insert into record_tags (tenant_id, tag_id, entity_type, entity_id) values ($1, $2, $3, $4)",
+            tenant_id, tid, entity_type, entity_id)
 
 
 async def tags_by_contact(conn: asyncpg.Connection, ids: list[Any]) -> dict[str, list[TagOut]]:

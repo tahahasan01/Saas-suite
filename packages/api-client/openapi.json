@@ -1465,6 +1465,23 @@
             "description": "Comma list of open, won, lost"
           },
           {
+            "name": "tag_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tag Id"
+            }
+          },
+          {
             "name": "bos_session",
             "in": "cookie",
             "required": false,
@@ -28482,6 +28499,15 @@
             ],
             "title": "Expected Close Date"
           },
+          "tag_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Tag Ids"
+          },
           "force": {
             "type": "boolean",
             "title": "Force",
@@ -28775,6 +28801,14 @@
               }
             ],
             "title": "Next Activity Date"
+          },
+          "tags": {
+            "items": {
+              "$ref": "#/components/schemas/TagOut"
+            },
+            "type": "array",
+            "title": "Tags",
+            "default": []
           }
         },
         "type": "object",
@@ -28922,6 +28956,22 @@
               }
             ],
             "title": "Expected Close Date"
+          },
+          "tag_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "type": "array",
+                "maxItems": 20
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag Ids"
           }
         },
         "type": "object",

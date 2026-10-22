@@ -340,6 +340,7 @@ class LeadOut(BaseModel):
     # Worst state among the lead's open activities, and the earliest due day.
     activity_state: Literal["overdue", "today", "planned"] | None = None
     next_activity_date: date | None = None
+    tags: list[TagOut] = []
 
 
 class LeadCreate(BaseModel):
@@ -353,6 +354,7 @@ class LeadCreate(BaseModel):
     stage_id: str | None = None
     priority: int = Field(default=0, ge=0, le=3)
     expected_close_date: date | None = None
+    tag_ids: list[UUID] = Field(default_factory=list, max_length=20)   # the shared contacts tags
     force: bool = False  # create even if a possible duplicate is detected
 
 
@@ -370,6 +372,7 @@ class LeadUpdate(BaseModel):
     probability_auto: bool | None = None
     priority: int | None = Field(default=None, ge=0, le=3)
     expected_close_date: date | None = None
+    tag_ids: list[UUID] | None = Field(default=None, max_length=20)   # replaces the lead's tags
 
 
 class LeadLost(BaseModel):

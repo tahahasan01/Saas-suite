@@ -6,10 +6,11 @@ entitlement + RBAC."""
 from __future__ import annotations
 
 import datetime as dt
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 
-from .. import activities, audit, csv_io, db, fulfillment, leads, pipelines, refs, scoring, timeline
+from .. import activities, audit, contacts, csv_io, db, fulfillment, leads, pipelines, refs, scoring, timeline
 from ..deps import AuthContext
 from ..models import (
     LEAD_STATUSES,
@@ -158,6 +159,7 @@ def _statuses(raw: str | None) -> list[str] | None:
 async def list_leads(pipeline_id: str | None = None,
                      status_filter: str | None = Query(None, alias="status",
                                                        description="Comma list of open, won, lost"),
+                     tag_id: UUID | None = None,
                      auth: AuthContext = Depends(perm("crm.lead.read"))):
     wanted = _statuses(status_filter)
     async with db.tenant_conn(auth.tenant_id) as conn:
@@ -165,8 +167,11 @@ async def list_leads(pipeline_id: str | None = None,
         scope = await scope_of(conn, auth, "crm.lead.read")   # own/team/branch/all (D-04)
         rows = await conn.fetch(
             leads.LEAD_SELECT + f""" where l.pipeline_id = $1 and ($2::text[] is null or l.status = any($2::text[]))
+                                     and ($3::uuid is null or exists (
+                                          select 1 from record_tags rt where rt.entity_type = 'lead'
+                                             and rt.entity_id = l.id and rt.tag_id = $3))
                                      and {where('crm.lead', scope, 'l')}
-                                    order by l.created_at desc""", pid, wanted)
+                                    order by l.created_at desc""", pid, wanted, tag_id)
     return [leads.lead_out(r) for r in rows]
 
 
@@ -218,6 +223,8 @@ async def create_lead(body: LeadCreate, auth: AuthContext = Depends(require("crm
             auth.tenant_id, pid, stage["id"], auth.user_id, body.name, body.company, body.phone,
             body.email, body.source, body.value_minor, lead_score, lead_status,
             100 if stage["is_won"] else stage["default_probability"], body.priority, body.expected_close_date)
+        if body.tag_ids:
+            await contacts.set_tags(conn, auth.tenant_id, "lead", row["id"], body.tag_ids)
         await timeline.record(conn, entity_type="lead", entity_id=str(row["id"]), kind="system",
                               payload={"event": "created", "source": body.source})
         await wf.emit(conn, auth.user_id, "lead.created", leads.event_payload(row))
@@ -243,10 +250,13 @@ async def update_lead(lead_id: str, body: LeadUpdate, auth: AuthContext = Depend
     fields = body.model_dump(exclude_unset=True)
     # Explicit nulls only clear the fields that may be empty.
     fields = {k: v for k, v in fields.items() if v is not None or k == "expected_close_date"}
+    tag_ids = fields.pop("tag_ids", None)
     async with db.tenant_conn(auth.tenant_id) as conn:
         await leads.ensure_in_scope(conn, auth, "crm.lead.update", lead_id)
         before = await leads.lock(conn, lead_id)
         await refs.ensure_visible(conn, "users", fields.get("owner_id"))
+        if tag_ids is not None:
+            await contacts.set_tags(conn, auth.tenant_id, "lead", lead_id, tag_ids)
         patch = await leads.plan_patch(conn, before, fields)
         return await leads.save(conn, auth.user_id, before, patch)
 
