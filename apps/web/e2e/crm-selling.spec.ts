@@ -131,3 +131,27 @@ test.describe("web forms", () => {
     expect(lead.phone).toBe(`+92${phone.slice(1)}`);
   });
 });
+
+test.describe("targets and forecast", () => {
+  test("a manager sets this month's company target and sees progress; the forecast lists an open deal", async ({ page, request }) => {
+    const close = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Karachi" });
+    const name = `Forecast ${uid()}`;
+    const res = await request.post(`${API}/crm/leads`, {
+      data: { name, value_minor: 300_000_00, force: true, expected_close_date: close },
+    });
+    expect(res.ok()).toBeTruthy();
+
+    await page.goto("/crm/reports");
+    const targets = page.getByRole("heading", { name: "Targets" }).locator("../..");
+    await targets.getByLabel("Measure").selectOption("collected");
+    await targets.getByLabel("Target (PKR)").fill("1000000");
+    await targets.getByRole("button", { name: "Set target" }).click();
+    await expect(page.getByText("Target saved")).toBeVisible();
+    await expect(targets.getByText(/Whole company · Collected/)).toBeVisible();
+    await expect(targets.getByText(/of Rs\s?10,00,000|of PKR\s?1,000,000|1,000,000/)).toBeVisible();
+
+    const forecast = page.getByRole("heading", { name: "Forecast" }).locator("..");
+    await forecast.getByRole("row").nth(1).getByRole("button").click();   // this month's deals
+    await expect(forecast.getByText(name)).toBeVisible();
+  });
+});

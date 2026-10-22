@@ -6,6 +6,7 @@ import { api, apiUrl } from "@/lib/api";
 import { money } from "@/lib/format";
 import { errorText } from "@/lib/useAction";
 import { Card, EmptyState, ErrorState, Field, Input, LoadingRows, Select } from "@/components/ui";
+import { TargetsAndForecast } from "@/components/crm/TargetsForecast";
 
 type Filters = { pipeline_id: string; date_from: string; date_to: string };
 
@@ -49,6 +50,7 @@ export default function CrmReportsPage() {
 
   return (
     <div className="space-y-6">
+      <TargetsAndForecast />
       <div className="flex flex-wrap items-end gap-3">
         {pipelines.length > 1 && (
           <div className="w-48">

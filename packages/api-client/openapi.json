@@ -4821,7 +4821,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__models__ForecastOut"
+                  "$ref": "#/components/schemas/ForecastOut"
                 }
               }
             }
@@ -8295,7 +8295,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__crm_selling_models__ForecastOut"
+                  "$ref": "#/components/schemas/SalesForecastOut"
                 }
               }
             }
@@ -30879,6 +30879,22 @@
         ],
         "title": "ForecastItem"
       },
+      "ForecastOut": {
+        "properties": {
+          "occasions": {
+            "items": {
+              "$ref": "#/components/schemas/OccasionForecast"
+            },
+            "type": "array",
+            "title": "Occasions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "occasions"
+        ],
+        "title": "ForecastOut"
+      },
       "ForgotRequest": {
         "properties": {
           "email": {
@@ -41098,6 +41114,30 @@
         ],
         "title": "SaleRow"
       },
+      "SalesForecastOut": {
+        "properties": {
+          "months": {
+            "items": {
+              "$ref": "#/components/schemas/ForecastBucket"
+            },
+            "type": "array",
+            "title": "Months"
+          },
+          "overdue": {
+            "$ref": "#/components/schemas/ForecastBucket"
+          },
+          "no_date": {
+            "$ref": "#/components/schemas/ForecastBucket"
+          }
+        },
+        "type": "object",
+        "required": [
+          "months",
+          "overdue",
+          "no_date"
+        ],
+        "title": "SalesForecastOut"
+      },
       "SequenceOut": {
         "properties": {
           "id": {
@@ -44392,30 +44432,6 @@
         "type": "object",
         "title": "WorkflowUpdate"
       },
-      "app__crm_selling_models__ForecastOut": {
-        "properties": {
-          "months": {
-            "items": {
-              "$ref": "#/components/schemas/ForecastBucket"
-            },
-            "type": "array",
-            "title": "Months"
-          },
-          "overdue": {
-            "$ref": "#/components/schemas/ForecastBucket"
-          },
-          "no_date": {
-            "$ref": "#/components/schemas/ForecastBucket"
-          }
-        },
-        "type": "object",
-        "required": [
-          "months",
-          "overdue",
-          "no_date"
-        ],
-        "title": "ForecastOut"
-      },
       "app__invoice_models__PaymentIn": {
         "properties": {
           "method": {
@@ -44457,22 +44473,6 @@
           "paid_on"
         ],
         "title": "PaymentIn"
-      },
-      "app__models__ForecastOut": {
-        "properties": {
-          "occasions": {
-            "items": {
-              "$ref": "#/components/schemas/OccasionForecast"
-            },
-            "type": "array",
-            "title": "Occasions"
-          }
-        },
-        "type": "object",
-        "required": [
-          "occasions"
-        ],
-        "title": "ForecastOut"
       },
       "app__routers__khata__PaymentIn": {
         "properties": {

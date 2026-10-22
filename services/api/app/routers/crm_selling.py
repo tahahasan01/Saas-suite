@@ -12,7 +12,7 @@ from .. import db, deal_lines, leads, quotes, rbac, targets
 from ..crm_selling_models import (
     MONTH,
     Copied,
-    ForecastOut,
+    SalesForecastOut,
     TargetCopy,
     TargetIn,
     TargetOut,
@@ -171,8 +171,8 @@ async def copy_targets(body: TargetCopy, auth: AuthContext = Depends(perm("crm.t
         return Copied(copied=await targets.copy(conn, auth.tenant_id, auth.user_id, body.from_month, body.to_month))
 
 
-@router.get("/forecast", response_model=ForecastOut)
+@router.get("/forecast", response_model=SalesForecastOut)
 async def forecast(months: int = Query(6, ge=1, le=12),
-                   auth: AuthContext = Depends(perm("crm.report.read"))) -> ForecastOut:
+                   auth: AuthContext = Depends(perm("crm.report.read"))) -> SalesForecastOut:
     async with db.tenant_conn(auth.tenant_id) as conn:
         return await targets.forecast(conn, auth, months)

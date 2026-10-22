@@ -8103,6 +8103,11 @@ export interface components {
             /** Recommend Qty */
             recommend_qty: number;
         };
+        /** ForecastOut */
+        ForecastOut: {
+            /** Occasions */
+            occasions: components["schemas"]["OccasionForecast"][];
+        };
         /** ForgotRequest */
         ForgotRequest: {
             /**
@@ -11840,6 +11845,13 @@ export interface components {
             /** Register Code */
             register_code: string | null;
         };
+        /** SalesForecastOut */
+        SalesForecastOut: {
+            /** Months */
+            months: components["schemas"]["ForecastBucket"][];
+            overdue: components["schemas"]["ForecastBucket"];
+            no_date: components["schemas"]["ForecastBucket"];
+        };
         /** SequenceOut */
         SequenceOut: {
             /** Id */
@@ -13032,13 +13044,6 @@ export interface components {
             /** Enabled */
             enabled?: boolean | null;
         };
-        /** ForecastOut */
-        app__crm_selling_models__ForecastOut: {
-            /** Months */
-            months: components["schemas"]["ForecastBucket"][];
-            overdue: components["schemas"]["ForecastBucket"];
-            no_date: components["schemas"]["ForecastBucket"];
-        };
         /** PaymentIn */
         app__invoice_models__PaymentIn: {
             /**
@@ -13058,11 +13063,6 @@ export interface components {
              * @default
              */
             reference: string;
-        };
-        /** ForecastOut */
-        app__models__ForecastOut: {
-            /** Occasions */
-            occasions: components["schemas"]["OccasionForecast"][];
         };
         /** PaymentIn */
         app__routers__khata__PaymentIn: {
@@ -15791,7 +15791,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["app__models__ForecastOut"];
+                    "application/json": components["schemas"]["ForecastOut"];
                 };
             };
             /** @description Validation Error */
@@ -17673,7 +17673,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["app__crm_selling_models__ForecastOut"];
+                    "application/json": components["schemas"]["SalesForecastOut"];
                 };
             };
             /** @description Validation Error */

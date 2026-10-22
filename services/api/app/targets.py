@@ -24,7 +24,7 @@ import asyncpg
 from fastapi import HTTPException, status
 
 from . import leads, rbac, scopes, sequences
-from .crm_selling_models import ForecastBucket, ForecastDeal, ForecastOut, TargetOut
+from .crm_selling_models import ForecastBucket, ForecastDeal, SalesForecastOut, TargetOut
 from .deps import AuthContext
 
 
@@ -127,7 +127,7 @@ def _add(b: ForecastBucket, r: asyncpg.Record) -> None:
     b.deals.append(d)
 
 
-async def forecast(conn: asyncpg.Connection, auth: AuthContext, months: int) -> ForecastOut:
+async def forecast(conn: asyncpg.Connection, auth: AuthContext, months: int) -> SalesForecastOut:
     scope = await rbac.scope_of(conn, auth, "crm.lead.read")
     visible = scopes.where("crm.lead", scope, "l")
     today = await sequences.local_date(conn, None)
@@ -155,4 +155,4 @@ async def forecast(conn: asyncpg.Connection, auth: AuthContext, months: int) -> 
                  where l.status = 'won' and l.won_at >= $1 and l.won_at < $2 and {visible} group by 1""",
             start, end):
         buckets[r["m"]].won_minor = int(r["v"])
-    return ForecastOut(months=list(buckets.values()), overdue=overdue, no_date=no_date)
+    return SalesForecastOut(months=list(buckets.values()), overdue=overdue, no_date=no_date)

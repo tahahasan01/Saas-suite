@@ -334,7 +334,7 @@ class ForecastBucket(BaseModel):
     deals: list[ForecastDeal] = Field(default_factory=list)
 
 
-class ForecastOut(BaseModel):
+class SalesForecastOut(BaseModel):
     months: list[ForecastBucket]
     overdue: ForecastBucket       # open deals whose close date has passed
     no_date: ForecastBucket       # open deals with no close date
