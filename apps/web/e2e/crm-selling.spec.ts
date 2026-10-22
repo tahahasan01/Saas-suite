@@ -155,3 +155,48 @@ test.describe("targets and forecast", () => {
     await expect(forecast.getByText(name)).toBeVisible();
   });
 });
+
+test.describe("campaigns", () => {
+  test("a contact who agreed gets the campaign; the send says who was left out", async ({ page, request }) => {
+    const id = uid();
+    const tag = await (await request.post(`${API}/tags`, { data: { name: `Eid ${id}` } })).json();
+    const yes = await (await request.post(`${API}/contacts`, {
+      data: { name: `Sara ${id}`, email: `sara.${id}@example.com`, force: true, tag_ids: [tag.id] } })).json();
+    await request.post(`${API}/contacts`, {
+      data: { name: `Omar ${id}`, email: `omar.${id}@example.com`, force: true, tag_ids: [tag.id] } });
+
+    // Consent is recorded on the contact's page.
+    await page.goto(`/contacts/${yes.id}`);
+    await page.getByRole("tab", { name: "Details" }).click();
+    await page.getByLabel("Email marketing").selectOption("opted_in");
+    await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+
+    await page.goto("/crm/campaigns");
+    const lists = page.getByRole("heading", { name: "Saved lists" }).locator("..");
+    await lists.getByLabel("List name").fill(`Eid list ${id}`);
+    await lists.getByLabel("With tag").selectOption({ label: `Eid ${id}` });
+    await lists.getByRole("button", { name: "Save list" }).click();
+    await expect(page.getByText("List saved")).toBeVisible();
+
+    const tpls = page.getByRole("heading", { name: "Email templates" }).locator("..");
+    await tpls.getByLabel("Template name").fill(`Eid offer ${id}`);
+    await tpls.getByLabel("Subject").fill("Eid Mubarak, {{first_name}}!");
+    await tpls.getByLabel("Message").fill("Dear {{first_name|Customer}}, 20% off this week.");
+    await tpls.getByRole("button", { name: "Save template" }).click();
+    await expect(page.getByText("Template saved")).toBeVisible();
+
+    const camps = page.getByRole("heading", { name: "Campaigns" }).locator("..");
+    await camps.getByLabel("Campaign name").fill(`Eid ${id}`);
+    await camps.getByLabel("Send to").selectOption({ label: `Eid list ${id}` });
+    await camps.getByLabel("Message").selectOption({ label: `Eid offer ${id}` });
+    await camps.getByRole("button", { name: "Save draft" }).click();
+    await expect(page.getByText("Campaign saved as a draft")).toBeVisible();
+
+    await camps.getByRole("listitem").filter({ hasText: `Eid ${id}` }).getByRole("button", { name: "Send" }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toContainText("to 1 person");
+    await expect(dialog).toContainText("1 haven't agreed to marketing");
+    await dialog.getByRole("button", { name: "Send now" }).click();
+    await expect(camps.getByRole("listitem").filter({ hasText: `Eid ${id}` })).toContainText("1 sent, 1 left out");
+  });
+});

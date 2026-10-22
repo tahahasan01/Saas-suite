@@ -53,6 +53,7 @@ export const MODULES: Module[] = [
     tabs: [
       { href: "/crm", label: "Pipeline" },
       { href: "/crm/reports", label: "Reports" },
+      { href: "/crm/campaigns", label: "Campaigns" },
       { href: "/crm/settings", label: "Settings" },
     ],
   },
