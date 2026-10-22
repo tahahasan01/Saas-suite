@@ -31,6 +31,12 @@ describe("CSP", () => {
       .toBe("connect-src 'self' https://o1.ingest.sentry.io");
   });
 
+  it("lets the offline till's own service worker and manifest load, nothing else's", () => {
+    // 'strict-dynamic' ignores 'self' in script-src, so worker-src must say it.
+    expect(directive(buildCsp("n", { dev: false }), "worker-src")).toBe("worker-src 'self'");
+    expect(directive(buildCsp("n", { dev: false }), "manifest-src")).toBe("manifest-src 'self'");
+  });
+
   it("makes a fresh 128-bit nonce each time", () => {
     const a = newNonce();
     expect(atob(a)).toHaveLength(16);

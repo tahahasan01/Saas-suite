@@ -26,6 +26,10 @@ export function buildCsp(nonce: string, { dev, connectSrc = [] }: CspOptions): s
     "img-src": ["'self'", "data:", "blob:"],
     "font-src": ["'self'", "data:"],
     "connect-src": ["'self'", ...(dev ? ["ws:", "wss:"] : []), ...connectSrc],
+    // The offline till's service worker and manifest (3D): 'strict-dynamic'
+    // makes script-src ignore 'self', so the worker needs its own directive.
+    "worker-src": ["'self'"],
+    "manifest-src": ["'self'"],
     "object-src": ["'none'"],
     "base-uri": ["'self'"],
     "form-action": ["'self'"],

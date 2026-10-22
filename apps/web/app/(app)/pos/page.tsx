@@ -4,7 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import type { PosSummary, Product, Sale } from "@business-os/types";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError, NetworkError } from "@/lib/api";
+import { can } from "@/lib/can";
+import { lookupOrCached, productsOrCached, sellOffline } from "@/lib/offline/till";
 import { qk } from "@/lib/queryKeys";
 import { useHotkey, useHotkeyScope } from "@/lib/useHotkey";
 import { money, moneyCompact } from "@/lib/format";
@@ -17,6 +19,7 @@ import { Receipt } from "@/components/pos/Receipt";
 import { HeldBills } from "@/components/pos/HeldBills";
 import { ApprovalPrompt, type Approval } from "@/components/pos/ApprovalPrompt";
 import { CashierSignIn, cashierToken, forgetCashier } from "@/components/pos/CashierSignIn";
+import { SyncPill, useTill } from "@/components/pos/SyncPill";
 import { CustomerPicker, type Customer } from "@/components/contacts/CustomerPicker";
 
 interface DrawerLite {
@@ -42,6 +45,7 @@ function newCartKey(): string {
 const BARCODE = /^\d{6,}$/;
 
 const LOCKED_MSG = "The cart is locked until the last sale is charged again or cleared.";
+const OTHER_TAB_MSG = "This till is already open in another tab. Sell from that tab; this one is view-only.";
 
 const isWide = () => typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches;
 const finePointer = () => typeof window !== "undefined" && window.matchMedia("(pointer: fine)").matches;
@@ -79,6 +83,8 @@ export default function PosBilling() {
   const [unconfirmed, setUnconfirmed] = useState(false);
   // The server asked for a manager's PIN (a discount the cashier can't give).
   const [needsApproval, setNeedsApproval] = useState(false);
+  // A registered till keeps selling without the server (3D).
+  const till = useTill();
 
   // After a charge that wasn't confirmed, the sale may already be recorded on
   // the server. Until it is retried as-is (same cart id) or cleared on purpose,
@@ -100,7 +106,7 @@ export default function PosBilling() {
   const searchSeq = useRef(0);
   const search = useCallback((text: string) => {
     const seq = ++searchSeq.current;
-    api<Product[]>(`/pos/products${text ? `?q=${encodeURIComponent(text)}` : ""}`)
+    productsOrCached(text)
       .then((r) => { if (seq === searchSeq.current) { setResults(r); setCatalogError(null); } })
       .catch(() => { if (seq === searchSeq.current) setCatalogError(`Couldn't load ${t("products").toLowerCase()}.`); });
   }, [t]);
@@ -176,14 +182,11 @@ export default function PosBilling() {
     if (looksLikeBarcode) setQ("");
 
     try {
-      const p = await api<Product>(`/pos/products/lookup?barcode=${encodeURIComponent(text)}`);
-      addScanned(p, text);
+      const p = await lookupOrCached(text);
+      if (p) { addScanned(p, text); return; }
+    } catch {
+      setScanMsg(`Couldn't look up ${text}. Check the connection and try again.`);
       return;
-    } catch (err) {
-      if (!(err instanceof ApiError && err.status === 404)) {
-        setScanMsg(`Couldn't look up ${text}. Check the connection and try again.`);
-        return;
-      }
     }
     if (looksLikeBarcode) {
       setScanMsg(`No product with barcode ${text}.`);
@@ -195,7 +198,7 @@ export default function PosBilling() {
     const seq = ++searchSeq.current;
     let found: Product[];
     try {
-      found = await api<Product[]>(`/pos/products?q=${encodeURIComponent(text)}`);
+      found = await productsOrCached(text);
     } catch {
       setScanMsg(`Couldn't search for "${text}". Check the connection and try again.`);
       return;
@@ -265,13 +268,23 @@ export default function PosBilling() {
   /** Returns the refusal to show in the approval prompt, else null. */
   async function charge(approval?: Approval): Promise<string | null> {
     if (cart.length === 0 || inFlight.current) return null;
+    if (till.otherTab) { setChargeError(OTHER_TAB_MSG); return null; }
     inFlight.current = true;
     setCharging(true);
     setChargeError(null);
     setUnconfirmed(false);
     try {
       const cashier = cashierToken();
-      const sale = await api<Sale>("/pos/sales", {
+      // Offline, or the server didn't answer: a registered till saves the sale
+      // in its outbox (same cart id, so it can never be recorded twice).
+      const offline = () => {
+        if (discountMinor > 0 && !can(me, "pos.sale.discount")) {
+          throw new Error("A discount you can't give needs a manager online. Remove it, or wait for the connection.");
+        }
+        return sellOffline({ clientUuid: cartKey.current, lines: cart.map((l) => ({ product: l.product, qty: l.qty })),
+                             discountMinor, paidMinor, method, contactId: customer?.id ?? null, cashierToken: cashier });
+      };
+      const online = () => api<Sale>("/pos/sales", {
         method: "POST",
         notify: false, // the cart says exactly what happened (and whether it's safe to retry)
         headers: cashier ? { "X-Cashier-Token": cashier } : undefined,
@@ -285,6 +298,15 @@ export default function PosBilling() {
           ...approval,
         }),
       });
+      let sale: Sale;
+      if (till.device && !navigator.onLine) sale = await offline();
+      else {
+        try { sale = await online(); }
+        catch (err) {
+          if (till.device && err instanceof NetworkError) sale = await offline();
+          else throw err;
+        }
+      }
       inFlight.current = false;
       setNeedsApproval(false);
       clearCart();
@@ -307,6 +329,8 @@ export default function PosBilling() {
         return e.status === 423 ? "That PIN is switched off for now. Ask another manager." : e.message;
       } else if (e instanceof ApiError && e.status < 500) {
         setChargeError(e.message); // refused, so nothing was recorded: fix and retry
+      } else if (e instanceof Error && !(e instanceof ApiError) && !(e instanceof NetworkError)) {
+        setChargeError(e.message); // the offline till refused it (nothing saved)
       } else {
         setUnconfirmed(true);
         setChargeError("The sale wasn't confirmed. Check the connection and press Charge again — it won't be charged twice.");
@@ -368,6 +392,8 @@ export default function PosBilling() {
               {summary.low_stock_count} low stock
             </Link>
           )}
+          {till.otherTab && <span role="alert" className="rounded-lg border border-warning/40 bg-warning/5 px-2.5 py-1.5 text-warning">{OTHER_TAB_MSG}</span>}
+          <SyncPill till={till} />
           <CashierSignIn />
           {drawer === null && (
             <Link href="/pos/drawer" className="rounded-lg border border-warning/30 bg-warning/5 px-2.5 py-1.5 text-warning">

@@ -14,6 +14,7 @@ import { useToast } from "@/components/Toast";
 import { DataTable, type Column } from "@/components/DataTable";
 import { blurOnWheel, methodLabel } from "@/components/pos/labels";
 import { ApprovalPrompt, type Approval } from "@/components/pos/ApprovalPrompt";
+import { TillDeviceCard } from "@/components/pos/TillDeviceCard";
 
 /* Registers and their sessions (3C, 0076): open with a float, move cash in
  * and out, count every payment method at close (a big difference needs a
@@ -115,6 +116,7 @@ export default function RegistersPage() {
 
       <div className="mt-6 grid gap-5 lg:grid-cols-2">
         <PrinterCard />
+        {register && <TillDeviceCard register={register} />}
         <PinCard />
       </div>
 

@@ -4813,8 +4813,9 @@ export interface paths {
         };
         /**
          * Catalog Delta
-         * @description Products changed after `since` (a row_version), oldest first. Cost is
-         *     left out: a till never needs it (field-guarded).
+         * @description Products changed after `since` (a row_version), oldest first, plus what
+         *     the till needs to price offline exactly as the server would (pos-core).
+         *     Cost is left out: a till never needs it (field-guarded).
          */
         get: operations["catalog_delta_pos_catalog_delta_get"];
         put?: never;
@@ -22285,6 +22286,7 @@ export interface operations {
             query?: {
                 since?: number;
                 limit?: number;
+                register_id?: string | null;
             };
             header?: never;
             path?: never;

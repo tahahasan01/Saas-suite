@@ -202,3 +202,11 @@ async def test_sync_is_no_way_around_a_managers_approval(client, till):
     over = _order(till, payment_method="khata", contact_id=contact["id"])
     res = (await _sync(client, till, [over])).json()["results"][0]
     assert res["status"] == "conflict" and "limit" in res["error"]
+
+
+async def test_the_feed_carries_what_the_till_needs_to_price_offline(client, till):
+    feed = (await client.get(f"/pos/catalog/delta?since=0&register_id={till['register']['id']}")).json()
+    assert feed["pricing"] == {"tax_on": False, "inclusive": False, "cash_rounding_minor": feed["pricing"]["cash_rounding_minor"]}
+    assert isinstance(feed["pricing"]["cash_rounding_minor"], int)
+    assert feed["register"] == {"id": till["register"]["id"], "code": till["register"]["code"],
+                                "payment_methods": till["register"]["payment_methods"]}

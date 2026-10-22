@@ -14,7 +14,7 @@ import asyncpg
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
-from .. import audit, db
+from .. import audit, db, pos_sessions
 from ..deps import AuthContext
 from ..models import PaymentMethod, SaleCreate, SaleLine, TenderIn
 from ..rbac import perm
@@ -112,10 +112,18 @@ async def sync_orders(body: SyncIn, x_device_token: str | None = Header(default=
 # ── Catalogue delta ─────────────────────────────────────────────────────────
 @router.get("/catalog/delta")
 async def catalog_delta(since: int = Query(0, ge=0), limit: int = Query(500, ge=1, le=2000),
+                        register_id: UUID | None = None,
                         auth: AuthContext = Depends(perm("pos.sale.create"))) -> dict[str, Any]:
-    """Products changed after `since` (a row_version), oldest first. Cost is
-    left out: a till never needs it (field-guarded)."""
+    """Products changed after `since` (a row_version), oldest first, plus what
+    the till needs to price offline exactly as the server would (pos-core).
+    Cost is left out: a till never needs it (field-guarded)."""
     async with db.tenant_conn(auth.tenant_id) as conn:
+        reg = await pos_sessions.register(conn, register_id)
+        fbr = await conn.fetchrow("select enabled, prices_include_tax from fbr_settings where tenant_id = $1",
+                                  auth.tenant_id)
+        tax_on = bool(fbr and fbr["enabled"])
+        pricing = {"tax_on": tax_on, "inclusive": bool(tax_on and fbr["prices_include_tax"]),
+                   "cash_rounding_minor": await pos_sessions.rounding_unit(conn, reg)}
         rows = await conn.fetch(
             """select id, name, sku, barcode, unit, price_minor, tax_rate, hs_code, fbr_uom, category_id,
                       track_stock, stock_qty, active, group_id, attributes, row_version
@@ -125,7 +133,9 @@ async def catalog_delta(since: int = Query(0, ge=0), limit: int = Query(500, ge=
     products = [{**dict(r), "id": str(r["id"]), "category_id": str(r["category_id"]) if r["category_id"] else None,
                  "group_id": str(r["group_id"]) if r["group_id"] else None, "tax_rate": float(r["tax_rate"] or 0),
                  "stock_qty": float(r["stock_qty"])} for r in rows]
-    return {"products": products, "next": rows[-1]["row_version"] if rows else since, "more": more}
+    return {"products": products, "next": rows[-1]["row_version"] if rows else since, "more": more,
+            "pricing": pricing,
+            "register": {"id": str(reg["id"]), "code": reg["code"], "payment_methods": list(reg["payment_methods"])}}
 
 
 # ── Manager review queue ────────────────────────────────────────────────────
