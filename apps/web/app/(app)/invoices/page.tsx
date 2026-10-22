@@ -8,6 +8,7 @@ import { Can, useCan } from "@/lib/can";
 import { formatDateTime, formatDay, money, relativeDate } from "@/lib/format";
 import { errorText, useAction } from "@/lib/useAction";
 import { Badge, Button, EmptyState, ErrorState, Field, Input, LoadingRows, Select } from "@/components/ui";
+import { AgingReport } from "@/components/invoices/AgingReport";
 import { DataTable, type Column } from "@/components/DataTable";
 import { Sheet } from "@/components/Dialog";
 import { useConfirm } from "@/components/Confirm";
@@ -31,6 +32,7 @@ const FILTERS = [
   { key: "overdue", label: "Overdue" },
   { key: "draft", label: "Drafts" },
   { key: "paid", label: "Paid" },
+  { key: "aging", label: "Who owes what" },
 ];
 const METHODS = [
   ["bank", "Bank transfer"], ["cash", "Cash"], ["cheque", "Cheque"], ["card", "Card"], ["jazzcash", "JazzCash"],
@@ -54,6 +56,7 @@ export default function InvoicesPage() {
   const [creating, setCreating] = useState(false);
 
   const load = useCallback(() => {
+    if (filter === "aging") return;     // its own report below
     setLoadError(null);
     const q = filter === "overdue" ? "?overdue=true" : filter ? `?status=${filter}` : "";
     api<Summary[]>(`/invoices${q}`)
@@ -91,7 +94,7 @@ export default function InvoicesPage() {
         ))}
       </div>
 
-      {loadError ? (
+      {filter === "aging" ? <AgingReport /> : loadError ? (
         <ErrorState message={loadError} onRetry={load} />
       ) : (
         <DataTable

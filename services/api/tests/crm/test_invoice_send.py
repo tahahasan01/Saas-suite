@@ -81,3 +81,27 @@ async def test_sending_needs_invoice_rights(client, crm_tenant):
     inv = await issued(client)
     await login_as_rep(client, crm_tenant.tenant_id, ["read"])
     assert (await client.post(f"/invoices/{inv['id']}/send", json={})).status_code == 403
+
+
+async def test_one_address_only(client, crm_tenant):
+    """No lists, display names or header tricks: exactly one plain address."""
+    inv = await issued(client)
+    for bad in ("a@b.example,c@d.example", "a@b.example; c@d.example", "Bilal <a@b.example>",
+                "a@b.example\r\nBcc: x@y.example"):
+        assert (await client.post(f"/invoices/{inv['id']}/send", json={"to": bad})).status_code == 422, bad
+
+
+async def test_the_same_invoice_cant_be_sent_over_and_over(client, crm_tenant, monkeypatch):
+    from app import ratelimit
+    monkeypatch.setattr(ratelimit, "_window", lambda w: (1, w))   # one window, whatever the clock says
+    inv = await issued(client)
+    codes = [(await client.post(f"/invoices/{inv['id']}/send", json={})).status_code for _ in range(4)]
+    assert codes == [202, 202, 202, 429]
+
+
+async def test_a_tenant_has_a_daily_sending_cap(client, crm_tenant, monkeypatch):
+    from app.routers import invoices as inv_router
+    monkeypatch.setattr(inv_router, "SENDS_PER_DAY", 2)
+    sent = [await issued(client) for _ in range(3)]
+    codes = [(await client.post(f"/invoices/{i['id']}/send", json={})).status_code for i in sent]
+    assert codes == [202, 202, 429]

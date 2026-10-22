@@ -77,4 +77,19 @@ test.describe("invoices v2", () => {
     await expect(page.getByText(/Invoice on its way to billing\./)).toBeVisible();
     await expect(sheet.getByText(/^Last emailed/)).toBeVisible();
   });
+
+  test("who owes what: balances by customer and lateness, with a CSV", async ({ page, request }) => {
+    const name = `E2E Owes ${uniq()}`;
+    const c = await (await request.post(`${API}/contacts`, { data: { kind: "company", name, force: true } })).json();
+    const inv = await (await request.post(`${API}/invoices`, { data: { contact_id: c.id, submit: true,
+      lines: [{ description: "Goods", qty: 1, unit_price_minor: 7_000_00 }] } })).json();
+    expect((await request.post(`${API}/invoices/${inv.id}/approve`)).ok()).toBeTruthy();
+
+    await page.goto("/invoices");
+    await ready(page);
+    await page.getByRole("tab", { name: "Who owes what" }).click();
+    const report = page.getByRole("region", { name: /Who owes what/ });
+    await expect(report.getByRole("row", { name: new RegExp(name) })).toContainText("7,000");
+    await expect(report.getByRole("link", { name: "Download CSV" })).toHaveAttribute("href", /aging\?format=csv/);
+  });
 });

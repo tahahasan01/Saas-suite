@@ -130,3 +130,24 @@ class InvoiceSend(BaseModel):
 
 class InvoiceSent(BaseModel):
     to: str
+
+
+class AgingBuckets(BaseModel):
+    current_minor: int = 0       # not yet due
+    d1_30_minor: int = 0
+    d31_60_minor: int = 0
+    d61_90_minor: int = 0
+    d90_plus_minor: int = 0
+    total_minor: int = 0
+
+
+class AgingRow(AgingBuckets):
+    contact_id: str | None
+    contact_name: str
+    invoices: int
+
+
+class AgingReport(BaseModel):
+    as_of: date
+    rows: list[AgingRow]
+    totals: AgingBuckets

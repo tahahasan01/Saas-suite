@@ -2680,6 +2680,84 @@
         }
       }
     },
+    "/invoices/aging": {
+      "get": {
+        "tags": [
+          "invoices"
+        ],
+        "summary": "Receivables Aging",
+        "description": "What each customer owes, by how late: not yet due, 1-30, 31-60, 61-90, 90+ days.",
+        "operationId": "receivables_aging_invoices_aging_get",
+        "parameters": [
+          {
+            "name": "as_of",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "As Of"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(json|csv)$",
+              "default": "json",
+              "title": "Format"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgingReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/invoices/{invoice_id}": {
       "get": {
         "tags": [
@@ -25760,6 +25838,128 @@
           "note"
         ],
         "title": "AdvanceOut"
+      },
+      "AgingBuckets": {
+        "properties": {
+          "current_minor": {
+            "type": "integer",
+            "title": "Current Minor",
+            "default": 0
+          },
+          "d1_30_minor": {
+            "type": "integer",
+            "title": "D1 30 Minor",
+            "default": 0
+          },
+          "d31_60_minor": {
+            "type": "integer",
+            "title": "D31 60 Minor",
+            "default": 0
+          },
+          "d61_90_minor": {
+            "type": "integer",
+            "title": "D61 90 Minor",
+            "default": 0
+          },
+          "d90_plus_minor": {
+            "type": "integer",
+            "title": "D90 Plus Minor",
+            "default": 0
+          },
+          "total_minor": {
+            "type": "integer",
+            "title": "Total Minor",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "AgingBuckets"
+      },
+      "AgingReport": {
+        "properties": {
+          "as_of": {
+            "type": "string",
+            "format": "date",
+            "title": "As Of"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/AgingRow"
+            },
+            "type": "array",
+            "title": "Rows"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/AgingBuckets"
+          }
+        },
+        "type": "object",
+        "required": [
+          "as_of",
+          "rows",
+          "totals"
+        ],
+        "title": "AgingReport"
+      },
+      "AgingRow": {
+        "properties": {
+          "current_minor": {
+            "type": "integer",
+            "title": "Current Minor",
+            "default": 0
+          },
+          "d1_30_minor": {
+            "type": "integer",
+            "title": "D1 30 Minor",
+            "default": 0
+          },
+          "d31_60_minor": {
+            "type": "integer",
+            "title": "D31 60 Minor",
+            "default": 0
+          },
+          "d61_90_minor": {
+            "type": "integer",
+            "title": "D61 90 Minor",
+            "default": 0
+          },
+          "d90_plus_minor": {
+            "type": "integer",
+            "title": "D90 Plus Minor",
+            "default": 0
+          },
+          "total_minor": {
+            "type": "integer",
+            "title": "Total Minor",
+            "default": 0
+          },
+          "contact_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Id"
+          },
+          "contact_name": {
+            "type": "string",
+            "title": "Contact Name"
+          },
+          "invoices": {
+            "type": "integer",
+            "title": "Invoices"
+          }
+        },
+        "type": "object",
+        "required": [
+          "contact_id",
+          "contact_name",
+          "invoices"
+        ],
+        "title": "AgingRow"
       },
       "Alert": {
         "properties": {

@@ -737,6 +737,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/invoices/aging": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Receivables Aging
+         * @description What each customer owes, by how late: not yet due, 1-30, 31-60, 61-90, 90+ days.
+         */
+        get: operations["receivables_aging_invoices_aging_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/invoices/{invoice_id}": {
         parameters: {
             query?: never;
@@ -6287,6 +6307,89 @@ export interface components {
             status: string;
             /** Note */
             note: string;
+        };
+        /** AgingBuckets */
+        AgingBuckets: {
+            /**
+             * Current Minor
+             * @default 0
+             */
+            current_minor: number;
+            /**
+             * D1 30 Minor
+             * @default 0
+             */
+            d1_30_minor: number;
+            /**
+             * D31 60 Minor
+             * @default 0
+             */
+            d31_60_minor: number;
+            /**
+             * D61 90 Minor
+             * @default 0
+             */
+            d61_90_minor: number;
+            /**
+             * D90 Plus Minor
+             * @default 0
+             */
+            d90_plus_minor: number;
+            /**
+             * Total Minor
+             * @default 0
+             */
+            total_minor: number;
+        };
+        /** AgingReport */
+        AgingReport: {
+            /**
+             * As Of
+             * Format: date
+             */
+            as_of: string;
+            /** Rows */
+            rows: components["schemas"]["AgingRow"][];
+            totals: components["schemas"]["AgingBuckets"];
+        };
+        /** AgingRow */
+        AgingRow: {
+            /**
+             * Current Minor
+             * @default 0
+             */
+            current_minor: number;
+            /**
+             * D1 30 Minor
+             * @default 0
+             */
+            d1_30_minor: number;
+            /**
+             * D31 60 Minor
+             * @default 0
+             */
+            d31_60_minor: number;
+            /**
+             * D61 90 Minor
+             * @default 0
+             */
+            d61_90_minor: number;
+            /**
+             * D90 Plus Minor
+             * @default 0
+             */
+            d90_plus_minor: number;
+            /**
+             * Total Minor
+             * @default 0
+             */
+            total_minor: number;
+            /** Contact Id */
+            contact_id: string | null;
+            /** Contact Name */
+            contact_name: string;
+            /** Invoices */
+            invoices: number;
         };
         /** Alert */
         Alert: {
@@ -15056,6 +15159,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InvoiceDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    receivables_aging_invoices_aging_get: {
+        parameters: {
+            query?: {
+                as_of?: string | null;
+                format?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgingReport"];
                 };
             };
             /** @description Validation Error */
