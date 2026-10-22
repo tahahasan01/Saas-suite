@@ -10,6 +10,8 @@ import { formatMonth, money } from "@/lib/format";
 import { errorText } from "@/lib/useAction";
 import { DataTable, type Column } from "@/components/DataTable";
 import { RatesPendingBanner } from "@/components/RatesPending";
+import { PayrollRuns } from "@/components/hrms/PayrollRuns";
+import { Can } from "@/lib/can";
 import { Button, Card, EmptyState, ErrorState, Field, Input } from "@/components/ui";
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -154,6 +156,7 @@ export default function PayrollPage() {
             caption={`Payroll for ${monthName(month)}`}
             empty={<EmptyState title="No employees to run payroll for" hint="Add staff on the Team tab and their payslips appear here." />}
           />
+          {data && <Can perm="payroll.run.read"><PayrollRuns month={month} /></Can>}
         </>
       )}
     </div>

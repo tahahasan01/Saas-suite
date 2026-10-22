@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
+from uuid import UUID
 
 import asyncpg
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
@@ -826,12 +827,22 @@ select i.id as sale_item_id, i.product_id, i.name, i.qty as qty_sold, i.price_mi
 
 @router.get("/sales/{sale_id}", response_model=SaleLookup)
 async def get_sale(sale_id: str, auth: AuthContext = Depends(perm("pos.sale.read"))):
+    """One sale with what can still be returned. `sale_id` is the sale's id
+    or the receipt number printed on it (R1-2026-27-000042, 0078; an offline
+    till's own number once synced), so a return starts from the paper."""
+    try:
+        by_id: UUID | None = UUID(sale_id)
+    except ValueError:
+        by_id = None
     async with db.tenant_conn(auth.tenant_id) as conn:
         scope = await scope_of(conn, auth, "pos.sale.read")   # own = the cashier's own sales (D-04)
         sale = await conn.fetchrow(
-            f"select * from pos_sales s where s.id=$1 and {where('pos.sale', scope, 's')}", sale_id)
+            f"""select * from pos_sales s
+                 where (s.id = $1 or ($1 is null and s.receipt_no = $2)) and {where('pos.sale', scope, 's')}""",
+            by_id, sale_id.strip())
         if sale is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Sale not found")
+        sale_id = str(sale["id"])
         lines = await conn.fetch(_RETURNABLE, sale_id)
         fbr_row = await conn.fetchrow(
             "select fbr_invoice_number, status from pos_fbr_invoices where sale_id=$1 and return_id is null",

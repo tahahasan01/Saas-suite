@@ -109,3 +109,15 @@ async def test_unknown_sale_is_404(client, pos_tenant):
     r = await client.post("/pos/sales/00000000-0000-0000-0000-000000000000/returns",
                           json={"items": [{"sale_item_id": "00000000-0000-0000-0000-000000000000", "qty": 1}]})
     assert r.status_code == 404
+
+
+async def test_a_sale_is_found_by_the_receipt_number_printed_on_it(client, pos_tenant, shop):
+    """The receipt shows R1-2026-27-000042 (0078), not the sale's id: the
+    returns lookup takes either. A number that isn't ours is 404."""
+    receipt_no = shop["sale"]["receipt_no"]
+    assert receipt_no
+    r = await client.get(f"/pos/sales/{receipt_no}")
+    assert r.status_code == 200, r.text
+    assert r.json()["id"] == shop["sale"]["id"]
+    assert r.json()["returnable"][0]["qty_sold"] == 3
+    assert (await client.get("/pos/sales/R1-2026-27-999999")).status_code == 404
