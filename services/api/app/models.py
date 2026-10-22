@@ -237,6 +237,8 @@ LeadStatus = Literal["open", "won", "lost"]
 QuoteStatus = Literal["sent", "accepted", "declined", "superseded", "cancelled"]
 # What a web form may ask besides the name (0122).
 WebFormField = Literal["phone", "email", "company", "city", "message"]
+# Sales targets (0123).
+TargetMetric = Literal["won_value", "invoiced", "collected"]
 LEAD_STATUSES = list(get_args(LeadStatus))
 # Activities (D-32, 0063). Polymorphic: 'contact' arrives with the contacts module.
 ActivityEntity = Literal["lead", "contact"]

@@ -6,10 +6,17 @@ ceiling needs crm.deal.discount_override."""
 from __future__ import annotations
 
 import asyncpg
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
-from .. import db, deal_lines, leads, quotes, rbac
+from .. import db, deal_lines, leads, quotes, rbac, targets
 from ..crm_selling_models import (
+    MONTH,
+    Copied,
+    ForecastOut,
+    TargetCopy,
+    TargetIn,
+    TargetOut,
+    TargetsOut,
     CrmSettingsIn,
     CrmSettingsOut,
     DealLines,
@@ -132,3 +139,40 @@ async def invoice_quote(quote_id: str,
     async with db.tenant_conn(auth.tenant_id) as conn:
         await _quote_in_scope(conn, auth, "crm.lead.read", quote_id)
         return QuoteInvoiced(invoice_id=await quotes.to_invoice(conn, auth.tenant_id, auth.user_id, quote_id))
+
+
+# ── Targets and forecast (0123) ─────────────────────────────────────────────
+@router.get("/targets", response_model=TargetsOut)
+async def list_targets(month: str = Query(pattern=MONTH),
+                       auth: AuthContext = Depends(perm("crm.report.read"))) -> TargetsOut:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        return TargetsOut(month=month, targets=await targets.for_month(conn, month))
+
+
+@router.put("/targets", response_model=TargetOut)
+async def set_target(body: TargetIn, auth: AuthContext = Depends(perm("crm.target.manage"))) -> TargetOut:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        tid = await targets.upsert(conn, auth.tenant_id, auth.user_id, body.month, body.metric, body.amount_minor,
+                                   body.user_id)
+        return next(t for t in await targets.for_month(conn, body.month) if t.id == tid)
+
+
+@router.delete("/targets/{target_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_target(target_id: str, auth: AuthContext = Depends(perm("crm.target.manage"))) -> Response:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        if await conn.fetchval("delete from crm_targets where id = $1 returning id", target_id) is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Target not found")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/targets/copy", response_model=Copied)
+async def copy_targets(body: TargetCopy, auth: AuthContext = Depends(perm("crm.target.manage"))) -> Copied:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        return Copied(copied=await targets.copy(conn, auth.tenant_id, auth.user_id, body.from_month, body.to_month))
+
+
+@router.get("/forecast", response_model=ForecastOut)
+async def forecast(months: int = Query(6, ge=1, le=12),
+                   auth: AuthContext = Depends(perm("crm.report.read"))) -> ForecastOut:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        return await targets.forecast(conn, auth, months)

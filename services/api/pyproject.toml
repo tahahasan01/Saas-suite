@@ -136,6 +136,7 @@ module = [
     "app.routers.public_quotes",
     "app.web_forms",
     "app.routers.web_forms",
+    "app.targets",
 ]
 # `strict` itself is global-only in mypy, so its per-module parts are spelled out.
 disallow_untyped_defs = true

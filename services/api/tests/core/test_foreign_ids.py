@@ -62,6 +62,8 @@ KIND_OF = {
     "quote_id": "quote",
     # web forms (wave D, 0122)
     "form_id": "web_form",
+    # targets (wave D, 0123)
+    "target_id": "target",
 }
 
 # Path parameters that are not ids: a fixed, valid value. (scheme_code names
@@ -159,7 +161,10 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
                 json={"lines": [{"description": "Probe", "qty": 1, "unit_price_minor": 1000}]})
     quote = (await c.post(f"/crm/leads/{quoted['id']}/quotes", json={})).json()
     web_form = (await c.post("/crm/web-forms", json={"name": "Probe form"})).json()
+    target = (await c.put("/crm/targets", json={"month": "2027-04", "metric": "won_value",
+                                                "amount_minor": 100})).json()
     return {
+        "target": target["id"],
         "quote": quote["id"], "web_form": web_form["id"],
         "activity_type": activity_type["id"], "activity": activity["id"],
         "lost_reason": (await c.get("/crm/lost-reasons")).json()[0]["id"],

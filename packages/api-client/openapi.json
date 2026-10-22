@@ -4821,7 +4821,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ForecastOut"
+                  "$ref": "#/components/schemas/app__models__ForecastOut"
                 }
               }
             }
@@ -8009,6 +8009,293 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/QuoteInvoiced"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/targets": {
+      "get": {
+        "tags": [
+          "crm-selling"
+        ],
+        "summary": "List Targets",
+        "operationId": "list_targets_crm_targets_get",
+        "parameters": [
+          {
+            "name": "month",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+              "title": "Month"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TargetsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "crm-selling"
+        ],
+        "summary": "Set Target",
+        "operationId": "set_target_crm_targets_put",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TargetIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TargetOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/targets/{target_id}": {
+      "delete": {
+        "tags": [
+          "crm-selling"
+        ],
+        "summary": "Delete Target",
+        "operationId": "delete_target_crm_targets__target_id__delete",
+        "parameters": [
+          {
+            "name": "target_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Target Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/targets/copy": {
+      "post": {
+        "tags": [
+          "crm-selling"
+        ],
+        "summary": "Copy Targets",
+        "operationId": "copy_targets_crm_targets_copy_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TargetCopy"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Copied"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/forecast": {
+      "get": {
+        "tags": [
+          "crm-selling"
+        ],
+        "summary": "Forecast",
+        "operationId": "forecast_crm_forecast_get",
+        "parameters": [
+          {
+            "name": "months",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 12,
+              "minimum": 1,
+              "default": 6,
+              "title": "Months"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__crm_selling_models__ForecastOut"
                 }
               }
             }
@@ -28053,6 +28340,19 @@
         "type": "object",
         "title": "ContactUpdate"
       },
+      "Copied": {
+        "properties": {
+          "copied": {
+            "type": "integer",
+            "title": "Copied"
+          }
+        },
+        "type": "object",
+        "required": [
+          "copied"
+        ],
+        "title": "Copied"
+      },
       "CorrectionCreate": {
         "properties": {
           "work_date": {
@@ -30437,6 +30737,115 @@
         ],
         "title": "FileOut"
       },
+      "ForecastBucket": {
+        "properties": {
+          "month": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Month"
+          },
+          "won_minor": {
+            "type": "integer",
+            "title": "Won Minor",
+            "default": 0
+          },
+          "weighted_minor": {
+            "type": "integer",
+            "title": "Weighted Minor",
+            "default": 0
+          },
+          "best_case_minor": {
+            "type": "integer",
+            "title": "Best Case Minor",
+            "default": 0
+          },
+          "open_count": {
+            "type": "integer",
+            "title": "Open Count",
+            "default": 0
+          },
+          "deals": {
+            "items": {
+              "$ref": "#/components/schemas/ForecastDeal"
+            },
+            "type": "array",
+            "title": "Deals"
+          }
+        },
+        "type": "object",
+        "title": "ForecastBucket"
+      },
+      "ForecastDeal": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "owner_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Id"
+          },
+          "value_minor": {
+            "type": "integer",
+            "title": "Value Minor"
+          },
+          "probability": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Probability"
+          },
+          "weighted_minor": {
+            "type": "integer",
+            "title": "Weighted Minor"
+          },
+          "expected_close_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Close Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "owner_id",
+          "value_minor",
+          "probability",
+          "weighted_minor",
+          "expected_close_date"
+        ],
+        "title": "ForecastDeal"
+      },
       "ForecastItem": {
         "properties": {
           "product_id": {
@@ -30469,22 +30878,6 @@
           "recommend_qty"
         ],
         "title": "ForecastItem"
-      },
-      "ForecastOut": {
-        "properties": {
-          "occasions": {
-            "items": {
-              "$ref": "#/components/schemas/OccasionForecast"
-            },
-            "type": "array",
-            "title": "Occasions"
-          }
-        },
-        "type": "object",
-        "required": [
-          "occasions"
-        ],
-        "title": "ForecastOut"
       },
       "ForgotRequest": {
         "properties": {
@@ -42242,6 +42635,165 @@
         "type": "object",
         "title": "TagUpdate"
       },
+      "TargetCopy": {
+        "properties": {
+          "from_month": {
+            "type": "string",
+            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+            "title": "From Month"
+          },
+          "to_month": {
+            "type": "string",
+            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+            "title": "To Month"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "from_month",
+          "to_month"
+        ],
+        "title": "TargetCopy"
+      },
+      "TargetIn": {
+        "properties": {
+          "month": {
+            "type": "string",
+            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+            "title": "Month"
+          },
+          "metric": {
+            "type": "string",
+            "enum": [
+              "won_value",
+              "invoiced",
+              "collected"
+            ],
+            "title": "Metric"
+          },
+          "amount_minor": {
+            "type": "integer",
+            "maximum": 10000000000000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Amount Minor"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "month",
+          "metric",
+          "amount_minor"
+        ],
+        "title": "TargetIn",
+        "description": "Set (or replace) the target for a month, person (none: the company) and measure."
+      },
+      "TargetOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "month": {
+            "type": "string",
+            "title": "Month"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "user_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Name"
+          },
+          "metric": {
+            "type": "string",
+            "enum": [
+              "won_value",
+              "invoiced",
+              "collected"
+            ],
+            "title": "Metric"
+          },
+          "amount_minor": {
+            "type": "integer",
+            "title": "Amount Minor"
+          },
+          "achieved_minor": {
+            "type": "integer",
+            "title": "Achieved Minor"
+          },
+          "percent": {
+            "type": "integer",
+            "title": "Percent"
+          },
+          "pace_minor": {
+            "type": "integer",
+            "title": "Pace Minor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "month",
+          "user_id",
+          "user_name",
+          "metric",
+          "amount_minor",
+          "achieved_minor",
+          "percent",
+          "pace_minor"
+        ],
+        "title": "TargetOut"
+      },
+      "TargetsOut": {
+        "properties": {
+          "month": {
+            "type": "string",
+            "title": "Month"
+          },
+          "targets": {
+            "items": {
+              "$ref": "#/components/schemas/TargetOut"
+            },
+            "type": "array",
+            "title": "Targets"
+          }
+        },
+        "type": "object",
+        "required": [
+          "month",
+          "targets"
+        ],
+        "title": "TargetsOut"
+      },
       "TaxCategoryOut": {
         "properties": {
           "code": {
@@ -43840,6 +44392,30 @@
         "type": "object",
         "title": "WorkflowUpdate"
       },
+      "app__crm_selling_models__ForecastOut": {
+        "properties": {
+          "months": {
+            "items": {
+              "$ref": "#/components/schemas/ForecastBucket"
+            },
+            "type": "array",
+            "title": "Months"
+          },
+          "overdue": {
+            "$ref": "#/components/schemas/ForecastBucket"
+          },
+          "no_date": {
+            "$ref": "#/components/schemas/ForecastBucket"
+          }
+        },
+        "type": "object",
+        "required": [
+          "months",
+          "overdue",
+          "no_date"
+        ],
+        "title": "ForecastOut"
+      },
       "app__invoice_models__PaymentIn": {
         "properties": {
           "method": {
@@ -43881,6 +44457,22 @@
           "paid_on"
         ],
         "title": "PaymentIn"
+      },
+      "app__models__ForecastOut": {
+        "properties": {
+          "occasions": {
+            "items": {
+              "$ref": "#/components/schemas/OccasionForecast"
+            },
+            "type": "array",
+            "title": "Occasions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "occasions"
+        ],
+        "title": "ForecastOut"
       },
       "app__routers__khata__PaymentIn": {
         "properties": {

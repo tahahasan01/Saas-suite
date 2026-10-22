@@ -155,6 +155,7 @@ _SHAPED = {
     # quotes (wave D, 0121): sha256 hex digests
     "crm_quotes": {"content_hash": lambda: uuid.uuid4().hex * 2, "token_hash": lambda: uuid.uuid4().hex * 2},
     "crm_web_forms": {"public_id": lambda: uuid.uuid4().hex},
+    "crm_targets": {"month": lambda: "2027-04-01"},
 }
 
 

@@ -10,7 +10,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from .models import QuoteStatus, WebFormField
+from .models import QuoteStatus, TargetMetric, WebFormField
 
 
 class DealLineIn(BaseModel):
@@ -273,3 +273,68 @@ class PoolMemberOut(BaseModel):
 class PersonOut(BaseModel):
     id: str
     name: str
+
+
+# ── Targets and forecast (0123) ─────────────────────────────────────────────
+MONTH = r"^\d{4}-(0[1-9]|1[0-2])$"
+
+
+class TargetIn(BaseModel):
+    """Set (or replace) the target for a month, person (none: the company) and measure."""
+    model_config = ConfigDict(extra="forbid")
+    month: str = Field(pattern=MONTH)
+    metric: TargetMetric
+    amount_minor: int = Field(gt=0, le=10**13)
+    user_id: UUID | None = None
+
+
+class TargetOut(BaseModel):
+    id: str
+    month: str
+    user_id: str | None
+    user_name: str | None
+    metric: TargetMetric
+    amount_minor: int
+    achieved_minor: int
+    percent: int
+    pace_minor: int          # where an even pace would be by today
+
+
+class TargetsOut(BaseModel):
+    month: str
+    targets: list[TargetOut]
+
+
+class TargetCopy(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    from_month: str = Field(pattern=MONTH)
+    to_month: str = Field(pattern=MONTH)
+
+
+class Copied(BaseModel):
+    copied: int
+
+
+class ForecastDeal(BaseModel):
+    id: str
+    name: str
+    owner_id: str | None
+    value_minor: int
+    probability: int | None
+    weighted_minor: int
+    expected_close_date: date | None
+
+
+class ForecastBucket(BaseModel):
+    month: str | None = None
+    won_minor: int = 0
+    weighted_minor: int = 0
+    best_case_minor: int = 0
+    open_count: int = 0
+    deals: list[ForecastDeal] = Field(default_factory=list)
+
+
+class ForecastOut(BaseModel):
+    months: list[ForecastBucket]
+    overdue: ForecastBucket       # open deals whose close date has passed
+    no_date: ForecastBucket       # open deals with no close date

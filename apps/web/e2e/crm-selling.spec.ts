@@ -96,6 +96,8 @@ test.describe("web forms", () => {
   test("an admin makes a form, a visitor fills it in signed out, and it becomes a lead", async ({ page, request, browser }) => {
     const formName = `Website ${uid()}`;
     const visitor = `Ayesha ${uid()}`;
+    // A new number each run: a repeat enquiry from an open lead's phone is merged into that lead.
+    const phone = `0300${String(Math.floor(Math.random() * 1e7)).padStart(7, "0")}`;
     await page.goto("/crm/settings");
     const forms = page.getByRole("heading", { name: "Web forms" }).locator("..").locator("..");
     await forms.getByRole("button", { name: "New form" }).click();
@@ -114,7 +116,7 @@ test.describe("web forms", () => {
     await vp.goto(`${form.link}?utm_source=facebook&utm_campaign=winter`);
     await expect(vp.getByRole("heading", { name: "Get a free survey" })).toBeVisible();
     await vp.getByLabel("Your name").fill(visitor);
-    await vp.getByLabel("Phone").fill("0300 7654321");
+    await vp.getByLabel("Phone").fill(phone);
     await vp.getByLabel("Message").fill("Please call after 5pm");
     // The server drops forms sent faster than a person could fill them (3 s).
     await vp.waitForTimeout(3_500);
@@ -126,6 +128,6 @@ test.describe("web forms", () => {
     const lead = leads.find((l: { name: string }) => l.name === visitor);
     expect(lead).toBeTruthy();
     expect(lead.source).toBe("website");
-    expect(lead.phone).toBe("+923007654321");
+    expect(lead.phone).toBe(`+92${phone.slice(1)}`);
   });
 });
