@@ -2260,6 +2260,9 @@ class EmployeeProfile(EmployeeOut):
     probation_end: date | None = None
     has_kiosk_pin: bool = False
     documents_expiring: int = 0     # expired or due within 30 days
+    exit_date: date | None = None   # set by offboarding (wave C, 0100)
+    exit_reason: str | None = None
+    confirmed_on: date | None = None  # probation confirmed (wave C, 0101)
 
 
 class DocumentCreate(BaseModel):
@@ -2475,7 +2478,8 @@ LeaveGrantMode = Literal["annual_upfront", "monthly_accrual", "none"]
 LEAVE_GRANT_MODES = list(get_args(LeaveGrantMode))
 LeaveCarry = Literal["none", "all", "capped"]
 LEAVE_CARRY_MODES = list(get_args(LeaveCarry))
-LedgerEntry = Literal["grant", "accrual", "carry_in", "carry_expire", "taken", "reversal", "adjust"]
+LedgerEntry = Literal["grant", "accrual", "carry_in", "carry_expire", "taken", "reversal", "adjust",
+                      "comp_off", "encash"]   # the last two: wave C, 0103
 LEDGER_ENTRIES = list(get_args(LedgerEntry))
 Half = Literal["am", "pm"]
 HALVES = list(get_args(Half))
@@ -2630,3 +2634,649 @@ SALE_STATUSES = list(get_args(SaleStatus))
 TENDER_METHODS = list(get_args(TenderMethod))
 CashMoveKind = Literal["pay_in", "pay_out", "drop"]
 CASH_MOVE_KINDS = list(get_args(CashMoveKind))
+
+
+# ─── Onboarding and offboarding (wave C, H23/H24, 0100) ─────────────────────
+BoardingKind = Literal["onboarding", "offboarding"]
+BOARDING_KINDS = list(get_args(BoardingKind))
+BoardingOwner = Literal["hr", "it", "manager", "employee", "admin"]
+BOARDING_OWNERS = list(get_args(BoardingOwner))
+BoardingStatus = Literal["open", "completed", "cancelled"]
+BOARDING_STATUSES = list(get_args(BoardingStatus))
+BoardingTaskStatus = Literal["open", "done", "skipped"]
+BOARDING_TASK_STATUSES = list(get_args(BoardingTaskStatus))
+ExitReason = Literal["resigned", "terminated", "retired", "contract_end", "absconded", "deceased", "other"]
+EXIT_REASONS = list(get_args(ExitReason))
+ExitOutcome = Literal["retained", "leaving"]
+EXIT_OUTCOMES = list(get_args(ExitOutcome))
+LeavingReason = Literal["pay", "growth", "manager", "workload", "hours", "relocation", "studies", "health",
+                        "personal", "other"]
+LEAVING_REASONS = list(get_args(LeavingReason))
+
+
+class BoardingTemplateTaskIn(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    owner: BoardingOwner = "hr"
+    offset_days: int = Field(default=0, ge=-365, le=365)
+
+
+class BoardingTemplateCreate(BaseModel):
+    kind: BoardingKind
+    name: str = Field(min_length=1, max_length=120)
+    tasks: list[BoardingTemplateTaskIn] = Field(default_factory=list, max_length=100)
+
+
+class BoardingTemplateUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    active: bool | None = None
+    tasks: list[BoardingTemplateTaskIn] | None = Field(default=None, max_length=100)
+
+
+class BoardingTemplateTaskOut(BaseModel):
+    id: str
+    title: str
+    owner: BoardingOwner
+    offset_days: int
+
+
+class BoardingTemplateOut(BaseModel):
+    id: str
+    kind: BoardingKind
+    name: str
+    active: bool
+    tasks: list[BoardingTemplateTaskOut]
+
+
+class OnboardingStart(BaseModel):
+    template_id: UUID | None = None
+    anchor_date: date | None = None          # the joining date when left out
+    note: str = Field(default="", max_length=1000)
+
+
+class OffboardingStart(BaseModel):
+    template_id: UUID | None = None
+    reason: ExitReason
+    notice_date: date | None = None
+    last_working_day: date
+    note: str = Field(default="", max_length=1000)
+
+    @model_validator(mode="after")
+    def _dates(self):
+        if self.notice_date and self.last_working_day < self.notice_date:
+            raise ValueError("The last working day can't come before the notice")
+        return self
+
+
+class BoardingTaskCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    owner: BoardingOwner = "hr"
+    due_on: date | None = None
+
+
+class BoardingTaskUpdate(BaseModel):
+    status: BoardingTaskStatus | None = None
+    note: str | None = Field(default=None, max_length=500)
+    due_on: date | None = None
+
+
+class BoardingTaskOut(BaseModel):
+    id: str
+    boarding_id: str
+    title: str
+    owner: BoardingOwner
+    due_on: date | None
+    status: BoardingTaskStatus
+    note: str
+    done_at: datetime | None
+
+
+class BoardingClose(BaseModel):
+    note: str = Field(default="", max_length=1000)
+
+
+class ExitInterviewIn(BaseModel):
+    held_on: date | None = None
+    outcome: ExitOutcome | None = None
+    rating: int | None = Field(default=None, ge=1, le=5)
+    primary_reason: LeavingReason | None = None
+    would_rejoin: bool | None = None
+    notes: str = Field(default="", max_length=4000)
+
+
+class ExitInterviewOut(ExitInterviewIn):
+    updated_at: datetime
+
+
+class HeldAsset(BaseModel):
+    id: str
+    name: str
+    tag: str | None
+
+
+class BoardingOut(BaseModel):
+    id: str
+    employee_id: str
+    employee_name: str
+    kind: BoardingKind
+    template_id: str | None
+    anchor_date: date
+    status: BoardingStatus
+    reason: ExitReason | None
+    notice_date: date | None
+    last_working_day: date | None
+    note: str
+    done: int
+    total: int
+    created_at: datetime
+    closed_at: datetime | None
+    tasks: list[BoardingTaskOut] = Field(default_factory=list)
+    assets_held: list[HeldAsset] = Field(default_factory=list)
+    exit_interview: ExitInterviewOut | None = None      # boarding managers only
+
+
+class MyBoardingTask(BoardingTaskOut):
+    kind: BoardingKind
+
+
+# ─── Probation reviews and appraisals (wave C, H25/H26, 0101) ───────────────
+ProbationOutcome = Literal["confirmed", "extended", "ended"]
+PROBATION_OUTCOMES = list(get_args(ProbationOutcome))
+AppraisalCycleStatus = Literal["draft", "open", "closed"]
+APPRAISAL_CYCLE_STATUSES = list(get_args(AppraisalCycleStatus))
+AppraisalStatus = Literal["self_review", "manager_review", "done", "cancelled"]
+APPRAISAL_STATUSES = list(get_args(AppraisalStatus))
+
+
+class ProbationReviewIn(BaseModel):
+    outcome: ProbationOutcome
+    new_end: date | None = None            # extended only
+    on: date | None = None                 # the confirmation date; today when left out
+    note: str = Field(default="", max_length=1000)
+
+    @model_validator(mode="after")
+    def _new_end(self):
+        if (self.outcome == "extended") != (self.new_end is not None):
+            raise ValueError("An extension needs the new end date (and only an extension has one)")
+        return self
+
+
+class ProbationReviewOut(BaseModel):
+    id: str
+    employee_id: str
+    outcome: ProbationOutcome
+    previous_end: date | None
+    new_end: date | None
+    note: str
+    decided_at: datetime
+
+
+class ProbationDue(BaseModel):
+    employee_id: str
+    name: str
+    designation: str
+    manager_name: str | None
+    join_date: date | None
+    probation_end: date
+    days_left: int                          # negative when overdue
+
+
+class KraIn(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    description: str = Field(default="", max_length=1000)
+    weight: int = Field(ge=1, le=100)
+
+
+def _weights_total_100(kras: list[KraIn] | None) -> list[KraIn] | None:
+    if kras is not None and sum(k.weight for k in kras) != 100:
+        raise ValueError("KRA weights must add up to 100")
+    return kras
+
+
+class AppraisalTemplateCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    kras: list[KraIn] = Field(min_length=1, max_length=30)
+
+    @field_validator("kras")
+    @classmethod
+    def _total(cls, v: list[KraIn]) -> list[KraIn]:
+        return _weights_total_100(v) or v
+
+
+class AppraisalTemplateUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    active: bool | None = None
+    kras: list[KraIn] | None = Field(default=None, min_length=1, max_length=30)
+
+    @field_validator("kras")
+    @classmethod
+    def _total(cls, v: list[KraIn] | None) -> list[KraIn] | None:
+        return _weights_total_100(v)
+
+
+class KraOut(KraIn):
+    id: str
+
+
+class AppraisalTemplateOut(BaseModel):
+    id: str
+    name: str
+    active: bool
+    kras: list[KraOut]
+
+
+class AppraisalCycleCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    period_start: date
+    period_end: date
+    template_id: UUID
+    self_review: bool = True
+    employee_ids: list[UUID] | None = Field(default=None, max_length=5000)
+
+    @model_validator(mode="after")
+    def _period(self):
+        if self.period_end < self.period_start:
+            raise ValueError("The period ends before it starts")
+        return self
+
+
+class AppraisalRatingOut(BaseModel):
+    id: str
+    title: str
+    description: str
+    weight: int
+    self_rating: int | None
+    self_note: str
+    manager_rating: int | None             # hidden from the employee until done
+    manager_note: str
+
+
+class AppraisalOut(BaseModel):
+    id: str
+    cycle_id: str
+    cycle_name: str
+    period_start: date
+    period_end: date
+    employee_id: str
+    employee_name: str
+    reviewer_id: str | None
+    reviewer_name: str | None
+    status: AppraisalStatus
+    self_comment: str
+    self_submitted_at: datetime | None
+    manager_comment: str
+    manager_submitted_at: datetime | None
+    score: float | None
+    ratings: list[AppraisalRatingOut] = Field(default_factory=list)
+
+
+class AppraisalCycleOut(BaseModel):
+    id: str
+    name: str
+    period_start: date
+    period_end: date
+    template_id: str
+    template_name: str
+    self_review: bool
+    status: AppraisalCycleStatus
+    created_at: datetime
+    opened_at: datetime | None
+    closed_at: datetime | None
+    counts: dict[str, int] = Field(default_factory=dict)
+    appraisals: list[AppraisalOut] = Field(default_factory=list)
+
+
+class RatingIn(BaseModel):
+    id: UUID
+    rating: int | None = Field(default=None, ge=1, le=5)
+    note: str = Field(default="", max_length=1000)
+
+
+class AppraisalReviewIn(BaseModel):
+    ratings: list[RatingIn] = Field(default_factory=list, max_length=30)
+    comment: str = Field(default="", max_length=4000)
+    submit: bool = False
+
+
+# ─── Expense claims (wave C, H13, 0102) ─────────────────────────────────────
+ExpenseStatus = Literal["submitted", "approved", "rejected", "cancelled"]
+EXPENSE_STATUSES = list(get_args(ExpenseStatus))
+ExpenseCategory = Literal["travel", "fuel", "meals", "phone", "supplies", "medical", "accommodation", "other"]
+EXPENSE_CATEGORIES = list(get_args(ExpenseCategory))
+
+
+class ExpenseLineIn(BaseModel):
+    spent_on: date
+    category: ExpenseCategory = "other"
+    description: str = Field(default="", max_length=300)
+    amount_minor: int = Field(gt=0, le=10**10)
+    receipt_file_id: UUID | None = None
+
+
+class ExpenseClaimIn(BaseModel):
+    title: str = Field(min_length=1, max_length=160)
+    lines: list[ExpenseLineIn] = Field(min_length=1, max_length=30)
+
+
+class ExpenseClaimFor(ExpenseClaimIn):
+    employee_id: UUID
+
+
+class ExpenseApprove(BaseModel):
+    approved_minor: int | None = Field(default=None, gt=0)    # the claimed total when left out
+    note: str = Field(default="", max_length=500)
+
+
+class ExpenseReject(BaseModel):
+    note: str = Field(max_length=500)
+
+
+class ExpenseLineOut(BaseModel):
+    id: str
+    spent_on: date
+    category: ExpenseCategory
+    description: str
+    amount_minor: int
+    receipt_file_id: str | None
+
+
+class ExpenseClaimOut(BaseModel):
+    id: str
+    employee_id: str
+    employee_name: str
+    title: str
+    status: ExpenseStatus
+    total_minor: int
+    approved_minor: int | None
+    one_off_id: str | None
+    pay_month: date | None
+    paid: bool
+    decision_note: str
+    decided_at: datetime | None
+    created_at: datetime
+    lines: list[ExpenseLineOut] = Field(default_factory=list)
+
+
+# ─── Compensatory leave and encashment (wave C, H8, 0103) ───────────────────
+CompOffStatus = Literal["pending", "approved", "rejected"]
+COMP_OFF_STATUSES = list(get_args(CompOffStatus))
+
+
+class CompOffIn(BaseModel):
+    work_date: date
+    days: float = 1
+    reason: str = Field(default="", max_length=500)
+
+    @field_validator("days")
+    @classmethod
+    def _whole_or_half(cls, v: float) -> float:
+        if v not in (0.5, 1):
+            raise ValueError("A comp-off is a whole day or a half day")
+        return v
+
+
+class CompOffApprove(BaseModel):
+    leave_type_id: UUID
+    note: str = Field(default="", max_length=500)
+
+
+class CompOffReject(BaseModel):
+    note: str = Field(max_length=500)
+
+
+class CompOffOut(BaseModel):
+    id: str
+    employee_id: str
+    employee_name: str
+    work_date: date
+    days: float
+    reason: str
+    status: CompOffStatus
+    leave_type_name: str | None
+    decision_note: str
+    decided_at: datetime | None
+    created_at: datetime
+
+
+class EncashIn(BaseModel):
+    leave_type_id: UUID
+    days: float = Field(gt=0, le=366)
+    note: str = Field(default="", max_length=500)
+
+    @field_validator("days")
+    @classmethod
+    def _halves(cls, v: float) -> float:
+        if (v * 2) != int(v * 2):
+            raise ValueError("Encash whole or half days")
+        return v
+
+
+class EncashOut(BaseModel):
+    id: str
+    employee_id: str
+    leave_type_id: str
+    leave_type_name: str
+    days: float
+    per_day_minor: int | None          # pay: payroll.salary.read only
+    amount_minor: int | None
+    one_off_id: str | None
+    note: str
+    created_at: datetime
+
+
+# ─── Final settlement and gratuity (wave C, H12, 0104) ──────────────────────
+SettlementStatus = Literal["draft", "approved", "paid", "cancelled"]
+SETTLEMENT_STATUSES = list(get_args(SettlementStatus))
+SettlementKind = Literal["payable", "receivable"]
+SETTLEMENT_KINDS = list(get_args(SettlementKind))
+SettlementCode = Literal["GRATUITY", "LEAVE_ENCASH", "NOTICE_PAY", "BONUS", "OTHER",
+                         "ADVANCE_SETTLE", "ASSET_RECOVERY", "NOTICE_SHORTFALL", "OTHER_RECOVERY"]
+SETTLEMENT_CODES = list(get_args(SettlementCode))
+# What HR may add by hand, per side (the rest are worked out).
+SETTLEMENT_MANUAL = {"payable": {"NOTICE_PAY", "BONUS", "OTHER", "GRATUITY"},
+                     "receivable": {"NOTICE_SHORTFALL", "OTHER_RECOVERY"}}   # asset charges come from the asset
+
+
+class GratuitySettings(BaseModel):
+    enabled: bool = False
+    days_per_year: int = Field(default=30, ge=1, le=60)
+    min_service_months: int = Field(default=12, ge=0, le=120)
+    part_year_months: int = Field(default=6, ge=0, le=11)
+    note: str = Field(default="", max_length=500)
+
+
+class GratuitySettingsOut(GratuitySettings):
+    verified: bool = False
+
+
+class SettlementLineIn(BaseModel):
+    kind: SettlementKind
+    code: SettlementCode
+    name: str = Field(min_length=1, max_length=120)
+    amount_minor: int = Field(gt=0, le=10**12)
+    taxable: bool | None = None          # payables default to taxable
+
+    @model_validator(mode="after")
+    def _side(self):
+        if self.code not in SETTLEMENT_MANUAL[self.kind]:
+            raise ValueError(f"{self.code} can't be added as a {self.kind}")
+        return self
+
+
+class SettlementLineOut(BaseModel):
+    id: str
+    kind: SettlementKind
+    code: SettlementCode
+    name: str
+    amount_minor: int
+    taxable: bool
+    auto: bool
+    days: float | None
+    explain: dict[str, Any]
+    one_off_id: str | None
+
+
+class SettlementOut(BaseModel):
+    id: str
+    employee_id: str
+    employee_name: str
+    join_date: date | None
+    last_working_day: date
+    status: SettlementStatus
+    service_years: int
+    pay_month: date | None
+    payable_minor: int
+    receivable_minor: int
+    net_minor: int
+    assets_held: list[HeldAsset] = Field(default_factory=list)
+    gratuity_verified: bool
+    note: str
+    created_at: datetime
+    approved_at: datetime | None
+    paid_at: datetime | None
+    lines: list[SettlementLineOut] = Field(default_factory=list)
+
+
+# ─── HR letters and letter requests (wave C, H17/H37, 0105) ─────────────────
+LetterKind = Literal["offer", "appointment", "experience", "salary", "noc", "employment", "relieving", "warning",
+                     "other"]
+LETTER_KINDS = list(get_args(LetterKind))
+LetterRequestKind = Literal["experience", "salary", "noc", "employment", "id_card", "other"]
+LETTER_REQUEST_KINDS = list(get_args(LetterRequestKind))
+LetterRequestStatus = Literal["pending", "issued", "declined"]
+LETTER_REQUEST_STATUSES = list(get_args(LetterRequestStatus))
+
+
+class LetterTemplateIn(BaseModel):
+    kind: LetterKind
+    name: str = Field(min_length=1, max_length=120)
+    title: str = Field(min_length=1, max_length=160)
+    body: str = Field(min_length=1, max_length=20000)
+
+
+class LetterTemplateUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    title: str | None = Field(default=None, min_length=1, max_length=160)
+    body: str | None = Field(default=None, min_length=1, max_length=20000)
+    active: bool | None = None
+
+
+class LetterTemplateOut(LetterTemplateIn):
+    id: str
+    active: bool
+
+
+class LetterPreviewIn(BaseModel):
+    template_id: UUID
+
+
+class LetterIssue(BaseModel):
+    template_id: UUID
+    title: str | None = Field(default=None, min_length=1, max_length=160)
+    body: str | None = Field(default=None, min_length=1, max_length=20000)    # edited text; the template's when left out
+    request_id: UUID | None = None
+
+
+class LetterPreview(BaseModel):
+    title: str
+    body: str
+
+
+class LetterOut(BaseModel):
+    id: str
+    employee_id: str
+    employee_name: str
+    kind: LetterKind
+    number: str
+    title: str
+    body: str
+    issued_at: datetime
+
+
+class LetterRequestIn(BaseModel):
+    kind: LetterRequestKind
+    purpose: str = Field(default="", max_length=500)
+
+
+class LetterDecline(BaseModel):
+    note: str = Field(max_length=500)
+
+
+class LetterRequestOut(BaseModel):
+    id: str
+    employee_id: str
+    employee_name: str
+    kind: LetterRequestKind
+    purpose: str
+    status: LetterRequestStatus
+    letter_id: str | None
+    note: str
+    created_at: datetime
+    decided_at: datetime | None
+
+
+# ─── Promotions and transfers (wave C, H30, 0106) ───────────────────────────
+JobChangeKind = Literal["promotion", "transfer", "demotion", "change"]
+JOB_CHANGE_KINDS = list(get_args(JobChangeKind))
+JobChangeStatus = Literal["scheduled", "applied", "cancelled"]
+JOB_CHANGE_STATUSES = list(get_args(JobChangeStatus))
+
+
+class JobChangeIn(BaseModel):
+    kind: JobChangeKind = "change"
+    effective_on: date
+    job_title_id: UUID | None = None
+    department_id: UUID | None = None
+    location_id: UUID | None = None
+    manager_id: UUID | None = None
+    new_base_minor: int | None = Field(default=None, gt=0, le=10**11)
+    note: str = Field(default="", max_length=1000)
+
+    def changes_something(self) -> bool:
+        return any((self.job_title_id, self.department_id, self.location_id, self.manager_id, self.new_base_minor))
+
+
+class JobChangeOut(BaseModel):
+    id: str
+    employee_id: str
+    kind: JobChangeKind
+    effective_on: date
+    status: JobChangeStatus
+    from_title: str | None
+    to_title: str | None
+    from_department: str | None
+    to_department: str | None
+    from_location: str | None
+    to_location: str | None
+    from_manager: str | None
+    to_manager: str | None
+    old_base_minor: int | None          # pay: payroll.salary.read only
+    new_base_minor: int | None
+    note: str
+    applied_at: datetime | None
+    created_at: datetime
+
+
+# ─── HR analytics (wave C, H39) ─────────────────────────────────────────────
+class HrMonth(BaseModel):
+    month: str                       # YYYY-MM
+    headcount: int                   # at the month's end
+    joiners: int
+    leavers: int
+
+
+class HrDepartment(BaseModel):
+    department: str
+    headcount: int
+    leavers: int
+
+
+class HrAnalytics(BaseModel):
+    months: list[HrMonth]
+    headcount_now: int
+    joiners: int
+    leavers: int
+    attrition_pct: float             # leavers over the average headcount, for the range
+    absenteeism_pct: float | None    # absent ÷ working days in the last complete month of the range
+    absenteeism_month: str | None
+    leaving_reasons: dict[str, int]
+    by_department: list[HrDepartment]

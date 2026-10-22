@@ -56,6 +56,9 @@ export interface EmployeeProfile extends Employee {
   probation_end: string | null;
   has_kiosk_pin: boolean;
   documents_expiring: number;
+  /** Set by offboarding (wave C, 0100). */
+  exit_date?: string | null;
+  exit_reason?: string | null;
 }
 
 export interface EmployeeDocument {

@@ -36,6 +36,7 @@ from . import (
     email,
     fbr_submit,
     files,  # org data (3A): files.gc
+    job_changes,  # wave C (0106)
     leave,
     monitor,
     notifications,
@@ -302,6 +303,22 @@ async def run_leave_entitlements() -> dict[str, int]:
     return {"tenants": len(tenants), "employees": employees, "failed": failed}
 
 
+async def run_job_changes() -> dict[str, int]:
+    """Daily (wave C, 0106): promotions and transfers whose day has come."""
+    applied = failed = 0
+    run_id = context.job_run_id()
+    tenants = await _hrms_tenants()
+    for tid in tenants:
+        try:
+            async with db.job_conn(tid, "hrms.apply_job_changes", run_id=run_id) as conn:
+                async with conn.transaction():
+                    applied += await job_changes.apply_due(conn)
+        except Exception:  # noqa: BLE001 — one bad tenant must not stop the rest
+            failed += 1
+            log.exception("job changes failed for tenant %s", tid)
+    return {"tenants": len(tenants), "applied": applied, "failed": failed}
+
+
 # code -> handler. Every row in scheduled_jobs has one here and vice versa
 # (tests/core/test_worker.py); a new job is a seed row in a migration plus a
 # line here.
@@ -325,6 +342,7 @@ HANDLERS: dict[str, Callable[[], Awaitable[Any]]] = {
     "hrms.leave_entitlements": run_leave_entitlements,
     "payroll.calculate": payroll_runs.run_due_calculations,   # 0070; batches of 100 (St03 risk 9)
     "invoicing.overdue_reminders": run_invoice_reminders,     # 0074
+    "hrms.apply_job_changes": run_job_changes,                # wave C, 0106
 }
 
 

@@ -16,6 +16,10 @@ import { ExpiryBadge } from "@/components/hrms/ExpiryBadge";
 import { PayrollDetailsCard } from "@/components/hrms/PayrollDetailsCard";
 import { SalaryCard } from "@/components/hrms/SalaryCard";
 import { HeldAssetsCard } from "@/components/hrms/HeldAssetsCard";
+import { BoardingCard } from "@/components/hrms/BoardingCard";
+import { EncashButton } from "@/components/hrms/CompOff";
+import { LettersCard } from "@/components/hrms/Letters";
+import { CareerCard } from "@/components/hrms/CareerCard";
 import { Badge, Button, Card, ErrorState, Field, Input, LoadingRows, Select } from "@/components/ui";
 
 /* One employee: details, their place in the org, kiosk PIN, documents with
@@ -63,6 +67,9 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
           <Can perm="hrms.employee.update"><KioskPin p={p} onSaved={load} /></Can>
           <Can perm="payroll.salary.read"><SalaryCard employeeId={p.id} /></Can>
           <Can perm="hrms.asset.read"><HeldAssetsCard employeeId={p.id} /></Can>
+          <Can perm="hrms.boarding.read"><BoardingCard employeeId={p.id} exitDate={p.exit_date} onChanged={load} /></Can>
+          <Can perm="hrms.letter.read"><LettersCard employeeId={p.id} /></Can>
+          <CareerCard employeeId={p.id} onChanged={load} />
           <PayrollDetailsCard employeeId={p.id} />
         </div>
       </div>
@@ -219,13 +226,17 @@ function KioskPin({ p, onSaved }: { p: EmployeeProfile; onSaved: () => void }) {
 
 function Balances({ employeeId }: { employeeId: string }) {
   const [rows, setRows] = useState<LeaveBalanceV2[] | null>(null);
-  useEffect(() => {
+  const load = useCallback(() => {
     api<LeaveBalanceV2[]>(`/hrms/leave/balances?employee_id=${employeeId}`).then(setRows).catch(() => setRows([]));
   }, [employeeId]);
+  useEffect(load, [load]);
   if (!rows?.length) return null;
   return (
     <Card className="space-y-2">
-      <h2 className="text-sm font-semibold">Leave left</h2>
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold">Leave left</h2>
+        <EncashButton employeeId={employeeId} balances={rows} onDone={load} />
+      </div>
       <div className="grid grid-cols-3 gap-2">
         {rows.map((b) => (
           <div key={b.leave_type} className="rounded-lg border border-line px-2 py-1.5 text-center">

@@ -103,6 +103,29 @@ APP_USER: dict[str, set[str]] = {
     "restaurant_tables":       {S, I, U},
     "restaurant_stations":     {S, I, U},
     "restaurant_station_categories": {S, I, D},   # the list is replaced
+    "pay_advance_repayments":  {S, I},       # append-only (0107)
+    "hrms_job_changes":      {S, I, U},       # applied or cancelled, never deleted (0106)
+    "hrms_letter_templates":  {S, I, U},       # (0105)
+    "hrms_letter_requests":  {S, I, U},       # answered, never deleted
+    "hrms_letters":          {S, I},       # issued letters never change
+    "payroll_gratuity_settings":  {S, I, U},       # one row per company (0104)
+    "hrms_final_settlements":  {S, I, U},       # cancelled, never deleted
+    "hrms_final_settlement_lines":  {S, I, U, D},       # edited while a draft
+    "hrms_comp_off_requests":  {S, I, U},       # decided, never deleted (0103)
+    "hrms_leave_encashments":  {S, I},       # append-only
+    "hrms_expense_claims":   {S, I, U},       # decided or cancelled, never deleted (0102)
+    "hrms_expense_lines":    {S, I},       # fixed once claimed
+    "hrms_probation_reviews":  {S, I},       # append-only (0101)
+    "hrms_appraisal_templates":  {S, I, U},
+    "hrms_appraisal_template_kras":  {S, I, D},       # replaced as a whole
+    "hrms_appraisal_cycles":  {S, I, U},
+    "hrms_appraisals":       {S, I, U},
+    "hrms_appraisal_ratings":  {S, I, U},
+    "hrms_boarding_templates":  {S, I, U},       # retired, never deleted (0100)
+    "hrms_boarding_template_tasks":  {S, I, D},       # replaced as a whole
+    "hrms_boardings":        {S, I, U},       # closed, never deleted
+    "hrms_boarding_tasks":   {S, I, U},
+    "hrms_exit_interviews":  {S, I, U},
     # attendance v2 (0066)
     "hrms_kiosks":          {S, I, U},          # revoke; last_seen_at is written by the owner
     "hrms_attendance_corrections": {S, I, U},   # decided in place, audited by trigger

@@ -1,4 +1,5 @@
-import { expect, type APIRequestContext, type Page } from "@playwright/test";
+import { existsSync, readFileSync } from "node:fs";
+import { expect, type APIRequestContext, type Browser, type Page } from "@playwright/test";
 
 /** The API itself, for test setup through `request` (not what the page calls). */
 export const API = process.env.API_URL ?? "http://localhost:4000";
@@ -50,4 +51,22 @@ export function scanField(page: Page) {
 export async function scan(page: Page, code: string) {
   await page.keyboard.type(code, { delay: 4 });
   await page.keyboard.press("Enter");
+}
+
+/** The staff member with their own portal login that global setup made
+ *  through the invite flow, or null when the API wasn't sending mail to
+ *  Mailpit (then specs that need it skip). */
+export function staff(): { id: string; name: string; state: string } | null {
+  const info = "e2e/.auth/employee-info.json";
+  const state = "e2e/.auth/employee.json";
+  if (!existsSync(info) || !existsSync(state)) return null;
+  return { ...(JSON.parse(readFileSync(info, "utf8")) as { id: string; name: string }), state };
+}
+
+/** A page signed in as that staff member. */
+export async function staffPage(browser: Browser): Promise<Page | null> {
+  const s = staff();
+  if (!s) return null;
+  const ctx = await browser.newContext({ storageState: s.state, baseURL: process.env.WEB_URL ?? "http://localhost:3000" });
+  return ctx.newPage();
 }

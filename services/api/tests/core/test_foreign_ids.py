@@ -60,6 +60,18 @@ KIND_OF = {
     "floor_id": "floor", "table_id": "table", "station_id": "station",
     # assets (wave A, 0087)
     "asset_id": "asset",
+    "change_id": "job_change",
+    "letter_id": "letter",
+    "settlement_id": "settlement",
+    "line_id": "settlement_line",
+    "comp_off_id": "comp_off",
+    "expense_id": "expense_claim",
+    "receipt_file_id": "file",
+    "cycle_id": "appraisal_cycle",
+    "appraisal_id": "appraisal",
+    "template_id": "boarding_template",
+    "boarding_id": "boarding",
+    "task_id": "boarding_task",
 }
 
 # Path parameters that are not ids: a fixed, valid value. (scheme_code names
@@ -139,6 +151,10 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
             """insert into hrms_overtime_claims (tenant_id, employee_id, work_date, minutes)
                select tenant_id, id, '2027-03-03', 30 from hrms_employees where id=$1 returning id""",
             uuid.UUID(employee["id"]))
+        comp_off = await owner.fetchval(
+            """insert into hrms_comp_off_requests (tenant_id, employee_id, work_date, days)
+               select tenant_id, id, '2026-01-04', 1 from hrms_employees where id=$1 returning id""",
+            uuid.UUID(employee["id"]))
     finally:
         await owner.close()
     run = (await c.post("/payroll/runs", json={"month": "2026-09"})).json()
@@ -155,6 +171,27 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
     floor = (await c.post("/restaurant/floors", json={"name": "Probe floor"})).json()
     table = (await c.post(f"/restaurant/floors/{floor['id']}/tables", json={"labels": ["P1"]})).json()[0]
     station = (await c.post("/restaurant/stations", json={"name": "Probe station"})).json()
+    btemplate = (await c.post("/hrms/boarding-templates", json={"kind": "onboarding", "name": "Probe",
+                                                                "tasks": [{"title": "Probe task"}]})).json()
+    boarding = (await c.post(f"/hrms/employees/{employee['id']}/onboarding", json={})).json()
+    atemplate = (await c.post("/hrms/appraisal-templates", json={"name": "Probe",
+                                                                 "kras": [{"title": "Probe", "weight": 100}]})).json()
+    cycle = (await c.post("/hrms/appraisal-cycles", json={
+        "name": "Probe", "period_start": "2026-01-01", "period_end": "2026-12-31", "template_id": atemplate["id"],
+        "employee_ids": [employee["id"]]})).json()
+    appraisal = (await c.post(f"/hrms/appraisal-cycles/{cycle['id']}/open")).json()["appraisals"][0]
+    expense = (await c.post("/hrms/expenses", json={"employee_id": employee["id"], "title": "Probe", "lines": [
+        {"spent_on": "2026-01-05", "category": "fuel", "amount_minor": 100}]})).json()
+    leaver = (await c.post("/hrms/employees", json={"name": "Probe leaver"})).json()
+    await c.post(f"/hrms/employees/{leaver['id']}/offboarding", json={"reason": "resigned",
+                                                                      "last_working_day": "2026-12-31"})
+    settle = (await c.post(f"/hrms/employees/{leaver['id']}/final-settlement")).json()
+    settle_line = (await c.post(f"/hrms/final-settlements/{settle['id']}/lines", json={
+        "kind": "payable", "code": "BONUS", "name": "Probe", "amount_minor": 100})).json()
+    ltemplate = next(t for t in (await c.get("/hrms/letter-templates")).json() if t["kind"] == "noc")
+    letter = (await c.post(f"/hrms/employees/{employee['id']}/letters", json={"template_id": ltemplate["id"]})).json()
+    job_change = (await c.post(f"/hrms/employees/{employee['id']}/job-changes", json={
+        "kind": "promotion", "effective_on": "2099-01-01", "job_title_id": title["id"]})).json()
     return {
         "activity_type": activity_type["id"], "activity": activity["id"],
         "lost_reason": (await c.get("/crm/lost-reasons")).json()[0]["id"],
@@ -168,6 +205,14 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
         "one_off": one_off["id"], "advance": advance["id"], "notice": notice["id"],
         "overtime_claim": str(overtime_claim), "asset": asset["id"],
         "floor": floor["id"], "table": table["id"], "station": station["id"],
+        "boarding_template": btemplate["id"], "boarding": boarding["id"],
+        "boarding_task": boarding["tasks"][0]["id"],
+        "appraisal_cycle": cycle["id"], "appraisal": appraisal["id"],
+        "expense_claim": expense["id"],
+        "comp_off": str(comp_off),
+        "settlement": settle["id"], "settlement_line": settle_line["id"],
+        "letter": letter["id"],
+        "job_change": job_change["id"],
         # No payslip exists before a run is calculated; any id stands in (it must still 404).
         "payslip": str(uuid.uuid4()),
         "role": (await c.get("/team/roles")).json()[0]["id"],

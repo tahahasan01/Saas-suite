@@ -47,7 +47,7 @@ async def preview(conn: Any, month: str) -> PreviewOut:
     ty = payroll.tax_year_for(pay_date)
     results = [eng.calculate(ld.input) for ld in await payroll_data.load_inputs(
         conn, period_start=first, period_end=last, pay_date=pay_date)]
-    results = [r for r in results if r.employed_days > 0]
+    results = [r for r in results if r.employed_days > 0 or r.lines]   # as payroll_runs (a late settlement)
     unverified = eng.unverified_items([(ln.code, ln.explain) for r in results for ln in r.lines])
     if not ty.verified and not any(u.startswith("Income tax") for u in unverified):
         unverified.insert(0, f"Income tax slabs ({ty.label})")

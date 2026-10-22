@@ -178,6 +178,11 @@ register("payroll", {
     "payroll.report.export": ("payroll", "admin"),
     "payroll.settings.manage": ("payroll", "admin"),
 })
+register("payroll", {
+    # Final settlement and gratuity (wave C, 0104): a leaver's last pay.
+    "payroll.settlement.read": ("payroll", "read"),
+    "payroll.settlement.manage": ("payroll", "admin"),
+})
 # CRM v2 (Phase 3, 3B): shaping the pipeline and its lists is admin work; a
 # rep with `crm:write` works leads and activities but doesn't redesign stages.
 register("crm", {
@@ -214,6 +219,19 @@ register("hrms", {
     # Assets issued to staff (wave A, 0087); the value is for managers only.
     "hrms.asset.read": ("hrms", "read"),
     "hrms.asset.manage": ("hrms", "write"),
+    # HR letters (wave C, 0105); salary placeholders also need payroll.salary.read.
+    "hrms.letter.read": ("hrms", "read"),
+    "hrms.letter.manage": ("hrms", "write"),
+    # Expense claims (wave C, 0102): approval pays through payroll.
+    "hrms.expense.read": ("hrms", "read"),
+    "hrms.expense.manage": ("hrms", "write"),
+    "hrms.expense.approve": ("hrms", "admin"),
+    # Appraisals (wave C, 0101); managers review their reports via /me/reviews.
+    "hrms.appraisal.read": ("hrms", "read"),
+    "hrms.appraisal.manage": ("hrms", "admin"),
+    # Onboarding and offboarding (wave C, 0100); the exit interview is for managers only.
+    "hrms.boarding.read": ("hrms", "read"),
+    "hrms.boarding.manage": ("hrms", "write"),
 })
 
 

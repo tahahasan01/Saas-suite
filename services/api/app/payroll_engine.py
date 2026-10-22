@@ -60,6 +60,16 @@ def overtime_pay(base_minor: int, *, working_days: int, shift_minutes: int, minu
     return _round(Decimal(base_minor) * minutes * multiplier / (Decimal(working_days) * shift_minutes))
 
 
+ENCASH_DAYS_PER_MONTH = 30   # per-day divisor for leave encashment (St12 §5: founder to confirm)
+
+
+def encash_amount(base_minor: int, days: Decimal) -> tuple[int, int]:
+    """(per-day rate, amount) in paisa for encashed leave (wave C, H8): the
+    monthly salary over 30 a day, each rounded half-up once."""
+    per_day = _round(Decimal(base_minor) / ENCASH_DAYS_PER_MONTH)
+    return per_day, _round(Decimal(base_minor) * days / ENCASH_DAYS_PER_MONTH)
+
+
 def _rs(minor: int) -> str:
     return str((Decimal(minor) / 100).quantize(Decimal("0.01")))
 
@@ -169,6 +179,9 @@ class EmployeeInput:
     min_wage_minor: int | None = None
     province: str | None = None
     province_source: str = ""
+    # The exit date when they leave in this period (wave C, 0100): no months
+    # follow, so the year's tax is settled on what it actually paid.
+    leaves_on: date | None = None
 
 
 # ── Output ──────────────────────────────────────────────────────────────────
@@ -233,12 +246,34 @@ def calculate(inp: EmployeeInput) -> PayslipResult:
                         employed_days=employed, attendance=inp.attendance, tax_year=ty.label,
                         tax_verified=ty.verified)
     if employed == 0:
+        # A leaver paid after their last month (a final settlement booked
+        # late, wave C): the one-offs alone, taxed as the year's last pay.
+        if inp.one_offs and inp.leaves_on is not None:
+            _one_offs_only(inp, res, ty)
         return res
     try:
         _calculate(inp, res, ty)
     except _Fail as e:
         res.error = str(e)
     return res
+
+
+def _one_offs_only(inp: EmployeeInput, res: PayslipResult, ty: payroll.TaxYear) -> None:
+    taxable = 0
+    for o in inp.one_offs:
+        res.lines.append(Line(o.code, o.name, o.kind, o.amount_minor, taxable=o.taxable and o.kind == "earning",
+                              recurring=False, explain={"one_off_id": o.id}))
+        if o.taxable:
+            taxable += o.amount_minor if o.kind == "earning" else -o.amount_minor
+    taxable = max(0, taxable)
+    tax, ex = withholding(inp, ty, taxable_this=taxable, one_off_taxable=taxable, recurring_taxable=0)
+    res.lines.append(Line("INCOME_TAX", "Income tax (FBR)", "deduction", tax, explain=ex))
+    res.taxable_minor, res.tax_minor = taxable, tax
+    res.projected_annual_taxable_minor = ex["projected_annual_taxable_minor"]
+    res.annual_tax_minor = ex["annual_tax_minor"]
+    res.taxable_ytd_minor = inp.tax_history.taxable_minor + taxable
+    res.tax_ytd_minor = inp.tax_history.tax_minor + tax
+    _totals(res)
 
 
 def _calculate(inp: EmployeeInput, res: PayslipResult, ty: payroll.TaxYear) -> None:
@@ -266,6 +301,8 @@ def _calculate(inp: EmployeeInput, res: PayslipResult, ty: payroll.TaxYear) -> N
         order = formula.topo_order({c.code: formula.references(trees[c.code]) for c in comps})
     except formula.CycleError as e:
         raise _Fail(str(e))
+    if inp.components and base_full > 0 and not pays_salary(comps):
+        raise _Fail(f"{inp.name}'s salary structure doesn't pay their salary: add a Basic pay component = BASE")
     by_code = {c.code: c for c in comps}
     full: dict[str, int] = {}
     built: dict[str, Line] = {}
@@ -389,7 +426,7 @@ def withholding(inp: EmployeeInput, ty: payroll.TaxYear, *, taxable_this: int, o
                 recurring_taxable: int) -> tuple[int, dict[str, Any]]:
     """Monthly income tax by annualised YTD projection (D-41, St03 §6.6)."""
     hist = inp.tax_history
-    left = months_left(inp.period_start, ty)
+    left = 1 if inp.leaves_on and inp.leaves_on <= inp.period_end else months_left(inp.period_start, ty)
     without = (hist.taxable_minor + hist.assumed_months * recurring_taxable
                + (taxable_this - one_off_taxable) + recurring_taxable * (left - 1))
     with_one_off = without + one_off_taxable
@@ -455,6 +492,25 @@ def difference(recomputed: PayslipResult, paid: list[PaidLine]) -> PayslipResult
         (ln.amount_minor for ln in out.lines if ln.code == "ABSENCE"), 0)
     out.tax_minor = next((ln.amount_minor for ln in out.lines if ln.code == "INCOME_TAX"), 0)
     return out
+
+
+def pays_salary(components: list[Component]) -> bool:
+    """Whether some earning uses BASE, directly or through the components it
+    reads. A structure is the whole list of earnings, so one that never
+    reaches BASE never pays the monthly salary (bug of 2026-10-23)."""
+    refs: dict[str, set[str]] = {}
+    for c in components:
+        try:
+            refs[c.code] = formula.references(formula.parse(c.expression()))
+        except formula.FormulaError:
+            refs[c.code] = set()
+
+    def reaches(code: str, seen: set[str]) -> bool:
+        if code in seen:
+            return False
+        seen.add(code)
+        return any(r == "BASE" or (r in refs and reaches(r, seen)) for r in refs.get(code, set()))
+    return any(c.kind == "earning" and reaches(c.code, set()) for c in components)
 
 
 def structure_order(components: list[Component]) -> list[str]:

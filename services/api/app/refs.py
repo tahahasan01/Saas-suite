@@ -22,6 +22,8 @@ _LABELS = {
     "hrms_departments": "Department",
     "hrms_job_titles": "Job title",
     "hrms_locations": "Location",
+    # appraisals (wave C, 0101)
+    "hrms_appraisal_templates": "Template",
 }
 
 

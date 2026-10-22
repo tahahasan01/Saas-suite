@@ -13,7 +13,7 @@ import typing
 import asyncpg
 import pytest
 
-from app import models
+from app import models, payroll_models
 from app.config import settings
 
 # (table, column) -> the model's list of allowed values.
@@ -84,6 +84,32 @@ ENUM_COLUMNS = {
     # the touch tile screen (wave B, 0090)
     ("pos_categories", "color"): models.TILE_COLORS,
     ("pos_products", "color"): models.TILE_COLORS,
+    ("pay_advance_repayments", "method"): payroll_models.ADVANCE_REPAY_METHODS,
+    ("hrms_job_changes", "kind"): models.JOB_CHANGE_KINDS,
+    ("hrms_job_changes", "status"): models.JOB_CHANGE_STATUSES,
+    ("hrms_letter_templates", "kind"): models.LETTER_KINDS,
+    ("hrms_letters", "kind"): models.LETTER_KINDS,
+    ("hrms_letter_requests", "kind"): models.LETTER_REQUEST_KINDS,
+    ("hrms_letter_requests", "status"): models.LETTER_REQUEST_STATUSES,
+    ("hrms_final_settlements", "status"): models.SETTLEMENT_STATUSES,
+    ("hrms_final_settlement_lines", "kind"): models.SETTLEMENT_KINDS,
+    ("hrms_final_settlement_lines", "code"): models.SETTLEMENT_CODES,
+    ("hrms_comp_off_requests", "status"): models.COMP_OFF_STATUSES,
+    ("hrms_expense_claims", "status"): models.EXPENSE_STATUSES,
+    ("hrms_expense_lines", "category"): models.EXPENSE_CATEGORIES,
+    ("hrms_probation_reviews", "outcome"): models.PROBATION_OUTCOMES,
+    ("hrms_appraisal_cycles", "status"): models.APPRAISAL_CYCLE_STATUSES,
+    ("hrms_appraisals", "status"): models.APPRAISAL_STATUSES,
+    ("hrms_employees", "exit_reason"): models.EXIT_REASONS,
+    ("hrms_boarding_templates", "kind"): models.BOARDING_KINDS,
+    ("hrms_boarding_template_tasks", "owner"): models.BOARDING_OWNERS,
+    ("hrms_boardings", "kind"): models.BOARDING_KINDS,
+    ("hrms_boardings", "status"): models.BOARDING_STATUSES,
+    ("hrms_boardings", "reason"): models.EXIT_REASONS,
+    ("hrms_boarding_tasks", "owner"): models.BOARDING_OWNERS,
+    ("hrms_boarding_tasks", "status"): models.BOARDING_TASK_STATUSES,
+    ("hrms_exit_interviews", "outcome"): models.EXIT_OUTCOMES,
+    ("hrms_exit_interviews", "primary_reason"): models.LEAVING_REASONS,
     # attendance v2 (0066)
     ("hrms_punches", "geo_status"): models.GEO_STATUSES,
     ("hrms_attendance", "geo_status"): models.GEO_STATUSES,

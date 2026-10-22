@@ -24,6 +24,12 @@ from .payroll_province import resolve_work_provinces
 
 FINAL = ("approved", "paid", "locked")   # run statuses whose payslips count as paid
 
+# Money back on advance `a` outside the instalments (0107): cash, or a payroll
+# lump sum whose one-off hasn't been voided.
+REPAID_SQL = """coalesce((select sum(p.amount_minor) from pay_advance_repayments p
+                            left join pay_one_offs o on o.id = p.one_off_id
+                           where p.advance_id = a.id and (o.id is null or o.status <> 'void')), 0)"""
+
 # Absence is derived from evidence, not a status field: a working day with no
 # check-in and no approved leave. (Moved here unchanged from routers/hrms.py.)
 # $1 = first day of the month, $2 = the tenant's weekly rest days (ISO dow),
@@ -66,6 +72,7 @@ select e.id,
        (select count(*) from working_days w
          where w.employee_id = e.id and w.day < current_date
            and w.day >= greatest(coalesce(e.join_date, e.created_at::date), e.created_at::date)
+           and (e.exit_date is null or w.day <= e.exit_date)      -- a leaver isn't absent after leaving
        ) as elapsed_days,
        -- A check-in is presence unless the shift's thresholds derived the
        -- day as an absence (worked under absent_below_min, 0045).
@@ -247,7 +254,11 @@ async def load_inputs(conn: Any, *, period_start: date, period_end: date, pay_da
     ids = [uuid.UUID(i) for i in employee_ids] if employee_ids is not None else None
     emps = await conn.fetch(
         """select * from hrms_employees where status = 'active' and ($1::uuid[] is null or id = any($1::uuid[]))
-            order by name, id""", ids)
+              -- A leaver is paid to their exit month, and later only for one-offs still due (a settlement).
+              and (exit_date is null or exit_date >= $2
+                   or exists (select 1 from pay_one_offs o where o.employee_id = hrms_employees.id
+                                and o.period = $2 and o.status = 'pending'))
+            order by name, id""", ids, period_start)
     if not emps:
         return []
     emp_ids = [e["id"] for e in emps]
@@ -285,7 +296,7 @@ async def load_inputs(conn: Any, *, period_start: date, period_end: date, pay_da
                 """select a.*, a.principal_minor - coalesce((
                           select sum(l.amount_minor) from payslip_lines l join payroll_runs pr on pr.id = l.run_id
                            where l.ref_id = a.id and l.code = 'ADVANCE' and pr.status = any($3::text[])
-                             and pr.id is distinct from $4), 0) as outstanding
+                             and pr.id is distinct from $4), 0) - """ + REPAID_SQL + """ as outstanding
                      from pay_advances a
                     where a.employee_id = any($1::uuid[]) and a.status = 'active' and a.start_period <= $2
                     order by a.created_at""", emp_ids, period_start, list(FINAL), run_uuid):
@@ -313,7 +324,8 @@ async def load_inputs(conn: Any, *, period_start: date, period_end: date, pay_da
     for e in emps:
         eid = str(e["id"])
         start = max(period_start, e["join_date"] or period_start)
-        segments, row_at_end = _segments(comp_rows.get(eid, []), start, period_end)
+        leaves = e["exit_date"] if e["exit_date"] and e["exit_date"] <= period_end else None
+        segments, row_at_end = _segments(comp_rows.get(eid, []), start, leaves or period_end)
         structure = str(row_at_end["structure_id"]) if row_at_end and row_at_end["structure_id"] else None
         paid = paid_months.get(eid, {})
         assumed = sum(1 for m in months_before
@@ -328,12 +340,14 @@ async def load_inputs(conn: Any, *, period_start: date, period_end: date, pay_da
                                        tax_minor=sum(x for _, x in paid.values()), months=len(paid),
                                        assumed_months=assumed),
             one_offs=one_offs.get(eid, []), advances=advances.get(eid, []), statutory=rules,
-            min_wage_minor=wage["monthly_minor"] if wage else None, province=province, province_source=source)
+            min_wage_minor=wage["monthly_minor"] if wage else None, province=province, province_source=source,
+            leaves_on=leaves)
         snapshot = {
             "name": e["name"], "cnic": e["cnic"], "ntn": e["ntn"], "iban": e["iban"], "bank_name": e["bank_name"],
             "payment_mode": e["payment_mode"], "designation": e["designation"], "department": e["department"],
             "eobi_number": e["eobi_number"], "ss_number": e["ss_number"],
             "join_date": e["join_date"].isoformat() if e["join_date"] else None,
+            "exit_date": leaves.isoformat() if leaves else None,
             "province": province, "province_source": source,
             "base_minor": segments[-1].base_minor if segments else 0}
         out.append(Loaded(inp, snapshot, min_wage_verified=bool(wage["verified"]) if wage else True))
@@ -343,3 +357,16 @@ async def load_inputs(conn: Any, *, period_start: date, period_end: date, pay_da
 def _month_end(first: date) -> date:
     nxt = date(first.year + (first.month == 12), first.month % 12 + 1, 1)
     return nxt - timedelta(days=1)
+
+
+async def next_pay_month(conn: Any) -> date:
+    """The month a one-off approved today is paid in (wave C): this month,
+    unless its regular payroll is already final; then next month."""
+    today: date = await conn.fetchval("select current_date")
+    first = today.replace(day=1)
+    closed = await conn.fetchval(
+        "select 1 from payroll_runs where kind = 'regular' and period_start = $1 and status = any($2::text[])",
+        first, list(FINAL))
+    if not closed:
+        return first
+    return date(first.year + (first.month == 12), first.month % 12 + 1, 1)

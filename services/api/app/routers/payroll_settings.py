@@ -15,13 +15,14 @@ from typing import Any
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from .. import audit, db
+from .. import audit, db, payroll_data
 from .. import payroll_engine as eng
 from .. import payroll_formula as formula
 from ..deps import AuthContext
 from ..payroll_models import (
     AdvanceIn,
     AdvanceOut,
+    AdvanceRepay,
     ComponentIn,
     ComponentOut,
     ComponentUpdate,
@@ -143,7 +144,8 @@ async def _structure(conn: Any, row: Any) -> StructureOut:
     except (formula.FormulaError, formula.CycleError):
         order = []
     return StructureOut(id=str(row["id"]), name=row["name"], active=row["active"],
-                        components=[_component(c) for c in comps], order=order)
+                        components=[_component(c) for c in comps], order=order,
+                        pays_salary=eng.pays_salary([_engine_component(c) for c in comps]))
 
 
 async def _save_lines(conn: Any, tenant_id: str, structure_id: Any, ids: list[uuid.UUID]) -> None:
@@ -260,7 +262,7 @@ _ADVANCE = """
 select a.*, e.name as employee_name,
        coalesce((select sum(l.amount_minor) from payslip_lines l join payroll_runs r on r.id = l.run_id
                   where l.ref_id = a.id and l.code = 'ADVANCE' and r.status in ('approved', 'paid', 'locked')), 0)
-         as recovered
+         + """ + payroll_data.REPAID_SQL + """ as recovered
   from pay_advances a join hrms_employees e on e.id = a.employee_id"""
 
 
@@ -304,6 +306,43 @@ async def void_advance(advance_id: str, auth: AuthContext = Depends(PAY)) -> Adv
             if await conn.fetchval("select 1 from pay_advances where id = $1", aid):
                 raise HTTPException(status.HTTP_409_CONFLICT, "This advance is already closed")
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Advance not found")
+        return _advance(await conn.fetchrow(_ADVANCE + " where a.id = $1", aid))
+
+
+@router.post("/advances/{advance_id}/repay", response_model=AdvanceOut)
+async def repay_advance(advance_id: str, body: AdvanceRepay, auth: AuthContext = Depends(PAY)) -> AdvanceOut:
+    """Paying off early (0107): cash for any part of what's left, or the whole
+    balance from the next salary as one ADVANCE_SETTLE deduction. Fully paid,
+    the advance closes, so payroll takes no instalment on top."""
+    async with db.tenant_conn(auth.tenant_id) as conn, conn.transaction():
+        aid = uuid_or_404(advance_id, "Advance")
+        row = await conn.fetchrow(_ADVANCE + " where a.id = $1 for update of a", aid)
+        if row is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Advance not found")
+        owed = max(0, row["principal_minor"] - int(row["recovered"]))
+        if row["status"] != "active" or owed == 0:
+            raise HTTPException(status.HTTP_409_CONFLICT, "Nothing is owed on this advance")
+        if body.method == "payroll" and body.amount_minor not in (None, owed):
+            raise _422("Through payroll it's the whole balance; take part payments in cash")
+        amount = owed if body.amount_minor is None else body.amount_minor
+        if amount > owed:
+            raise _422(f"Only {owed / 100:,.2f} is owed")
+        one_off = None
+        if body.method == "payroll":
+            one_off = await conn.fetchval(
+                """insert into pay_one_offs (tenant_id, employee_id, period, code, name, kind, amount_minor, taxable,
+                                             note, created_by)
+                   values ($1, $2, $3, 'ADVANCE_SETTLE', 'Advance paid off', 'deduction', $4, false, $5, $6)
+                   returning id""",
+                auth.tenant_id, row["employee_id"], await payroll_data.next_pay_month(conn), amount,
+                f"advance {aid} paid off", uuid.UUID(auth.user_id))
+        await conn.execute(
+            """insert into pay_advance_repayments (tenant_id, advance_id, method, amount_minor, one_off_id, note,
+                                                   created_by)
+               values ($1, $2, $3, $4, $5, $6, $7)""",
+            auth.tenant_id, aid, body.method, amount, one_off, body.note, uuid.UUID(auth.user_id))
+        if amount == owed:
+            await conn.execute("update pay_advances set status = 'closed' where id = $1", aid)
         return _advance(await conn.fetchrow(_ADVANCE + " where a.id = $1", aid))
 
 

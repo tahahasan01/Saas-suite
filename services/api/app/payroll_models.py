@@ -3,7 +3,7 @@ Literals in app/models.py, next to the database CHECKs they mirror."""
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Literal, get_args
 
 from pydantic import BaseModel, Field
 
@@ -261,6 +261,7 @@ class StructureOut(BaseModel):
     active: bool
     components: list[ComponentOut]
     order: list[str]           # evaluation order (dependencies first)
+    pays_salary: bool = True   # some earning uses BASE; otherwise the salary is never paid
 
 
 # ── One-offs and advances ───────────────────────────────────────────────────
@@ -296,6 +297,16 @@ class AdvanceIn(BaseModel):
     installment_minor: int = Field(gt=0, le=10**12)
     start_month: str = Field(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")
     note: str = Field(default="", max_length=300)
+
+
+AdvanceRepayMethod = Literal["cash", "payroll"]
+ADVANCE_REPAY_METHODS = list(get_args(AdvanceRepayMethod))
+
+
+class AdvanceRepay(BaseModel):
+    method: AdvanceRepayMethod = "cash"
+    amount_minor: int | None = Field(default=None, gt=0, le=10**12)   # all that's left when omitted
+    note: str = Field(default="", max_length=500)
 
 
 class AdvanceOut(BaseModel):

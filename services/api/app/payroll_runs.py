@@ -27,7 +27,7 @@ from typing import Any
 import asyncpg
 from fastapi import HTTPException, status
 
-from . import audit, db, payroll, payroll_data
+from . import audit, db, payroll, payroll_data, settlement
 from . import payroll_engine as eng
 from .payroll_models import RecomputeCreate, RunCreate
 
@@ -239,6 +239,7 @@ async def reopen(conn: Any, run_id: str, actor_id: str, note: str) -> Any:
 
 async def mark_paid(conn: Any, run_id: str, actor_id: str, note: str = "") -> Any:
     _, after = await transition(conn, run_id, "paid", actor_id, note, sets={"paid_at": await conn.fetchval("select now()")})
+    await settlement.on_run_paid(conn)      # a leaver's final settlement is paid with it (wave C)
     return after
 
 
@@ -292,7 +293,7 @@ async def compute_batch(conn: Any, run: Any, ids: list[str]) -> list[tuple[payro
     paid = await _paid_lines(conn, run["period_start"], ids) if adjustment else {}
     for ld in loaded:
         res = eng.calculate(ld.input)
-        if res.employed_days == 0:
+        if res.employed_days == 0 and not res.lines:     # a leaver paid one-offs late still gets a payslip
             continue
         if adjustment:
             res = eng.difference(res, paid.get(ld.input.employee_id, []))
