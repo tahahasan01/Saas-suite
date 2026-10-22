@@ -66,6 +66,8 @@ KIND_OF = {
     "target_id": "target",
     # campaigns (wave D, 0124)
     "segment_id": "segment", "template_id": "template", "campaign_id": "campaign",
+    # fee vouchers (0126)
+    "plan_id": "invoice_plan", "invoice_run_id": "invoice_run",
 }
 
 # Path parameters that are not ids: a fixed, valid value. (scheme_code names
@@ -169,7 +171,12 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
     template = (await c.post("/crm/templates", json={"name": "Probe", "body": "Hi"})).json()
     campaign = (await c.post("/crm/campaigns", json={"name": "Probe", "segment_id": segment["id"],
                                                      "template_id": template["id"]})).json()
+    vtag = (await c.post("/tags", json={"name": "Probe vouchers"})).json()
+    vplan = (await c.post("/invoices/plans", json={"name": "Probe fees", "tag_id": vtag["id"], "lines": [
+        {"description": "Fee", "qty": 1, "unit_price_minor": 100}]})).json()
+    vrun = (await c.post(f"/invoices/plans/{vplan['id']}/runs", json={"period": "2027-04"})).json()
     return {
+        "invoice_plan": vplan["id"], "invoice_run": vrun["id"],
         "segment": segment["id"], "template": template["id"], "campaign": campaign["id"],
         "target": target["id"],
         "quote": quote["id"], "web_form": web_form["id"],
@@ -272,7 +279,7 @@ def _value(name: str, schema: dict, own: dict):
         return "4826"
     if schema.get("format") == "date":
         return "2027-04-05"
-    if name.endswith("month"):  # payroll months are 'YYYY-MM'
+    if name.endswith("month") or name == "period":  # payroll months and billing periods are 'YYYY-MM'
         return "2027-04"
     if name in ("code", "device_code"):  # register and device codes: A-Z0-9, unique
         return "P" + uuid.uuid4().hex[:4].upper()

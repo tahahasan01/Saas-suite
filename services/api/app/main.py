@@ -15,6 +15,7 @@ from .config import settings
 from .context import REQUEST_ID_HEADER, RequestContextMiddleware
 from .routers import activities as activities_router  # crm v2 (3B)
 from .routers import campaigns as campaigns_router  # CRM campaigns (wave D)
+from .routers import invoice_runs as invoice_runs_router  # fee vouchers (INV-08)
 from .routers import crm_selling, public_quotes, web_forms  # CRM selling (wave D)
 from .routers import (  # org data (3A, p3-orgdata)
     ai,
@@ -120,6 +121,7 @@ app.include_router(crm.router)
 app.include_router(ai.router)
 app.include_router(notifications.router)
 app.include_router(workflows.router)
+app.include_router(invoice_runs_router.router)   # before invoices: /invoices/plans isn't an invoice id
 app.include_router(invoices.router)
 app.include_router(pos.router)
 app.include_router(fbr.router)

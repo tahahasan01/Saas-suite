@@ -719,6 +719,96 @@ export interface paths {
         patch: operations["update_workflow_workflows__workflow_id__patch"];
         trace?: never;
     };
+    "/invoices/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Plans */
+        get: operations["list_plans_invoices_plans_get"];
+        put?: never;
+        /** Create Plan */
+        post: operations["create_plan_invoices_plans_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/invoices/plans/{plan_id}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Runs */
+        get: operations["list_runs_invoices_plans__plan_id__runs_get"];
+        put?: never;
+        /**
+         * Make Run
+         * @description One draft invoice per contact for the month, for review.
+         */
+        post: operations["make_run_invoices_plans__plan_id__runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/invoices/runs/{invoice_run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Run */
+        get: operations["get_run_invoices_runs__invoice_run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/invoices/runs/{invoice_run_id}/issue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Issue Run */
+        post: operations["issue_run_invoices_runs__invoice_run_id__issue_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/invoices/runs/{invoice_run_id}/pdfs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Run Pdfs */
+        get: operations["run_pdfs_invoices_runs__invoice_run_id__pdfs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/invoices": {
         parameters: {
             query?: never;
@@ -8766,7 +8856,7 @@ export interface components {
              */
             notes: string;
             /** Lines */
-            lines: components["schemas"]["InvoiceLineIn"][];
+            lines: components["schemas"]["InvoiceLineIn-Input"][];
             /**
              * Submit
              * @default false
@@ -8844,11 +8934,29 @@ export interface components {
             last_sent_at?: string | null;
         };
         /** InvoiceLineIn */
-        InvoiceLineIn: {
+        "InvoiceLineIn-Input": {
             /** Description */
             description: string;
             /** Qty */
             qty: number | string;
+            /** Unit Price Minor */
+            unit_price_minor: number;
+            /**
+             * Line Discount Minor
+             * @default 0
+             */
+            line_discount_minor: number;
+            /** Tax Code */
+            tax_code?: string | null;
+            /** Product Id */
+            product_id?: string | null;
+        };
+        /** InvoiceLineIn */
+        "InvoiceLineIn-Output": {
+            /** Description */
+            description: string;
+            /** Qty */
+            qty: string;
             /** Unit Price Minor */
             unit_price_minor: number;
             /**
@@ -8889,6 +8997,125 @@ export interface components {
             total_minor: number;
             /** Product Id */
             product_id: string | null;
+        };
+        /**
+         * InvoicePlanIn
+         * @description What to bill, to whom (a tag or a saved list, not both) and when it's due.
+         */
+        InvoicePlanIn: {
+            /** Name */
+            name: string;
+            /** Lines */
+            lines: components["schemas"]["InvoiceLineIn-Input"][];
+            /** Tag Id */
+            tag_id?: string | null;
+            /** Segment Id */
+            segment_id?: string | null;
+            /**
+             * Due Day
+             * @default 10
+             */
+            due_day: number;
+            /** Run Day */
+            run_day?: number | null;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+        };
+        /** InvoicePlanOut */
+        InvoicePlanOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Lines */
+            lines: components["schemas"]["InvoiceLineIn-Output"][];
+            /** Tag Id */
+            tag_id: string | null;
+            /** Segment Id */
+            segment_id: string | null;
+            /** Due Day */
+            due_day: number;
+            /** Run Day */
+            run_day: number | null;
+            /** Notes */
+            notes: string;
+            /** Active */
+            active: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** InvoiceRunCreate */
+        InvoiceRunCreate: {
+            /** Period */
+            period: string;
+        };
+        /** InvoiceRunDetail */
+        InvoiceRunDetail: {
+            /** Id */
+            id: string;
+            /** Plan Id */
+            plan_id: string;
+            /** Plan Name */
+            plan_name: string;
+            /**
+             * Period
+             * Format: date
+             */
+            period: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "issued";
+            /** Invoice Count */
+            invoice_count: number;
+            /** Total Minor */
+            total_minor: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Issued At */
+            issued_at: string | null;
+            /** Invoices */
+            invoices: components["schemas"]["InvoiceSummary"][];
+        };
+        /** InvoiceRunOut */
+        InvoiceRunOut: {
+            /** Id */
+            id: string;
+            /** Plan Id */
+            plan_id: string;
+            /** Plan Name */
+            plan_name: string;
+            /**
+             * Period
+             * Format: date
+             */
+            period: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "issued";
+            /** Invoice Count */
+            invoice_count: number;
+            /** Total Minor */
+            total_minor: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Issued At */
+            issued_at: string | null;
         };
         /**
          * InvoiceSend
@@ -8959,7 +9186,7 @@ export interface components {
             /** Notes */
             notes?: string | null;
             /** Lines */
-            lines?: components["schemas"]["InvoiceLineIn"][] | null;
+            lines?: components["schemas"]["InvoiceLineIn-Input"][] | null;
         };
         /** JobTitleCreate */
         JobTitleCreate: {
@@ -15087,6 +15314,241 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorkflowOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_plans_invoices_plans_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoicePlanOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_plan_invoices_plans_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvoicePlanIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoicePlanOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_runs_invoices_plans__plan_id__runs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceRunOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    make_run_invoices_plans__plan_id__runs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvoiceRunCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceRunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_invoices_runs__invoice_run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_run_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceRunDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    issue_run_invoices_runs__invoice_run_id__issue_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_run_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceRunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_pdfs_invoices_runs__invoice_run_id__pdfs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_run_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

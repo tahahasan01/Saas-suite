@@ -245,6 +245,8 @@ ConsentStatus = Literal["opted_in", "opted_out"]
 CampaignStatus = Literal["draft", "sent", "cancelled"]
 RecipientStatus = Literal["queued", "skipped"]
 SkipReason = Literal["no_address", "no_consent", "opted_out", "daily_cap"]
+# Fee vouchers (0126).
+InvoiceRunStatus = Literal["draft", "issued"]
 LEAD_STATUSES = list(get_args(LeadStatus))
 # Activities (D-32, 0063). Polymorphic: 'contact' arrives with the contacts module.
 ActivityEntity = Literal["lead", "contact"]

@@ -305,6 +305,23 @@ async def run_leave_entitlements() -> dict[str, int]:
 # code -> handler. Every row in scheduled_jobs has one here and vice versa
 # (tests/core/test_worker.py); a new job is a seed row in a migration plus a
 # line here.
+async def run_recurring_invoices() -> dict[str, int]:
+    """Daily: make this month's draft run for each repeating billing plan whose
+    day has come (fee vouchers, 0126). One run per plan and month, so a retry
+    makes nothing twice. Returns runs made per tenant."""
+    from . import invoice_runs, sequences
+    made: dict[str, int] = {}
+    for tid in await _active_tenants():
+        try:
+            async with db.tenant_conn(tid) as conn:
+                n = await invoice_runs.due_runs(conn, tid, await sequences.local_date(conn, None))
+            if n:
+                made[tid] = n
+        except Exception:
+            log.exception("recurring invoices failed for tenant %s", tid)
+    return made
+
+
 HANDLERS: dict[str, Callable[[], Awaitable[Any]]] = {
     "fbr.outbox": fbr_submit.process_outbox,
     "email.outbox": email.process_outbox,
@@ -325,6 +342,7 @@ HANDLERS: dict[str, Callable[[], Awaitable[Any]]] = {
     "hrms.leave_entitlements": run_leave_entitlements,
     "payroll.calculate": payroll_runs.run_due_calculations,   # 0070; batches of 100 (St03 risk 9)
     "invoicing.overdue_reminders": run_invoice_reminders,     # 0074
+    "invoicing.recurring_runs": run_recurring_invoices,       # 0126 fee vouchers
 }
 
 

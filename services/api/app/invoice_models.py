@@ -8,7 +8,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .models import InvoicePaymentMethod
+from .models import InvoicePaymentMethod, InvoiceRunStatus
 
 
 class InvoiceLineIn(BaseModel):
@@ -151,3 +151,50 @@ class AgingReport(BaseModel):
     as_of: date
     rows: list[AgingRow]
     totals: AgingBuckets
+
+
+# ── Bulk and recurring invoices (0126) ──────────────────────────────────────
+class InvoicePlanIn(BaseModel):
+    """What to bill, to whom (a tag or a saved list, not both) and when it's due."""
+    model_config = ConfigDict(extra="forbid")
+    name: str = Field(min_length=1, max_length=120)
+    lines: list[InvoiceLineIn] = Field(min_length=1, max_length=50)
+    tag_id: UUID | None = None
+    segment_id: UUID | None = None
+    due_day: int = Field(default=10, ge=1, le=28)
+    run_day: int | None = Field(default=None, ge=1, le=28)    # repeat monthly on this day; none = by hand
+    notes: str = Field(default="", max_length=4000)
+
+
+class InvoicePlanOut(BaseModel):
+    id: str
+    name: str
+    lines: list[InvoiceLineIn]
+    tag_id: str | None
+    segment_id: str | None
+    due_day: int
+    run_day: int | None
+    notes: str
+    active: bool
+    created_at: datetime
+
+
+class InvoiceRunCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    period: str = Field(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")
+
+
+class InvoiceRunOut(BaseModel):
+    id: str
+    plan_id: str
+    plan_name: str
+    period: date
+    status: InvoiceRunStatus
+    invoice_count: int
+    total_minor: int
+    created_at: datetime
+    issued_at: datetime | None
+
+
+class InvoiceRunDetail(InvoiceRunOut):
+    invoices: list[InvoiceSummary]

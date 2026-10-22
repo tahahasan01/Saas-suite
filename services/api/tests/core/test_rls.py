@@ -156,6 +156,8 @@ _SHAPED = {
     "crm_quotes": {"content_hash": lambda: uuid.uuid4().hex * 2, "token_hash": lambda: uuid.uuid4().hex * 2},
     "crm_web_forms": {"public_id": lambda: uuid.uuid4().hex},
     "crm_targets": {"month": lambda: "2027-04-01"},
+    "invoice_runs": {"period": lambda: "2027-04-01"},
+    "invoice_plans": {"tag_id": lambda: str(uuid.uuid4()), "lines": lambda: "[{}]"},   # one audience, a line
 }
 
 
@@ -179,7 +181,11 @@ async def _plant(conn, table: str, key: str, owner_id: uuid.UUID) -> None:
     cols = {name: (typ, allowed.get(name, _value(typ))) for name, typ in await _required_columns(conn, table)}
     # A shaped optional column (e.g. the legacy_ref an invoice needs without a contact) is set too.
     for col in _SHAPED.get(table, {}):
-        cols.setdefault(col, ("text", allowed[col]))
+        if col not in cols:
+            typ = await conn.fetchval(
+                """select format_type(atttypid, atttypmod) from pg_attribute
+                    where attrelid = $1::regclass and attname = $2""", table, col)
+            cols[col] = (typ or "text", allowed[col])
     cols[key] = ("uuid", str(owner_id))
     names = list(cols)
     params = ", ".join(f"${i}::text::{cols[n][0]}" for i, n in enumerate(names, 1))
