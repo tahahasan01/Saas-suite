@@ -4,6 +4,7 @@
 import type { Product, Sale } from "@business-os/types";
 import { cashDue, priceSale } from "@business-os/pos-core";
 import { api, NetworkError } from "@/lib/api";
+import type { TileCategory } from "@/lib/tiles";
 import { buildIndex, searchIndex, type SearchIndex } from "./search";
 import { cachedProducts, device, meta, queueSale, type Pricing } from "./store";
 import { announce } from "./sync";
@@ -29,6 +30,20 @@ export async function productsOrCached(text: string): Promise<Product[]> {
     if (!(e instanceof NetworkError) || !device()) throw e;
     const q = text.toLowerCase();
     return (await cachedProducts()).filter((p) => !q || p.name.toLowerCase().includes(q) || p.sku?.toLowerCase() === q || p.barcode === text);
+  }
+}
+
+/** The categories for the tile screen (P42): a registered till's saved copy,
+ *  else the API. A cashier who can't read categories just gets no tiles. */
+export async function tileCategories(): Promise<TileCategory[]> {
+  if (device()) {
+    const saved = await meta<TileCategory[]>("categories");
+    if (saved) return saved;
+  }
+  try {
+    return await api<TileCategory[]>("/pos/categories", { notify: false });
+  } catch {
+    return [];
   }
 }
 

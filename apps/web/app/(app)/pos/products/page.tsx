@@ -13,11 +13,12 @@ import { useConfirm } from "@/components/Confirm";
 import { DataTable, type Column } from "@/components/DataTable";
 import { ImportCsv } from "@/components/ImportCsv";
 import { blurOnWheel } from "@/components/pos/labels";
+import { TILE_COLORS, TILE_LABELS, tileStyle, type TileColor } from "@/lib/tiles";
 
 const blank = { name: "", price: "", stock: "", barcode: "", low: "", hs_code: "", tax_rate: "", category: "",
                 cost: "", track_stock: true };
 
-type Category = { id: string; name: string; product_count: number };
+type Category = { id: string; name: string; product_count: number; color?: string | null };
 type Move = { id: string; qty_delta: number; reason: string; note: string; user_name: string | null; created_at: string };
 type Barcode = { id: string; barcode: string; qty: number; label: string };
 const REASON: Record<string, string> = {
@@ -206,6 +207,9 @@ export default function ProductsPage() {
                 {categories.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.product_count})</option>)}
               </Select>
             )}
+            {categories.length > 0 && can("products.product.update") && (
+              <CategoryColours categories={categories} onChanged={loadCategories} />
+            )}
             <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-fg-muted">
               <input
                 type="checkbox"
@@ -311,6 +315,8 @@ function EditDialog({ p, busy, categories, onCancel, onSave }: {
     tax_rate: p.tax_rate.toString(),
     category_id: p.category_id ?? "",
     cost: p.cost_minor == null ? "" : (p.cost_minor / 100).toString(),
+    color: p.color ?? "",
+    pinned: !!p.pinned,
   });
 
   function submit(e: React.FormEvent) {
@@ -323,6 +329,8 @@ function EditDialog({ p, busy, categories, onCancel, onSave }: {
       tax_rate: Number(f.tax_rate || 0),
       ...(f.category_id ? { category_id: f.category_id } : {}),
       ...(p.cost_minor != null && can("products.cost.update") ? { cost_minor: toMinor(f.cost) } : {}),
+      color: f.color,          // "" = the category's colour
+      pinned: f.pinned,
     });
   }
 
@@ -361,6 +369,16 @@ function EditDialog({ p, busy, categories, onCancel, onSave }: {
                      onChange={(e) => setF({ ...f, cost: e.target.value })} />
             </Field>
           )}
+        </div>
+        <div className="grid grid-cols-2 items-end gap-3">
+          <Field label="Tile colour">
+            <ColorSelect value={f.color} none="Category's colour" onChange={(color) => setF({ ...f, color })} />
+          </Field>
+          <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm">
+            <input type="checkbox" checked={f.pinned} className="size-5 accent-[var(--color-brand)]"
+                   onChange={(e) => setF({ ...f, pinned: e.target.checked })} />
+            Show on the till&apos;s favourites
+          </label>
         </div>
       </form>
     </Dialog>
@@ -469,5 +487,46 @@ function BarcodesDialog({ p, onClose }: { p: Product; onClose: () => void }) {
         </form>
       )}
     </Dialog>
+  );
+}
+
+/** The palette as a select (P42); "" = no colour of its own. */
+function ColorSelect({ value, none, onChange, label }: {
+  value: string; none: string; onChange: (c: string) => void; label?: string;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span aria-hidden className="size-6 shrink-0 rounded border border-line border-t-4"
+            style={tileStyle((value || null) as TileColor | null)} />
+      <Select value={value} aria-label={label} onChange={(e) => onChange(e.target.value)}>
+        <option value="">{none}</option>
+        {TILE_COLORS.map((c) => <option key={c} value={c}>{TILE_LABELS[c]}</option>)}
+      </Select>
+    </div>
+  );
+}
+
+/** Tile colours per category for the till (P42). */
+function CategoryColours({ categories, onChanged }: { categories: Category[]; onChanged: () => void }) {
+  const [open, setOpen] = useState(false);
+  const patch = useAction(
+    (id: string, color: string) => api(`/pos/categories/${id}`, { method: "PATCH", body: JSON.stringify({ color }) }),
+    { success: "Colour saved", failure: "Couldn't save the colour" },
+  );
+  return (
+    <>
+      <Button variant="subtle" onClick={() => setOpen(true)}>Tile colours</Button>
+      <Dialog open={open} onOpenChange={setOpen} title="Category colours on the till">
+        <ul aria-label="Category colours" className="divide-y divide-line">
+          {categories.map((c) => (
+            <li key={c.id} className="flex items-center gap-3 py-2 text-sm">
+              <span className="min-w-0 flex-1 break-words">{c.name}</span>
+              <ColorSelect value={c.color ?? ""} none="No colour" label={`Colour of ${c.name}`}
+                           onChange={async (color) => { if ((await patch.run(c.id, color)) !== undefined) onChanged(); }} />
+            </li>
+          ))}
+        </ul>
+      </Dialog>
+    </>
   );
 }

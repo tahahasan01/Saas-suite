@@ -410,3 +410,30 @@ body {
     display: none !important;
   }
 }
+
+/* Till tile colours (wave B, P42): a soft tint behind the name and a strong
+   top edge. Text keeps the normal foreground, so contrast holds in both themes. */
+:root {
+  --tile-red-bg: oklch(0.95 0.05 25); --tile-red-edge: oklch(0.62 0.15 25);
+  --tile-orange-bg: oklch(0.95 0.05 50); --tile-orange-edge: oklch(0.62 0.15 50);
+  --tile-amber-bg: oklch(0.95 0.05 85); --tile-amber-edge: oklch(0.62 0.15 85);
+  --tile-green-bg: oklch(0.95 0.05 145); --tile-green-edge: oklch(0.62 0.15 145);
+  --tile-teal-bg: oklch(0.95 0.05 185); --tile-teal-edge: oklch(0.62 0.15 185);
+  --tile-blue-bg: oklch(0.95 0.05 250); --tile-blue-edge: oklch(0.62 0.15 250);
+  --tile-indigo-bg: oklch(0.95 0.05 275); --tile-indigo-edge: oklch(0.62 0.15 275);
+  --tile-purple-bg: oklch(0.95 0.05 305); --tile-purple-edge: oklch(0.62 0.15 305);
+  --tile-pink-bg: oklch(0.95 0.05 350); --tile-pink-edge: oklch(0.62 0.15 350);
+  --tile-slate-bg: oklch(0.95 0.012 250); --tile-slate-edge: oklch(0.62 0.03 250);
+}
+:root[data-theme="dark"] {
+  --tile-red-bg: oklch(0.30 0.05 25); --tile-red-edge: oklch(0.72 0.135 25);
+  --tile-orange-bg: oklch(0.30 0.05 50); --tile-orange-edge: oklch(0.72 0.135 50);
+  --tile-amber-bg: oklch(0.30 0.05 85); --tile-amber-edge: oklch(0.72 0.135 85);
+  --tile-green-bg: oklch(0.30 0.05 145); --tile-green-edge: oklch(0.72 0.135 145);
+  --tile-teal-bg: oklch(0.30 0.05 185); --tile-teal-edge: oklch(0.72 0.135 185);
+  --tile-blue-bg: oklch(0.30 0.05 250); --tile-blue-edge: oklch(0.72 0.135 250);
+  --tile-indigo-bg: oklch(0.30 0.05 275); --tile-indigo-edge: oklch(0.72 0.135 275);
+  --tile-purple-bg: oklch(0.30 0.05 305); --tile-purple-edge: oklch(0.72 0.135 305);
+  --tile-pink-bg: oklch(0.30 0.05 350); --tile-pink-edge: oklch(0.72 0.135 350);
+  --tile-slate-bg: oklch(0.30 0.012 250); --tile-slate-edge: oklch(0.72 0.027 250);
+}

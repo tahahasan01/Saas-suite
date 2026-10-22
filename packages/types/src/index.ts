@@ -540,6 +540,10 @@ export interface Product {
   attributes: Record<string, string>;
   /** Set by a barcode lookup: how much one scan counts as (a carton, a weight). */
   scan_qty: number | null;
+  /** Tile colour (0090): own, else the category's. Optional for older tills' caches. */
+  color?: string | null;
+  /** On the till's favourites page. */
+  pinned?: boolean;
 }
 
 export interface SaleItem {

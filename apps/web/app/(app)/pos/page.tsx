@@ -7,7 +7,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { PosSummary, Product, Sale } from "@business-os/types";
 import { api, ApiError, NetworkError } from "@/lib/api";
 import { can } from "@/lib/can";
-import { lookupOrCached, productsOrCached, sellOffline } from "@/lib/offline/till";
+import { lookupOrCached, productsOrCached, sellOffline, tileCategories } from "@/lib/offline/till";
+import type { TileCategory } from "@/lib/tiles";
 import { syncOnce } from "@/lib/offline/sync";
 import { BurstDetector, dispatchScan, parseScan, registerScanHandler, type Scan } from "@/lib/scan";
 import { qk } from "@/lib/queryKeys";
@@ -17,6 +18,7 @@ import { useSession } from "@/lib/session";
 import { Button, Card, cx, ErrorState, Input, LoadingRows } from "@/components/ui";
 import { Sheet } from "@/components/Dialog";
 import { keepFocus, ProductGrid } from "@/components/pos/ProductGrid";
+import { CategoryTiles } from "@/components/pos/CategoryTiles";
 import { CartPanel, chargeLabel, type Line, type Quote, type QuoteState } from "@/components/pos/CartPanel";
 import { Receipt } from "@/components/pos/Receipt";
 import { HeldBills } from "@/components/pos/HeldBills";
@@ -54,6 +56,7 @@ const PRODUCT_SCANS = ["ean13", "ean8", "upca", "code"] as const;
 const editable = (el: EventTarget | null) =>
   el instanceof HTMLElement && (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName));
 
+const BIG_TILES_KEY = "bos.tiles.big";   // per device, like the printer choice
 const LOCKED_MSG = "The cart is locked until the last sale is charged again or cleared.";
 const OTHER_TAB_MSG = "This till is already open in another tab. Sell from that tab; this one is view-only.";
 
@@ -76,7 +79,10 @@ export default function PosBilling() {
   const [receipt, setReceipt] = useState<Sale | null>(null);
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false); // the bottom sheet, below lg
+  // "" = home (favourites, else everything), "*" = all items, else a category id (P42).
   const [category, setCategory] = useState("");
+  const [tileCats, setTileCats] = useState<TileCategory[]>([]);
+  const [bigTiles, setBigTiles] = useState(false);
   const [summary, setSummary] = useState<PosSummary | null>(null);
   const [drawer, setDrawer] = useState<DrawerLite | null | undefined>(undefined); // undefined = unknown
   const scanRef = useRef<HTMLInputElement>(null);
@@ -139,13 +145,27 @@ export default function PosBilling() {
     return () => clearTimeout(id);
   }, [q, search]);
 
-  // Categories that exist in the catalog; typing a search overrides the chip.
-  const categories = useMemo(
-    () => [...new Set((results ?? []).map((p) => p.category).filter(Boolean))].sort(),
-    [results]);
-  const shown = useMemo(
-    () => (category && !q ? (results ?? []).filter((p) => p.category === category) : results ?? []),
-    [results, category, q]);
+  // Tiles (P42): the till's categories with their colours, and this device's size choice.
+  useEffect(() => { void tileCategories().then(setTileCats); }, []);
+  useEffect(() => { try { setBigTiles(localStorage.getItem(BIG_TILES_KEY) === "1"); } catch { /* not kept */ } }, []);
+  const toggleBig = () => setBigTiles((b) => {
+    try { localStorage.setItem(BIG_TILES_KEY, b ? "0" : "1"); } catch { /* private window */ }
+    return !b;
+  });
+  const categoryColors = useMemo(() => new Map(tileCats.map((c) => [c.id, c.color])), [tileCats]);
+  // Only categories with something to sell; typing a search overrides the tiles.
+  const categories = useMemo(() => {
+    const count = new Map<string, number>();
+    for (const p of results ?? []) if (p.category_id) count.set(p.category_id, (count.get(p.category_id) ?? 0) + 1);
+    return tileCats.filter((c) => count.has(c.id)).map((c) => ({ ...c, count: count.get(c.id) ?? 0 }));
+  }, [results, tileCats]);
+  const favourites = useMemo(() => (results ?? []).filter((p) => p.pinned), [results]);
+  const shown = useMemo(() => {
+    const all = results ?? [];
+    if (q || category === "*") return all;
+    if (category) return all.filter((p) => p.category_id === category);
+    return favourites.length ? favourites : all;
+  }, [results, category, q, favourites]);
 
   // `by`: what one scan counts as — a carton barcode adds 12, a scale label its weight.
   const add = useCallback((p: Product, by = 1): boolean => {
@@ -480,14 +500,21 @@ export default function PosBilling() {
         </div>
         <p id="scan-msg" role="status" className={cx("min-h-5 py-1 text-sm", scanMsg ? "text-warning" : "")}>{scanMsg}</p>
 
-        {categories.length > 1 && !q && (
-          <div className="mb-3 flex flex-wrap gap-1.5" role="group" aria-label="Category">
-            <Chip active={category === ""} onClick={() => { setCategory(""); refocusAfterTap(); }}>All</Chip>
-            {categories.map((c) => (
-              <Chip key={c} active={category === c} onClick={() => { setCategory(c); refocusAfterTap(); }}>{c}</Chip>
-            ))}
-          </div>
+        {!q && categories.length > 0 && (
+          <CategoryTiles categories={categories} value={category} big={bigTiles} showAll={favourites.length > 0}
+                         onChange={(c) => { setCategory(c); refocusAfterTap(); }} />
         )}
+        <div className="mb-2 flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-fg-muted">
+            {q ? "Search results" : category === "*" ? "All items"
+              : category ? (categories.find((c) => c.id === category)?.name ?? "Items")
+              : favourites.length ? "Favourites" : "All items"}
+          </h2>
+          <button type="button" onMouseDown={keepFocus} onClick={toggleBig} aria-pressed={bigTiles}
+                  className="ms-auto min-h-8 rounded-full border border-line px-3 text-xs font-medium text-fg-muted hover:text-fg pointer-coarse:min-h-11">
+            Big tiles
+          </button>
+        </div>
 
         {catalogError && <div className="mb-3"><ErrorState message={catalogError} onRetry={() => search(q)} /></div>}
         {results === null && !catalogError ? (
@@ -497,7 +524,7 @@ export default function PosBilling() {
             {q ? `Nothing matches "${q}".` : <>No {t("products").toLowerCase()}. <Link href="/pos/products" className="text-brand hover:underline">Add some →</Link></>}
           </p>
         ) : (
-          <ProductGrid products={shown} locked={locked} onAdd={onTile} />
+          <ProductGrid products={shown} locked={locked} onAdd={onTile} categoryColors={categoryColors} big={bigTiles} />
         )}
       </section>
 
@@ -583,22 +610,5 @@ export default function PosBilling() {
         onCloseAutoFocus={backToScan}
       />
     </div>
-  );
-}
-
-function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      onMouseDown={keepFocus}
-      onClick={onClick}
-      aria-pressed={active}
-      className={cx(
-        "min-h-8 rounded-full border px-3 text-xs font-medium capitalize transition-colors pointer-coarse:min-h-11 pointer-coarse:px-4 pointer-coarse:text-sm",
-        active ? "border-brand bg-brand-subtle text-brand" : "border-line text-fg-muted hover:text-fg",
-      )}
-    >
-      {children}
-    </button>
   );
 }

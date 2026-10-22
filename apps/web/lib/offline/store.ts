@@ -2,6 +2,7 @@
  * pricing settings and the outbox; localStorage for this till's device
  * identity. Raw IndexedDB behind a few promises (no new dependency). */
 import type { Product } from "@business-os/types";
+import type { TileCategory } from "@/lib/tiles";
 import { offlineRef } from "./plan";
 
 const DB = "bos-pos";
@@ -67,7 +68,7 @@ export async function meta<T>(key: string): Promise<T | undefined> {
 }
 
 export interface CatalogFeed { products: (Product & { row_version: number })[]; next: number; more: boolean; pricing: Pricing;
-                               reset: boolean;
+                               reset: boolean; categories?: TileCategory[];
                                register: { id: string; code: string; payment_methods: string[]; config_version: number } }
 
 export async function saveFeed(feed: CatalogFeed): Promise<void> {
@@ -78,6 +79,7 @@ export async function saveFeed(feed: CatalogFeed): Promise<void> {
   tx.objectStore("meta").put(feed.pricing, "pricing");
   tx.objectStore("meta").put(feed.register, "register");
   tx.objectStore("meta").put(feed.register.config_version, "config_version");
+  if (feed.categories) tx.objectStore("meta").put(feed.categories, "categories");   // P42: tiles offline
   await done(tx);
 }
 
