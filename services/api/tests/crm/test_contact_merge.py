@@ -82,7 +82,7 @@ async def test_merge_moves_everything_to_the_winner_and_archives_the_losers(clie
     await client.post(f"/contacts/{loser['id']}/addresses", json={"line1": "7 Canal View", "city": "Lahore"})
     lead = (await client.post("/crm/leads", json={"name": "Deal", "force": True})).json()
     await client.post(f"/crm/leads/{lead['id']}/qualify", json={"mode": "link", "contact_id": loser["id"]})
-    product = (await client.post("/pos/products", json={"name": "Widget", "price_minor": 1000})).json()
+    product = (await client.post("/pos/products", json={"name": "Widget", "price_minor": 1000, "stock_qty": 10})).json()
     sale = (await client.post("/pos/sales", json={"items": [{"product_id": product["id"], "qty": 1}],
                                                   "contact_id": loser["id"]})).json()
     inv = (await client.post("/invoices", json={"contact_id": loser["id"], "lines": [

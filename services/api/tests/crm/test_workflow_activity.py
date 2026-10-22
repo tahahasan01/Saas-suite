@@ -52,3 +52,16 @@ async def test_create_activity_needs_a_record(client, crm_tenant):
         me = await conn.fetchval("select id from users limit 1")
         n = await engine._create_activity(conn, {"type": "create_activity"}, {"name": "x"}, str(me))
     assert n is False
+
+
+async def test_adding_a_contact_fires_contact_created(client, crm_tenant):
+    r = await client.post("/workflows", json={
+        "name": "Welcome new contacts", "trigger": "contact.created",
+        "conditions": [{"field": "source", "op": "eq", "value": "walk_in"}],
+        "actions": [{"type": "notify", "message": "New contact {name}", "link": "/contacts"}]})
+    assert r.status_code == 201, r.text
+    await client.post("/contacts", json={"name": "Sana Walk", "phone": "03001112233", "source": "walk_in", "force": True})
+    await client.post("/contacts", json={"name": "Other Way", "phone": "03004445566", "source": "referral", "force": True})
+    titles = [n["title"] for n in (await client.get("/notifications")).json()["items"]]
+    assert "New contact Sana Walk" in titles
+    assert "New contact Other Way" not in titles

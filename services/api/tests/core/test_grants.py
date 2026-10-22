@@ -212,3 +212,18 @@ async def test_app_user_cannot_read_secret_tables(table):
             await app.fetchval(f"select count(*) from {table}")
     finally:
         await app.close()
+
+
+@pytest.mark.asyncio
+async def test_the_khata_ledger_is_append_only_except_who_it_belongs_to():
+    """customer_ledger is append-only (0079), but a contact merge moves the
+    loser's entries to the winner (contact_merge 'repoint'): app_user may
+    update contact_id and nothing else (0082)."""
+    conn = await _owner()
+    try:
+        cols = {r["column_name"] for r in await conn.fetch(
+            """select column_name from information_schema.column_privileges
+                where grantee = 'app_user' and table_name = 'customer_ledger' and privilege_type = 'UPDATE'""")}
+    finally:
+        await conn.close()
+    assert cols == {"contact_id"}

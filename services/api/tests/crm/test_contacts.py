@@ -248,7 +248,7 @@ async def test_contact_360_shows_sales_only_to_those_who_can_read_pos(client, cr
     """Contacts read is not POS read: sales and spend stay hidden without it."""
     await client.patch("/entitlements/pos", json={"enabled": True})
     c = await _new(client, name="Big Spender", phone="03457770003")
-    product = (await client.post("/pos/products", json={"name": "Widget", "price_minor": 1000})).json()
+    product = (await client.post("/pos/products", json={"name": "Widget", "price_minor": 1000, "stock_qty": 10})).json()
     sale = await client.post("/pos/sales", json={"items": [{"product_id": product["id"], "qty": 1}],
                                                  "contact_id": c["id"]})
     assert sale.status_code == 201

@@ -48,6 +48,7 @@ from ..models import (
     TimelineItem,
 )
 from ..phone import normalize_phone
+from ..workflow import engine as wf
 from ..rbac import perm, scope_of
 from ..scopes import where
 
@@ -236,6 +237,10 @@ async def create_contact(body: ContactCreate, auth: AuthContext = Depends(CREATE
         if body.tag_ids:
             await _set_tags(conn, auth.tenant_id, row["id"], body.tag_ids)
         created = await contacts.fetch_out(conn, row["id"])
+        # Automations on new contacts (St02 P1), in the contact's transaction.
+        await wf.emit(conn, auth.user_id, "contact.created", {
+            "contact_id": str(row["id"]), "name": body.name, "kind": body.kind, "source": body.source,
+            "city": body.city, "owner_id": str(body.owner_id or auth.user_id)})
     assert created is not None
     return created
 

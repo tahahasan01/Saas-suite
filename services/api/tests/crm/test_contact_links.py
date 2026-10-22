@@ -190,7 +190,7 @@ async def test_a_sale_can_name_its_customer_and_walk_ins_stay_anonymous(client, 
 async def test_a_sale_cannot_name_another_tenants_or_an_archived_contact(client, crm_tenant):
     # Archiving is contact management, which rides on CRM this wave.
     await client.patch("/entitlements/pos", json={"enabled": True})
-    p = (await client.post("/pos/products", json={"name": "Widget", "price_minor": 1000})).json()
+    p = (await client.post("/pos/products", json={"name": "Widget", "price_minor": 1000, "stock_qty": 10})).json()
     r = await client.post("/pos/sales", json={"items": [{"product_id": p["id"], "qty": 1}],
                                               "contact_id": str(uuid.uuid4())})
     assert r.status_code == 404
@@ -216,7 +216,7 @@ async def test_contact_360_shows_deals_and_sales(client, crm_tenant):
     lead = await _lead(client, name="Three Sixty", phone="03007771234", value_minor=500000)
     r = await client.post(f"/crm/leads/{lead['id']}/qualify", json={"mode": "create"})
     cid = r.json()["contact"]["id"]
-    product = (await client.post("/pos/products", json={"name": "Widget", "price_minor": 25000})).json()
+    product = (await client.post("/pos/products", json={"name": "Widget", "price_minor": 25000, "stock_qty": 10})).json()
     sale = await client.post("/pos/sales", json={"items": [{"product_id": product["id"], "qty": 2}],
                                                  "contact_id": cid})
     assert sale.status_code == 201, sale.text
