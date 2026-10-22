@@ -1,5 +1,6 @@
 "use client";
 
+import { BiometricImport } from "@/components/hrms/BiometricImport";
 import type { Schema } from "@business-os/api-client";
 import { useCallback, useEffect, useState } from "react";
 import type { Attendance, AttendanceWeek, AttendanceWeekRow, Correction, Employee } from "@business-os/types";
@@ -117,6 +118,7 @@ export default function AttendancePage() {
     <div className="space-y-5">
       <Corrections onDecided={load} />
       <OvertimeClaims />
+      <Can perm="hrms.attendance.write"><BiometricImport onImported={load} /></Can>
 
       <section className="space-y-2">
         <h2 className="text-sm font-semibold">Today</h2>

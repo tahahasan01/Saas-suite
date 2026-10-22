@@ -14,7 +14,7 @@ import json
 MIB = 1024 * 1024
 DEFAULT_LIMIT = 1 * MIB
 IMPORT_LIMIT = 5 * MIB
-_IMPORT_PATHS = ("/crm/leads/import", "/pos/products/import")
+_IMPORT_PATHS = ("/crm/leads/import", "/pos/products/import", "/hrms/attendance/import")
 
 
 UPLOAD_LIMIT = 10 * MIB  # file uploads (TR-SEC-55); logos are held to 1 MB by the route

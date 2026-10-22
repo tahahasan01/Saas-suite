@@ -1979,6 +1979,14 @@ class OrgChartPerson(BaseModel):
     reports: int
 
 
+# ── Biometric attendance import (wave A, H6); rows reuse ImportRowError ──
+class BiometricImportOut(BaseModel):
+    imported: int
+    duplicates: int     # already recorded at the same instant
+    unknown_codes: list[str]
+    errors: list[ImportRowError]
+
+
 # ── Request tracker (wave A, H16) ──
 RequestKind = Literal["leave", "wfh", "correction", "overtime"]
 
