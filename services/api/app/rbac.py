@@ -478,7 +478,8 @@ def require_key(key: str, section: str):
 # ── Org data (3A, p3-orgdata): company, branches, sequences, branding ────────
 # Legacy mapping until RBAC v2: reading is settings:read, changing is
 # settings:admin. `settings.branches.all` (work in every branch, D-03) is what
-# bos_session_branches (0055) turns into '*'; it checks settings:admin today.
+# bos_session_branches turns into '*', decided by the RBAC mode exactly as
+# Principal.decide does (0083; db.tenant_conn passes the mode).
 register("settings", {
     "settings.company.read": ("settings", "read"),
     "settings.company.manage": ("settings", "admin"),

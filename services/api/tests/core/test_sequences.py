@@ -105,8 +105,9 @@ async def test_without_a_date_it_uses_the_tenants_today(client, crm_tenant):
 
 
 async def test_branch_sequences_use_the_branch_code(client, pos_tenant):
-    a = await _next(pos_tenant.tenant_id, "pos.receipt", at=date(2026, 10, 21))
-    assert a.number == "MAIN-2026-27-000001"
+    # Receipts are per register since 0078 ({REG}); returns stay per branch.
+    a = await _next(pos_tenant.tenant_id, "pos.return", at=date(2026, 10, 21))
+    assert a.number.startswith("MAIN-R-2026-27-") and a.value == 1
 
 
 async def test_registers_do_not_block_each_other(client, pos_tenant):
@@ -131,7 +132,7 @@ async def test_registers_do_not_block_each_other(client, pos_tenant):
             _next(pos_tenant.tenant_id, "pos.receipt", register_id=reg_b, register_code="B", at=date(2026, 10, 21)),
             timeout=2)
         assert time.monotonic() - started < 1.0
-        assert b.value == 1 and b.number == "MAIN-2026-27-000001"
+        assert b.value == 1 and b.number == "B-2026-27-000001"      # the register's own counter
     finally:
         release.set()
         await task

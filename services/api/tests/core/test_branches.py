@@ -401,3 +401,61 @@ async def _fbr_names() -> dict[str, str]:
         return {r["code"]: r["fbr_name"] for r in await conn.fetch("select code, fbr_name from pk_regions")}
     finally:
         await conn.close()
+
+
+# ── Who works in every branch follows the RBAC mode (0083) ──────────────────
+async def test_all_branches_follows_the_model_that_decides(client, pos_tenant):
+    """'*' (every branch) is `settings.branches.all`, decided like rbac.py does:
+    the legacy grant while it decides (legacy mode; shadow for a user on just
+    their primary pre-v2 role), the v2 grants otherwise. 0055 only ever read
+    the legacy table, so a v2 grant was ignored and a stale legacy row kept
+    every branch after v2 took it away."""
+    from .test_rbac_v2 import _role, _user_on
+    main = await _default_branch(pos_tenant.tenant_id)
+    t = uuid.UUID(pos_tenant.tenant_id)
+    every = await _role(client, [{"permission_key": "settings.branches.all", "scope": "all"},
+                                 {"permission_key": "pos.sale.read", "scope": "all"}])
+    plain = await _role(client, [{"permission_key": "pos.sale.read", "scope": "all"}])
+    a, a_id, _ = await _user_on(client, [every])
+    b, b_id, _ = await _user_on(client, [plain])
+    await a.aclose()
+    await b.aclose()
+    conn = await _owner()
+    try:
+        # A stale legacy row on the v2 role that no longer carries the key.
+        await conn.execute("insert into permissions (tenant_id, role_id, section, action) values ($1, $2, 'settings', 'admin')",
+                           t, uuid.UUID(plain))
+        f = "select bos_session_branches($1, $2, $3, $4)"
+        for mode in ("shadow", "v2"):
+            assert await conn.fetchval(f, t, uuid.UUID(a_id), None, mode) == "*", mode
+            assert await conn.fetchval(f, t, uuid.UUID(b_id), None, mode) == str(main), mode
+        # Legacy mode reads only the legacy grants.
+        assert await conn.fetchval(f, t, uuid.UUID(a_id), None, "legacy") == str(main)
+        assert await conn.fetchval(f, t, uuid.UUID(b_id), None, "legacy") == "*"
+        # The owner (legacy settings:admin on a pre-v2 role) keeps '*' in every mode.
+        owner_id = uuid.UUID((await client.get("/auth/me")).json()["user"]["id"])
+        for mode in ("legacy", "shadow", "v2"):
+            assert await conn.fetchval(f, t, owner_id, None, mode) == "*", mode
+    finally:
+        await conn.close()
+
+
+async def test_requests_use_the_configured_rbac_mode(client, pos_tenant, monkeypatch):
+    from .test_rbac_v2 import _role, _user_on
+    await _sale(client)
+    other = await _second_branch(pos_tenant.tenant_id)
+    every = await _role(client, [{"permission_key": "settings.branches.all", "scope": "all"},
+                                 {"permission_key": "pos.sale.read", "scope": "all"}])
+    a, a_id, _ = await _user_on(client, [every])
+    conn = await _owner()
+    try:   # a's only branch is the second one; the sale is in the main branch
+        await conn.execute("delete from user_branches where user_id=$1", uuid.UUID(a_id))
+        await conn.execute("insert into user_branches (tenant_id, user_id, branch_id, is_home) values ($1,$2,$3,true)",
+                           uuid.UUID(pos_tenant.tenant_id), uuid.UUID(a_id), other)
+    finally:
+        await conn.close()
+    try:
+        monkeypatch.setattr(settings, "rbac_mode", "v2")
+        assert len((await a.get("/pos/sales")).json()) == 1      # every branch
+    finally:
+        await a.aclose()

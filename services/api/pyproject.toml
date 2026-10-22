@@ -110,6 +110,18 @@ module = [
     "app.tax",
     "app.routers.tax",
     "app.routers.profile",
+    "app.cashiers",
+    "app.catalog",
+    "app.khata",
+    "app.pins",
+    "app.pos_sessions",
+    "app.routers.khata",
+    "app.routers.pos_cashiers",
+    "app.routers.pos_catalog",
+    "app.routers.pos_registers",
+    "app.routers.pos_sales",
+    "app.routers.pos_sync",
+    "app.routers.reports",
 ]
 # `strict` itself is global-only in mypy, so its per-module parts are spelled out.
 disallow_untyped_defs = true

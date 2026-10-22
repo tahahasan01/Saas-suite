@@ -78,8 +78,10 @@ async def _use_tenant_clock(conn: asyncpg.Connection) -> None:
                   set_config('app.branch_ids',
                   case when $1::uuid is null then '*'
                        else bos_session_branches(current_setting('app.tenant_id', true)::uuid,
-                                                 $1::uuid, $2::text[]) end, true)""",
-        user_id, requested)
+                                                 $1::uuid, $2::text[], $3::text) end, true)""",
+        # The RBAC mode decides who works in every branch, as in rbac.py (0083;
+        # the SQL reads an unknown value as 'shadow', like rbac._mode()).
+        user_id, requested, settings.rbac_mode)
 
 
 _SET_CONTEXT = """

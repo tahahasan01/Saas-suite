@@ -165,6 +165,7 @@ APP_USER: dict[str, set[str]] = {
 APP_USER_COLUMN_UPDATES: dict[str, set[str]] = {
     "tenants": {"name", "timezone", "fy_start_month", "updated_at", "allow_negative_stock"},
     "crm_invoice_requests": {"contact_id"},     # v1 is read-only; merges re-point (0074)
+    "customer_ledger": {"contact_id"},          # append-only khata; merges re-point (0082)
 }
 
 AI_VIEWS = {name for name in APP_USER if name.startswith("ai_v_")}

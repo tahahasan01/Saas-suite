@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
+import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
@@ -72,7 +73,7 @@ async def balances(owing_only: bool = True, limit: int = Query(200, ge=1, le=500
                        credit_limit_minor=r["credit_limit_minor"], last_entry_at=r["last_at"]) for r in rows]
 
 
-async def _account(conn, contact_id: str) -> Account:
+async def _account(conn: asyncpg.Connection, contact_id: str) -> Account:
     c = await conn.fetchrow("select id, name, credit_limit_minor from contacts where id = $1", contact_id)
     if c is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Customer not found")
