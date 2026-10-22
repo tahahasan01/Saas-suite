@@ -49,6 +49,17 @@ def _round(value: Decimal) -> int:
     return int(value.quantize(Decimal(1), rounding=ROUND_HALF_UP))
 
 
+def overtime_pay(base_minor: int, *, working_days: int, shift_minutes: int, minutes: int,
+                 multiplier: Decimal) -> int:
+    """Overtime in paisa (wave A, St10; St03 §6.5): the hourly rate is the
+    monthly salary over the month's working hours, times the hours worked
+    over, times the multiplier (2.0 by default, Factories Act). One rounding,
+    half-up, at the end; nothing to pay without a salary or working days."""
+    if base_minor <= 0 or working_days <= 0 or shift_minutes <= 0 or minutes <= 0:
+        return 0
+    return _round(Decimal(base_minor) * minutes * multiplier / (Decimal(working_days) * shift_minutes))
+
+
 def _rs(minor: int) -> str:
     return str((Decimal(minor) / 100).quantize(Decimal("0.01")))
 

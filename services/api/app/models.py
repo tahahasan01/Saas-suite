@@ -1949,6 +1949,37 @@ class NoticeOut(BaseModel):
     acknowledged_at: datetime | None = None   # /me only: when this employee acknowledged
 
 
+# ── Overtime claims (wave A, 0086) ──
+OvertimeStatus = Literal["pending", "approved", "rejected"]
+OVERTIME_STATUSES = list(get_args(OvertimeStatus))
+
+
+class OvertimeClaimIn(BaseModel):
+    work_date: date
+    minutes: int | None = Field(default=None, ge=1, le=1440)   # default: all the overtime attendance shows
+    reason: str = Field(default="", max_length=500)
+
+
+class OvertimeDecision(BaseModel):
+    note: str = Field(default="", max_length=500)
+    rate_multiplier: float | None = Field(default=None, ge=1, le=5)   # default: the claim's (2.0)
+
+
+class OvertimeOut(BaseModel):
+    id: str
+    employee_id: str
+    employee_name: str
+    work_date: date
+    minutes: int
+    reason: str
+    status: OvertimeStatus
+    rate_multiplier: float
+    amount_minor: int | None          # pay: only for payroll.salary.read holders (and the employee)
+    decided_at: datetime | None
+    decision_note: str
+    created_at: datetime
+
+
 class NoticeAck(BaseModel):
     employee_id: str
     name: str

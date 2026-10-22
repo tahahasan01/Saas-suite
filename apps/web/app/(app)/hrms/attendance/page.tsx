@@ -1,5 +1,6 @@
 "use client";
 
+import type { Schema } from "@business-os/api-client";
 import { useCallback, useEffect, useState } from "react";
 import type { Attendance, AttendanceWeek, AttendanceWeekRow, Correction, Employee } from "@business-os/types";
 import { api } from "@/lib/api";
@@ -115,6 +116,7 @@ export default function AttendancePage() {
   return (
     <div className="space-y-5">
       <Corrections onDecided={load} />
+      <OvertimeClaims />
 
       <section className="space-y-2">
         <h2 className="text-sm font-semibold">Today</h2>
@@ -139,6 +141,47 @@ export default function AttendancePage() {
         <WeekMatrix week={week} />
       ) : null}
     </div>
+  );
+}
+
+/* Overtime claims (wave A, H5): approving prices the hours once and sends
+   them to that month's payroll; the amount shows only to payroll holders. */
+function OvertimeClaims() {
+  const [rows, setRows] = useState<Schema<"OvertimeOut">[]>([]);
+  const load = useCallback(() => {
+    api<Schema<"OvertimeOut">[]>("/hrms/overtime?status=pending").then(setRows).catch(() => setRows([]));
+  }, []);
+  useEffect(load, [load]);
+  const decide = useAction(
+    (id: string, d: "approve" | "reject") =>
+      api<Schema<"OvertimeOut">>(`/hrms/overtime/${id}/${d}`, { method: "POST", body: JSON.stringify({}) }),
+    { success: (c) => `Overtime ${(c as Schema<"OvertimeOut">).status}`, failure: "Couldn't record that decision" },
+  );
+  async function act(id: string, d: "approve" | "reject") {
+    await decide.run(id, d);
+    load();
+  }
+  if (!rows.length) return null;
+  return (
+    <section className="space-y-2" aria-labelledby="overtime-h">
+      <h2 id="overtime-h" className="text-sm font-semibold">Overtime claims</h2>
+      <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
+        {rows.map((c) => (
+          <li key={c.id} className="flex flex-wrap items-center gap-2 px-4 py-2.5 text-sm">
+            <span className="min-w-0 flex-1 basis-56">
+              <span className="font-medium">{c.employee_name}</span>{" "}
+              <span className="text-fg-muted">· {formatDay(c.work_date, { weekday: "short", day: "numeric", month: "short" })} ·{" "}
+                {Math.floor(c.minutes / 60)}h {String(c.minutes % 60).padStart(2, "0")}m at ×{c.rate_multiplier}</span>
+              {c.reason && <span className="block text-xs text-fg-subtle">{c.reason}</span>}
+            </span>
+            <Can perm="hrms.attendance.approve">
+              <Button size="sm" onClick={() => act(c.id, "approve")} disabled={decide.busy} aria-label={`Approve ${c.employee_name}'s overtime`}>Approve</Button>
+              <Button size="sm" variant="subtle" onClick={() => act(c.id, "reject")} disabled={decide.busy} aria-label={`Reject ${c.employee_name}'s overtime`}>Reject</Button>
+            </Can>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

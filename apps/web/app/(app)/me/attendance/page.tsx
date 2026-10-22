@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { Attendance, Correction } from "@business-os/types";
+import type { Schema } from "@business-os/api-client";
 import { api } from "@/lib/api";
-import { attendanceBadge, formatDay, formatTime } from "@/lib/format";
+import { attendanceBadge, formatDay, formatTime, money } from "@/lib/format";
 import { errorText, useAction } from "@/lib/useAction";
 import { DataTable, type Column } from "@/components/DataTable";
 import { Dialog } from "@/components/Dialog";
@@ -13,6 +14,9 @@ const timeOf = (iso: string | null) => (iso ? formatTime(iso) : "—");
 // work_date is a plain date; formatted as written so it can't slip to the day before.
 const dateOf = (d: string) => formatDay(d, { weekday: "short", day: "numeric", month: "short" });
 const corrTone = { pending: "warning", approved: "success", rejected: "danger", cancelled: "neutral" } as const;
+type Overtime = Schema<"OvertimeOut">;
+/** 95 → "1h 35m". */
+const hm = (min: number) => `${Math.floor(min / 60)}h ${String(min % 60).padStart(2, "0")}m`;
 
 /** A local "HH:MM" on a work day, as an instant with Pakistan's offset. */
 const instant = (day: string, hhmm: string) => (hhmm ? `${day}T${hhmm}:00+05:00` : null);
@@ -22,15 +26,22 @@ export default function MyAttendance() {
   const [error, setError] = useState<string | null>(null);
   const [corrections, setCorrections] = useState<Correction[]>([]);
   const [fixing, setFixing] = useState<Attendance | null>(null);
+  const [overtime, setOvertime] = useState<Overtime[]>([]);
 
   const load = useCallback(() => {
     setError(null);
     api<Attendance[]>("/me/attendance").then(setRows).catch((e) => setError(errorText(e, "Couldn't load your attendance.")));
     api<Correction[]>("/me/attendance/corrections").then(setCorrections).catch(() => setCorrections([]));
+    api<Overtime[]>("/me/overtime").then(setOvertime).catch(() => setOvertime([]));
   }, []);
   useEffect(load, [load]);
 
   const pendingFor = new Set(corrections.filter((c) => c.status === "pending").map((c) => c.work_date));
+  const claimedFor = new Set(overtime.filter((o) => o.status !== "rejected").map((o) => o.work_date));
+  const claim = useAction(
+    (r: Attendance) => api("/me/overtime", { method: "POST", body: JSON.stringify({ work_date: r.work_date }) }),
+    { success: "Overtime claimed. Your manager will review it.", failure: "Couldn't claim it" },
+  );
 
   const columns: Column<Attendance>[] = [
     { key: "date", header: "Date", primary: true, cell: (r) => <span className="font-medium">{dateOf(r.work_date)}</span> },
@@ -42,6 +53,7 @@ export default function MyAttendance() {
           {r.auto_closed && <Badge tone="warning">closed automatically</Badge>}
           {!r.auto_closed && r.missing_checkout && <Badge tone="warning">no check-out</Badge>}
           {r.corrected && <Badge tone="brand">corrected</Badge>}
+          {(r.overtime_min ?? 0) > 0 && <Badge tone="brand">+{hm(r.overtime_min ?? 0)} overtime</Badge>}
         </span>
       ),
     },
@@ -62,9 +74,18 @@ export default function MyAttendance() {
             rowKey={(r) => r.id}
             loading={!rows}
             caption="My attendance this month"
-            actions={(r) => r.locked ? null : pendingFor.has(r.work_date)
-              ? <span className="text-xs text-fg-subtle">Correction asked</span>
-              : <Button size="sm" variant="ghost" onClick={() => setFixing(r)} aria-label={`Ask to correct ${r.work_date}`}>Ask to correct</Button>}
+            actions={(r) => (
+              <span className="flex flex-wrap justify-end gap-1">
+                {(r.overtime_min ?? 0) > 0 && !claimedFor.has(r.work_date) && (
+                  <Button size="sm" variant="subtle" disabled={claim.busy}
+                          onClick={async () => { if ((await claim.run(r)) !== undefined) load(); }}
+                          aria-label={`Claim overtime for ${r.work_date}`}>Claim overtime</Button>
+                )}
+                {r.locked ? null : pendingFor.has(r.work_date)
+                  ? <span className="text-xs text-fg-subtle">Correction asked</span>
+                  : <Button size="sm" variant="ghost" onClick={() => setFixing(r)} aria-label={`Ask to correct ${r.work_date}`}>Ask to correct</Button>}
+              </span>
+            )}
             empty={<EmptyState title="No attendance recorded yet this month." />}
           />
         )}
@@ -82,6 +103,22 @@ export default function MyAttendance() {
                   <span className="text-fg-subtle"> · {c.reason}</span>
                 </span>
                 <Badge tone={corrTone[c.status]}>{c.status}</Badge>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {overtime.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-sm font-semibold">My overtime claims</h2>
+          <ul className="divide-y divide-line rounded-xl border border-line bg-surface" aria-label="My overtime claims">
+            {overtime.map((o) => (
+              <li key={o.id} className="flex flex-wrap items-center gap-2 px-4 py-2.5 text-sm">
+                <span className="w-28 shrink-0 tabular-nums text-fg-muted">{dateOf(o.work_date)}</span>
+                <span className="min-w-0 flex-1">{hm(o.minutes)}{o.amount_minor ? ` · ${money(o.amount_minor)} in payroll` : ""}
+                  {o.decision_note && <span className="text-fg-subtle"> · {o.decision_note}</span>}</span>
+                <Badge tone={corrTone[o.status]}>{o.status}</Badge>
               </li>
             ))}
           </ul>

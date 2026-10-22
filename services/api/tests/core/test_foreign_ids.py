@@ -54,6 +54,8 @@ KIND_OF = {
     "structure_id": "pay_structure", "one_off_id": "one_off", "advance_id": "advance",
     # notice board (wave A, 0085)
     "notice_id": "notice",
+    # overtime claims (wave A, 0086)
+    "claim_id": "overtime_claim",
 }
 
 # Path parameters that are not ids: a fixed, valid value. (scheme_code names
@@ -129,6 +131,10 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
             """insert into hrms_attendance_corrections (tenant_id, employee_id, work_date, requested_out, reason)
                select tenant_id, id, '2027-03-02', '2027-03-02T13:00:00Z', 'probe' from hrms_employees
                 where id=$1 returning id""", uuid.UUID(employee["id"]))
+        overtime_claim = await owner.fetchval(
+            """insert into hrms_overtime_claims (tenant_id, employee_id, work_date, minutes)
+               select tenant_id, id, '2027-03-03', 30 from hrms_employees where id=$1 returning id""",
+            uuid.UUID(employee["id"]))
     finally:
         await owner.close()
     run = (await c.post("/payroll/runs", json={"month": "2026-09"})).json()
@@ -151,6 +157,7 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
         "leave_type": leave_type["id"], "correction": str(correction),
         "payroll_run": run["id"], "pay_component": component["id"], "pay_structure": structure["id"],
         "one_off": one_off["id"], "advance": advance["id"], "notice": notice["id"],
+        "overtime_claim": str(overtime_claim),
         # No payslip exists before a run is calculated; any id stands in (it must still 404).
         "payslip": str(uuid.uuid4()),
         "role": (await c.get("/team/roles")).json()[0]["id"],
