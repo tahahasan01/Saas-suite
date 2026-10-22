@@ -195,3 +195,19 @@ async def test_reading_and_writing_lines_need_crm_rights(client, shop):
     assert (await client.get(f"/crm/leads/{lead['id']}/lines")).status_code == 200
     r = await _put(client, lead["id"], [{"description": "x", "qty": 1, "unit_price_minor": 1}])
     assert r.status_code == 403, r.text
+
+
+async def test_reps_find_products_without_pos_rights(client, shop):
+    """The line editor's picker: name, unit and price of active products."""
+    rack = await _product(client, "Steel rack")
+    old = await _product(client, "Steel rack (old)")
+    await client.patch(f"/pos/products/{old['id']}", json={"active": False})   # archived: not offered
+    await login_as_rep(client, shop, ["read", "write"])     # crm only, no pos
+    r = await client.get("/crm/products", params={"q": "steel"})
+    assert r.status_code == 200, r.text
+    assert r.json() == [{"id": rack["id"], "name": "Steel rack", "unit": "pcs", "price_minor": 12_000_00}]
+
+
+async def test_finding_products_needs_deal_rights(client, shop):
+    await login_as_rep(client, shop, ["read"])
+    assert (await client.get("/crm/products", params={"q": "x"})).status_code == 403

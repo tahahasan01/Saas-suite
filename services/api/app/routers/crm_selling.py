@@ -5,10 +5,10 @@ ceiling needs crm.deal.discount_override."""
 from __future__ import annotations
 
 import asyncpg
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from .. import db, deal_lines, leads, rbac
-from ..crm_selling_models import CrmSettingsIn, CrmSettingsOut, DealLines, DealLinesPut
+from ..crm_selling_models import CrmSettingsIn, CrmSettingsOut, DealLines, DealLinesPut, DealProductOut
 from ..deps import AuthContext
 from ..rbac import perm
 
@@ -42,6 +42,21 @@ async def update_prices(lead_id: str, auth: AuthContext = Depends(perm("crm.lead
         await leads.ensure_in_scope(conn, auth, "crm.lead.update", lead_id)
         return await deal_lines.update_prices(conn, auth.tenant_id, auth.user_id, lead_id,
                                               can_override=await _can_override(conn, auth))
+
+
+@router.get("/products", response_model=list[DealProductOut])
+async def find_products(q: str = Query("", max_length=80),
+                        auth: AuthContext = Depends(perm("crm.lead.update"))) -> list[DealProductOut]:
+    """Active catalog products for the line editor. A rep putting products on a
+    deal needn't hold POS rights, so this is the narrow read they get: name,
+    unit and price, never cost or stock."""
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        rows = await conn.fetch(
+            """select id, name, unit, price_minor from pos_products
+                where active and ($1 = '' or name ilike '%' || $1 || '%' or sku = $1 or barcode = $1)
+                order by lower(name), id limit 20""", q.strip())
+    return [DealProductOut(id=str(r["id"]), name=r["name"], unit=r["unit"], price_minor=r["price_minor"])
+            for r in rows]
 
 
 @router.get("/settings", response_model=CrmSettingsOut)

@@ -1889,6 +1889,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/crm/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Find Products
+         * @description Active catalog products for the line editor. A rep putting products on a
+         *     deal needn't hold POS rights, so this is the narrow read they get: name,
+         *     unit and price, never cost or stock.
+         */
+        get: operations["find_products_crm_products_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/crm/settings": {
         parameters: {
             query?: never;
@@ -7103,6 +7125,20 @@ export interface components {
              * @default false
              */
             tax_inclusive: boolean;
+        };
+        /**
+         * DealProductOut
+         * @description What the line editor's picker needs from the catalog.
+         */
+        DealProductOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Unit */
+            unit: string;
+            /** Price Minor */
+            price_minor: number;
         };
         /** Decision */
         Decision: {
@@ -16397,6 +16433,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DealLines"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    find_products_crm_products_get: {
+        parameters: {
+            query?: {
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealProductOut"][];
                 };
             };
             /** @description Validation Error */

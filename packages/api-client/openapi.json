@@ -7550,6 +7550,71 @@
         }
       }
     },
+    "/crm/products": {
+      "get": {
+        "tags": [
+          "crm-selling"
+        ],
+        "summary": "Find Products",
+        "description": "Active catalog products for the line editor. A rep putting products on a\ndeal needn't hold POS rights, so this is the narrow read they get: name,\nunit and price, never cost or stock.",
+        "operationId": "find_products_crm_products_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 80,
+              "default": "",
+              "title": "Q"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DealProductOut"
+                  },
+                  "title": "Response Find Products Crm Products Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/crm/settings": {
       "get": {
         "tags": [
@@ -27622,6 +27687,35 @@
           "lines"
         ],
         "title": "DealLinesPut"
+      },
+      "DealProductOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "price_minor": {
+            "type": "integer",
+            "title": "Price Minor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "unit",
+          "price_minor"
+        ],
+        "title": "DealProductOut",
+        "description": "What the line editor's picker needs from the catalog."
       },
       "Decision": {
         "properties": {

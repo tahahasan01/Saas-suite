@@ -495,6 +495,8 @@ export interface Lead {
   next_activity_date: string | null;
   /** The shared contacts tags (record_tags). */
   tags: Tag[];
+  /** Products on the deal (wave D): with lines, value_minor is their pre-tax total. */
+  line_count: number;
 }
 
 export interface FulfillmentField {

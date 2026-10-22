@@ -58,6 +58,14 @@ class DealLines(BaseModel):
     total_minor: int             # what the customer would pay
 
 
+class DealProductOut(BaseModel):
+    """What the line editor's picker needs from the catalog."""
+    id: str
+    name: str
+    unit: str
+    price_minor: int
+
+
 class CrmSettingsOut(BaseModel):
     max_discount_pct: float | None = None
 
