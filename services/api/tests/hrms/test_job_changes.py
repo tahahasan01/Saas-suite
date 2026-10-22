@@ -107,3 +107,15 @@ async def test_a_change_must_change_something_and_pay_needs_payroll_rights(clien
         assert hist == []
     finally:
         await clerk.aclose()
+
+
+async def test_nobody_changes_their_own_job_or_pay(client, tenant):
+    """Security review: an HR user linked to their own staff record can't
+    promote themselves or raise their own salary."""
+    me_user = (await client.get("/auth/me")).json()["user"]["id"]
+    await owner_execute("update hrms_employees set user_id = $1::uuid where id = $2::uuid", me_user, tenant.employee_id)
+    t = await _title(client, "Director")
+    for body in ({"job_title_id": t}, {"new_base_minor": 99_000_000}):
+        r = await client.post(f"/hrms/employees/{tenant.employee_id}/job-changes",
+                              json={"kind": "promotion", "effective_on": TODAY.isoformat(), **body})
+        assert r.status_code == 403, r.text

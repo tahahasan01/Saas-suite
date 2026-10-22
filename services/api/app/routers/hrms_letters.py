@@ -111,9 +111,13 @@ async def preview(employee_id: UUID, body: LetterPreviewIn, auth: AuthContext = 
 _LETTER = """select l.*, e.name as employee_name from hrms_letters l join hrms_employees e on e.id = l.employee_id"""
 
 
-def _letter(r: asyncpg.Record) -> LetterOut:
+HIDDEN = "This letter shows pay details: it needs payroll.salary.read to open."
+
+
+def _letter(r: asyncpg.Record, *, show_pay: bool = True) -> LetterOut:
+    body = r["body"] if show_pay or not r["shows_pay"] else HIDDEN
     return LetterOut(id=str(r["id"]), employee_id=str(r["employee_id"]), employee_name=r["employee_name"],
-                     kind=r["kind"], number=r["number"], title=r["title"], body=r["body"], issued_at=r["issued_at"])
+                     kind=r["kind"], number=r["number"], title=r["title"], body=body, issued_at=r["issued_at"])
 
 
 @router.post("/employees/{employee_id}/letters", response_model=LetterOut, status_code=status.HTTP_201_CREATED)
@@ -136,12 +140,14 @@ async def issue(employee_id: UUID, body: LetterIssue, auth: AuthContext = Depend
         n = await conn.fetchval("select count(*) + 1 from hrms_letters where number like $1", f"HR-{year}-%")
         number = f"HR-{year}-{n:04d}"
         values["letter.number"] = number
+        revealed = await rbac.holds_key(conn, auth, "payroll.salary.read")
         lid = await conn.fetchval(
             """insert into hrms_letters (tenant_id, employee_id, template_id, request_id, kind, number, title, body,
-                                         issued_by)
-               values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning id""",
+                                         issued_by, shows_pay)
+               values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) returning id""",
             auth.tenant_id, employee_id, t["id"], body.request_id, t["kind"], number,
-            letters.fill(title, values), letters.fill(text, values), auth.user_id)
+            letters.fill(title, values), letters.fill(text, values), auth.user_id,
+            letters.shows_pay(title + text, revealed=revealed))
         if body.request_id is not None:
             await conn.execute(
                 """update hrms_letter_requests set status = 'issued', letter_id = $2, decided_by = $3,
@@ -153,8 +159,9 @@ async def issue(employee_id: UUID, body: LetterIssue, auth: AuthContext = Depend
 async def employee_letters(employee_id: UUID, auth: AuthContext = Depends(perm(READ))) -> list[LetterOut]:
     async with db.tenant_conn(auth.tenant_id) as conn:
         await refs.ensure_visible(conn, "hrms_employees", employee_id)
+        show = await rbac.holds_key(conn, auth, "payroll.salary.read")
         rows = await conn.fetch(_LETTER + " where l.employee_id = $1 order by l.issued_at desc", employee_id)
-    return [_letter(r) for r in rows]
+    return [_letter(r, show_pay=show) for r in rows]
 
 
 async def _pdf(conn: asyncpg.Connection, row: asyncpg.Record | None) -> Response:
@@ -168,7 +175,13 @@ async def _pdf(conn: asyncpg.Connection, row: asyncpg.Record | None) -> Response
 @router.get("/letters/{letter_id}/pdf")
 async def letter_pdf(letter_id: UUID, auth: AuthContext = Depends(perm(READ))) -> Response:
     async with db.tenant_conn(auth.tenant_id) as conn:
-        return await _pdf(conn, await conn.fetchrow("select * from hrms_letters where id = $1", letter_id))
+        row = await conn.fetchrow("select * from hrms_letters where id = $1", letter_id)
+        if row is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Letter not found")
+        await refs.ensure_visible(conn, "hrms_employees", row["employee_id"])
+        if row["shows_pay"] and not await rbac.holds_key(conn, auth, "payroll.salary.read"):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, HIDDEN)
+        return await _pdf(conn, row)
 
 
 # ── Requests ────────────────────────────────────────────────────────────────

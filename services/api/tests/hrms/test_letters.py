@@ -139,3 +139,26 @@ async def test_an_id_card_request_is_marked_done_without_a_letter(client, tenant
     assert r.status_code == 200, r.text
     assert r.json()["status"] == "issued" and r.json()["letter_id"] is None
     assert (await client.post(f"/hrms/letter-requests/{req['id']}/done", json={"note": "again"})).status_code == 409
+
+
+async def test_a_letter_showing_pay_stays_with_pay_readers(client, tenant):
+    """Security review: issuing a salary letter needs payroll.salary.read, so
+    reading it back must too (the list and the PDF), or a letters-only reader
+    sees the salary and the full CNIC through the copy."""
+    e = await new_employee(client, name="Paid Person", salary_minor=8_500_000, cnic="35202-1234567-3")
+    pay = await _template(client, "Salary {{employee.salary}}, CNIC {{employee.cnic}}", kind="salary")
+    plain = await _template(client, "Hello {{employee.name}}")
+    shown = (await client.post(f"/hrms/employees/{e['id']}/letters", json={"template_id": pay["id"]})).json()
+    other = (await client.post(f"/hrms/employees/{e['id']}/letters", json={"template_id": plain["id"]})).json()
+    rid = await _role(client, [{"permission_key": "hrms.letter.read", "scope": "all"},
+                               {"permission_key": "hrms.employee.read", "scope": "all"}])
+    reader, _, _ = await _user_on(client, [rid])
+    try:
+        rows = {x["id"]: x for x in (await reader.get(f"/hrms/employees/{e['id']}/letters")).json()}
+        assert "85,000" not in rows[shown["id"]]["body"] and "1234567" not in rows[shown["id"]]["body"]
+        assert rows[other["id"]]["body"].startswith("Hello")
+        assert (await reader.get(f"/hrms/letters/{shown['id']}/pdf")).status_code == 403
+        assert (await reader.get(f"/hrms/letters/{other['id']}/pdf")).status_code == 200
+    finally:
+        await reader.aclose()
+    assert (await client.get(f"/hrms/letters/{shown['id']}/pdf")).status_code == 200

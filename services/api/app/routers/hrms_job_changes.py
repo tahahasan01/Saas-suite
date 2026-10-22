@@ -38,6 +38,10 @@ async def create(employee_id: UUID, body: JobChangeIn,
                  auth: AuthContext = Depends(perm("hrms.employee.update"))) -> JobChangeOut:
     async with db.tenant_conn(auth.tenant_id) as conn, conn.transaction():
         await refs.ensure_visible(conn, "hrms_employees", employee_id)
+        # Promoting yourself or raising your own pay needs a second person (security review).
+        owner = await conn.fetchval("select user_id from hrms_employees where id = $1", employee_id)
+        if owner is not None and str(owner) == auth.user_id:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "You can't change your own job or pay")
         if not body.changes_something():
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
                                 "Say what changes: a title, department, location, manager or salary")
