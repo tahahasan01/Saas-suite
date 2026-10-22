@@ -125,6 +125,7 @@ module = [
     "app.routers.hrms_notices",
     "app.routers.hrms_overtime",
     "app.routers.hrms_assets",
+    "app.routers.hrms_requests",
 ]
 # `strict` itself is global-only in mypy, so its per-module parts are spelled out.
 disallow_untyped_defs = true

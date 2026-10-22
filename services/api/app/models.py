@@ -1949,6 +1949,22 @@ class NoticeOut(BaseModel):
     acknowledged_at: datetime | None = None   # /me only: when this employee acknowledged
 
 
+# ── Request tracker (wave A, H16) ──
+RequestKind = Literal["leave", "wfh", "correction", "overtime"]
+
+
+class RequestRow(BaseModel):
+    id: str
+    kind: RequestKind
+    title: str
+    status: str
+    reason: str
+    employee_id: str
+    employee_name: str
+    created_at: datetime
+    link: str           # where it is decided (managers) or followed up (/me)
+
+
 # ── Assets issued to staff (wave A, 0087) ──
 AssetCategory = Literal["laptop", "desktop", "phone", "tablet", "sim", "vehicle", "furniture", "tool", "uniform", "other"]
 ASSET_CATEGORIES = list(get_args(AssetCategory))
