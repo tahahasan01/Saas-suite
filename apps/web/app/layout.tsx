@@ -19,6 +19,7 @@ const bricolage = Bricolage_Grotesque({ subsets: ["latin"], variable: "--font-br
 export const metadata: Metadata = {
   title: "Business OS",
   description: "All-in-one AI-powered business platform",
+  manifest: "/manifest.webmanifest",   // the till's layout points at its own (/register.webmanifest)
 };
 
 // viewport-fit=cover lets the app use the whole screen on notched phones; the

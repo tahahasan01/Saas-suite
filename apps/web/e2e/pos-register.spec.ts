@@ -109,3 +109,19 @@ for (const vp of [{ width: 390, height: 844 }, { width: 844, height: 390 }, { wi
     });
   });
 }
+
+test.describe("the full-screen till", () => {
+  test("/register is the till without the back office around it, with its own manifest", async ({ page, request }) => {
+    const [first] = await products(request);
+    await page.goto("/register");
+    await expect(scanField(page)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("complementary", { name: "Main navigation" })).toHaveCount(0);
+    await page.getByRole("button", { name: new RegExp(first.name) }).first().click();
+    await expect(page.getByRole("heading", { name: "Cart (1)" })).toBeVisible();
+
+    const href = await page.locator('link[rel="manifest"]').getAttribute("href");
+    expect(href).toBe("/register.webmanifest");
+    const manifest = await (await request.get(href!)).json();
+    expect(manifest).toMatchObject({ start_url: "/register", scope: "/register", display: "fullscreen" });
+  });
+});

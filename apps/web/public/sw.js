@@ -29,7 +29,9 @@ self.addEventListener("fetch", (event) => {
         if (res.ok) (await caches.open(PAGES)).put(req, res.clone());
         return res;
       } catch {
-        const cached = (await caches.match(req)) ?? (await caches.match("/pos"));
+        // Else the till itself: the full-screen one for an installed till (/register), else /pos.
+        const till = new URL(req.url).pathname.startsWith("/register") ? "/register" : "/pos";
+        const cached = (await caches.match(req)) ?? (await caches.match(till)) ?? (await caches.match("/pos"));
         return cached ?? new Response("Offline, and this page wasn't opened on this till before.", {
           status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" } });
       }

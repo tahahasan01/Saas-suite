@@ -58,10 +58,10 @@ describe("safeNext (no open redirect after login)", () => {
 
 describe("isAppRoute (middleware gate)", () => {
   it("covers the signed-in app and nothing public", () => {
-    for (const p of ["/dashboard", "/pos", "/pos/products", "/hrms/payroll", "/me/leave", "/settings/fbr", "/crm", "/invoices", "/automations"]) {
+    for (const p of ["/dashboard", "/pos", "/pos/products", "/hrms/payroll", "/me/leave", "/settings/fbr", "/crm", "/invoices", "/automations", "/register", "/contacts/x", "/my-day"]) {
       expect(isAppRoute(p)).toBe(true);
     }
-    for (const p of ["/", "/login", "/signup", "/pricing", "/verify", "/reset", "/accept-invite", "/forgot", "/posters"]) {
+    for (const p of ["/", "/login", "/signup", "/pricing", "/verify", "/reset", "/accept-invite", "/forgot", "/posters", "/register.webmanifest"]) {
       expect(isAppRoute(p)).toBe(false);
     }
   });
