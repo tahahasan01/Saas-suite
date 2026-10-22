@@ -81,6 +81,9 @@ ENUM_COLUMNS = {
     ("hrms_assets", "condition"): models.ASSET_CONDITIONS,
     ("hrms_assets", "status"): models.ASSET_STATUSES,
     ("hrms_asset_assignments", "return_condition"): models.ASSET_CONDITIONS,
+    # the touch tile screen (wave B, 0090)
+    ("pos_categories", "color"): models.TILE_COLORS,
+    ("pos_products", "color"): models.TILE_COLORS,
     # attendance v2 (0066)
     ("hrms_punches", "geo_status"): models.GEO_STATUSES,
     ("hrms_attendance", "geo_status"): models.GEO_STATUSES,

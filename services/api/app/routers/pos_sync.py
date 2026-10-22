@@ -134,15 +134,20 @@ async def catalog_delta(since: int = Query(0, ge=0), limit: int = Query(500, ge=
                    "cash_rounding_minor": await pos_sessions.rounding_unit(conn, reg)}
         rows = await conn.fetch(
             """select id, name, sku, barcode, unit, price_minor, tax_rate, hs_code, fbr_uom, category_id,
-                      track_stock, stock_qty, active, group_id, attributes, row_version
+                      track_stock, stock_qty, active, group_id, attributes, color, pinned, row_version
                  from pos_products where row_version > $1 order by row_version limit $2""", since, limit + 1)
+        # Few and small: sent whole every time, so a renamed or recoloured
+        # category reaches tills without a cursor of its own (P42).
+        categories = [{"id": str(c["id"]), "name": c["name"], "color": c["color"], "position": c["position"]}
+                      for c in await conn.fetch(
+                          "select id, name, color, position from pos_categories where active order by position, name")]
     more = len(rows) > limit
     rows = rows[:limit]
     products = [{**dict(r), "id": str(r["id"]), "category_id": str(r["category_id"]) if r["category_id"] else None,
                  "group_id": str(r["group_id"]) if r["group_id"] else None, "tax_rate": float(r["tax_rate"] or 0),
                  "stock_qty": float(r["stock_qty"])} for r in rows]
     return {"products": products, "next": rows[-1]["row_version"] if rows else since, "more": more,
-            "pricing": pricing, "reset": reset,
+            "pricing": pricing, "reset": reset, "categories": categories,
             "register": {"id": str(reg["id"]), "code": reg["code"], "payment_methods": list(reg["payment_methods"]),
                          "config_version": reg["config_version"]}}
 

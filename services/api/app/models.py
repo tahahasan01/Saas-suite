@@ -600,6 +600,11 @@ FbrEnvironment = Literal["sandbox", "production"]
 FBR_ENVIRONMENTS = list(get_args(FbrEnvironment))
 
 
+# Tile colours on the till (0090); the web maps each to light and dark tints.
+TileColor = Literal["red", "orange", "amber", "green", "teal", "blue", "indigo", "purple", "pink", "slate"]
+TILE_COLORS = list(get_args(TileColor))
+
+
 class ProductOut(BaseModel):
     id: str
     name: str
@@ -624,6 +629,9 @@ class ProductOut(BaseModel):
     group_id: str | None = None
     attributes: dict[str, str] = Field(default_factory=dict)
     scan_qty: float | None = None      # set by a lookup: what the scanned barcode counts as
+    # The touch tile screen (0090): own colour (else the category's) and favourites.
+    color: str | None = None
+    pinned: bool = False
 
 
 class ProductCreate(BaseModel):
@@ -668,6 +676,8 @@ class ProductUpdate(BaseModel):
     track_stock: bool | None = None
     group_id: UUID | None = None
     attributes: dict[str, str] | None = Field(default=None, max_length=10)
+    color: TileColor | Literal[""] | None = None     # "" clears it
+    pinned: bool | None = None
 
 
 class SaleLine(BaseModel):

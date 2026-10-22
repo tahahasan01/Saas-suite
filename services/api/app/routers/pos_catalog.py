@@ -4,6 +4,7 @@ ledger. Stock itself only moves through app/catalog.py."""
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 import asyncpg
@@ -12,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from .. import catalog, db
 from ..deps import AuthContext
-from ..models import AdjustReason, BarcodeRuleKind, ProductOut
+from ..models import AdjustReason, BarcodeRuleKind, ProductOut, TileColor
 from ..rbac import perm
 from .pos import _held, _product
 
@@ -23,12 +24,14 @@ router = APIRouter(prefix="/pos", tags=["pos"])
 class CategoryIn(BaseModel):
     name: str = Field(min_length=1, max_length=80)
     position: int = 0
+    color: TileColor | None = None
 
 
 class CategoryUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=80)
     position: int | None = None
     active: bool | None = None
+    color: TileColor | Literal[""] | None = None     # "" clears it
 
 
 class CategoryOut(BaseModel):
@@ -37,11 +40,12 @@ class CategoryOut(BaseModel):
     position: int
     active: bool
     product_count: int
+    color: str | None = None
 
 
 def _category(r: asyncpg.Record) -> CategoryOut:
     return CategoryOut(id=str(r["id"]), name=r["name"], position=r["position"], active=r["active"],
-                       product_count=r["product_count"])
+                       product_count=r["product_count"], color=r["color"])
 
 
 _CATEGORIES = """select c.*, (select count(*) from pos_products p where p.category_id = c.id and p.active)
@@ -61,8 +65,8 @@ async def create_category(body: CategoryIn, auth: AuthContext = Depends(perm("pr
     async with db.tenant_conn(auth.tenant_id) as conn:
         try:
             cid = await conn.fetchval(
-                "insert into pos_categories (tenant_id, name, position) values ($1, $2, $3) returning id",
-                auth.tenant_id, body.name.strip(), body.position)
+                "insert into pos_categories (tenant_id, name, position, color) values ($1, $2, $3, $4) returning id",
+                auth.tenant_id, body.name.strip(), body.position, body.color)
         except asyncpg.UniqueViolationError:
             raise HTTPException(status.HTTP_409_CONFLICT, "A category with that name already exists")
         return _category(await conn.fetchrow(_CATEGORIES + " where c.id = $1", cid))
@@ -72,6 +76,8 @@ async def create_category(body: CategoryIn, auth: AuthContext = Depends(perm("pr
 async def update_category(category_id: str, body: CategoryUpdate,
                           auth: AuthContext = Depends(perm("products.product.update"))) -> CategoryOut:
     fields = body.model_dump(exclude_none=True)
+    if fields.get("color") == "":
+        fields["color"] = None
     async with db.tenant_conn(auth.tenant_id) as conn:
         if fields:
             sets = ", ".join(f"{k} = ${i}" for i, k in enumerate(fields, 2))

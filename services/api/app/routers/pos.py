@@ -77,6 +77,7 @@ def _product(r: asyncpg.Record, held: dict[str, str], scan_qty: float | None = N
         "hs_code": r["hs_code"], "tax_rate": float(r["tax_rate"]), "fbr_uom": r["fbr_uom"],
         "category_id": str(r["category_id"]) if r["category_id"] else None, "track_stock": r["track_stock"],
         "group_id": str(r["group_id"]) if r["group_id"] else None, "attributes": dict(r["attributes"] or {}),
+        "color": r["color"], "pinned": r["pinned"],
     }, held)
     return ProductOut(**{"cost_minor": None, **out}, scan_qty=scan_qty)
 
@@ -167,6 +168,8 @@ async def update_product(product_id: str, body: ProductUpdate,
     fields = body.model_dump(exclude_none=True)
     if not fields:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Nothing to update")
+    if fields.get("color") == "":
+        fields["color"] = None          # back to the category's colour
     async with db.tenant_conn(auth.tenant_id) as conn:
         held = await _held(conn, auth)
         field_guards.check_write("products.product", fields, held)
