@@ -5369,6 +5369,110 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/restaurant/floors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Floors */
+        get: operations["list_floors_restaurant_floors_get"];
+        put?: never;
+        /** Create Floor */
+        post: operations["create_floor_restaurant_floors_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/restaurant/floors/{floor_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Floor */
+        patch: operations["update_floor_restaurant_floors__floor_id__patch"];
+        trace?: never;
+    };
+    "/restaurant/floors/{floor_id}/tables": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Tables */
+        post: operations["add_tables_restaurant_floors__floor_id__tables_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/restaurant/tables/{table_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Table */
+        patch: operations["update_table_restaurant_tables__table_id__patch"];
+        trace?: never;
+    };
+    "/restaurant/stations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Stations */
+        get: operations["list_stations_restaurant_stations_get"];
+        put?: never;
+        /** Create Station */
+        post: operations["create_station_restaurant_stations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/restaurant/stations/{station_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Station */
+        patch: operations["update_station_restaurant_stations__station_id__patch"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -7540,6 +7644,42 @@ export interface components {
             sha256: string;
             /** Original Name */
             original_name: string;
+        };
+        /** FloorIn */
+        FloorIn: {
+            /** Name */
+            name: string;
+            /** Branch Id */
+            branch_id?: string | null;
+            /**
+             * Position
+             * @default 0
+             */
+            position: number;
+        };
+        /** FloorOut */
+        FloorOut: {
+            /** Id */
+            id: string;
+            /** Branch Id */
+            branch_id: string;
+            /** Name */
+            name: string;
+            /** Position */
+            position: number;
+            /** Active */
+            active: boolean;
+            /** Tables */
+            tables: components["schemas"]["TableOut"][];
+        };
+        /** FloorUpdate */
+        FloorUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Position */
+            position?: number | null;
+            /** Active */
+            active?: boolean | null;
         };
         /** ForecastItem */
         ForecastItem: {
@@ -11485,6 +11625,44 @@ export interface components {
             /** Requirements */
             requirements?: string | null;
         };
+        /** StationCategory */
+        StationCategory: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+        };
+        /** StationIn */
+        StationIn: {
+            /** Name */
+            name: string;
+            /** Branch Id */
+            branch_id?: string | null;
+            /** Category Ids */
+            category_ids?: string[];
+        };
+        /** StationOut */
+        StationOut: {
+            /** Id */
+            id: string;
+            /** Branch Id */
+            branch_id: string;
+            /** Name */
+            name: string;
+            /** Active */
+            active: boolean;
+            /** Categories */
+            categories: components["schemas"]["StationCategory"][];
+        };
+        /** StationUpdate */
+        StationUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Category Ids */
+            category_ids?: string[] | null;
+            /** Active */
+            active?: boolean | null;
+        };
         /** StatutoryOut */
         StatutoryOut: {
             /** Schemes */
@@ -11637,6 +11815,42 @@ export interface components {
             reasons: string[];
             /** Error */
             error?: string | null;
+        };
+        /** TableOut */
+        TableOut: {
+            /** Id */
+            id: string;
+            /** Floor Id */
+            floor_id: string;
+            /** Label */
+            label: string;
+            /** Seats */
+            seats: number;
+            /** Position */
+            position: number;
+            /** Active */
+            active: boolean;
+        };
+        /** TableUpdate */
+        TableUpdate: {
+            /** Label */
+            label?: string | null;
+            /** Seats */
+            seats?: number | null;
+            /** Position */
+            position?: number | null;
+            /** Active */
+            active?: boolean | null;
+        };
+        /** TablesIn */
+        TablesIn: {
+            /** Labels */
+            labels: string[];
+            /**
+             * Seats
+             * @default 4
+             */
+            seats: number;
         };
         /** TagCreate */
         TagCreate: {
@@ -24246,6 +24460,286 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_floors_restaurant_floors_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FloorOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_floor_restaurant_floors_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FloorIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FloorOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_floor_restaurant_floors__floor_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                floor_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FloorUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FloorOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_tables_restaurant_floors__floor_id__tables_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                floor_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TablesIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TableOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_table_restaurant_tables__table_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                table_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TableUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TableOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_stations_restaurant_stations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StationOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_station_restaurant_stations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StationIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_station_restaurant_stations__station_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                station_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StationUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StationOut"];
                 };
             };
             /** @description Validation Error */
