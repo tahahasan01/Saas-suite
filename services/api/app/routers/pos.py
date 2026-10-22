@@ -5,6 +5,7 @@ import hashlib
 import json
 import math
 from decimal import Decimal
+from typing import Any
 
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
@@ -192,7 +193,7 @@ async def update_product(product_id: str, body: ProductUpdate,
 
 def _fingerprint(body: SaleCreate) -> str:
     """What the cart *was*: a replay of the same client_uuid must match it."""
-    canonical = {
+    canonical: dict[str, Any] = {
         "items": sorted([str(i.product_id), float(i.qty)] for i in body.items),
         **({"lines": sorted([str(i.product_id), float(i.qty), i.discount_minor, i.discount_pct, i.price_minor]
                             for i in body.items)}
@@ -796,11 +797,11 @@ async def do_return(sale_id: str, body: ReturnCreate, auth: AuthContext, key: st
         available = {str(r["sale_item_id"]): r for r in await conn.fetch(_RETURNABLE, sale_id)}
         if void_reason is not None:
             from ..models import ReturnLine
-            left = [ReturnLine(sale_item_id=k, qty=float(r["qty_sold"]) - float(r["qty_returned"]))
+            remaining = [ReturnLine(sale_item_id=k, qty=float(r["qty_sold"]) - float(r["qty_returned"]))
                     for k, r in available.items() if float(r["qty_sold"]) > float(r["qty_returned"])]
-            if not left:
+            if not remaining:
                 raise HTTPException(status.HTTP_409_CONFLICT, "Everything on this sale has already come back")
-            body = ReturnCreate(items=left, reason=f"Void: {void_reason}", restock=True,
+            body = ReturnCreate(items=remaining, reason=f"Void: {void_reason}", restock=True,
                                 register_id=body.register_id)
 
         refund = tax_total = 0
