@@ -70,6 +70,9 @@ async def add_compensation(employee_id: str, body: CompensationCreate,
     rewritten, so a locked payslip can't move (D-40, D-42)."""
     async with db.tenant_conn(auth.tenant_id) as conn:
         emp = await _employee(conn, employee_id)
+        # Separation of duties, as for job changes and leave: someone else sets your pay.
+        if await conn.fetchval("select 1 from hrms_employees where id = $1 and user_id = $2", emp["id"], auth.user_id):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "You can't change your own salary")
         structure = None
         if body.structure_id:
             structure = await conn.fetchval("select id from pay_structures where id = $1 and active",
