@@ -157,6 +157,7 @@ APP_USER: dict[str, set[str]] = {
     "pos_cash_moves":       {S, I},             # append-only
     "pos_held_bills":       {S, I, D},          # parked carts, resumed once (0078)
     "customer_ledger":      {S, I},             # khata: append-only (0079)
+    "pos_cashier_sessions": {S, I, U},          # signed out by setting ended_at (0080)
 }
 
 # Column-level grants don't appear in role_table_grants, so they are pinned

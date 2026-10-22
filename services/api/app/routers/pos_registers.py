@@ -10,7 +10,7 @@ import asyncpg
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
 
-from .. import db, pos_sessions
+from .. import cashiers, db, pos_sessions
 from ..deps import AuthContext
 from ..models import TENDER_METHODS, CashMoveKind, TenderMethod
 from ..rbac import perm
@@ -276,15 +276,17 @@ async def get_session(session_id: str, auth: AuthContext = Depends(perm("pos.ses
 
 @router.post("/sessions/{session_id}/cash-moves", response_model=SessionOut, status_code=status.HTTP_201_CREATED)
 async def cash_move(session_id: str, body: CashMoveIn,
+                    x_cashier_token: str | None = Header(default=None, alias="X-Cashier-Token"),
                     auth: AuthContext = Depends(perm("pos.cash.move"))) -> SessionOut:
     async with db.tenant_conn(auth.tenant_id) as conn:
         s = await _session(conn, session_id)
         if s["status"] != "open":
             raise HTTPException(status.HTTP_409_CONFLICT, "This session is closed")
         await conn.execute(
-            """insert into pos_cash_moves (tenant_id, session_id, kind, amount_minor, reason, user_id)
-               values ($1, $2, $3, $4, $5, $6)""",
-            auth.tenant_id, session_id, body.kind, body.amount_minor, body.reason, auth.user_id)
+            """insert into pos_cash_moves (tenant_id, session_id, kind, amount_minor, reason, user_id, employee_id)
+               values ($1, $2, $3, $4, $5, $6, $7)""",
+            auth.tenant_id, session_id, body.kind, body.amount_minor, body.reason, auth.user_id,
+            await cashiers.employee_for(conn, x_cashier_token))
         return SessionOut(**await pos_sessions.session_out(conn, s))
 
 

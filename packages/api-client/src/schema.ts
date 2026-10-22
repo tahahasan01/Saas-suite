@@ -4712,6 +4712,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pos/cashiers/sign-in": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign In */
+        post: operations["sign_in_pos_cashiers_sign_in_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/cashiers/sign-out": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign Out */
+        post: operations["sign_out_pos_cashiers_sign_out_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/cashiers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Cashier List
+         * @description Who can sign in at a till: active staff with a PIN.
+         */
+        get: operations["cashier_list_pos_cashiers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -10209,6 +10263,29 @@ export interface components {
             /** Overtime After Min */
             overtime_after_min?: number | null;
         };
+        /** SignIn */
+        SignIn: {
+            /**
+             * Employee Id
+             * Format: uuid
+             */
+            employee_id: string;
+            /** Pin */
+            pin: string;
+            /** Device Id */
+            device_id?: string | null;
+        };
+        /** SignedIn */
+        SignedIn: {
+            /** Cashier Token */
+            cashier_token: string;
+            /** Employee Id */
+            employee_id: string;
+            /** Employee Name */
+            employee_name: string;
+            /** Expires In Hours */
+            expires_in_hours: number;
+        };
         /** SignupRequest */
         SignupRequest: {
             /** Company Name */
@@ -10886,6 +10963,11 @@ export interface components {
             method: "cash" | "card" | "jazzcash" | "easypaisa" | "raast" | "bank" | "cheque";
             /** Register Id */
             register_id?: string | null;
+            /**
+             * Reference
+             * @default
+             */
+            reference: string;
             /**
              * Note
              * @default
@@ -12980,7 +13062,9 @@ export interface operations {
     checkout_pos_sales_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Cashier-Token"?: string | null;
+            };
             path?: never;
             cookie?: {
                 bos_session?: string | null;
@@ -21256,7 +21340,9 @@ export interface operations {
     cash_move_pos_sessions__session_id__cash_moves_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Cashier-Token"?: string | null;
+            };
             path: {
                 session_id: string;
             };
@@ -21725,6 +21811,105 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Account"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sign_in_pos_cashiers_sign_in_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignedIn"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sign_out_pos_cashiers_sign_out_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Cashier-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cashier_list_pos_cashiers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
                 };
             };
             /** @description Validation Error */

@@ -149,6 +149,7 @@ _SHAPED = {
     "pos_barcode_rules": {"prefix": lambda: "2" + str(uuid.uuid4().int % 10), "kind": lambda: "weight"},
     "pos_registers": {"code": lambda: "Q" + uuid.uuid4().hex[:4].upper()},
     "pos_devices": {"device_code": lambda: "D" + uuid.uuid4().hex[:4].upper()},
+    "pos_cashier_sessions": {"token_hash": lambda: uuid.uuid4().hex},
 }
 
 

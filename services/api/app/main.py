@@ -41,6 +41,7 @@ from .routers import (  # org data (3A, p3-orgdata)
     pos_registers,
     pos_sales,
     khata as khata_routes,
+    pos_cashiers,
     profile,
     roles,
     sequences,
@@ -145,6 +146,7 @@ app.include_router(pos_catalog.router)   # catalog v2 and stock (3C, 0075)
 app.include_router(pos_registers.router)   # registers and sessions (3C, 0076)
 app.include_router(pos_sales.router)   # sales history, reprint, void, held bills (3C, 0078)
 app.include_router(khata_routes.router)   # customer credit (3C, 0079)
+app.include_router(pos_cashiers.router)   # cashier = employee PIN (3C, 0080)
 
 
 @app.exception_handler(asyncpg.DataError)

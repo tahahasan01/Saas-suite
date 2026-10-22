@@ -8,9 +8,10 @@ from decimal import Decimal
 from typing import Any
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
 
-from .. import audit, catalog, csv_io, db, fbr, fbr_submit, field_guards, khata, pins, pos_sessions, pricing, rbac, refs, sequences
+from .. import (audit, cashiers, catalog, csv_io, db, fbr, fbr_submit, field_guards, khata, pins, pos_sessions, pricing, rbac,
+               refs, sequences)
 from ..deps import AuthContext
 from ..models import (
     DrawerClose,
@@ -252,6 +253,7 @@ async def _payments(conn, sale_id) -> list[PaymentLine]:
 
 @router.post("/sales", response_model=SaleOut, status_code=status.HTTP_201_CREATED)
 async def checkout(body: SaleCreate, response: Response,
+                   x_cashier_token: str | None = Header(default=None, alias="X-Cashier-Token"),
                    auth: AuthContext = Depends(perm("pos.sale.create"))):
     fingerprint = _fingerprint(body)
     if body.client_uuid is not None:
@@ -260,7 +262,7 @@ async def checkout(body: SaleCreate, response: Response,
             response.status_code = status.HTTP_200_OK
             return replay
     try:
-        return await _record_sale(body, auth, fingerprint)
+        return await _record_sale(body, auth, fingerprint, x_cashier_token)
     except asyncpg.UniqueViolationError:
         # A copy of this cart committed between our check and our insert; the
         # unique index refused the second sale, so answer with the first.
@@ -367,7 +369,8 @@ async def _check_customer(conn, contact_id) -> None:
         raise HTTPException(status.HTTP_409_CONFLICT, "That customer is archived")
 
 
-async def _record_sale(body: SaleCreate, auth: AuthContext, fingerprint: str) -> SaleOut:
+async def _record_sale(body: SaleCreate, auth: AuthContext, fingerprint: str,
+                       cashier_token: str | None = None) -> SaleOut:
     async with db.tenant_conn(auth.tenant_id) as conn:
         await _check_customer(conn, body.contact_id)
         lines, fbr_cfg, priced = await _price_cart(conn, auth.tenant_id, body.items, body.discount_minor)
@@ -386,18 +389,20 @@ async def _record_sale(body: SaleCreate, auth: AuthContext, fingerprint: str) ->
                 "select 1 from pos_devices where id=$1 and register_id=$2", body.device_id, reg["id"]):
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Device not found on this register")
         session_id = await pos_sessions.open_session_id(conn, reg["id"])
+        # The cashier signed in with their PIN (pos_hrms): their name on the sale.
+        employee_id = await cashiers.employee_for(conn, cashier_token)
 
         sale_id = await conn.fetchval(
             """insert into pos_sales (tenant_id, cashier_id, subtotal_minor, discount_minor, total_minor,
                                       paid_minor, change_minor, payment_method, item_count, tax_minor,
                                       client_uuid, payload_sha256, rounding_minor, contact_id,
-                                      session_id, register_id, device_id)
-               values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) returning id""",
+                                      session_id, register_id, device_id, employee_id)
+               values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) returning id""",
             auth.tenant_id, auth.user_id, priced.subtotal_minor, priced.discount_minor, total,
             plan.paid_minor, plan.change_minor, plan.payment_method, len(lines), priced.tax_minor,
             body.client_uuid, fingerprint, plan.rounding_minor, body.contact_id, session_id, reg["id"],
-            body.device_id)
-        await pos_sessions.record_tenders(conn, auth.tenant_id, sale_id, session_id, plan)
+            body.device_id, employee_id)
+        await pos_sessions.record_tenders(conn, auth.tenant_id, sale_id, session_id, plan, employee_id)
         # The khata part goes on the customer's account, in this transaction.
         on_credit = sum(t.amount_minor for t in plan.tenders if t.method == "khata")
         if on_credit:

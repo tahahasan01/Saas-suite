@@ -132,13 +132,13 @@ def tenders(total_minor: int, unit: int, payments: list[Any] | None, legacy_meth
 
 
 async def record_tenders(conn: asyncpg.Connection, tenant_id: str, sale_id: Any, session_id: Any,
-                         plan: TenderPlan) -> None:
+                         plan: TenderPlan, employee_id: Any = None) -> None:
     await conn.executemany(
         """insert into pos_payments (tenant_id, sale_id, session_id, method, amount_minor, tendered_minor,
-                                     change_minor, reference)
-           values ($1, $2, $3, $4, $5, $6, $7, $8)""",
-        [(tenant_id, sale_id, session_id, t.method, t.amount_minor, t.tendered_minor, t.change_minor, t.reference)
-         for t in plan.tenders])
+                                     change_minor, reference, employee_id)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9)""",
+        [(tenant_id, sale_id, session_id, t.method, t.amount_minor, t.tendered_minor, t.change_minor, t.reference,
+          employee_id) for t in plan.tenders])
 
 
 # ── Figures ─────────────────────────────────────────────────────────────────

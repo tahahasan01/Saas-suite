@@ -3549,6 +3549,22 @@
         "operationId": "checkout_pos_sales_post",
         "parameters": [
           {
+            "name": "X-Cashier-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Cashier-Token"
+            }
+          },
+          {
             "name": "bos_session",
             "in": "cookie",
             "required": false,
@@ -18896,6 +18912,22 @@
             }
           },
           {
+            "name": "X-Cashier-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Cashier-Token"
+            }
+          },
+          {
             "name": "bos_session",
             "in": "cookie",
             "required": false,
@@ -19744,6 +19776,178 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pos/cashiers/sign-in": {
+      "post": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Sign In",
+        "operationId": "sign_in_pos_cashiers_sign_in_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignedIn"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pos/cashiers/sign-out": {
+      "post": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Sign Out",
+        "operationId": "sign_out_pos_cashiers_sign_out_post",
+        "parameters": [
+          {
+            "name": "X-Cashier-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Cashier-Token"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pos/cashiers": {
+      "get": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Cashier List",
+        "description": "Who can sign in at a till: active staff with a PIN.",
+        "operationId": "cashier_list_pos_cashiers_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response Cashier List Pos Cashiers Get"
                 }
               }
             }
@@ -35197,6 +35401,66 @@
         "type": "object",
         "title": "ShiftPolicyUpdate"
       },
+      "SignIn": {
+        "properties": {
+          "employee_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Employee Id"
+          },
+          "pin": {
+            "type": "string",
+            "pattern": "^\\d{4,6}$",
+            "title": "Pin"
+          },
+          "device_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "employee_id",
+          "pin"
+        ],
+        "title": "SignIn"
+      },
+      "SignedIn": {
+        "properties": {
+          "cashier_token": {
+            "type": "string",
+            "title": "Cashier Token"
+          },
+          "employee_id": {
+            "type": "string",
+            "title": "Employee Id"
+          },
+          "employee_name": {
+            "type": "string",
+            "title": "Employee Name"
+          },
+          "expires_in_hours": {
+            "type": "integer",
+            "title": "Expires In Hours"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cashier_token",
+          "employee_id",
+          "employee_name",
+          "expires_in_hours"
+        ],
+        "title": "SignedIn"
+      },
       "SignupRequest": {
         "properties": {
           "company_name": {
@@ -37107,9 +37371,15 @@
             ],
             "title": "Register Id"
           },
+          "reference": {
+            "type": "string",
+            "maxLength": 80,
+            "title": "Reference",
+            "default": ""
+          },
           "note": {
             "type": "string",
-            "maxLength": 300,
+            "maxLength": 200,
             "title": "Note",
             "default": ""
           }
