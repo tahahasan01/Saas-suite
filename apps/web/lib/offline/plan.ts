@@ -41,3 +41,12 @@ export function settle(sent: string[], results: SyncResult[]) {
   }
   return { done, conflicts, flagged, unanswered };
 }
+
+/** Whether the till drops its cached catalogue and pulls it again from the
+ *  start: the server says so (its catalogue is behind the till's cursor, as
+ *  after a restore), or the register's config_version moved since the last
+ *  pull (3D). A first pull has nothing to drop. */
+export function needsReset(storedConfig: number | undefined,
+                           feed: { reset: boolean; register: { config_version: number } }): boolean {
+  return feed.reset || (storedConfig !== undefined && storedConfig !== feed.register.config_version);
+}

@@ -20131,7 +20131,7 @@
           "pos"
         ],
         "summary": "Catalog Delta",
-        "description": "Products changed after `since` (a row_version), oldest first, plus what\nthe till needs to price offline exactly as the server would (pos-core).\nCost is left out: a till never needs it (field-guarded).",
+        "description": "Products changed after `since` (a row_version), oldest first, plus what\nthe till needs to price offline exactly as the server would (pos-core).\nCost is left out: a till never needs it (field-guarded).\n\n`reset` tells the till to drop its cached catalogue and start again: the\ncursor is ahead of every product (a restored database), so the feed\nrestarts from 0. The till does the same itself when the register's\n`config_version` moves (3D).",
         "operationId": "catalog_delta_pos_catalog_delta_get",
         "parameters": [
           {
@@ -25105,6 +25105,11 @@
             ],
             "title": "Oldest Pending At"
           },
+          "ageing": {
+            "type": "boolean",
+            "title": "Ageing",
+            "default": false
+          },
           "token": {
             "type": "string",
             "title": "Token"
@@ -25194,6 +25199,11 @@
               }
             ],
             "title": "Oldest Pending At"
+          },
+          "ageing": {
+            "type": "boolean",
+            "title": "Ageing",
+            "default": false
           }
         },
         "type": "object",

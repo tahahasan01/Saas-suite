@@ -119,6 +119,8 @@ class DeviceOut(BaseModel):
     last_seen_at: datetime | None
     outbox_count: int
     oldest_pending_at: datetime | None
+    # The oldest unsent sale is older than pos_sessions.OUTBOX_AGEING (St01 risk 2).
+    ageing: bool = False
 
 
 class DeviceCreated(DeviceOut):
@@ -128,7 +130,7 @@ class DeviceCreated(DeviceOut):
 def _device(r: asyncpg.Record) -> DeviceOut:
     return DeviceOut(id=str(r["id"]), register_id=str(r["register_id"]), device_code=r["device_code"], name=r["name"],
                      last_seen_at=r["last_seen_at"], outbox_count=r["outbox_count"],
-                     oldest_pending_at=r["oldest_pending_at"])
+                     oldest_pending_at=r["oldest_pending_at"], ageing=pos_sessions.outbox_ageing(r))
 
 
 @router.get("/devices", response_model=list[DeviceOut])
@@ -167,7 +169,9 @@ async def heartbeat(device_id: str, body: HeartbeatIn,
     async with db.tenant_conn(auth.tenant_id) as conn:
         row = await conn.fetchrow(
             """update pos_devices set last_seen_at = now(), outbox_count = $2,
-                                      oldest_pending_at = case when $2 > 0 then $3::timestamptz end
+                                      oldest_pending_at = case when $2 > 0 then $3::timestamptz end,
+                                      -- an empty outbox ends the backlog: the next one warns again
+                                      ageing_alerted_at = case when $2 > 0 then ageing_alerted_at end
                 where id = $1 and token_hash = $4 returning *""",
             device_id, body.outbox_count, body.oldest_pending_at, hash_token(x_device_token))
     if row is None:

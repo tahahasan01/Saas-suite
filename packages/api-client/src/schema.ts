@@ -4816,6 +4816,11 @@ export interface paths {
          * @description Products changed after `since` (a row_version), oldest first, plus what
          *     the till needs to price offline exactly as the server would (pos-core).
          *     Cost is left out: a till never needs it (field-guarded).
+         *
+         *     `reset` tells the till to drop its cached catalogue and start again: the
+         *     cursor is ahead of every product (a restored database), so the feed
+         *     restarts from 0. The till does the same itself when the register's
+         *     `config_version` moves (3D).
          */
         get: operations["catalog_delta_pos_catalog_delta_get"];
         put?: never;
@@ -6425,6 +6430,11 @@ export interface components {
             outbox_count: number;
             /** Oldest Pending At */
             oldest_pending_at: string | null;
+            /**
+             * Ageing
+             * @default false
+             */
+            ageing: boolean;
             /** Token */
             token: string;
         };
@@ -6459,6 +6469,11 @@ export interface components {
             outbox_count: number;
             /** Oldest Pending At */
             oldest_pending_at: string | null;
+            /**
+             * Ageing
+             * @default false
+             */
+            ageing: boolean;
         };
         /** DisablePlanOut */
         DisablePlanOut: {

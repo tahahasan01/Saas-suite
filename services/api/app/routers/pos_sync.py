@@ -116,9 +116,17 @@ async def catalog_delta(since: int = Query(0, ge=0), limit: int = Query(500, ge=
                         auth: AuthContext = Depends(perm("pos.sale.create"))) -> dict[str, Any]:
     """Products changed after `since` (a row_version), oldest first, plus what
     the till needs to price offline exactly as the server would (pos-core).
-    Cost is left out: a till never needs it (field-guarded)."""
+    Cost is left out: a till never needs it (field-guarded).
+
+    `reset` tells the till to drop its cached catalogue and start again: the
+    cursor is ahead of every product (a restored database), so the feed
+    restarts from 0. The till does the same itself when the register's
+    `config_version` moves (3D)."""
     async with db.tenant_conn(auth.tenant_id) as conn:
         reg = await pos_sessions.register(conn, register_id)
+        reset = since > 0 and since > await conn.fetchval("select coalesce(max(row_version), 0) from pos_products")
+        if reset:
+            since = 0
         fbr = await conn.fetchrow("select enabled, prices_include_tax from fbr_settings where tenant_id = $1",
                                   auth.tenant_id)
         tax_on = bool(fbr and fbr["enabled"])
@@ -134,8 +142,9 @@ async def catalog_delta(since: int = Query(0, ge=0), limit: int = Query(500, ge=
                  "group_id": str(r["group_id"]) if r["group_id"] else None, "tax_rate": float(r["tax_rate"] or 0),
                  "stock_qty": float(r["stock_qty"])} for r in rows]
     return {"products": products, "next": rows[-1]["row_version"] if rows else since, "more": more,
-            "pricing": pricing,
-            "register": {"id": str(reg["id"]), "code": reg["code"], "payment_methods": list(reg["payment_methods"])}}
+            "pricing": pricing, "reset": reset,
+            "register": {"id": str(reg["id"]), "code": reg["code"], "payment_methods": list(reg["payment_methods"]),
+                         "config_version": reg["config_version"]}}
 
 
 # ── Manager review queue ────────────────────────────────────────────────────

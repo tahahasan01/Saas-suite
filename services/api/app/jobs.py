@@ -41,6 +41,7 @@ from . import (
     notifications,
     obs,
     payroll_runs,
+    pos_sessions,
 )
 from .modules import service as modules_service
 from .routers.pos import _VELOCITY_SQL
@@ -179,6 +180,38 @@ async def run_restock_alerts() -> int:
     return fired
 
 
+async def run_outbox_ageing() -> int:
+    """Every 10 minutes: a till whose oldest unsent sale is older than 30
+    minutes tells the owner, once per backlog (0084; the heartbeat clears
+    ageing_alerted_at when the outbox empties)."""
+    fired = 0
+    for tid in await _active_tenants():
+        try:
+            async with db.tenant_conn(tid) as conn:
+                rows = await conn.fetch(
+                    """update pos_devices d set ageing_alerted_at = now()
+                         from pos_registers r
+                        where r.id = d.register_id and d.active and d.ageing_alerted_at is null
+                          and d.outbox_count > 0 and d.oldest_pending_at < now() - $1::interval
+                    returning d.name, d.device_code, d.outbox_count, r.code as register_code""",
+                    pos_sessions.OUTBOX_AGEING)
+                owner = await _owner_user(conn) if rows else None
+                if owner is None:
+                    continue
+                for d in rows:
+                    till = f"{d['register_code']}-{d['device_code']}" + (f" ({d['name']})" if d["name"] else "")
+                    await notifications.create(
+                        conn, user_id=owner, kind="warning",
+                        title=f"Till {till} has {d['outbox_count']} unsent sale(s)",
+                        body="Its oldest offline sale hasn't reached us for over 30 minutes. "
+                             "Check the till is online and its sync pill is green.",
+                        link="/pos/drawer")
+                    fired += 1
+        except Exception:
+            log.exception("outbox ageing check failed for tenant %s", tid)
+    return fired
+
+
 # ── Audit maintenance (0044; infra/audit/README.md) ─────────────────────────
 async def run_audit_partitions() -> list[str]:
     """Daily: this month and the next 3 exist before rows arrive."""
@@ -277,6 +310,7 @@ HANDLERS: dict[str, Callable[[], Awaitable[Any]]] = {
     "email.outbox": email.process_outbox,
     "crm.followup_reminders": run_followup_reminders,
     "pos.restock_alerts": run_restock_alerts,
+    "pos.outbox_ageing": run_outbox_ageing,
     "ops.monitor": monitor.check,
     "ops.prune": monitor.prune,
     "audit.partitions": run_audit_partitions,

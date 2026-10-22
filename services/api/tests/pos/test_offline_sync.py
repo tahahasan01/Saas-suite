@@ -208,5 +208,48 @@ async def test_the_feed_carries_what_the_till_needs_to_price_offline(client, til
     feed = (await client.get(f"/pos/catalog/delta?since=0&register_id={till['register']['id']}")).json()
     assert feed["pricing"] == {"tax_on": False, "inclusive": False, "cash_rounding_minor": feed["pricing"]["cash_rounding_minor"]}
     assert isinstance(feed["pricing"]["cash_rounding_minor"], int)
-    assert feed["register"] == {"id": till["register"]["id"], "code": till["register"]["code"],
+    reg = {k: v for k, v in feed["register"].items() if k != "config_version"}
+    assert reg == {"id": till["register"]["id"], "code": till["register"]["code"],
                                 "payment_methods": till["register"]["payment_methods"]}
+
+
+async def test_the_feed_tells_the_till_when_to_start_again(client, till):
+    """Reset on config_version (3D): the register block carries it, and it
+    moves when the register changes. A cursor ahead of the server (a restored
+    database) restarts from 0 with reset=true instead of returning nothing."""
+    url = f"/pos/catalog/delta?register_id={till['register']['id']}"
+    first = (await client.get(url + "&since=0")).json()
+    cv = first["register"]["config_version"]
+    assert first["reset"] is False
+    await client.patch(f"/pos/registers/{till['register']['id']}", json={"name": "Front till"})
+    assert (await client.get(url + f"&since={first['next']}")).json()["register"]["config_version"] == cv + 1
+
+    ahead = (await client.get(url + f"&since={first['next'] + 10_000}")).json()
+    assert ahead["reset"] is True
+    assert any(p["id"] == till["product"]["id"] for p in ahead["products"])
+
+
+async def test_an_ageing_outbox_warns_the_owner_once(client, till):
+    """St01 risk 2: a till whose oldest unsent sale is older than 30 minutes
+    (offline, or failing to sync) tells the owner, once until it clears."""
+    from app import jobs
+    stale = (datetime.now(timezone.utc) - timedelta(hours=3)).isoformat()
+    r = await client.post(f"/pos/devices/{till['device']['id']}/heartbeat",
+                          json={"outbox_count": 2, "oldest_pending_at": stale}, headers=till["headers"])
+    assert r.json()["ageing"] is True
+    devices = (await client.get(f"/pos/devices?register_id={till['register']['id']}")).json()
+    assert next(d for d in devices if d["id"] == till["device"]["id"])["ageing"] is True
+
+    def unsent(items):
+        return [n for n in items if "unsent" in n["title"]]
+    await jobs.HANDLERS["pos.outbox_ageing"]()
+    first = unsent((await client.get("/notifications")).json()["items"])
+    assert len(first) == 1 and first[0]["link"] == "/pos/drawer"
+    await jobs.HANDLERS["pos.outbox_ageing"]()
+    assert len(unsent((await client.get("/notifications")).json()["items"])) == 1     # once
+
+    # Everything sent: the warning resets, so the next backlog warns again.
+    await client.post(f"/pos/devices/{till['device']['id']}/heartbeat",
+                      json={"outbox_count": 0}, headers=till["headers"])
+    rows = await _owner("select ageing_alerted_at from pos_devices where id = $1", uuid.UUID(till["device"]["id"]))
+    assert rows[0]["ageing_alerted_at"] is None

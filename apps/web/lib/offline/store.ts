@@ -67,7 +67,8 @@ export async function meta<T>(key: string): Promise<T | undefined> {
 }
 
 export interface CatalogFeed { products: (Product & { row_version: number })[]; next: number; more: boolean; pricing: Pricing;
-                               register: { id: string; code: string; payment_methods: string[] } }
+                               reset: boolean;
+                               register: { id: string; code: string; payment_methods: string[]; config_version: number } }
 
 export async function saveFeed(feed: CatalogFeed): Promise<void> {
   const db = await open();
@@ -76,6 +77,17 @@ export async function saveFeed(feed: CatalogFeed): Promise<void> {
   tx.objectStore("meta").put(feed.next, "cursor");
   tx.objectStore("meta").put(feed.pricing, "pricing");
   tx.objectStore("meta").put(feed.register, "register");
+  tx.objectStore("meta").put(feed.register.config_version, "config_version");
+  await done(tx);
+}
+
+/** Drops the cached catalogue and its cursor; the next pull starts at 0.
+ *  The outbox is never touched: unsent sales stay. */
+export async function resetCatalogue(): Promise<void> {
+  const db = await open();
+  const tx = db.transaction(["products", "meta"], "readwrite");
+  tx.objectStore("products").clear();
+  tx.objectStore("meta").delete("cursor");
   await done(tx);
 }
 

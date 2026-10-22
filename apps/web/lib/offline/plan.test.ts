@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { backoffMs, batches, offlineRef, settle } from "./plan";
+import { backoffMs, batches, needsReset, offlineRef, settle } from "./plan";
 
 describe("offline sync planning", () => {
   it("backs off exponentially with jitter, capped at 5 minutes", () => {
@@ -30,5 +30,12 @@ describe("offline sync planning", () => {
     expect(out.conflicts).toEqual([{ id: "c", error: "Product not found" }]);
     expect(out.flagged).toEqual(["a"]);
     expect(out.unanswered).toEqual(["d"]);
+  });
+  it("starts the catalogue again when the server says so or the register's config moved", () => {
+    const feed = (cv: number, reset = false) => ({ reset, register: { config_version: cv } });
+    expect(needsReset(undefined, feed(3))).toBe(false);      // first pull: nothing cached to drop
+    expect(needsReset(3, feed(3))).toBe(false);
+    expect(needsReset(3, feed(4))).toBe(true);
+    expect(needsReset(3, feed(3, true))).toBe(true);         // a cursor ahead of the server
   });
 });

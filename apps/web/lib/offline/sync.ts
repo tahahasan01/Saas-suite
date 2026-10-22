@@ -4,8 +4,8 @@
  * wakes on `online` and when the tab is shown; tells the other tabs
  * through a BroadcastChannel. Conflicts are never retried by themselves. */
 import { api } from "@/lib/api";
-import { backoffMs, batches, settle, type SyncResult } from "./plan";
-import { device, meta, outbox, saveFeed, settleOutbox, type CatalogFeed } from "./store";
+import { backoffMs, batches, needsReset, settle, type SyncResult } from "./plan";
+import { device, meta, outbox, resetCatalogue, saveFeed, settleOutbox, type CatalogFeed } from "./store";
 
 export const CHANNEL = "bos-pos";
 type Locks = { request: (name: string, opts: { ifAvailable: boolean }, cb: (lock: unknown) => Promise<unknown>) => Promise<unknown> };
@@ -17,8 +17,16 @@ export function announce() {
 
 async function pullCatalogue(registerId: string): Promise<void> {
   let since = (await meta<number>("cursor")) ?? 0;
+  const storedConfig = await meta<number>("config_version");
+  let restarted = false;
   for (let page = 0; page < 50; page++) {
     const feed = await api<CatalogFeed>(`/pos/catalog/delta?since=${since}&register_id=${registerId}`, { notify: false });
+    if (!restarted && needsReset(storedConfig, feed)) {
+      restarted = true;
+      await resetCatalogue();
+      // A server reset already restarted this page from 0; a config change asks again from the start.
+      if (!feed.reset && since !== 0) { since = 0; continue; }
+    }
     await saveFeed(feed);
     if (!feed.more) return;
     since = feed.next;

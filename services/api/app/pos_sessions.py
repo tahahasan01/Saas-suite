@@ -16,7 +16,7 @@ unsent sales, and freezes expected and counted.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import asyncpg
@@ -29,6 +29,15 @@ METHODS = ("cash", "card", "jazzcash", "easypaisa", "raast", "bank", "khata")
 
 
 # ── Registers ───────────────────────────────────────────────────────────────
+# A till's oldest unsent sale older than this warns the owner (St01 risk 2).
+OUTBOX_AGEING = timedelta(minutes=30)
+
+
+def outbox_ageing(device: asyncpg.Record) -> bool:
+    oldest = device["oldest_pending_at"]
+    return bool(device["outbox_count"] and oldest and datetime.now(timezone.utc) - oldest > OUTBOX_AGEING)
+
+
 async def register(conn: asyncpg.Connection, register_id: Any = None) -> asyncpg.Record:
     """The named register, else the tenant's default one."""
     if register_id is None:

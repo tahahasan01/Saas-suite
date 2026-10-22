@@ -14,6 +14,9 @@ test("a registered till sells offline and syncs when the network is back", async
   await page.getByRole("button", { name: "Use this browser as a till" }).click();
   await expect(page.getByText("This till can now sell offline.")).toBeVisible({ timeout: 15_000 });
   const tillName = await page.locator("span.font-mono", { hasText: `-${code}` }).first().innerText();
+  // The browser was asked to keep the till's data, and the register lists the new till.
+  await expect(page.getByTestId("till-storage")).toBeVisible();
+  await expect(page.getByRole("list", { name: "Tills on this register" })).toContainText(tillName);
 
   const [first] = await products(request);
   await page.goto("/pos");
@@ -36,6 +39,10 @@ test("a registered till sells offline and syncs when the network is back", async
   await expect(pill).toContainText("Online");
   const found = await (await request.get(`/api/pos/sales?q=${encodeURIComponent(ref)}`)).json();
   expect(JSON.stringify(found)).toContain(ref);
+
+  await page.goto("/pos/drawer");
+  await expect(page.getByRole("list", { name: "Tills on this register" }).getByRole("listitem")
+    .filter({ hasText: tillName })).toContainText("all sent");
 });
 
 test("a second tab of the till is view-only, and takes over when the first closes", async ({ context }) => {
