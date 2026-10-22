@@ -15,6 +15,7 @@ import { keepFocus, ProductGrid } from "@/components/pos/ProductGrid";
 import { CartPanel, chargeLabel, type Line, type Quote, type QuoteState } from "@/components/pos/CartPanel";
 import { Receipt } from "@/components/pos/Receipt";
 import { HeldBills } from "@/components/pos/HeldBills";
+import { ApprovalPrompt, type Approval } from "@/components/pos/ApprovalPrompt";
 import { CustomerPicker, type Customer } from "@/components/contacts/CustomerPicker";
 
 interface DrawerLite {
@@ -75,6 +76,8 @@ export default function PosBilling() {
   // True only when we can't know whether the sale was recorded (network
   // failure or server error) — not for a refusal like "payment is short".
   const [unconfirmed, setUnconfirmed] = useState(false);
+  // The server asked for a manager's PIN (a discount the cashier can't give).
+  const [needsApproval, setNeedsApproval] = useState(false);
 
   // After a charge that wasn't confirmed, the sale may already be recorded on
   // the server. Until it is retried as-is (same cart id) or cleared on purpose,
@@ -258,8 +261,9 @@ export default function PosBilling() {
     refocusAfterTap();
   }, [refocusAfterTap]);
 
-  async function charge() {
-    if (cart.length === 0 || inFlight.current) return;
+  /** Returns the refusal to show in the approval prompt, else null. */
+  async function charge(approval?: Approval): Promise<string | null> {
+    if (cart.length === 0 || inFlight.current) return null;
     inFlight.current = true;
     setCharging(true);
     setChargeError(null);
@@ -275,9 +279,11 @@ export default function PosBilling() {
           paid_minor: paidMinor, // 0 = exact amount tendered; the server prices the sale
           payment_method: method,
           contact_id: customer?.id ?? null,
+          ...approval,
         }),
       });
       inFlight.current = false;
+      setNeedsApproval(false);
       clearCart();
       setDiscount("0");
       setPaid("");
@@ -287,8 +293,13 @@ export default function PosBilling() {
       search(qRef.current); // stock just changed
       loadStatus(); // today's figures and the drawer expectation just changed
       void queryClient.invalidateQueries({ queryKey: qk.dashboard.all }); // so are the dashboard's
+      return null;
     } catch (e) {
-      if (e instanceof ApiError && e.status < 500) {
+      if (e instanceof ApiError && e.status === 403 && /approve/i.test(e.message) && !approval) {
+        setNeedsApproval(true);   // nothing was recorded: a manager approves, then it's charged as-is
+      } else if (approval && e instanceof ApiError && e.status < 500) {
+        return e.status === 423 ? "That PIN is switched off for now. Ask another manager." : e.message;
+      } else if (e instanceof ApiError && e.status < 500) {
         setChargeError(e.message); // refused, so nothing was recorded: fix and retry
       } else {
         setUnconfirmed(true);
@@ -298,6 +309,7 @@ export default function PosBilling() {
       inFlight.current = false;
       setCharging(false);
     }
+    return null;
   }
 
   // Keyboard-first checkout, in the "pos" hotkey scope: on only while the till
@@ -468,6 +480,14 @@ export default function PosBilling() {
         <CartPanel {...panel} paidRef={sheetPaidRef} showCharge={false} inSheet />
         <div className="px-5 pb-4"><CustomerPicker value={customer} onChange={setCustomer} /></div>
       </Sheet>
+
+      <ApprovalPrompt
+        open={needsApproval}
+        need="pos.sale.discount"
+        reason={`A discount of ${money(discountMinor)} needs a manager to approve it.`}
+        onApprove={(a) => charge(a)}
+        onCancel={() => setNeedsApproval(false)}
+      />
 
       <Receipt
         sale={receipt}

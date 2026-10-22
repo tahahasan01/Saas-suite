@@ -392,6 +392,9 @@ body {
     padding: 3mm 0;
     background: #fff;
   }
+  .receipt-print[data-paper="58"] {
+    width: 48mm;
+  }
   .receipt-print,
   .receipt-print * {
     color: #000 !important;

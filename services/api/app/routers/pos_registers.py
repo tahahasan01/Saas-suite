@@ -3,14 +3,14 @@ rules are in app/pos_sessions.py."""
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 import asyncpg
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
 
-from .. import cashiers, db, pos_sessions
+from .. import cashiers, db, pos_sessions, rbac
 from ..deps import AuthContext
 from ..models import TENDER_METHODS, CashMoveKind, TenderMethod
 from ..rbac import perm
@@ -314,3 +314,23 @@ async def set_my_pin(body: PinIn, auth: AuthContext = Depends(perm("pos.session.
     async with db.tenant_conn(auth.tenant_id) as conn:
         await conn.execute("update users set pos_pin_hash = $2 where id = $1", auth.user_id, hash_password(body.pin))
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+ApprovalKey = Literal["pos.sale.discount", "pos.price.override", "pos.session.approve"]
+
+
+class Approver(BaseModel):
+    user_id: str
+    name: str
+
+
+@router.get("/approvers", response_model=list[Approver])
+async def approvers(need: ApprovalKey, auth: AuthContext = Depends(perm("pos.sale.create"))) -> list[Approver]:
+    """Who can approve `need` at a till: holds the key and has set a till PIN.
+    Names only; the PIN is checked on the action itself."""
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        rows = await conn.fetch(
+            """select id, role_id, name from users
+                where status = 'active' and pos_pin_hash is not null order by name""")
+        return [Approver(user_id=str(r["id"]), name=r["name"]) for r in rows
+                if need in await rbac.effective_permissions(conn, auth.tenant_id, r["role_id"], str(r["id"]))]

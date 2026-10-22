@@ -359,3 +359,22 @@ async def test_one_caller_is_capped_per_day_against_one_approver(client, pos_ten
     with pytest.raises(HTTPException) as caught:
         await pins.check_approval("user:mgr-z", "user:cashier-z", h, "246813")
     assert getattr(caught.value, "status_code", None) == 423
+
+
+async def test_the_till_lists_who_can_approve_with_a_pin(client, pos_tenant):
+    """The approval prompt offers people who hold the key and have a till
+    PIN, by name only (no hashes); an unknown key is refused."""
+    me = (await client.get("/auth/me")).json()["user"]["id"]
+    assert all(a["user_id"] != me for a in (await client.get("/pos/approvers?need=pos.sale.discount")).json())
+    await client.put("/pos/pin", json={"pin": "246813"})
+    clerk_role = await _role(client, [{"permission_key": "pos.session.read", "scope": "all"}])
+    clerk, clerk_id, _ = await _user_on(client, [clerk_role])
+    try:
+        await clerk.put("/pos/pin", json={"pin": "135790"})
+        got = (await client.get("/pos/approvers?need=pos.sale.discount")).json()
+        assert [a for a in got if a["user_id"] == me] and all(a["user_id"] != clerk_id for a in got)
+        assert all(set(a) == {"user_id", "name"} for a in got)
+        assert [a for a in (await client.get("/pos/approvers?need=pos.session.approve")).json() if a["user_id"] == me]
+        assert (await client.get("/pos/approvers?need=crm.lead.delete")).status_code == 422
+    finally:
+        await clerk.aclose()

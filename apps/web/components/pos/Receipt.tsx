@@ -10,6 +10,8 @@ import { Button } from "@/components/ui";
 import { FbrStamp } from "./FbrStamp";
 import { Row } from "./CartPanel";
 import { methodLabel } from "./labels";
+import { encodeReceipt, type ReceiptDoc } from "@/lib/escpos";
+import { printerSettings, sendToPrinter } from "@/lib/printer";
 
 const when = (iso: string) => formatDateTime(iso, BUSINESS_TZ);
 
@@ -29,16 +31,39 @@ export function Receipt({ sale, open, business, onClose, onCloseAutoFocus, title
   // Every print is counted by the server: the first is the original, later
   // ones print a DUPLICATE stamp (0078).
   const [duplicate, setDuplicate] = useState(false);
-  useEffect(() => { setDuplicate(false); }, [sale?.id]);
+  // The roll printer didn't answer: offer a retry or the browser's print.
+  const [printFailed, setPrintFailed] = useState<string | null>(null);
+  const [printing, setPrinting] = useState(false);
+  useEffect(() => { setDuplicate(false); setPrintFailed(null); }, [sale?.id]);
+
+  async function toPrinter(dup: boolean) {
+    if (!sale) return;
+    const { paper } = printerSettings();
+    setPrinting(true);
+    setPrintFailed(null);
+    try {
+      // The drawer opens with the original cash receipt, never a reprint.
+      await sendToPrinter(encodeReceipt(receiptDoc(sale, business, dup), paper,
+                                        { kick: !dup && sale.payment_method === "cash" }));
+    } catch (e) {
+      setPrintFailed(e instanceof Error ? e.message : "The printer didn't answer");
+    } finally {
+      setPrinting(false);
+    }
+  }
+
   async function print() {
+    let dup = duplicate;
     if (sale) {
       try {
         const r = await api<{ duplicate: boolean }>(`/pos/sales/${sale.id}/print`, { method: "POST", notify: false });
-        setDuplicate(r.duplicate);
+        dup = r.duplicate;
+        setDuplicate(dup);
         await new Promise((ok) => setTimeout(ok, 0));   // let the stamp render before the print dialog
       } catch { /* printing still works offline; the count catches up later */ }
     }
-    window.print();
+    if (printerSettings().kind === "browser") window.print();
+    else await toPrinter(dup);
   }
   return (
     <Dialog
@@ -49,17 +74,54 @@ export function Receipt({ sale, open, business, onClose, onCloseAutoFocus, title
       onCloseAutoFocus={onCloseAutoFocus}
       footer={
         <>
-          <Button variant="subtle" onClick={() => void print()} className="flex-1">Print</Button>
+          <Button variant="subtle" onClick={() => void print()} disabled={printing} className="flex-1">
+            {printing ? "Printing…" : "Print"}
+          </Button>
           <Button onClick={onClose} className="flex-1">{closeLabel}</Button>
         </>
       }
     >
+      {printFailed && (
+        <div role="alert" className="mb-3 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">
+          <p className="font-medium">{printFailed}.</p>
+          <p className="mt-0.5 text-xs text-fg-muted">Check it&apos;s on, has paper and is plugged in.</p>
+          <div className="mt-2 flex gap-2">
+            <Button size="sm" onClick={() => void toPrinter(duplicate)} disabled={printing}>Try again</Button>
+            <Button size="sm" variant="subtle" onClick={() => { setPrintFailed(null); window.print(); }}>
+              Print with browser
+            </Button>
+          </div>
+        </div>
+      )}
       {sale && <ReceiptBody sale={sale} business={business} duplicate={duplicate} />}
     </Dialog>
   );
 }
 
-/** While the receipt prints, the page is exactly 80mm by the receipt's own
+/** The same receipt as ESC/POS text, for a roll printer (lib/escpos.ts). */
+export function receiptDoc(sale: Sale, business: string, duplicate: boolean): ReceiptDoc {
+  const due = sale.amount_due_minor || sale.total_minor;
+  const totals = [
+    ...(sale.discount_minor > 0 ? [{ left: "Subtotal", right: money(sale.subtotal_minor) },
+                                   { left: "Discount", right: `-${money(sale.discount_minor)}` }] : []),
+    ...(sale.rounding_minor !== 0 ? [{ left: "Total", right: money(sale.total_minor) },
+                                     { left: "Cash rounding", right: money(sale.rounding_minor) }] : []),
+    { left: sale.rounding_minor !== 0 ? "Amount due" : "Total", right: money(due), bold: true },
+    ...(sale.tax_minor > 0 ? [{ left: "incl. sales tax", right: money(sale.tax_minor) }] : []),
+    { left: `Paid (${methodLabel(sale.payment_method)})`, right: money(sale.paid_minor) },
+    { left: "Change", right: money(sale.change_minor) },
+  ];
+  return {
+    header: business ? [business] : [],
+    stamp: sale.status === "void" ? "VOID" : duplicate ? "DUPLICATE" : undefined,
+    meta: [sale.receipt_no ?? "", when(sale.created_at), sale.id].filter(Boolean),
+    lines: sale.items.map((it) => ({ left: `${it.qty} x ${it.name}`, right: money(it.line_total_minor) })),
+    totals,
+    footer: sale.fbr_invoice_number ? [`FBR invoice ${sale.fbr_invoice_number}`] : [],
+  };
+}
+
+/** While the receipt prints, the page is exactly the roll's width by its own
  *  height, so a roll printer feeds no blank paper after it. CSS can't say
  *  "80mm by whatever fits" (`size: 80mm auto` is invalid and dropped), so the
  *  height is measured at the print width just before printing — Ctrl+P too. */
@@ -72,11 +134,13 @@ function usePrintPageSize(ref: React.RefObject<HTMLDivElement | null>) {
       if (!el) return;
       after();
       const width = el.style.width;
-      el.style.width = "72mm"; // .receipt-print's print width (globals.css)
+      const paper = printerSettings().paper;
+      el.dataset.paper = String(paper);
+      el.style.width = paper === 58 ? "48mm" : "72mm"; // .receipt-print's print width (globals.css)
       const mm = Math.ceil((el.scrollHeight * 25.4) / 96) + 12; // + its 3mm top/bottom padding, + slack
       el.style.width = width;
       style = document.createElement("style");
-      style.textContent = `@page { size: 80mm ${mm}mm; margin: 0; }`;
+      style.textContent = `@page { size: ${paper}mm ${mm}mm; margin: 0; }`;
       document.head.appendChild(style);
     };
     window.addEventListener("beforeprint", before);

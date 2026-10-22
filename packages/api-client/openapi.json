@@ -19159,6 +19159,74 @@
         }
       }
     },
+    "/pos/approvers": {
+      "get": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Approvers",
+        "description": "Who can approve `need` at a till: holds the key and has set a till PIN.\nNames only; the PIN is checked on the action itself.",
+        "operationId": "approvers_pos_approvers_get",
+        "parameters": [
+          {
+            "name": "need",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "enum": [
+                "pos.sale.discount",
+                "pos.price.override",
+                "pos.session.approve"
+              ],
+              "type": "string",
+              "title": "Need"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Approver"
+                  },
+                  "title": "Response Approvers Pos Approvers Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/pos/sales/{sale_id}/print": {
       "post": {
         "tags": [
@@ -21036,6 +21104,24 @@
         ],
         "title": "ApprovalsOut",
         "description": "A manager's inbox: pending requests from their direct reports."
+      },
+      "Approver": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "name"
+        ],
+        "title": "Approver"
       },
       "AskRequest": {
         "properties": {

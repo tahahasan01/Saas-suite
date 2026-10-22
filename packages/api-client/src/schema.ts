@@ -4561,6 +4561,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pos/approvers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Approvers
+         * @description Who can approve `need` at a till: holds the key and has set a till PIN.
+         *     Names only; the PIN is checked on the action itself.
+         */
+        get: operations["approvers_pos_approvers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pos/sales/{sale_id}/print": {
         parameters: {
             query?: never;
@@ -5149,6 +5170,13 @@ export interface components {
             corrections: components["schemas"]["CorrectionOut"][];
             /** Leave */
             leave: components["schemas"]["LeaveOut"][];
+        };
+        /** Approver */
+        Approver: {
+            /** User Id */
+            user_id: string;
+            /** Name */
+            name: string;
         };
         /** AskRequest */
         AskRequest: {
@@ -21469,6 +21497,39 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approvers_pos_approvers_get: {
+        parameters: {
+            query: {
+                need: "pos.sale.discount" | "pos.price.override" | "pos.session.approve";
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Approver"][];
+                };
             };
             /** @description Validation Error */
             422: {
