@@ -55,7 +55,18 @@ async def _send(to: str, subject: str, body: str) -> None:
         log.warning("EMAIL[console] to=%s | %s\n%s", to, subject, body, extra={"unredacted": True})
 
 
-def _send_smtp(to: str, subject: str, body: str) -> None:
+Attachment = tuple[str, bytes, str]          # filename, content, MIME type
+
+
+async def _send_attached(to: str, subject: str, body: str, attachments: list[Attachment]) -> None:
+    if settings.email_provider == "smtp" and settings.smtp_host:
+        await asyncio.to_thread(_send_smtp, to, subject, body, attachments)
+    else:
+        log.warning("EMAIL[console] to=%s | %s\n%s\n[attached: %s]", to, subject, body,
+                    ", ".join(f"{n} ({len(d)} bytes)" for n, d, _ in attachments), extra={"unredacted": True})
+
+
+def _send_smtp(to: str, subject: str, body: str, attachments: list[Attachment] | None = None) -> None:
     import smtplib
 
     msg = EmailMessage()
@@ -63,6 +74,9 @@ def _send_smtp(to: str, subject: str, body: str) -> None:
     msg["To"] = to
     msg["Subject"] = subject
     msg.set_content(body)
+    for name, data, mime in attachments or []:
+        main, _, sub_type = mime.partition("/")
+        msg.add_attachment(data, maintype=main, subtype=sub_type, filename=name)
     with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=10) as s:
         s.ehlo()
         # STARTTLS is negotiated, not assumed. Calling it unconditionally breaks
@@ -111,6 +125,12 @@ async def queue_invoice_overdue(conn, tenant_id: str, to: str, *, company: str, 
                                 due: str, balance_minor: int) -> int:
     return await _enqueue(conn, tenant_id, "invoice_overdue", to, company=company, customer=customer,
                           number=number, due=due, balance_minor=balance_minor)
+
+
+async def queue_invoice(conn, tenant_id: str, to: str, invoice_id: str) -> int:
+    """An issued invoice with its PDF. Only the id is queued: the PDF is
+    built at delivery, from the invoice (frozen once issued)."""
+    return await _enqueue(conn, tenant_id, "invoice", to, invoice_id=str(invoice_id))
 
 
 async def queue_campaign(conn, tenant_id: str, to: str, *, subject: str, body: str, business: str,
@@ -212,10 +232,31 @@ async def _settle(row, error: str | None) -> str | None:
     return status
 
 
+async def _invoice_mail(row) -> tuple[str, str, list[Attachment]]:
+    from . import invoices_pdf, invoicing   # keeps the mailer importable without the invoice stack
+
+    async with db.tenant_conn(str(row["tenant_id"])) as conn:
+        inv = await invoicing.detail(conn, row["payload"]["invoice_id"])
+        seller = await invoicing.seller(conn, row["tenant_id"])
+    ref = inv.number or inv.legacy_ref or inv.id[:8]
+    rupees, paisa = divmod(inv.balance_minor or inv.total_minor, 100)
+    amount = f"Rs {rupees:,}" + (f".{paisa:02d}" if paisa else "")
+    company = seller.get("name") or "us"
+    due = f", due {inv.due_date.strftime('%d %b %Y')}" if inv.due_date else ""
+    body = (f"Dear {inv.contact_name or 'customer'},\n\nPlease find invoice {ref} attached: {amount}{due}.\n\n"
+            f"Thank you,\n{company}")
+    pdf = invoices_pdf.build_invoice_pdf(inv, seller)
+    return f"Invoice {ref} from {company}", body, [(f"{ref}.pdf", pdf, "application/pdf")]
+
+
 async def _deliver(row) -> str | None:
     try:
-        subject, body = await _render(row)
-        await _send(row["payload"]["to"], subject, body)
+        if row["payload"]["template"] == "invoice":
+            subject, body, files = await _invoice_mail(row)
+            await _send_attached(row["payload"]["to"], subject, body, files)
+        else:
+            subject, body = await _render(row)
+            await _send(row["payload"]["to"], subject, body)
     except Exception as e:  # noqa: BLE001 — SMTP down, bad template: an ordinary failed attempt
         log.warning("email outbox row %s not sent (attempt %s): %r", row["id"], row["attempts"], e)
         return await _settle(row, f"{type(e).__name__}: {e}")

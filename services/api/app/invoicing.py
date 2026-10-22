@@ -169,7 +169,20 @@ async def detail(conn: asyncpg.Connection, invoice_id: Any) -> InvoiceDetail:
                              paid_on=p["paid_on"], reference=p["reference"], created_at=p["created_at"])
                   for p in pays],
         credit_notes=[summary_out(c, today) for c in cns],
-        unverified_rates=any(not x["verified"] for x in lines))
+        unverified_rates=any(not x["verified"] for x in lines), last_sent_at=r["last_sent_at"])
+
+
+async def seller(conn: asyncpg.Connection, tenant_id: Any) -> dict[str, Any]:
+    """Who the invoice is from, as printed on the PDF."""
+    row = await conn.fetchrow(
+        """select coalesce(nullif(c.legal_name, ''), t.name) as name, coalesce(c.ntn, '') as ntn,
+                  coalesce(c.strn, '') as strn, coalesce(c.address, '') as address, coalesce(c.phone, '') as phone,
+                  coalesce(b.invoice_header, '') as header, coalesce(b.invoice_footer, '') as footer
+             from tenants t
+             left join tenant_company c on c.tenant_id = t.id
+             left join tenant_branding b on b.tenant_id = t.id
+            where t.id = $1""", tenant_id)
+    return dict(row) if row else {}
 
 
 # ── Writing ─────────────────────────────────────────────────────────────────

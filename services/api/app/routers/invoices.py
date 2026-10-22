@@ -9,18 +9,21 @@ import io
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 
-from .. import db, invoices_pdf, invoicing, notifications, sequences
+from .. import audit, db, email, invoices_pdf, invoicing, notifications, sequences
 from ..deps import AuthContext
 from ..invoice_models import (
     CreditNoteIn,
     InvoiceCreate,
     InvoiceDetail,
+    InvoiceSend,
+    InvoiceSent,
     InvoiceSummary,
     InvoiceUpdate,
     PaymentIn,
     Reason,
 )
 from ..models import InvoiceStatus
+from ..phone import normalize_email
 from ..rbac import perm
 
 router = APIRouter(prefix="/invoices", tags=["invoices"])
@@ -145,15 +148,32 @@ async def invoice_pdf(invoice_id: str, auth: AuthContext = Depends(perm("invoici
         inv = await invoicing.detail(conn, invoice_id)
         if inv.status in invoicing.EDITABLE:
             raise HTTPException(status.HTTP_409_CONFLICT, "Only an issued invoice has a PDF")
-        seller = await conn.fetchrow(
-            """select coalesce(nullif(c.legal_name, ''), t.name) as name, coalesce(c.ntn, '') as ntn, coalesce(c.strn, '') as strn,
-                      coalesce(c.address, '') as address, coalesce(c.phone, '') as phone,
-                      coalesce(b.invoice_header, '') as header, coalesce(b.invoice_footer, '') as footer
-                 from tenants t
-                 left join tenant_company c on c.tenant_id = t.id
-                 left join tenant_branding b on b.tenant_id = t.id
-                where t.id = $1""", auth.tenant_id)
-    pdf = invoices_pdf.build_invoice_pdf(inv, dict(seller) if seller else {})
+        seller = await invoicing.seller(conn, auth.tenant_id)
+    pdf = invoices_pdf.build_invoice_pdf(inv, seller)
     ref = inv.number or inv.legacy_ref or inv.id[:8]
     return StreamingResponse(io.BytesIO(pdf), media_type="application/pdf",
                              headers={"Content-Disposition": f'inline; filename="{ref}.pdf"'})
+
+
+@router.post("/{invoice_id}/send", response_model=InvoiceSent, status_code=status.HTTP_202_ACCEPTED)
+async def send_invoice(invoice_id: str, body: InvoiceSend,
+                       auth: AuthContext = Depends(perm("invoicing.invoice.create"))) -> InvoiceSent:
+    """Email the issued invoice with its PDF, through the outbox: SMTP being
+    down never fails this, and the PDF is built when the email goes."""
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        inv = await conn.fetchrow(
+            """select i.status, c.email_normalized from invoices i left join contacts c on c.id = i.contact_id
+                where i.id = $1 for update of i""", invoice_id)
+        if inv is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Invoice not found")
+        if inv["status"] in invoicing.EDITABLE or inv["status"] == "void":
+            raise HTTPException(status.HTTP_409_CONFLICT, "Only an issued invoice can be sent")
+        to = normalize_email(body.to) if body.to else inv["email_normalized"]
+        if not to:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+                                "Please check the email address" if body.to
+                                else "Give an email address: this customer has none")
+        await email.queue_invoice(conn, auth.tenant_id, to, invoice_id)
+        await conn.execute("update invoices set last_sent_at = now(), updated_at = now() where id = $1", invoice_id)
+        await audit.event(conn, "invoicing.invoice.send", "invoices", invoice_id, data={"to": to})
+    return InvoiceSent(to=to)

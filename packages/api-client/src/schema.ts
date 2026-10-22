@@ -874,6 +874,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/invoices/{invoice_id}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Invoice
+         * @description Email the issued invoice with its PDF, through the outbox: SMTP being
+         *     down never fails this, and the PDF is built when the email goes.
+         */
+        post: operations["send_invoice_invoices__invoice_id__send_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pos/products": {
         parameters: {
             query?: never;
@@ -8716,6 +8737,8 @@ export interface components {
             credit_notes: components["schemas"]["InvoiceSummary"][];
             /** Unverified Rates */
             unverified_rates: boolean;
+            /** Last Sent At */
+            last_sent_at?: string | null;
         };
         /** InvoiceLineIn */
         InvoiceLineIn: {
@@ -8763,6 +8786,19 @@ export interface components {
             total_minor: number;
             /** Product Id */
             product_id: string | null;
+        };
+        /**
+         * InvoiceSend
+         * @description No address: the billed contact's email.
+         */
+        InvoiceSend: {
+            /** To */
+            to?: string | null;
+        };
+        /** InvoiceSent */
+        InvoiceSent: {
+            /** To */
+            to: string;
         };
         /** InvoiceSummary */
         InvoiceSummary: {
@@ -15337,6 +15373,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_invoice_invoices__invoice_id__send_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvoiceSend"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceSent"];
                 };
             };
             /** @description Validation Error */

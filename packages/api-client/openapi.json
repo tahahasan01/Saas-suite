@@ -3248,6 +3248,75 @@
         }
       }
     },
+    "/invoices/{invoice_id}/send": {
+      "post": {
+        "tags": [
+          "invoices"
+        ],
+        "summary": "Send Invoice",
+        "description": "Email the issued invoice with its PDF, through the outbox: SMTP being\ndown never fails this, and the PDF is built when the email goes.",
+        "operationId": "send_invoice_invoices__invoice_id__send_post",
+        "parameters": [
+          {
+            "name": "invoice_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Invoice Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvoiceSend"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceSent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/pos/products": {
       "get": {
         "tags": [
@@ -32779,6 +32848,18 @@
           "unverified_rates": {
             "type": "boolean",
             "title": "Unverified Rates"
+          },
+          "last_sent_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Sent At"
           }
         },
         "type": "object",
@@ -32969,6 +33050,39 @@
           "product_id"
         ],
         "title": "InvoiceLineOut"
+      },
+      "InvoiceSend": {
+        "properties": {
+          "to": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "InvoiceSend",
+        "description": "No address: the billed contact's email."
+      },
+      "InvoiceSent": {
+        "properties": {
+          "to": {
+            "type": "string",
+            "title": "To"
+          }
+        },
+        "type": "object",
+        "required": [
+          "to"
+        ],
+        "title": "InvoiceSent"
       },
       "InvoiceSummary": {
         "properties": {

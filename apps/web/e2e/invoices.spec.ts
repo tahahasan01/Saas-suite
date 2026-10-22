@@ -59,4 +59,22 @@ test.describe("invoices v2", () => {
       await expect(page.getByRole("row").filter({ has: open })).toContainText("Overdue");
     }
   });
+
+  test("an issued invoice is emailed to the customer with its PDF", async ({ page, request }) => {
+    const name = `E2E Mail ${uniq()}`;
+    const c = await (await request.post(`${API}/contacts`, {
+      data: { kind: "company", name, email: `billing.${uniq()}@example.com`, force: true } })).json();
+    const inv = await (await request.post(`${API}/invoices`, { data: { contact_id: c.id, submit: true,
+      lines: [{ description: "Service", qty: 1, unit_price_minor: 20_000_00 }] } })).json();
+    expect((await request.post(`${API}/invoices/${inv.id}/approve`)).ok()).toBeTruthy();
+
+    await page.goto("/invoices");
+    await ready(page);
+    await page.getByRole("button", { name: `Open invoice for ${name}` }).filter({ visible: true }).first().click();
+    const sheet = page.getByRole("dialog", { name: new RegExp(name) });
+    await sheet.getByRole("button", { name: "Email to customer" }).click();
+    await sheet.getByRole("button", { name: "Send", exact: true }).click();
+    await expect(page.getByText(/Invoice on its way to billing\./)).toBeVisible();
+    await expect(sheet.getByText(/^Last emailed/)).toBeVisible();
+  });
 });

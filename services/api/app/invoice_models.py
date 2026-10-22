@@ -119,3 +119,14 @@ class InvoiceDetail(InvoiceSummary):
     payments: list[PaymentOut]
     credit_notes: list[InvoiceSummary]
     unverified_rates: bool
+    last_sent_at: datetime | None = None    # last emailed to the customer (0125)
+
+
+class InvoiceSend(BaseModel):
+    """No address: the billed contact's email."""
+    model_config = ConfigDict(extra="forbid")
+    to: str | None = Field(default=None, max_length=200)
+
+
+class InvoiceSent(BaseModel):
+    to: str

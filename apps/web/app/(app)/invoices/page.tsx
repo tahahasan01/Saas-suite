@@ -5,7 +5,7 @@ import type { Schema } from "@business-os/api-client";
 import type { ContactBrief } from "@business-os/types";
 import { api, apiUrl } from "@/lib/api";
 import { Can, useCan } from "@/lib/can";
-import { formatDay, money, relativeDate } from "@/lib/format";
+import { formatDateTime, formatDay, money, relativeDate } from "@/lib/format";
 import { errorText, useAction } from "@/lib/useAction";
 import { Badge, Button, EmptyState, ErrorState, Field, Input, LoadingRows, Select } from "@/components/ui";
 import { DataTable, type Column } from "@/components/DataTable";
@@ -243,13 +243,14 @@ function InvoiceSheet({ id, onClose, onChanged, onOpen }: {
   const [error, setError] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
   const [crediting, setCrediting] = useState(false);
+  const [emailing, setEmailing] = useState(false);
 
   const load = useCallback(() => {
     if (!id) return;
     setError(null);
     api<Detail>(`/invoices/${id}`).then(setInv).catch((e) => setError(errorText(e, "Couldn't load the invoice.")));
   }, [id]);
-  useEffect(() => { setInv(null); setPaying(false); setCrediting(false); load(); }, [load]);
+  useEffect(() => { setInv(null); setPaying(false); setCrediting(false); setEmailing(false); load(); }, [load]);
 
   const act = useAction(
     (path: string, body?: object) => api<Detail>(`/invoices/${id}/${path}`, { method: "POST", body: body ? JSON.stringify(body) : undefined }),
@@ -355,6 +356,10 @@ function InvoiceSheet({ id, onClose, onChanged, onOpen }: {
               && can("invoicing.invoice.void") && (
               <Button size="sm" variant="ghost" disabled={act.busy} onClick={onVoid}>Void</Button>
             )}
+            {inv.kind === "invoice" && !["draft", "pending_approval", "void"].includes(inv.status)
+              && can("invoicing.invoice.create") && (
+              <Button size="sm" variant="subtle" onClick={() => setEmailing(true)}>Email to customer</Button>
+            )}
             {!["draft", "pending_approval"].includes(inv.status) && (
               <a href={apiUrl(`/invoices/${inv.id}/pdf`)} target="_blank" rel="noreferrer"
                  className="inline-flex items-center text-sm text-brand hover:underline pointer-coarse:min-h-11">
@@ -363,6 +368,9 @@ function InvoiceSheet({ id, onClose, onChanged, onOpen }: {
             )}
           </div>
 
+          {inv.last_sent_at && <p className="text-xs text-fg-muted">Last emailed {formatDateTime(inv.last_sent_at)}</p>}
+          {emailing && <EmailForm invoiceId={inv.id} onCancel={() => setEmailing(false)}
+                                  onSent={() => { setEmailing(false); load(); }} />}
           {paying && <PaymentForm balance={inv.balance_minor} onCancel={() => setPaying(false)}
                                   onSave={async (body) => { if (await run("payments", body)) setPaying(false); }} busy={act.busy} />}
           {crediting && <CreditForm balance={inv.balance_minor} full={inv.paid_minor === 0 && inv.credited_minor === 0}
@@ -425,6 +433,28 @@ function CreditForm({ balance, full, onSave, onCancel, busy }: {
       <div className="flex gap-2">
         <Button type="submit" size="sm" disabled={busy || !reason.trim()}>{busy ? "Saving…" : "Issue credit note"}</Button>
         <Button type="button" size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
+      </div>
+    </form>
+  );
+}
+
+/** Email the invoice and its PDF; empty address = the customer's own. */
+function EmailForm({ invoiceId, onCancel, onSent }: { invoiceId: string; onCancel: () => void; onSent: () => void }) {
+  const [to, setTo] = useState("");
+  const send = useAction(
+    () => api<{ to: string }>(`/invoices/${invoiceId}/send`, { method: "POST", body: JSON.stringify({ to: to.trim() || null }) }),
+    { success: (r) => `Invoice on its way to ${(r as { to: string }).to}`, failure: "Couldn't send the invoice" },
+  );
+  return (
+    <form className="space-y-2 rounded-lg border border-line p-3"
+          onSubmit={async (e) => { e.preventDefault(); if (await send.run()) onSent(); }}>
+      <Field label="Send to (leave empty for the customer's email)">
+        <Input type="email" autoComplete="email" maxLength={200} value={to} onChange={(e) => setTo(e.target.value)} />
+      </Field>
+      {send.error && <p className="text-xs text-danger" role="alert">{send.error}</p>}
+      <div className="flex gap-2">
+        <Button size="sm" type="submit" disabled={send.busy}>{send.busy ? "Sending…" : "Send"}</Button>
+        <Button size="sm" variant="ghost" type="button" onClick={onCancel}>Cancel</Button>
       </div>
     </form>
   );
