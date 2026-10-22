@@ -787,6 +787,8 @@ class ReturnCreate(BaseModel):
     items: list[ReturnLine] = Field(min_length=1)
     reason: str = ""
     restock: bool = True   # damaged goods come back to the shop but not the shelf
+    # The till paying the refund (0077): its open session takes it. None: the sale's own register.
+    register_id: UUID | None = None
 
     @field_validator("items")
     @classmethod

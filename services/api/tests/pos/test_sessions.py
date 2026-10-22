@@ -153,12 +153,12 @@ async def test_a_big_variance_needs_a_managers_pin(client, pos_tenant, item):
                                         for k in ("pos.session.read", "pos.session.approve")])
     manager, manager_id, _ = await _user_on(client, [manager_role])
     try:
-        assert (await manager.put("/pos/pin", json={"pin": "7391"})).status_code == 204
+        assert (await manager.put("/pos/pin", json={"pin": "739104"})).status_code == 204
         r = await client.post(f"/pos/sessions/{s['id']}/close",
-                              json={**short, "approver_id": manager_id, "approver_pin": "0000"})
+                              json={**short, "approver_id": manager_id, "approver_pin": "000000"})
         assert r.status_code == 403
         r = await client.post(f"/pos/sessions/{s['id']}/close",
-                              json={**short, "approver_id": manager_id, "approver_pin": "7391"})
+                              json={**short, "approver_id": manager_id, "approver_pin": "739104"})
         assert r.status_code == 200, r.text
         assert r.json()["variance_approved_by"] == manager_id
     finally:
@@ -171,12 +171,18 @@ async def test_a_pin_locks_after_five_wrong_tries(client, pos_tenant, item):
     s = await _open(client, reg["id"], 0)
     await _sale(client, item)
     me = (await client.get("/auth/me")).json()["user"]["id"]
-    await client.put("/pos/pin", json={"pin": "2468"})
+    await client.put("/pos/pin", json={"pin": "246813"})
     body = {"counted": {"cash": 0}, "approver_id": me}
     for _ in range(5):
-        assert (await client.post(f"/pos/sessions/{s['id']}/close", json={**body, "approver_pin": "1111"})).status_code == 403
-    r = await client.post(f"/pos/sessions/{s['id']}/close", json={**body, "approver_pin": "2468"})
+        assert (await client.post(f"/pos/sessions/{s['id']}/close", json={**body, "approver_pin": "111111"})).status_code == 403
+    r = await client.post(f"/pos/sessions/{s['id']}/close", json={**body, "approver_pin": "246813"})
     assert r.status_code == 423
+
+
+async def _beat(client, device: dict, outbox: int):
+    r = await client.post(f"/pos/devices/{device['id']}/heartbeat", json={"outbox_count": outbox},
+                          headers={"X-Device-Token": device["token"]})
+    assert r.status_code == 200, r.text
 
 
 async def test_a_device_with_unsent_sales_blocks_the_close(client, pos_tenant, item):
@@ -186,11 +192,11 @@ async def test_a_device_with_unsent_sales_blocks_the_close(client, pos_tenant, i
     other = (await client.post("/pos/devices", json={"register_id": reg["id"], "device_code": "D02",
                                                       "name": "Tablet"})).json()
     s = await _open(client, reg["id"], 0)
-    await client.post(f"/pos/devices/{till['id']}/heartbeat", json={"outbox_count": 2})
+    await _beat(client, till, 2)
     r = await client.post(f"/pos/sessions/{s['id']}/close", json={"counted": {"cash": 0}, "device_id": till["id"]})
     assert r.status_code == 409 and "unsent" in r.json()["detail"].lower()
-    await client.post(f"/pos/devices/{till['id']}/heartbeat", json={"outbox_count": 0})
-    await client.post(f"/pos/devices/{other['id']}/heartbeat", json={"outbox_count": 3})
+    await _beat(client, till, 0)
+    await _beat(client, other, 3)
     r = await client.post(f"/pos/sessions/{s['id']}/close", json={"counted": {"cash": 0}, "device_id": till["id"]})
     assert r.status_code == 200, r.text
     assert any("Tablet" in w and "3" in w for w in r.json()["warnings"])
@@ -224,3 +230,87 @@ async def test_the_old_drawer_api_drives_the_default_register(client, pos_tenant
 
 async def test_a_session_from_another_tenant_or_register_is_not_found(client, pos_tenant):
     assert (await client.get(f"/pos/sessions/{uuid.uuid4()}")).status_code == 404
+
+
+# ── Security review of 0076 ─────────────────────────────────────────────────
+async def test_a_heartbeat_needs_the_devices_own_token(client, pos_tenant):
+    reg = await _register(client)
+    dev = (await client.post("/pos/devices", json={"register_id": reg["id"], "device_code": "D09"})).json()
+    assert len(dev["token"]) >= 32
+    url = f"/pos/devices/{dev['id']}/heartbeat"
+    assert (await client.post(url, json={"outbox_count": 1})).status_code == 401
+    assert (await client.post(url, json={"outbox_count": 1}, headers={"X-Device-Token": "x" * 40})).status_code == 401
+    assert (await client.post(url, json={"outbox_count": 1}, headers={"X-Device-Token": dev["token"]})).status_code == 200
+    listed = (await client.get("/pos/devices")).json()
+    assert all("token" not in d for d in listed)     # shown once, at creation
+
+
+async def test_devices_are_branch_scoped(client, pos_tenant):
+    from app import branches
+    assert "pos_devices" in branches.TRANSACTIONAL_TABLES
+    assert (await _owner("select count(*) as n from pg_policies where tablename = 'pos_devices' "
+                         "and policyname = 'branch_scope'"))[0]["n"] == 1
+
+
+async def test_an_approval_pin_has_six_digits(client, pos_tenant):
+    assert (await client.put("/pos/pin", json={"pin": "7391"})).status_code == 422
+    assert (await client.put("/pos/pin", json={"pin": "739104"})).status_code == 204
+
+
+async def test_one_caller_cannot_lock_a_manager_out_for_everyone(client, pos_tenant, item):
+    """Wrong guesses lock that caller against that approver; others still can.
+    Ten wrong tries in a day switch the approver's PIN off and tell them."""
+    reg = await _register(client)
+    await client.patch(f"/pos/registers/{reg['id']}", json={"max_variance_minor": 1})
+    me = (await client.get("/auth/me")).json()["user"]["id"]
+    await client.put("/pos/pin", json={"pin": "246813"})
+    cashier_role = await _role(client, [{"permission_key": k, "scope": "all"}
+                                        for k in ("pos.session.read", "pos.session.close", "pos.sale.create")])
+    cashier, _, _ = await _user_on(client, [cashier_role])
+    try:
+        s = await _open(client, reg["id"], 0)
+        await _sale(client, item)
+        body = {"counted": {"cash": 0}, "approver_id": me}
+        for _ in range(5):
+            assert (await cashier.post(f"/pos/sessions/{s['id']}/close",
+                                       json={**body, "approver_pin": "111111"})).status_code == 403
+        assert (await cashier.post(f"/pos/sessions/{s['id']}/close",
+                                   json={**body, "approver_pin": "246813"})).status_code == 423
+        # The manager, at another till, is not locked out by the cashier's guesses.
+        r = await client.post(f"/pos/sessions/{s['id']}/close", json={**body, "approver_pin": "246813"})
+        assert r.status_code == 200, r.text
+    finally:
+        await cashier.aclose()
+
+
+async def test_ten_wrong_pins_in_a_day_switch_the_pin_off_and_tell_the_approver(client, pos_tenant, item):
+    from app import pins
+    reg = await _register(client)
+    await client.patch(f"/pos/registers/{reg['id']}", json={"max_variance_minor": 1})
+    me = (await client.get("/auth/me")).json()["user"]["id"]
+    await client.put("/pos/pin", json={"pin": "246813"})
+    s = await _open(client, reg["id"], 0)
+    await _sale(client, item)
+    for _ in range(pins.DAILY_FAILS):
+        await pins.record_daily_failure(f"user:{me}")
+    r = await client.post(f"/pos/sessions/{s['id']}/close",
+                          json={"counted": {"cash": 0}, "approver_id": me, "approver_pin": "246813"})
+    assert r.status_code == 423 and "switched off" in r.json()["detail"].lower()
+    notes = (await client.get("/notifications")).json()
+    items = notes["items"] if isinstance(notes, dict) else notes
+    assert any("PIN" in n["title"] for n in items)
+
+
+async def test_a_refund_leaves_the_drawer_of_the_till_that_pays_it(client, pos_tenant, item):
+    reg = await _register(client)
+    other = (await client.post("/pos/registers", json={"code": "R2", "name": "Counter 2"})).json()
+    first = await _open(client, reg["id"], 0)
+    second = await _open(client, other["id"], 50_000)
+    sale = await _sale(client, item, register_id=reg["id"], qty=2)
+    detail = (await client.get(f"/pos/sales/{sale['id']}")).json()
+    r = await client.post(f"/pos/sales/{sale['id']}/returns", json={
+        "items": [{"sale_item_id": detail["returnable"][0]["sale_item_id"], "qty": 1}], "register_id": other["id"]})
+    assert r.status_code == 201, r.text
+    cash = lambda s: next(m for m in s["methods"] if m["method"] == "cash")  # noqa: E731
+    assert cash((await client.get(f"/pos/sessions/{second['id']}")).json())["expected_minor"] == 50_000 - 10_000
+    assert cash((await client.get(f"/pos/sessions/{first['id']}")).json())["expected_minor"] == 20_000

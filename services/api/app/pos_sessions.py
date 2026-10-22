@@ -22,7 +22,7 @@ from typing import Any
 import asyncpg
 from fastapi import HTTPException, status
 
-from . import pins, pricing, rbac
+from . import db, notifications, pins, pricing, rbac, store
 from .deps import AuthContext
 
 METHODS = ("cash", "card", "jazzcash", "easypaisa", "raast", "bank", "khata")
@@ -194,6 +194,16 @@ async def session_out(conn: asyncpg.Connection, s: asyncpg.Record) -> dict[str, 
 
 
 # ── Close ───────────────────────────────────────────────────────────────────
+async def _tell_approver_pin_off(tenant_id: str, user_id: str) -> None:
+    """Once a day: the approver hears their PIN was switched off. Its own
+    transaction, so the refused close rolling back doesn't take it with it."""
+    if not await store.claim_once(f"pin24:told:user:{user_id}", pins.DAY_S):
+        return
+    async with db.tenant_conn(tenant_id) as conn:
+        await notifications.create(conn, user_id=user_id, kind="warning", title="Your till PIN was switched off",
+                                   body="Too many wrong PINs were entered for your approval today. If it wasn't "
+                                        "you, tell the owner. It switches back on after 24 hours.",
+                                   link="/settings/profile")
 async def close(conn: asyncpg.Connection, auth: AuthContext, session_id: str, counted: dict[str, int], notes: str,
                 device_id: Any, approver_id: Any, approver_pin: str | None) -> tuple[asyncpg.Record, list[str]]:
     s = await conn.fetchrow("select * from pos_sessions where id = $1 for update", session_id)
@@ -230,7 +240,11 @@ async def close(conn: asyncpg.Connection, auth: AuthContext, session_id: str, co
                                                 str(mgr["id"]) if mgr else None)
         if mgr is None or "pos.session.approve" not in held:
             raise HTTPException(status.HTTP_403_FORBIDDEN, "That person can't approve a variance")
-        await pins.check(f"user:{mgr['id']}", mgr["pos_pin_hash"], approver_pin)
+        key = f"user:{mgr['id']}"
+        if await pins.daily_failures(key) >= pins.DAILY_FAILS or await pins.check_approval(
+                key, f"user:{auth.user_id}", mgr["pos_pin_hash"], approver_pin):
+            await _tell_approver_pin_off(auth.tenant_id, str(mgr["id"]))
+            raise pins.switched_off()
         approver = mgr["id"]
 
     now: datetime = await conn.fetchval("select now()")

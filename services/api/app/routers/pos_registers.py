@@ -7,14 +7,14 @@ from typing import Any
 from uuid import UUID
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
 
 from .. import db, pos_sessions
 from ..deps import AuthContext
 from ..models import TENDER_METHODS, CashMoveKind, TenderMethod
 from ..rbac import perm
-from ..security import hash_password
+from ..security import hash_password, hash_token, new_session_token
 
 router = APIRouter(prefix="/pos", tags=["pos"])
 
@@ -121,6 +121,10 @@ class DeviceOut(BaseModel):
     oldest_pending_at: datetime | None
 
 
+class DeviceCreated(DeviceOut):
+    token: str      # shown once: the device keeps it; only its hash is stored
+
+
 def _device(r: asyncpg.Record) -> DeviceOut:
     return DeviceOut(id=str(r["id"]), register_id=str(r["register_id"]), device_code=r["device_code"], name=r["name"],
                      last_seen_at=r["last_seen_at"], outbox_count=r["outbox_count"],
@@ -137,30 +141,37 @@ async def list_devices(register_id: str | None = None,
     return [_device(r) for r in rows]
 
 
-@router.post("/devices", response_model=DeviceOut, status_code=status.HTTP_201_CREATED)
-async def add_device(body: DeviceIn, auth: AuthContext = Depends(perm("pos.register.manage"))) -> DeviceOut:
+@router.post("/devices", response_model=DeviceCreated, status_code=status.HTTP_201_CREATED)
+async def add_device(body: DeviceIn, auth: AuthContext = Depends(perm("pos.register.manage"))) -> DeviceCreated:
+    token = new_session_token()
     async with db.tenant_conn(auth.tenant_id) as conn:
-        await pos_sessions.register(conn, body.register_id)
+        reg = await pos_sessions.register(conn, body.register_id)
         try:
             row = await conn.fetchrow(
-                """insert into pos_devices (tenant_id, register_id, device_code, name)
-                   values ($1, $2, $3, $4) returning *""", auth.tenant_id, body.register_id, body.device_code, body.name)
+                """insert into pos_devices (tenant_id, register_id, branch_id, device_code, name, token_hash)
+                   values ($1, $2, $3, $4, $5, $6) returning *""",
+                auth.tenant_id, body.register_id, reg["branch_id"], body.device_code, body.name, hash_token(token))
         except asyncpg.UniqueViolationError:
             raise HTTPException(status.HTTP_409_CONFLICT, f"Device code {body.device_code} is taken on this register")
-    return _device(row)
+    return DeviceCreated(**_device(row).model_dump(), token=token)
 
 
 @router.post("/devices/{device_id}/heartbeat", response_model=DeviceOut)
 async def heartbeat(device_id: str, body: HeartbeatIn,
+                    x_device_token: str | None = Header(default=None, alias="X-Device-Token"),
                     auth: AuthContext = Depends(perm("pos.sale.create"))) -> DeviceOut:
-    """The till says it's alive and how many sales it still holds."""
+    """The till says it's alive and how many sales it still holds. Only the
+    device itself, with its own token, may say so."""
+    if not x_device_token:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "This device's token is missing")
     async with db.tenant_conn(auth.tenant_id) as conn:
         row = await conn.fetchrow(
             """update pos_devices set last_seen_at = now(), outbox_count = $2,
                                       oldest_pending_at = case when $2 > 0 then $3::timestamptz end
-                where id = $1 returning *""", device_id, body.outbox_count, body.oldest_pending_at)
+                where id = $1 and token_hash = $4 returning *""",
+            device_id, body.outbox_count, body.oldest_pending_at, hash_token(x_device_token))
     if row is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Device not found")
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "This device isn't registered with that token")
     return _device(row)
 
 
@@ -204,7 +215,7 @@ class SessionClose(BaseModel):
     notes: str = Field(default="", max_length=1000)
     device_id: UUID | None = None
     approver_id: UUID | None = None
-    approver_pin: str | None = Field(default=None, pattern=r"^\d{4,6}$")
+    approver_pin: str | None = Field(default=None, pattern=r"^\d{6}$")
 
 
 class CashMoveIn(BaseModel):
@@ -214,7 +225,8 @@ class CashMoveIn(BaseModel):
 
 
 class PinIn(BaseModel):
-    pin: str = Field(pattern=r"^\d{4,6}$")
+    # Approval PINs are six digits (security review of 0076).
+    pin: str = Field(pattern=r"^\d{6}$")
 
 
 async def _session(conn: asyncpg.Connection, session_id: str) -> asyncpg.Record:

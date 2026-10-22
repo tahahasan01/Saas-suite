@@ -771,10 +771,11 @@ async def create_return(sale_id: str, body: ReturnCreate,
                 _, line_tax = fbr.split_tax(line_refund, Decimal(str(row["tax_rate"])), True)
                 tax_total += line_tax
 
-        # A refund goes back the way the money came, except a split sale
-        # (and khata, until 3C's ledger takes it) which is refunded in cash.
+        # A refund goes back the way the money came (khata back to the
+        # customer's ledger); a split sale is refunded in cash.
         refund_method = sale["payment_method"] if sale["payment_method"] not in ("split",) else "cash"
-        reg = await pos_sessions.register(conn, sale["register_id"])
+        # The till that pays it out, not necessarily the one that sold it.
+        reg = await pos_sessions.register(conn, body.register_id or sale["register_id"])
         session_id = await pos_sessions.open_session_id(conn, reg["id"])
         return_id = await conn.fetchval(
             """insert into pos_returns (tenant_id, sale_id, cashier_id, reason, refund_minor, tax_minor,

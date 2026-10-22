@@ -28,6 +28,7 @@ TRANSACTIONAL_TABLES: tuple[str, ...] = (
     "invoices",   # 0074
     "pos_stock_moves",   # 0075
     "pos_registers", "pos_payments", "pos_cash_moves",   # 0076
+    "pos_devices",   # 0077
 )
 # Shared masters: branch_id nullable (null = every branch).
 MASTER_TABLES: tuple[str, ...] = ("pos_products", "hrms_locations", "hrms_departments", "hrms_kiosks")
