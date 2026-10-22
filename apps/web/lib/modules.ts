@@ -104,6 +104,10 @@ export const MODULES: Module[] = [
   {
     key: "payroll", label: () => "Payroll", icon: Banknote, color: "--color-mod-payroll",
     href: "/hrms/payroll", group: "people", requires: "hrms",
+    tabs: [
+      { href: "/hrms/payroll", label: "Runs" },
+      { href: "/hrms/payroll/setup", label: "Set-up" },
+    ],
   },
   {
     key: "automations", label: () => "Automations", icon: Workflow, color: "--color-mod-automations",

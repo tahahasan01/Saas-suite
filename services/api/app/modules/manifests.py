@@ -136,7 +136,11 @@ _MANIFESTS = [
         sequences=("payroll.payslip",),
         jobs=("payroll.calculate",),
         nav=(NavItem("payroll", "/hrms/payroll", "nav.payroll", "banknote", "people",
-                     perm="payroll.run.read"),),
+                     perm="payroll.run.read",
+                     children=(
+                         NavChild("/hrms/payroll", "nav.payroll.runs", "payroll.run.read"),
+                         NavChild("/hrms/payroll/setup", "nav.payroll.setup", "payroll.run.read"),
+                     )),),
     ),
     ModuleSpec(
         "pos_hrms", "Cashiers are staff", "Cashier sign-in with the employee PIN.",
