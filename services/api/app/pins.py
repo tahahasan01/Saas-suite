@@ -6,7 +6,9 @@ Approval PINs have three limits (security reviews of 0076/0077):
 - per (approver, caller): five wrong tries lock that caller against that
   approver for five minutes;
 - per caller, across every approver: CALLER_FAILS wrong tries an hour lock
-  that caller out of approvals;
+  that caller out of approvals (counted before the check);
+- per (approver, caller), over 24 hours: DAILY_PER_CALLER wrong tries lock
+  that caller against that approver for the day, whatever the windows;
 - per approver, over 24 hours: the PIN is switched off only when wrong tries
   came from at least DAILY_DISTINCT different callers and add up to
   DAILY_FAILS — one person can't switch a manager off on their own. An
@@ -25,6 +27,7 @@ CALLER_FAILS = 20
 HOUR_S = 60 * 60
 DAILY_FAILS = 10
 DAILY_DISTINCT = 3
+DAILY_PER_CALLER = 10    # one caller against one approver, per day, whatever the windows
 DAY_S = 24 * 60 * 60
 
 
@@ -90,14 +93,21 @@ async def check_approval(approver_key: str, caller_key: str, pin_hash: str | Non
     raises 403 / 423 as `check` does."""
     if await daily_off(approver_key):
         raise switched_off()
+    pair = f"pin24p:{approver_key}:{caller_key}"
+    if int(await store.get(pair) or 0) >= DAILY_PER_CALLER:
+        raise _locked(await store.ttl(pair), "Too many wrong PINs for this approver today.")
+    # Counted before the PIN is checked (like `reserve`), so parallel guesses
+    # can't slip past the hourly cap; a right PIN gives the attempt back.
     caller = f"pinc:{caller_key}"
-    if int(await store.get(caller) or 0) >= CALLER_FAILS:
+    n = await _incr(caller, HOUR_S)
+    if n > CALLER_FAILS:
         raise _locked(await store.ttl(caller), "Too many wrong PINs from you this hour.")
     lock = await reserve(f"{approver_key}:{caller_key}")
     if not pin_hash or not verify_password(pin_hash, pin):
-        await _incr(caller, HOUR_S)
+        await _incr(pair, DAY_S)
         if await record_daily_failure(approver_key, caller_key):
             return True
         raise HTTPException(status.HTTP_403_FORBIDDEN, "That PIN isn't right.")
     await store.delete(lock)
+    await store.put(caller, max(0, n - 1), max(1, await store.ttl(caller)))
     return False

@@ -145,3 +145,18 @@ async def test_a_bill_can_be_held_and_resumed_once(client, pos_tenant, item):
     assert resumed.status_code == 200 and resumed.json()["cart"]["items"][0]["qty"] == 2
     assert (await client.post(f"/pos/held/{held['id']}/resume")).status_code == 404
     assert (await client.get("/pos/held")).json() == []
+
+
+async def test_a_whole_cart_discount_needs_the_same_approval(client, pos_tenant, item):
+    me = (await client.get("/auth/me")).json()["user"]["id"]
+    await client.put("/pos/pin", json={"pin": "246813"})
+    cashier_role = await _role(client, [{"permission_key": k, "scope": "all"}
+                                        for k in ("pos.sale.read", "pos.sale.create", "products.product.read")])
+    cashier, _, _ = await _user_on(client, [cashier_role])
+    try:
+        body = {"payment_method": "card", "discount_minor": 1_000, "items": [{"product_id": item, "qty": 1}]}
+        assert (await cashier.post("/pos/sales", json=body)).status_code == 403
+        r = await cashier.post("/pos/sales", json={**body, "approver_id": me, "approver_pin": "246813"})
+        assert r.status_code == 201 and r.json()["total_minor"] == 9_000
+    finally:
+        await cashier.aclose()

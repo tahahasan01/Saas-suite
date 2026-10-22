@@ -310,7 +310,8 @@ async def _approve_lines(conn, auth: AuthContext, body: SaleCreate, lines) -> st
     """A line discount needs pos.sale.discount, a price override
     pos.price.override: the cashier's own, or a manager's PIN. Returns who
     approved (None when nothing needed it)."""
-    needs = set()
+    # A discount on the whole cart is a discount like a line's (security review).
+    needs = {"pos.sale.discount"} if body.discount_minor > 0 else set()
     for it, (p, _qty, _pl, unit) in zip(body.items, lines):
         if it.discount_minor or it.discount_pct:
             needs.add("pos.sale.discount")

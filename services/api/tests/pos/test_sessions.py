@@ -342,3 +342,20 @@ async def test_a_refund_at_another_till_needs_it_open(client, pos_tenant, item):
     r = await client.post(f"/pos/sales/{sale['id']}/returns", json={
         "items": [{"sale_item_id": detail["returnable"][0]["sale_item_id"], "qty": 1}], "register_id": other["id"]})
     assert r.status_code == 409 and "open session" in r.json()["detail"]
+
+
+async def test_one_caller_is_capped_per_day_against_one_approver(client, pos_tenant):
+    """Lock windows reset every five minutes; a day's cap per (approver, caller) doesn't."""
+    import pytest
+    from fastapi import HTTPException
+
+    from app import pins, store
+    from app.security import hash_password
+    h = hash_password("246813")
+    for _ in range(pins.DAILY_PER_CALLER):
+        with pytest.raises(HTTPException):
+            await pins.check_approval("user:mgr-z", "user:cashier-z", h, "000000")
+        await store.delete("lock:pin:user:mgr-z:user:cashier-z")      # as if five minutes passed
+    with pytest.raises(HTTPException) as caught:
+        await pins.check_approval("user:mgr-z", "user:cashier-z", h, "246813")
+    assert getattr(caught.value, "status_code", None) == 423
