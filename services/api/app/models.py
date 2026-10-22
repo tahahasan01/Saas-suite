@@ -3202,3 +3202,45 @@ class LetterRequestOut(BaseModel):
     note: str
     created_at: datetime
     decided_at: datetime | None
+
+
+# ─── Promotions and transfers (wave C, H30, 0106) ───────────────────────────
+JobChangeKind = Literal["promotion", "transfer", "demotion", "change"]
+JOB_CHANGE_KINDS = list(get_args(JobChangeKind))
+JobChangeStatus = Literal["scheduled", "applied", "cancelled"]
+JOB_CHANGE_STATUSES = list(get_args(JobChangeStatus))
+
+
+class JobChangeIn(BaseModel):
+    kind: JobChangeKind = "change"
+    effective_on: date
+    job_title_id: UUID | None = None
+    department_id: UUID | None = None
+    location_id: UUID | None = None
+    manager_id: UUID | None = None
+    new_base_minor: int | None = Field(default=None, gt=0, le=10**11)
+    note: str = Field(default="", max_length=1000)
+
+    def changes_something(self) -> bool:
+        return any((self.job_title_id, self.department_id, self.location_id, self.manager_id, self.new_base_minor))
+
+
+class JobChangeOut(BaseModel):
+    id: str
+    employee_id: str
+    kind: JobChangeKind
+    effective_on: date
+    status: JobChangeStatus
+    from_title: str | None
+    to_title: str | None
+    from_department: str | None
+    to_department: str | None
+    from_location: str | None
+    to_location: str | None
+    from_manager: str | None
+    to_manager: str | None
+    old_base_minor: int | None          # pay: payroll.salary.read only
+    new_base_minor: int | None
+    note: str
+    applied_at: datetime | None
+    created_at: datetime

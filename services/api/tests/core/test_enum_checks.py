@@ -81,6 +81,8 @@ ENUM_COLUMNS = {
     ("hrms_assets", "condition"): models.ASSET_CONDITIONS,
     ("hrms_assets", "status"): models.ASSET_STATUSES,
     ("hrms_asset_assignments", "return_condition"): models.ASSET_CONDITIONS,
+    ("hrms_job_changes", "kind"): models.JOB_CHANGE_KINDS,
+    ("hrms_job_changes", "status"): models.JOB_CHANGE_STATUSES,
     ("hrms_letter_templates", "kind"): models.LETTER_KINDS,
     ("hrms_letters", "kind"): models.LETTER_KINDS,
     ("hrms_letter_requests", "kind"): models.LETTER_REQUEST_KINDS,

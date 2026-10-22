@@ -3673,6 +3673,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/hrms/employees/{employee_id}/job-changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** History */
+        get: operations["history_hrms_employees__employee_id__job_changes_get"];
+        put?: never;
+        /** Create */
+        post: operations["create_hrms_employees__employee_id__job_changes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/job-changes/{change_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel */
+        post: operations["cancel_hrms_job_changes__change_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/hrms/letter-templates": {
         parameters: {
             query?: never;
@@ -9771,6 +9806,86 @@ export interface components {
             notes?: string | null;
             /** Lines */
             lines?: components["schemas"]["InvoiceLineIn"][] | null;
+        };
+        /** JobChangeIn */
+        JobChangeIn: {
+            /**
+             * Kind
+             * @default change
+             * @enum {string}
+             */
+            kind: "promotion" | "transfer" | "demotion" | "change";
+            /**
+             * Effective On
+             * Format: date
+             */
+            effective_on: string;
+            /** Job Title Id */
+            job_title_id?: string | null;
+            /** Department Id */
+            department_id?: string | null;
+            /** Location Id */
+            location_id?: string | null;
+            /** Manager Id */
+            manager_id?: string | null;
+            /** New Base Minor */
+            new_base_minor?: number | null;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /** JobChangeOut */
+        JobChangeOut: {
+            /** Id */
+            id: string;
+            /** Employee Id */
+            employee_id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "promotion" | "transfer" | "demotion" | "change";
+            /**
+             * Effective On
+             * Format: date
+             */
+            effective_on: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "scheduled" | "applied" | "cancelled";
+            /** From Title */
+            from_title: string | null;
+            /** To Title */
+            to_title: string | null;
+            /** From Department */
+            from_department: string | null;
+            /** To Department */
+            to_department: string | null;
+            /** From Location */
+            from_location: string | null;
+            /** To Location */
+            to_location: string | null;
+            /** From Manager */
+            from_manager: string | null;
+            /** To Manager */
+            to_manager: string | null;
+            /** Old Base Minor */
+            old_base_minor: number | null;
+            /** New Base Minor */
+            new_base_minor: number | null;
+            /** Note */
+            note: string;
+            /** Applied At */
+            applied_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** JobTitleCreate */
         JobTitleCreate: {
@@ -22580,6 +22695,109 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AssetOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    history_hrms_employees__employee_id__job_changes_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employee_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobChangeOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_hrms_employees__employee_id__job_changes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employee_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobChangeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobChangeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_hrms_job_changes__change_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                change_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobChangeOut"];
                 };
             };
             /** @description Validation Error */

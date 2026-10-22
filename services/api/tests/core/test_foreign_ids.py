@@ -58,6 +58,7 @@ KIND_OF = {
     "claim_id": "overtime_claim",
     # assets (wave A, 0087)
     "asset_id": "asset",
+    "change_id": "job_change",
     "letter_id": "letter",
     "settlement_id": "settlement",
     "line_id": "settlement_line",
@@ -183,6 +184,8 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
         "kind": "payable", "code": "BONUS", "name": "Probe", "amount_minor": 100})).json()
     ltemplate = next(t for t in (await c.get("/hrms/letter-templates")).json() if t["kind"] == "noc")
     letter = (await c.post(f"/hrms/employees/{employee['id']}/letters", json={"template_id": ltemplate["id"]})).json()
+    job_change = (await c.post(f"/hrms/employees/{employee['id']}/job-changes", json={
+        "kind": "promotion", "effective_on": "2099-01-01", "job_title_id": title["id"]})).json()
     return {
         "activity_type": activity_type["id"], "activity": activity["id"],
         "lost_reason": (await c.get("/crm/lost-reasons")).json()[0]["id"],
@@ -202,6 +205,7 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
         "comp_off": str(comp_off),
         "settlement": settle["id"], "settlement_line": settle_line["id"],
         "letter": letter["id"],
+        "job_change": job_change["id"],
         # No payslip exists before a run is calculated; any id stands in (it must still 404).
         "payslip": str(uuid.uuid4()),
         "role": (await c.get("/team/roles")).json()[0]["id"],
