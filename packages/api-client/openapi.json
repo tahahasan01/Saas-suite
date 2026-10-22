@@ -25514,6 +25514,29 @@
             "type": "integer",
             "title": "Position",
             "default": 0
+          },
+          "color": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "red",
+                  "orange",
+                  "amber",
+                  "green",
+                  "teal",
+                  "blue",
+                  "indigo",
+                  "purple",
+                  "pink",
+                  "slate"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
           }
         },
         "type": "object",
@@ -25543,6 +25566,17 @@
           "product_count": {
             "type": "integer",
             "title": "Product Count"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
           }
         },
         "type": "object",
@@ -25591,6 +25625,33 @@
               }
             ],
             "title": "Active"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "red",
+                  "orange",
+                  "amber",
+                  "green",
+                  "teal",
+                  "blue",
+                  "indigo",
+                  "purple",
+                  "pink",
+                  "slate"
+                ]
+              },
+              {
+                "type": "string",
+                "const": ""
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
           }
         },
         "type": "object",
@@ -36448,6 +36509,22 @@
               }
             ],
             "title": "Scan Qty"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
+          },
+          "pinned": {
+            "type": "boolean",
+            "title": "Pinned",
+            "default": false
           }
         },
         "type": "object",
@@ -36664,6 +36741,44 @@
               }
             ],
             "title": "Attributes"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "red",
+                  "orange",
+                  "amber",
+                  "green",
+                  "teal",
+                  "blue",
+                  "indigo",
+                  "purple",
+                  "pink",
+                  "slate"
+                ]
+              },
+              {
+                "type": "string",
+                "const": ""
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
+          },
+          "pinned": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pinned"
           }
         },
         "additionalProperties": false,

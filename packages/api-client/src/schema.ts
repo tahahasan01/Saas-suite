@@ -6370,6 +6370,8 @@ export interface components {
              * @default 0
              */
             position: number;
+            /** Color */
+            color?: ("red" | "orange" | "amber" | "green" | "teal" | "blue" | "indigo" | "purple" | "pink" | "slate") | null;
         };
         /** CategoryOut */
         CategoryOut: {
@@ -6383,6 +6385,8 @@ export interface components {
             active: boolean;
             /** Product Count */
             product_count: number;
+            /** Color */
+            color?: string | null;
         };
         /** CategoryUpdate */
         CategoryUpdate: {
@@ -6392,6 +6396,8 @@ export interface components {
             position?: number | null;
             /** Active */
             active?: boolean | null;
+            /** Color */
+            color?: ("red" | "orange" | "amber" | "green" | "teal" | "blue" | "indigo" | "purple" | "pink" | "slate") | "" | null;
         };
         /** Celebration */
         Celebration: {
@@ -10257,6 +10263,13 @@ export interface components {
             };
             /** Scan Qty */
             scan_qty?: number | null;
+            /** Color */
+            color?: string | null;
+            /**
+             * Pinned
+             * @default false
+             */
+            pinned: boolean;
         };
         /** ProductUpdate */
         ProductUpdate: {
@@ -10296,6 +10309,10 @@ export interface components {
             attributes?: {
                 [key: string]: string;
             } | null;
+            /** Color */
+            color?: ("red" | "orange" | "amber" | "green" | "teal" | "blue" | "indigo" | "purple" | "pink" | "slate") | "" | null;
+            /** Pinned */
+            pinned?: boolean | null;
         };
         /** ProfileOut */
         ProfileOut: {
