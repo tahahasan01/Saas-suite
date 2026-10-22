@@ -1932,6 +1932,150 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/crm/leads/{lead_id}/quotes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Quotes */
+        get: operations["list_quotes_crm_leads__lead_id__quotes_get"];
+        put?: never;
+        /**
+         * Create Quote
+         * @description Freeze the deal's products into a numbered quote with its link; an
+         *     open quote for the deal is superseded.
+         */
+        post: operations["create_quote_crm_leads__lead_id__quotes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/quotes/{quote_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Quote */
+        get: operations["get_quote_crm_quotes__quote_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/quotes/{quote_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Quote */
+        post: operations["cancel_quote_crm_quotes__quote_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/quotes/{quote_id}/invoice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Invoice Quote
+         * @description A draft invoice from the accepted quote's frozen lines (invoices v2).
+         */
+        post: operations["invoice_quote_crm_quotes__quote_id__invoice_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/quotes/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** View */
+        get: operations["view_public_quotes__token__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/quotes/{token}/view": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Beacon */
+        post: operations["beacon_public_quotes__token__view_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/quotes/{token}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept */
+        post: operations["accept_public_quotes__token__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/quotes/{token}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decline */
+        post: operations["decline_public_quotes__token__decline_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/activities": {
         parameters: {
             query?: never;
@@ -10445,6 +10589,171 @@ export interface components {
              */
             force: boolean;
         };
+        /** QuoteAccept */
+        QuoteAccept: {
+            /** Name */
+            name: string;
+            /** Content Hash */
+            content_hash: string;
+        };
+        /** QuoteCreate */
+        QuoteCreate: {
+            /** Valid Until */
+            valid_until?: string | null;
+            /**
+             * Terms
+             * @default
+             */
+            terms: string;
+        };
+        /** QuoteDecline */
+        QuoteDecline: {
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+        };
+        /** QuoteInvoiced */
+        QuoteInvoiced: {
+            /** Invoice Id */
+            invoice_id: string;
+        };
+        /** QuoteLineOut */
+        QuoteLineOut: {
+            /** Description */
+            description: string;
+            /** Unit */
+            unit: string;
+            /** Qty */
+            qty: number;
+            /** Unit Price Minor */
+            unit_price_minor: number;
+            /** Line Discount Minor */
+            line_discount_minor: number;
+            /** Tax Rate Pct */
+            tax_rate_pct: number;
+            /** Net Excl Minor */
+            net_excl_minor: number;
+            /** Tax Minor */
+            tax_minor: number;
+            /** Total Minor */
+            total_minor: number;
+        };
+        /**
+         * QuoteOut
+         * @description What staff see. `link` is the page path while the quote is open.
+         */
+        QuoteOut: {
+            /** Number */
+            number: string;
+            /**
+             * Valid Until
+             * Format: date
+             */
+            valid_until: string;
+            /** Terms */
+            terms: string;
+            /** Customer Name */
+            customer_name: string;
+            /** Tax Inclusive */
+            tax_inclusive: boolean;
+            /** Lines */
+            lines: components["schemas"]["QuoteLineOut"][];
+            /** Subtotal Minor */
+            subtotal_minor: number;
+            /** Line Discount Minor */
+            line_discount_minor: number;
+            /** Net Minor */
+            net_minor: number;
+            /** Tax Minor */
+            tax_minor: number;
+            /** Total Minor */
+            total_minor: number;
+            /** Content Hash */
+            content_hash: string;
+            /** Accepted Name */
+            accepted_name?: string | null;
+            /** Accepted At */
+            accepted_at?: string | null;
+            /** Id */
+            id: string;
+            /** Lead Id */
+            lead_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "sent" | "accepted" | "declined" | "superseded" | "cancelled";
+            /** Expired */
+            expired: boolean;
+            /** Link */
+            link: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** First Viewed At */
+            first_viewed_at: string | null;
+            /** View Count */
+            view_count: number;
+            /** Accepted Ip */
+            accepted_ip: string | null;
+            /** Declined At */
+            declined_at: string | null;
+            /** Decline Reason */
+            decline_reason: string | null;
+            /** Invoice Id */
+            invoice_id: string | null;
+        };
+        /**
+         * QuotePublic
+         * @description What the customer sees: the document and the business's own details,
+         *     nothing else (no ids, no notes, no list prices).
+         */
+        QuotePublic: {
+            /** Number */
+            number: string;
+            /**
+             * Valid Until
+             * Format: date
+             */
+            valid_until: string;
+            /** Terms */
+            terms: string;
+            /** Customer Name */
+            customer_name: string;
+            /** Tax Inclusive */
+            tax_inclusive: boolean;
+            /** Lines */
+            lines: components["schemas"]["QuoteLineOut"][];
+            /** Subtotal Minor */
+            subtotal_minor: number;
+            /** Line Discount Minor */
+            line_discount_minor: number;
+            /** Net Minor */
+            net_minor: number;
+            /** Tax Minor */
+            tax_minor: number;
+            /** Total Minor */
+            total_minor: number;
+            /** Content Hash */
+            content_hash: string;
+            /** Accepted Name */
+            accepted_name?: string | null;
+            /** Accepted At */
+            accepted_at?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "accepted" | "declined" | "expired";
+            /** Business */
+            business: {
+                [key: string]: string;
+            };
+        };
         /** Reason */
         Reason: {
             /**
@@ -16532,6 +16841,305 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CrmSettingsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_quotes_crm_leads__lead_id__quotes_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lead_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_quote_crm_leads__lead_id__quotes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lead_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuoteCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_quote_crm_quotes__quote_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quote_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_quote_crm_quotes__quote_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quote_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    invoice_quote_crm_quotes__quote_id__invoice_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quote_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteInvoiced"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    view_public_quotes__token__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotePublic"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    beacon_public_quotes__token__view_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    accept_public_quotes__token__accept_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuoteAccept"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotePublic"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decline_public_quotes__token__decline_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuoteDecline"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotePublic"];
                 };
             };
             /** @description Validation Error */

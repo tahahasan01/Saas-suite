@@ -7722,6 +7722,491 @@
         }
       }
     },
+    "/crm/leads/{lead_id}/quotes": {
+      "get": {
+        "tags": [
+          "crm-selling"
+        ],
+        "summary": "List Quotes",
+        "operationId": "list_quotes_crm_leads__lead_id__quotes_get",
+        "parameters": [
+          {
+            "name": "lead_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Lead Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/QuoteOut"
+                  },
+                  "title": "Response List Quotes Crm Leads  Lead Id  Quotes Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crm-selling"
+        ],
+        "summary": "Create Quote",
+        "description": "Freeze the deal's products into a numbered quote with its link; an\nopen quote for the deal is superseded.",
+        "operationId": "create_quote_crm_leads__lead_id__quotes_post",
+        "parameters": [
+          {
+            "name": "lead_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Lead Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuoteCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuoteOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/quotes/{quote_id}": {
+      "get": {
+        "tags": [
+          "crm-selling"
+        ],
+        "summary": "Get Quote",
+        "operationId": "get_quote_crm_quotes__quote_id__get",
+        "parameters": [
+          {
+            "name": "quote_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Quote Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuoteOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/quotes/{quote_id}/cancel": {
+      "post": {
+        "tags": [
+          "crm-selling"
+        ],
+        "summary": "Cancel Quote",
+        "operationId": "cancel_quote_crm_quotes__quote_id__cancel_post",
+        "parameters": [
+          {
+            "name": "quote_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Quote Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuoteOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/quotes/{quote_id}/invoice": {
+      "post": {
+        "tags": [
+          "crm-selling"
+        ],
+        "summary": "Invoice Quote",
+        "description": "A draft invoice from the accepted quote's frozen lines (invoices v2).",
+        "operationId": "invoice_quote_crm_quotes__quote_id__invoice_post",
+        "parameters": [
+          {
+            "name": "quote_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Quote Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuoteInvoiced"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/quotes/{token}": {
+      "get": {
+        "tags": [
+          "public"
+        ],
+        "summary": "View",
+        "operationId": "view_public_quotes__token__get",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotePublic"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/quotes/{token}/view": {
+      "post": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Beacon",
+        "operationId": "beacon_public_quotes__token__view_post",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/quotes/{token}/accept": {
+      "post": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Accept",
+        "operationId": "accept_public_quotes__token__accept_post",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuoteAccept"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotePublic"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/quotes/{token}/decline": {
+      "post": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Decline",
+        "operationId": "decline_public_quotes__token__decline_post",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuoteDecline"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotePublic"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/activities": {
       "get": {
         "tags": [
@@ -36969,6 +37454,455 @@
         ],
         "title": "QualifyRequest",
         "description": "Link the lead to an existing contact, or create one from the lead."
+      },
+      "QuoteAccept": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "content_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Content Hash"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "content_hash"
+        ],
+        "title": "QuoteAccept"
+      },
+      "QuoteCreate": {
+        "properties": {
+          "valid_until": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Until"
+          },
+          "terms": {
+            "type": "string",
+            "maxLength": 4000,
+            "title": "Terms",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "QuoteCreate"
+      },
+      "QuoteDecline": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Reason",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "QuoteDecline"
+      },
+      "QuoteInvoiced": {
+        "properties": {
+          "invoice_id": {
+            "type": "string",
+            "title": "Invoice Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "invoice_id"
+        ],
+        "title": "QuoteInvoiced"
+      },
+      "QuoteLineOut": {
+        "properties": {
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "qty": {
+            "type": "number",
+            "title": "Qty"
+          },
+          "unit_price_minor": {
+            "type": "integer",
+            "title": "Unit Price Minor"
+          },
+          "line_discount_minor": {
+            "type": "integer",
+            "title": "Line Discount Minor"
+          },
+          "tax_rate_pct": {
+            "type": "number",
+            "title": "Tax Rate Pct"
+          },
+          "net_excl_minor": {
+            "type": "integer",
+            "title": "Net Excl Minor"
+          },
+          "tax_minor": {
+            "type": "integer",
+            "title": "Tax Minor"
+          },
+          "total_minor": {
+            "type": "integer",
+            "title": "Total Minor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "description",
+          "unit",
+          "qty",
+          "unit_price_minor",
+          "line_discount_minor",
+          "tax_rate_pct",
+          "net_excl_minor",
+          "tax_minor",
+          "total_minor"
+        ],
+        "title": "QuoteLineOut"
+      },
+      "QuoteOut": {
+        "properties": {
+          "number": {
+            "type": "string",
+            "title": "Number"
+          },
+          "valid_until": {
+            "type": "string",
+            "format": "date",
+            "title": "Valid Until"
+          },
+          "terms": {
+            "type": "string",
+            "title": "Terms"
+          },
+          "customer_name": {
+            "type": "string",
+            "title": "Customer Name"
+          },
+          "tax_inclusive": {
+            "type": "boolean",
+            "title": "Tax Inclusive"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/QuoteLineOut"
+            },
+            "type": "array",
+            "title": "Lines"
+          },
+          "subtotal_minor": {
+            "type": "integer",
+            "title": "Subtotal Minor"
+          },
+          "line_discount_minor": {
+            "type": "integer",
+            "title": "Line Discount Minor"
+          },
+          "net_minor": {
+            "type": "integer",
+            "title": "Net Minor"
+          },
+          "tax_minor": {
+            "type": "integer",
+            "title": "Tax Minor"
+          },
+          "total_minor": {
+            "type": "integer",
+            "title": "Total Minor"
+          },
+          "content_hash": {
+            "type": "string",
+            "title": "Content Hash"
+          },
+          "accepted_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted Name"
+          },
+          "accepted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted At"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "lead_id": {
+            "type": "string",
+            "title": "Lead Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "sent",
+              "accepted",
+              "declined",
+              "superseded",
+              "cancelled"
+            ],
+            "title": "Status"
+          },
+          "expired": {
+            "type": "boolean",
+            "title": "Expired"
+          },
+          "link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Link"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "first_viewed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Viewed At"
+          },
+          "view_count": {
+            "type": "integer",
+            "title": "View Count"
+          },
+          "accepted_ip": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted Ip"
+          },
+          "declined_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declined At"
+          },
+          "decline_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decline Reason"
+          },
+          "invoice_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "number",
+          "valid_until",
+          "terms",
+          "customer_name",
+          "tax_inclusive",
+          "lines",
+          "subtotal_minor",
+          "line_discount_minor",
+          "net_minor",
+          "tax_minor",
+          "total_minor",
+          "content_hash",
+          "id",
+          "lead_id",
+          "status",
+          "expired",
+          "link",
+          "created_at",
+          "first_viewed_at",
+          "view_count",
+          "accepted_ip",
+          "declined_at",
+          "decline_reason",
+          "invoice_id"
+        ],
+        "title": "QuoteOut",
+        "description": "What staff see. `link` is the page path while the quote is open."
+      },
+      "QuotePublic": {
+        "properties": {
+          "number": {
+            "type": "string",
+            "title": "Number"
+          },
+          "valid_until": {
+            "type": "string",
+            "format": "date",
+            "title": "Valid Until"
+          },
+          "terms": {
+            "type": "string",
+            "title": "Terms"
+          },
+          "customer_name": {
+            "type": "string",
+            "title": "Customer Name"
+          },
+          "tax_inclusive": {
+            "type": "boolean",
+            "title": "Tax Inclusive"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/QuoteLineOut"
+            },
+            "type": "array",
+            "title": "Lines"
+          },
+          "subtotal_minor": {
+            "type": "integer",
+            "title": "Subtotal Minor"
+          },
+          "line_discount_minor": {
+            "type": "integer",
+            "title": "Line Discount Minor"
+          },
+          "net_minor": {
+            "type": "integer",
+            "title": "Net Minor"
+          },
+          "tax_minor": {
+            "type": "integer",
+            "title": "Tax Minor"
+          },
+          "total_minor": {
+            "type": "integer",
+            "title": "Total Minor"
+          },
+          "content_hash": {
+            "type": "string",
+            "title": "Content Hash"
+          },
+          "accepted_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted Name"
+          },
+          "accepted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted At"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "accepted",
+              "declined",
+              "expired"
+            ],
+            "title": "Status"
+          },
+          "business": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Business"
+          }
+        },
+        "type": "object",
+        "required": [
+          "number",
+          "valid_until",
+          "terms",
+          "customer_name",
+          "tax_inclusive",
+          "lines",
+          "subtotal_minor",
+          "line_discount_minor",
+          "net_minor",
+          "tax_minor",
+          "total_minor",
+          "content_hash",
+          "status",
+          "business"
+        ],
+        "title": "QuotePublic",
+        "description": "What the customer sees: the document and the business's own details,\nnothing else (no ids, no notes, no list prices)."
       },
       "Reason": {
         "properties": {

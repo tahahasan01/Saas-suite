@@ -1,14 +1,24 @@
-"""CRM selling (wave D): products on deals and the selling settings. The
-line logic is in app/deal_lines.py. Lines follow the lead's record scope
+"""CRM selling (wave D): products on deals, quotes and the selling settings.
+The logic is in app/deal_lines.py and app/quotes.py (the public quote page
+is routers/public_quotes.py). Lines follow the lead's record scope
 (out of scope reads as not found, D-04); a discount over the tenant's
 ceiling needs crm.deal.discount_override."""
 from __future__ import annotations
 
 import asyncpg
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, status
 
-from .. import db, deal_lines, leads, rbac
-from ..crm_selling_models import CrmSettingsIn, CrmSettingsOut, DealLines, DealLinesPut, DealProductOut
+from .. import db, deal_lines, leads, quotes, rbac
+from ..crm_selling_models import (
+    CrmSettingsIn,
+    CrmSettingsOut,
+    DealLines,
+    DealLinesPut,
+    DealProductOut,
+    QuoteCreate,
+    QuoteInvoiced,
+    QuoteOut,
+)
 from ..deps import AuthContext
 from ..rbac import perm
 
@@ -76,3 +86,49 @@ async def put_settings(body: CrmSettingsIn,
                                                      updated_at = now()""",
             auth.tenant_id, body.max_discount_pct)
         return await deal_lines.settings(conn)
+
+
+# ── Quotes (0121) ───────────────────────────────────────────────────────────
+@router.get("/leads/{lead_id}/quotes", response_model=list[QuoteOut])
+async def list_quotes(lead_id: str, auth: AuthContext = Depends(perm("crm.lead.read"))) -> list[QuoteOut]:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        await leads.ensure_in_scope(conn, auth, "crm.lead.read", lead_id)
+        return await quotes.for_lead(conn, lead_id)
+
+
+@router.post("/leads/{lead_id}/quotes", response_model=QuoteOut, status_code=status.HTTP_201_CREATED)
+async def create_quote(lead_id: str, body: QuoteCreate,
+                       auth: AuthContext = Depends(perm("crm.quote.send"))) -> QuoteOut:
+    """Freeze the deal's products into a numbered quote with its link; an
+    open quote for the deal is superseded."""
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        await leads.ensure_in_scope(conn, auth, "crm.lead.update", lead_id)
+        return await quotes.create(conn, auth.tenant_id, auth.user_id, lead_id, body.valid_until, body.terms)
+
+
+async def _quote_in_scope(conn: asyncpg.Connection, auth: AuthContext, key: str, quote_id: str) -> asyncpg.Record:
+    row = await quotes.get(conn, quote_id)
+    await leads.ensure_in_scope(conn, auth, key, str(row["lead_id"]))
+    return row
+
+
+@router.get("/quotes/{quote_id}", response_model=QuoteOut)
+async def get_quote(quote_id: str, auth: AuthContext = Depends(perm("crm.lead.read"))) -> QuoteOut:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        return await quotes.out(conn, await _quote_in_scope(conn, auth, "crm.lead.read", quote_id))
+
+
+@router.post("/quotes/{quote_id}/cancel", response_model=QuoteOut)
+async def cancel_quote(quote_id: str, auth: AuthContext = Depends(perm("crm.quote.send"))) -> QuoteOut:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        await _quote_in_scope(conn, auth, "crm.lead.update", quote_id)
+        return await quotes.cancel(conn, quote_id)
+
+
+@router.post("/quotes/{quote_id}/invoice", response_model=QuoteInvoiced, status_code=status.HTTP_201_CREATED)
+async def invoice_quote(quote_id: str,
+                        auth: AuthContext = Depends(perm("invoicing.invoice.create"))) -> QuoteInvoiced:
+    """A draft invoice from the accepted quote's frozen lines (invoices v2)."""
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        await _quote_in_scope(conn, auth, "crm.lead.read", quote_id)
+        return QuoteInvoiced(invoice_id=await quotes.to_invoice(conn, auth.tenant_id, auth.user_id, quote_id))

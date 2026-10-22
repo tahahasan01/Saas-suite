@@ -153,6 +153,8 @@ APP_USER: dict[str, set[str]] = {
     # CRM selling (wave D, 0120+)
     "crm_deal_lines":       {S, I, D},          # replaced wholesale
     "crm_settings":         {S, I, U},          # upsert from CRM settings
+    "crm_quotes":           {S, I, U},          # status changes only; never deleted
+    "crm_quote_lines":      {S, I},             # written once, with the quote
     # catalog v2 and stock (0075)
     "pos_categories":       {S, I, U},          # retired, never deleted
     "pos_product_barcodes": {S, I, D},

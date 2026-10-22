@@ -183,6 +183,8 @@ register("crm", {
 # a manager's call.
 register("crm", {
     "crm.deal.discount_override": ("crm", "admin"),
+    # Quotes (0121): sending and cancelling the customer's link.
+    "crm.quote.send": ("crm", "write"),
 })
 # Contacts (D-30) is a supporting module of CRM, POS and invoicing. Until the
 # module registry lands its keys ride on the `crm` grant; the till reaches

@@ -58,6 +58,8 @@ KIND_OF = {
     "claim_id": "overtime_claim",
     # assets (wave A, 0087)
     "asset_id": "asset",
+    # quotes (wave D, 0121)
+    "quote_id": "quote",
 }
 
 # Path parameters that are not ids: a fixed, valid value. (scheme_code names
@@ -66,7 +68,8 @@ PLAIN_PARAMS = {"section": "crm", "decision": "approve", "key": "crm", "scheme_c
 
 # The /me/* portal never takes an id from the caller — it acts on the logged-in
 # employee only (tests/hrms/test_employee_portal.py proves the forcing).
-SKIP_PREFIXES = ("/me/", "/kiosk/")   # /kiosk/{token}: the token is the credential (3F), no tenant ids
+# /public/quotes/{token}: the link's token is the credential (wave D); test_quote_link_security.py.
+SKIP_PREFIXES = ("/me/", "/kiosk/", "/public/")   # /kiosk/{token}: the token is the credential (3F), no tenant ids
 # The device token is the credential (0077): a foreign device id fails it with 401 (test_sessions.py).
 # Device-token routes: the token gate answers before any id is read. Their
 # foreign-id cases are tested in tests/pos/test_offline_sync.py.
@@ -149,7 +152,12 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
                                                        "installment_minor": 100, "start_month": "2026-09"})).json()
     notice = (await c.post("/hrms/notices", json={"title": "Probe notice"})).json()
     asset = (await c.post("/hrms/assets", json={"name": "Probe laptop", "category": "laptop"})).json()
+    quoted = (await c.post("/crm/leads", json={"name": "Probe quote", "force": True})).json()
+    await c.put(f"/crm/leads/{quoted['id']}/lines",
+                json={"lines": [{"description": "Probe", "qty": 1, "unit_price_minor": 1000}]})
+    quote = (await c.post(f"/crm/leads/{quoted['id']}/quotes", json={})).json()
     return {
+        "quote": quote["id"],
         "activity_type": activity_type["id"], "activity": activity["id"],
         "lost_reason": (await c.get("/crm/lost-reasons")).json()[0]["id"],
         "contact": contact["id"], "company": company["id"], "address": address["id"], "tag": tag["id"],

@@ -3,10 +3,14 @@ selling settings. Enum Literals live in app/models.py, next to the others
 the database CHECKs are compared with."""
 from __future__ import annotations
 
+from datetime import date, datetime
 from decimal import Decimal
+from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from .models import QuoteStatus
 
 
 class DealLineIn(BaseModel):
@@ -73,3 +77,87 @@ class CrmSettingsOut(BaseModel):
 class CrmSettingsIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     max_discount_pct: Decimal | None = Field(default=None, ge=0, le=100, decimal_places=2)
+
+
+# ── Quotes (0121) ───────────────────────────────────────────────────────────
+class QuoteCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    valid_until: date | None = None      # default: 15 days from the business date
+    terms: str = Field(default="", max_length=4000)
+
+
+class QuoteLineOut(BaseModel):
+    description: str
+    unit: str
+    qty: float
+    unit_price_minor: int
+    line_discount_minor: int
+    tax_rate_pct: float
+    net_excl_minor: int
+    tax_minor: int
+    total_minor: int
+
+
+class QuoteTotals(BaseModel):
+    number: str
+    valid_until: date
+    terms: str
+    customer_name: str
+    tax_inclusive: bool
+    lines: list[QuoteLineOut]
+    subtotal_minor: int
+    line_discount_minor: int
+    net_minor: int
+    tax_minor: int
+    total_minor: int
+    content_hash: str
+    accepted_name: str | None = None
+    accepted_at: datetime | None = None
+
+
+class QuoteOut(QuoteTotals):
+    """What staff see. `link` is the page path while the quote is open."""
+    id: str
+    lead_id: str
+    status: QuoteStatus
+    expired: bool
+    link: str | None
+    created_at: datetime
+    first_viewed_at: datetime | None
+    view_count: int
+    accepted_ip: str | None
+    declined_at: datetime | None
+    decline_reason: str | None
+    invoice_id: str | None
+
+
+QuotePublicStatus = Literal["open", "accepted", "declined", "expired"]
+
+
+class QuotePublic(QuoteTotals):
+    """What the customer sees: the document and the business's own details,
+    nothing else (no ids, no notes, no list prices)."""
+    status: QuotePublicStatus
+    business: dict[str, str]
+
+
+class QuoteAccept(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str = Field(min_length=1, max_length=120)
+    content_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+    @field_validator("name")
+    @classmethod
+    def _named(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Type your name to accept")
+        return v.strip()
+
+
+class QuoteDecline(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: str = Field(default="", max_length=1000)
+
+
+class QuoteInvoiced(BaseModel):
+    invoice_id: str

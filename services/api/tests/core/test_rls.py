@@ -128,6 +128,8 @@ def _value(typ: str) -> str:
         return "false"
     if typ in ("jsonb", "json"):
         return "{}"
+    if typ == "bytea":
+        return r"\x00"   # Postgres hex input for one zero byte
     if typ.startswith(("text", "character")):
         return f"rls-{uuid.uuid4().hex[:12]}"
     raise AssertionError(f"teach _value() about type {typ!r}")
@@ -150,6 +152,8 @@ _SHAPED = {
     "pos_registers": {"code": lambda: "Q" + uuid.uuid4().hex[:4].upper()},
     "pos_devices": {"device_code": lambda: "D" + uuid.uuid4().hex[:4].upper()},
     "pos_cashier_sessions": {"token_hash": lambda: uuid.uuid4().hex},
+    # quotes (wave D, 0121): sha256 hex digests
+    "crm_quotes": {"content_hash": lambda: uuid.uuid4().hex * 2, "token_hash": lambda: uuid.uuid4().hex * 2},
 }
 
 

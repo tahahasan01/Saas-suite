@@ -132,6 +132,8 @@ module = [
     "app.crm_selling_models",
     "app.deal_lines",
     "app.routers.crm_selling",
+    "app.quotes",
+    "app.routers.public_quotes",
 ]
 # `strict` itself is global-only in mypy, so its per-module parts are spelled out.
 disallow_untyped_defs = true
