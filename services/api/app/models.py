@@ -235,6 +235,8 @@ INVOICE_REQUEST_STATUSES = list(get_args(InvoiceRequestStatus))
 LeadStatus = Literal["open", "won", "lost"]
 # Quotes (wave D, 0121): "expired" is worked out from valid_until, never stored.
 QuoteStatus = Literal["sent", "accepted", "declined", "superseded", "cancelled"]
+# What a web form may ask besides the name (0122).
+WebFormField = Literal["phone", "email", "company", "city", "message"]
 LEAD_STATUSES = list(get_args(LeadStatus))
 # Activities (D-32, 0063). Polymorphic: 'contact' arrives with the contacts module.
 ActivityEntity = Literal["lead", "contact"]

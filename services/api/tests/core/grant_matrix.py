@@ -155,6 +155,8 @@ APP_USER: dict[str, set[str]] = {
     "crm_settings":         {S, I, U},          # upsert from CRM settings
     "crm_quotes":           {S, I, U},          # status changes only; never deleted
     "crm_quote_lines":      {S, I},             # written once, with the quote
+    "crm_web_forms":        {S, I, U},          # switched off, never deleted
+    "crm_assignment_pool":  {S, I, U, D},       # members added and removed
     # catalog v2 and stock (0075)
     "pos_categories":       {S, I, U},          # retired, never deleted
     "pos_product_barcodes": {S, I, D},

@@ -154,6 +154,7 @@ _SHAPED = {
     "pos_cashier_sessions": {"token_hash": lambda: uuid.uuid4().hex},
     # quotes (wave D, 0121): sha256 hex digests
     "crm_quotes": {"content_hash": lambda: uuid.uuid4().hex * 2, "token_hash": lambda: uuid.uuid4().hex * 2},
+    "crm_web_forms": {"public_id": lambda: uuid.uuid4().hex},
 }
 
 

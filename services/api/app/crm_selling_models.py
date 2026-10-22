@@ -10,7 +10,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from .models import QuoteStatus
+from .models import QuoteStatus, WebFormField
 
 
 class DealLineIn(BaseModel):
@@ -161,3 +161,110 @@ class QuoteDecline(BaseModel):
 
 class QuoteInvoiced(BaseModel):
     invoice_id: str
+
+
+# ── Web forms and assignment (0122) ─────────────────────────────────────────
+DEFAULT_FORM_FIELDS: tuple[WebFormField, ...] = ("phone", "email", "message")
+
+
+class WebFormIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str = Field(min_length=1, max_length=120)
+    title: str = Field(default="", max_length=160)
+    intro: str = Field(default="", max_length=1000)
+    thank_you: str = Field(default="", max_length=500)
+    fields: list[WebFormField] = Field(default_factory=lambda: list(DEFAULT_FORM_FIELDS), max_length=5)
+    pipeline_id: UUID | None = None
+    stage_id: UUID | None = None
+    source: str = Field(default="web form", min_length=1, max_length=60)
+    owner_id: UUID | None = None
+    daily_cap: int = Field(default=200, ge=1, le=10000)
+
+
+class WebFormPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    title: str | None = Field(default=None, max_length=160)
+    intro: str | None = Field(default=None, max_length=1000)
+    thank_you: str | None = Field(default=None, max_length=500)
+    fields: list[WebFormField] | None = Field(default=None, max_length=5)
+    pipeline_id: UUID | None = None
+    stage_id: UUID | None = None
+    source: str | None = Field(default=None, min_length=1, max_length=60)
+    owner_id: UUID | None = None
+    daily_cap: int | None = Field(default=None, ge=1, le=10000)
+    active: bool | None = None
+
+
+class WebFormOut(BaseModel):
+    id: str
+    public_id: str
+    link: str
+    name: str
+    title: str
+    intro: str
+    thank_you: str
+    fields: list[WebFormField]
+    pipeline_id: str | None
+    stage_id: str | None
+    source: str
+    owner_id: str | None
+    daily_cap: int
+    active: bool
+    leads_today: int
+    created_at: datetime
+
+
+class WebFormPublic(BaseModel):
+    """What a visitor's browser gets: the form, never its routing."""
+    title: str
+    intro: str
+    fields: list[WebFormField]
+    business_name: str
+    ticket: str
+
+
+class WebFormValues(BaseModel):
+    """What a visitor may send. Unknown keys are dropped, not refused: a page
+    can't learn anything from the answer. `website` is the honeypot."""
+    model_config = ConfigDict(extra="ignore")
+    name: str = Field(max_length=120)
+    phone: str = Field(default="", max_length=40)
+    email: str = Field(default="", max_length=200)
+    company: str = Field(default="", max_length=160)
+    city: str = Field(default="", max_length=80)
+    message: str = Field(default="", max_length=2000)
+    website: str = Field(default="", max_length=500)
+    utm_source: str = Field(default="", max_length=100)
+    utm_medium: str = Field(default="", max_length=100)
+    utm_campaign: str = Field(default="", max_length=100)
+
+
+class WebFormSubmit(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    ticket: str = Field(max_length=200)
+    values: WebFormValues
+
+
+class WebFormAnswer(BaseModel):
+    message: str
+
+
+class PoolMemberIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    user_id: UUID
+    active: bool = True
+    daily_cap: int | None = Field(default=None, ge=1, le=1000)
+
+
+class PoolPut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    members: list[PoolMemberIn] = Field(max_length=200)
+
+
+class PoolMemberOut(BaseModel):
+    user_id: str
+    name: str
+    active: bool
+    daily_cap: int | None
+    assigned_today: int

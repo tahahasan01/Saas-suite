@@ -8207,6 +8207,391 @@
         }
       }
     },
+    "/crm/web-forms": {
+      "get": {
+        "tags": [
+          "crm-web-forms"
+        ],
+        "summary": "List Forms",
+        "operationId": "list_forms_crm_web_forms_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WebFormOut"
+                  },
+                  "title": "Response List Forms Crm Web Forms Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crm-web-forms"
+        ],
+        "summary": "Create Form",
+        "operationId": "create_form_crm_web_forms_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebFormIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebFormOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/web-forms/{form_id}": {
+      "patch": {
+        "tags": [
+          "crm-web-forms"
+        ],
+        "summary": "Update Form",
+        "operationId": "update_form_crm_web_forms__form_id__patch",
+        "parameters": [
+          {
+            "name": "form_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Form Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebFormPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebFormOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/assignment/pool": {
+      "get": {
+        "tags": [
+          "crm-web-forms"
+        ],
+        "summary": "Get Pool",
+        "operationId": "get_pool_crm_assignment_pool_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PoolMemberOut"
+                  },
+                  "title": "Response Get Pool Crm Assignment Pool Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "crm-web-forms"
+        ],
+        "summary": "Put Pool",
+        "description": "Replace the pool. Members keep their place in the turn and today's count.",
+        "operationId": "put_pool_crm_assignment_pool_put",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PoolPut"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PoolMemberOut"
+                  },
+                  "title": "Response Put Pool Crm Assignment Pool Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/forms/{public_id}": {
+      "get": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Describe",
+        "operationId": "describe_public_forms__public_id__get",
+        "parameters": [
+          {
+            "name": "public_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Public Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebFormPublic"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Submit",
+        "operationId": "submit_public_forms__public_id__post",
+        "parameters": [
+          {
+            "name": "public_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Public Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebFormSubmit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebFormAnswer"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/activities": {
       "get": {
         "tags": [
@@ -36530,6 +36915,97 @@
         ],
         "title": "PoReceiveLine"
       },
+      "PoolMemberIn": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active",
+            "default": true
+          },
+          "daily_cap": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Cap"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "user_id"
+        ],
+        "title": "PoolMemberIn"
+      },
+      "PoolMemberOut": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          },
+          "daily_cap": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Cap"
+          },
+          "assigned_today": {
+            "type": "integer",
+            "title": "Assigned Today"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "name",
+          "active",
+          "daily_cap",
+          "assigned_today"
+        ],
+        "title": "PoolMemberOut"
+      },
+      "PoolPut": {
+        "properties": {
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/PoolMemberIn"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "title": "Members"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "members"
+        ],
+        "title": "PoolPut"
+      },
       "PosSummary": {
         "properties": {
           "products_count": {
@@ -42600,6 +43076,520 @@
           "refund_minor"
         ],
         "title": "VoidOut"
+      },
+      "WebFormAnswer": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "WebFormAnswer"
+      },
+      "WebFormIn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 160,
+            "title": "Title",
+            "default": ""
+          },
+          "intro": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Intro",
+            "default": ""
+          },
+          "thank_you": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Thank You",
+            "default": ""
+          },
+          "fields": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "phone",
+                "email",
+                "company",
+                "city",
+                "message"
+              ]
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Fields"
+          },
+          "pipeline_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pipeline Id"
+          },
+          "stage_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage Id"
+          },
+          "source": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Source",
+            "default": "web form"
+          },
+          "owner_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Id"
+          },
+          "daily_cap": {
+            "type": "integer",
+            "maximum": 10000.0,
+            "minimum": 1.0,
+            "title": "Daily Cap",
+            "default": 200
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "WebFormIn"
+      },
+      "WebFormOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "public_id": {
+            "type": "string",
+            "title": "Public Id"
+          },
+          "link": {
+            "type": "string",
+            "title": "Link"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "intro": {
+            "type": "string",
+            "title": "Intro"
+          },
+          "thank_you": {
+            "type": "string",
+            "title": "Thank You"
+          },
+          "fields": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "phone",
+                "email",
+                "company",
+                "city",
+                "message"
+              ]
+            },
+            "type": "array",
+            "title": "Fields"
+          },
+          "pipeline_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pipeline Id"
+          },
+          "stage_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage Id"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "owner_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Id"
+          },
+          "daily_cap": {
+            "type": "integer",
+            "title": "Daily Cap"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          },
+          "leads_today": {
+            "type": "integer",
+            "title": "Leads Today"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "public_id",
+          "link",
+          "name",
+          "title",
+          "intro",
+          "thank_you",
+          "fields",
+          "pipeline_id",
+          "stage_id",
+          "source",
+          "owner_id",
+          "daily_cap",
+          "active",
+          "leads_today",
+          "created_at"
+        ],
+        "title": "WebFormOut"
+      },
+      "WebFormPatch": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "intro": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intro"
+          },
+          "thank_you": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thank You"
+          },
+          "fields": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "phone",
+                    "email",
+                    "company",
+                    "city",
+                    "message"
+                  ]
+                },
+                "type": "array",
+                "maxItems": 5
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fields"
+          },
+          "pipeline_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pipeline Id"
+          },
+          "stage_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage Id"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 60,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "owner_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Id"
+          },
+          "daily_cap": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10000.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Cap"
+          },
+          "active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "WebFormPatch"
+      },
+      "WebFormPublic": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "intro": {
+            "type": "string",
+            "title": "Intro"
+          },
+          "fields": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "phone",
+                "email",
+                "company",
+                "city",
+                "message"
+              ]
+            },
+            "type": "array",
+            "title": "Fields"
+          },
+          "business_name": {
+            "type": "string",
+            "title": "Business Name"
+          },
+          "ticket": {
+            "type": "string",
+            "title": "Ticket"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "intro",
+          "fields",
+          "business_name",
+          "ticket"
+        ],
+        "title": "WebFormPublic",
+        "description": "What a visitor's browser gets: the form, never its routing."
+      },
+      "WebFormSubmit": {
+        "properties": {
+          "ticket": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Ticket"
+          },
+          "values": {
+            "$ref": "#/components/schemas/WebFormValues"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticket",
+          "values"
+        ],
+        "title": "WebFormSubmit"
+      },
+      "WebFormValues": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Name"
+          },
+          "phone": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Phone",
+            "default": ""
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Email",
+            "default": ""
+          },
+          "company": {
+            "type": "string",
+            "maxLength": 160,
+            "title": "Company",
+            "default": ""
+          },
+          "city": {
+            "type": "string",
+            "maxLength": 80,
+            "title": "City",
+            "default": ""
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Message",
+            "default": ""
+          },
+          "website": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Website",
+            "default": ""
+          },
+          "utm_source": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Utm Source",
+            "default": ""
+          },
+          "utm_medium": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Utm Medium",
+            "default": ""
+          },
+          "utm_campaign": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Utm Campaign",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "WebFormValues",
+        "description": "What a visitor may send. Unknown keys are dropped, not refused: a page\ncan't learn anything from the answer. `website` is the honeypot."
       },
       "WeekOut": {
         "properties": {

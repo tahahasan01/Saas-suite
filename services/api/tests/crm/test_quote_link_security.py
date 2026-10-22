@@ -144,7 +144,8 @@ async def test_public_writes_ignore_extra_fields(client, shop):
     assert r.status_code == 422
 
 
-async def test_lookups_are_rate_limited_per_ip_across_tokens(client, shop):
+async def test_lookups_are_rate_limited_per_ip_across_tokens(client, shop, monkeypatch):
+    monkeypatch.setattr(ratelimit, "_window", lambda w: (1, w))   # one window, whatever the clock says
     ratelimit.reset()
     codes = [(await client.get(f"/public/quotes/{secrets.token_urlsafe(32)}")).status_code for _ in range(61)]
     assert codes[:60] == [404] * 60 and codes[60] == 429

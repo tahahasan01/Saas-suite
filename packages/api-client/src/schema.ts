@@ -2076,6 +2076,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/crm/web-forms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Forms */
+        get: operations["list_forms_crm_web_forms_get"];
+        put?: never;
+        /** Create Form */
+        post: operations["create_form_crm_web_forms_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/web-forms/{form_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Form */
+        patch: operations["update_form_crm_web_forms__form_id__patch"];
+        trace?: never;
+    };
+    "/crm/assignment/pool": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Pool */
+        get: operations["get_pool_crm_assignment_pool_get"];
+        /**
+         * Put Pool
+         * @description Replace the pool. Members keep their place in the turn and today's count.
+         */
+        put: operations["put_pool_crm_assignment_pool_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/forms/{public_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Describe */
+        get: operations["describe_public_forms__public_id__get"];
+        put?: never;
+        /** Submit */
+        post: operations["submit_public_forms__public_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/activities": {
         parameters: {
             query?: never;
@@ -10207,6 +10281,39 @@ export interface components {
             /** Qty */
             qty: number;
         };
+        /** PoolMemberIn */
+        PoolMemberIn: {
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /** Daily Cap */
+            daily_cap?: number | null;
+        };
+        /** PoolMemberOut */
+        PoolMemberOut: {
+            /** User Id */
+            user_id: string;
+            /** Name */
+            name: string;
+            /** Active */
+            active: boolean;
+            /** Daily Cap */
+            daily_cap: number | null;
+            /** Assigned Today */
+            assigned_today: number;
+        };
+        /** PoolPut */
+        PoolPut: {
+            /** Members */
+            members: components["schemas"]["PoolMemberIn"][];
+        };
         /** PosSummary */
         PosSummary: {
             /** Products Count */
@@ -12484,6 +12591,188 @@ export interface components {
             void_reason: string;
             /** Refund Minor */
             refund_minor: number;
+        };
+        /** WebFormAnswer */
+        WebFormAnswer: {
+            /** Message */
+            message: string;
+        };
+        /** WebFormIn */
+        WebFormIn: {
+            /** Name */
+            name: string;
+            /**
+             * Title
+             * @default
+             */
+            title: string;
+            /**
+             * Intro
+             * @default
+             */
+            intro: string;
+            /**
+             * Thank You
+             * @default
+             */
+            thank_you: string;
+            /** Fields */
+            fields?: ("phone" | "email" | "company" | "city" | "message")[];
+            /** Pipeline Id */
+            pipeline_id?: string | null;
+            /** Stage Id */
+            stage_id?: string | null;
+            /**
+             * Source
+             * @default web form
+             */
+            source: string;
+            /** Owner Id */
+            owner_id?: string | null;
+            /**
+             * Daily Cap
+             * @default 200
+             */
+            daily_cap: number;
+        };
+        /** WebFormOut */
+        WebFormOut: {
+            /** Id */
+            id: string;
+            /** Public Id */
+            public_id: string;
+            /** Link */
+            link: string;
+            /** Name */
+            name: string;
+            /** Title */
+            title: string;
+            /** Intro */
+            intro: string;
+            /** Thank You */
+            thank_you: string;
+            /** Fields */
+            fields: ("phone" | "email" | "company" | "city" | "message")[];
+            /** Pipeline Id */
+            pipeline_id: string | null;
+            /** Stage Id */
+            stage_id: string | null;
+            /** Source */
+            source: string;
+            /** Owner Id */
+            owner_id: string | null;
+            /** Daily Cap */
+            daily_cap: number;
+            /** Active */
+            active: boolean;
+            /** Leads Today */
+            leads_today: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** WebFormPatch */
+        WebFormPatch: {
+            /** Name */
+            name?: string | null;
+            /** Title */
+            title?: string | null;
+            /** Intro */
+            intro?: string | null;
+            /** Thank You */
+            thank_you?: string | null;
+            /** Fields */
+            fields?: ("phone" | "email" | "company" | "city" | "message")[] | null;
+            /** Pipeline Id */
+            pipeline_id?: string | null;
+            /** Stage Id */
+            stage_id?: string | null;
+            /** Source */
+            source?: string | null;
+            /** Owner Id */
+            owner_id?: string | null;
+            /** Daily Cap */
+            daily_cap?: number | null;
+            /** Active */
+            active?: boolean | null;
+        };
+        /**
+         * WebFormPublic
+         * @description What a visitor's browser gets: the form, never its routing.
+         */
+        WebFormPublic: {
+            /** Title */
+            title: string;
+            /** Intro */
+            intro: string;
+            /** Fields */
+            fields: ("phone" | "email" | "company" | "city" | "message")[];
+            /** Business Name */
+            business_name: string;
+            /** Ticket */
+            ticket: string;
+        };
+        /** WebFormSubmit */
+        WebFormSubmit: {
+            /** Ticket */
+            ticket: string;
+            values: components["schemas"]["WebFormValues"];
+        };
+        /**
+         * WebFormValues
+         * @description What a visitor may send. Unknown keys are dropped, not refused: a page
+         *     can't learn anything from the answer. `website` is the honeypot.
+         */
+        WebFormValues: {
+            /** Name */
+            name: string;
+            /**
+             * Phone
+             * @default
+             */
+            phone: string;
+            /**
+             * Email
+             * @default
+             */
+            email: string;
+            /**
+             * Company
+             * @default
+             */
+            company: string;
+            /**
+             * City
+             * @default
+             */
+            city: string;
+            /**
+             * Message
+             * @default
+             */
+            message: string;
+            /**
+             * Website
+             * @default
+             */
+            website: string;
+            /**
+             * Utm Source
+             * @default
+             */
+            utm_source: string;
+            /**
+             * Utm Medium
+             * @default
+             */
+            utm_medium: string;
+            /**
+             * Utm Campaign
+             * @default
+             */
+            utm_campaign: string;
         };
         /** WeekOut */
         WeekOut: {
@@ -17140,6 +17429,241 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QuotePublic"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_forms_crm_web_forms_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebFormOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_form_crm_web_forms_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebFormIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebFormOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_form_crm_web_forms__form_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                form_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebFormPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebFormOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_pool_crm_assignment_pool_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PoolMemberOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_pool_crm_assignment_pool_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PoolPut"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PoolMemberOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    describe_public_forms__public_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebFormPublic"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_public_forms__public_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebFormSubmit"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebFormAnswer"];
                 };
             };
             /** @description Validation Error */
