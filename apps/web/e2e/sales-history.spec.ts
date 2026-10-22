@@ -27,7 +27,8 @@ test.describe("sales history", () => {
     await expect(receipt).toContainText("DUPLICATE");
     await receipt.getByRole("button", { name: "Close" }).last().click();
 
-    await row.getByRole("button", { name: /^Void/ }).click();
+    await row.getByRole("button", { name: /^More actions for/ }).click();
+    await page.getByRole("menuitem", { name: "Void sale" }).click();
     const confirm = page.getByRole("dialog", { name: /^Void/ });
     await confirm.getByLabel("Why").fill("Rang up twice");
     await confirm.getByRole("button", { name: "Void sale" }).click();

@@ -158,12 +158,16 @@ export function Card({ children, className = "" }: { children: React.ReactNode; 
 // Loading, empty and failed are three different answers; showing "No leads
 // yet" while the list is still loading told people their data was gone.
 
+/** A placeholder block the size of what's coming; hidden from screen
+ *  readers (the surrounding status says "Loading"). */
+export function Skeleton({ className = "" }: { className?: string }) {
+  return <div aria-hidden="true" className={cx("animate-pulse rounded-lg bg-elevated", className)} />;
+}
+
 export function LoadingRows({ rows = 3, label = "Loading" }: { rows?: number; label?: string }) {
   return (
     <div role="status" aria-label={label} className="space-y-2">
-      {Array.from({ length: rows }, (_, i) => (
-        <div key={i} className="h-10 animate-pulse rounded-lg bg-elevated" />
-      ))}
+      {Array.from({ length: rows }, (_, i) => <Skeleton key={i} className="h-10" />)}
     </div>
   );
 }

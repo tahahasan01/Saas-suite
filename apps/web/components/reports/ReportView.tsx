@@ -4,7 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import { api, apiUrl } from "@/lib/api";
 import { money } from "@/lib/format";
 import { dayPKT } from "@/lib/dates";
-import { Button, cx, EmptyState, ErrorState, Field, Input, Select } from "@/components/ui";
+import { Button, cx, EmptyState, ErrorState, Field, Select } from "@/components/ui";
+import { Tabs } from "@/components/Tabs";
+import { DatePicker } from "@/components/DatePicker";
 import { DataTable, type Column } from "@/components/DataTable";
 
 /* One report screen (3G): pick a report and a range, read it, download it
@@ -75,21 +77,13 @@ export function ReportView({ reports }: { reports: ReportDef[] }) {
 
   return (
     <div className="space-y-4">
-      <div role="tablist" aria-label="Reports" className="flex flex-wrap gap-1.5">
-        {reports.map((r) => (
-          <button key={r.id} type="button" role="tab" aria-selected={r.id === id} onClick={() => setId(r.id)}
-                  className={cx("min-h-9 rounded-full border px-3 text-sm font-medium",
-                                r.id === id ? "border-brand bg-brand-subtle text-brand" : "border-line text-fg-muted hover:text-fg")}>
-            {r.label}
-          </button>
-        ))}
-      </div>
+      <Tabs label="Reports" items={reports.map((r) => ({ id: r.id, label: r.label }))} value={id} onChange={setId} />
 
       <div className="flex flex-wrap items-end gap-3">
         {!report.noRange && (
           <>
-            <Field label="From"><Input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} /></Field>
-            <Field label="To"><Input type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} /></Field>
+            <DatePicker label="From" value={from} max={to} onChange={setFrom} quick={false} />
+            <DatePicker label="To" value={to} min={from} onChange={setTo} />
           </>
         )}
         {report.needs && (

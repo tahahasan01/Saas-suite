@@ -16,6 +16,7 @@ import { CartPanel, chargeLabel, type Line, type Quote, type QuoteState } from "
 import { Receipt } from "@/components/pos/Receipt";
 import { HeldBills } from "@/components/pos/HeldBills";
 import { ApprovalPrompt, type Approval } from "@/components/pos/ApprovalPrompt";
+import { CashierSignIn, cashierToken, forgetCashier } from "@/components/pos/CashierSignIn";
 import { CustomerPicker, type Customer } from "@/components/contacts/CustomerPicker";
 
 interface DrawerLite {
@@ -269,9 +270,11 @@ export default function PosBilling() {
     setChargeError(null);
     setUnconfirmed(false);
     try {
+      const cashier = cashierToken();
       const sale = await api<Sale>("/pos/sales", {
         method: "POST",
         notify: false, // the cart says exactly what happened (and whether it's safe to retry)
+        headers: cashier ? { "X-Cashier-Token": cashier } : undefined,
         body: JSON.stringify({
           client_uuid: cartKey.current, // reused if this attempt fails and is retried
           items: cart.map((l) => ({ product_id: l.product.id, qty: l.qty })),
@@ -295,7 +298,10 @@ export default function PosBilling() {
       void queryClient.invalidateQueries({ queryKey: qk.dashboard.all }); // so are the dashboard's
       return null;
     } catch (e) {
-      if (e instanceof ApiError && e.status === 403 && /approve/i.test(e.message) && !approval) {
+      if (e instanceof ApiError && e.status === 403 && /signed out/i.test(e.message)) {
+        forgetCashier();   // the cashier's 12 hours ran out, or they signed out elsewhere
+        setChargeError("The cashier was signed out. Sign in again, then press Charge — it won't be charged twice.");
+      } else if (e instanceof ApiError && e.status === 403 && /approve/i.test(e.message) && !approval) {
         setNeedsApproval(true);   // nothing was recorded: a manager approves, then it's charged as-is
       } else if (approval && e instanceof ApiError && e.status < 500) {
         return e.status === 423 ? "That PIN is switched off for now. Ask another manager." : e.message;
@@ -362,6 +368,7 @@ export default function PosBilling() {
               {summary.low_stock_count} low stock
             </Link>
           )}
+          <CashierSignIn />
           {drawer === null && (
             <Link href="/pos/drawer" className="rounded-lg border border-warning/30 bg-warning/5 px-2.5 py-1.5 text-warning">
               No drawer open — open one to reconcile cash

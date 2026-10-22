@@ -52,15 +52,16 @@ async def sign_in(conn: asyncpg.Connection, tenant_id: str, employee_id: Any, pi
 
 
 async def employee_for(conn: asyncpg.Connection, token: str | None) -> Any:
-    """The employee a cashier token names (None without a token); 401 for a
-    token that's unknown, ended or expired."""
+    """The employee a cashier token names (None without a token); 403 for a
+    token that's unknown, ended or expired. Not 401: that means the login
+    itself ended, and the web would send the whole till to the login page."""
     if not token:
         return None
     emp = await conn.fetchval(
         """select employee_id from pos_cashier_sessions
             where token_hash = $1 and ended_at is null and expires_at > now()""", hash_token(token))
     if emp is None:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "The cashier has been signed out: sign in again with your PIN")
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "The cashier has been signed out: sign in again with your PIN")
     return emp
 
 

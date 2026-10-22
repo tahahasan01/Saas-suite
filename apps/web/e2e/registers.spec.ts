@@ -7,7 +7,8 @@ test.describe.configure({ mode: "serial" });
 
 test("a register is opened, counted, approved by PIN and closed with a Z-report", async ({ page }) => {
   await page.goto("/pos/drawer");
-  await expect(page.getByRole("heading", { name: "Your approval PIN" })).toBeVisible();
+  // Registers, then the open session, load in turn: give a cold API time.
+  await expect(page.getByRole("heading", { name: "Your approval PIN" })).toBeVisible({ timeout: 15_000 });
 
   await page.getByLabel("New PIN (6 digits)").fill("246813");
   await page.getByRole("button", { name: "Save" }).click();

@@ -12,7 +12,7 @@ test("POS reports switch between sales, tax and stock, and download as CSV", asy
     await expect(page.getByRole("tab", { name })).toHaveAttribute("aria-selected", "true");
   }
   // Stock value has no range; its CSV is a real spreadsheet.
-  await expect(page.getByLabel("From")).toHaveCount(0);
+  await expect(page.getByLabel("From", { exact: true })).toHaveCount(0);
   const href = await page.getByRole("link", { name: "Download CSV" }).getAttribute("href");
   expect(href).toContain("format=csv");
   const r = await page.request.get(href!);
@@ -24,7 +24,15 @@ test("POS reports switch between sales, tax and stock, and download as CSV", asy
 test("Staff reports show attendance for a range", async ({ page }) => {
   await page.goto("/hrms/reports");
   await expect(page.getByRole("tab", { name: "Attendance" })).toHaveAttribute("aria-selected", "true");
-  await page.getByLabel("From").fill("2026-01-01");
+  await page.getByLabel("From", { exact: true }).fill("2026-01-01");
+  // Tabs move with the arrow keys (WAI-ARIA), and the quick picks set the date.
+  await page.getByRole("tab", { name: "Attendance" }).focus();
+  await page.keyboard.press("End");
+  await expect(page.getByRole("tab").last()).toBeFocused();
+  await page.keyboard.press("Home");
+  await expect(page.getByRole("tab", { name: "Attendance" })).toHaveAttribute("aria-selected", "true");
+  await page.getByRole("button", { name: "To: yesterday" }).click();
+  await expect(page.getByRole("button", { name: "To: yesterday" })).toHaveAttribute("aria-pressed", "true");
   const href = await page.getByRole("link", { name: "Download CSV" }).getAttribute("href");
   expect(href).toContain("from=2026-01-01");
   const r = await page.request.get(href!);

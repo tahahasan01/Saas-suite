@@ -12,6 +12,8 @@ import { Badge, Button, EmptyState, ErrorState, Field, Input, Select } from "@/c
 import { DataTable, type Column } from "@/components/DataTable";
 import { Dialog } from "@/components/Dialog";
 import { Receipt } from "@/components/pos/Receipt";
+import { DropdownMenu } from "@/components/DropdownMenu";
+import { Tooltip } from "@/components/Tooltip";
 import { METHOD_LABEL } from "@/components/pos/labels";
 
 type Row = {
@@ -85,7 +87,10 @@ export default function SalesHistoryPage() {
             <>
               <Button size="sm" variant="ghost" onClick={() => void open(r)}>Open<span className="sr-only"> {r.receipt_no}</span></Button>
               {r.status !== "void" && can("pos.sale.void") && (
-                <Button size="sm" variant="ghost" onClick={() => setVoiding(r)}>Void<span className="sr-only"> {r.receipt_no}</span></Button>
+                <Tooltip content="More actions">
+                  <DropdownMenu label={`More actions for ${r.receipt_no ?? "this sale"}`}
+                                items={[{ label: "Void sale", danger: true, onSelect: () => setVoiding(r) }]} />
+                </Tooltip>
               )}
             </>
           )}

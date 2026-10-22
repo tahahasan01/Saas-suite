@@ -82,7 +82,7 @@ async def test_a_bad_or_foreign_cashier_token_is_refused(client, shop):
     r = await client.post("/pos/sales", json={"items": [{"product_id": product["id"], "qty": 1}],
                                               "payment_method": "card"},
                           headers={"X-Cashier-Token": "not-a-token" * 4})
-    assert r.status_code == 401
+    assert r.status_code == 403 and "signed out" in r.json()["detail"]
 
 
 async def test_signing_out_ends_the_token(client, shop):
@@ -92,7 +92,7 @@ async def test_signing_out_ends_the_token(client, shop):
     product = (await client.get("/pos/products")).json()[0]
     r = await client.post("/pos/sales", json={"items": [{"product_id": product["id"], "qty": 1}],
                                               "payment_method": "card"}, headers={"X-Cashier-Token": token})
-    assert r.status_code == 401
+    assert r.status_code == 403
 
 
 async def test_no_pin_material_ever_leaves_the_server(client, shop):
