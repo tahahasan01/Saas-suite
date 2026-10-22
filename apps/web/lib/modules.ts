@@ -79,6 +79,7 @@ export const MODULES: Module[] = [
       { href: "/pos/drawer", label: "Registers" },
       { href: "/pos/returns", label: "Returns" },
       { href: "/pos/insights", label: "Insights" },
+      { href: "/pos/reports", label: "Reports" },
     ],
   },
   {
@@ -91,6 +92,7 @@ export const MODULES: Module[] = [
     tabs: [
       { href: "/hrms", label: "Team" },
       { href: "/hrms/attendance", label: "Attendance" },
+      { href: "/hrms/reports", label: "Reports" },
       { href: "/hrms/leave", label: "Leave" },
       { href: "/hrms/holidays", label: "Holidays" },
       // 3F: org setup, documents, sites and kiosks

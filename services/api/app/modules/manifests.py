@@ -86,6 +86,7 @@ _MANIFESTS = [
                         NavChild("/pos/drawer", "nav.pos.drawer", "pos.session.read"),
                         NavChild("/pos/returns", "nav.pos.returns", "pos.sale.read"),
                         NavChild("/pos/insights", "nav.pos.insights", "pos.report.sales"),
+                        NavChild("/pos/reports", "nav.pos.reports", "pos.report.sales"),
                     )),
         ),
     ),
@@ -118,6 +119,7 @@ _MANIFESTS = [
                     children=(
                         NavChild("/hrms", "nav.hrms.team", "hrms.employee.read"),
                         NavChild("/hrms/attendance", "nav.hrms.attendance", "hrms.attendance.read"),
+                        NavChild("/hrms/reports", "nav.hrms.reports", "hrms.attendance.read"),
                         NavChild("/hrms/leave", "nav.hrms.leave", "hrms.leave.read"),
                         NavChild("/hrms/holidays", "nav.hrms.holidays", "hrms.leave.read"),
                         NavChild("/hrms/employees/setup", "nav.hrms.org", "hrms.org.manage"),

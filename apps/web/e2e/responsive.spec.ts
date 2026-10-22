@@ -5,8 +5,8 @@ import { ready } from "./helpers";
 // inside their card or turn into cards; side panels wrap below the content.
 const ROUTES = [
   "/dashboard", "/crm", "/invoices", "/automations",
-  "/pos", "/pos/products", "/pos/returns", "/pos/drawer", "/pos/purchase-orders", "/pos/insights",
-  "/hrms", "/hrms/attendance", "/hrms/leave", "/hrms/holidays", "/hrms/payroll",
+  "/pos", "/pos/products", "/pos/returns", "/pos/drawer", "/pos/purchase-orders", "/pos/insights", "/pos/reports",
+  "/hrms", "/hrms/attendance", "/hrms/leave", "/hrms/holidays", "/hrms/payroll", "/hrms/reports",
   "/settings/team", "/settings/sections", "/settings/billing", "/settings/fbr",
   "/", "/pricing",
   // crm v2 (3B)
