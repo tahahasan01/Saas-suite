@@ -10,7 +10,8 @@ import { Button } from "@/components/ui";
 import { FbrStamp } from "./FbrStamp";
 import { Row } from "./CartPanel";
 import { methodLabel } from "./labels";
-import { encodeReceipt, type ReceiptDoc } from "@/lib/escpos";
+import { encodeReceipt, encodeReceiptRaster, needsRaster, type ReceiptDoc } from "@/lib/escpos";
+import { renderReceiptBitmap } from "@/lib/receipt-bitmap";
 import { printerSettings, sendToPrinter } from "@/lib/printer";
 
 const when = (iso: string) => formatDateTime(iso, BUSINESS_TZ);
@@ -43,8 +44,12 @@ export function Receipt({ sale, open, business, onClose, onCloseAutoFocus, title
     setPrintFailed(null);
     try {
       // The drawer opens with the original cash receipt, never a reprint.
-      await sendToPrinter(encodeReceipt(receiptDoc(sale, business, dup), paper,
-                                        { kick: !dup && sale.payment_method === "cash" }));
+      const doc = receiptDoc(sale, business, dup);
+      const opts = { kick: !dup && sale.payment_method === "cash" };
+      // Text mode is fastest; Urdu (or ₨) would print as "?" there, so such a
+      // receipt goes out as an image the browser drew (D-26).
+      await sendToPrinter(needsRaster(doc) ? encodeReceiptRaster(doc, paper, renderReceiptBitmap, opts)
+                                           : encodeReceipt(doc, paper, opts));
     } catch (e) {
       setPrintFailed(e instanceof Error ? e.message : "The printer didn't answer");
     } finally {

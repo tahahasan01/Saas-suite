@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { COLUMNS, DRAWER_KICK, encodeReceipt, raster, twoColumns, type ReceiptDoc } from "./escpos";
+import { COLUMNS, DRAWER_KICK, encodeReceipt, encodeReceiptRaster, monochrome, needsRaster, raster, twoColumns, type ReceiptDoc } from "./escpos";
 
 const text = (b: Uint8Array) => new TextDecoder("latin1").decode(b);
 const has = (b: Uint8Array, seq: number[]) => {
@@ -65,5 +65,40 @@ describe("ESC/POS receipts", () => {
     const r = raster(px, w, h);
     expect([...r.slice(0, 8)]).toEqual([0x1d, 0x76, 0x30, 0x00, 2, 0, 2, 0]);
     expect([...r.slice(8)]).toEqual([0b10000000, 0, 0, 0b01000000]);
+  });
+});
+
+describe("raster receipts (Urdu, symbols)", () => {
+  const doc = (name: string) => ({ header: ["Shop"], meta: ["R1-2026-27-000001"], lines: [{ left: name, right: "100" }],
+                                   totals: [{ left: "Total", right: "100", bold: true }], footer: [] });
+
+  it("prints as an image only when the text mode would lose characters", () => {
+    expect(needsRaster(doc("Dawn Bread"))).toBe(false);
+    expect(needsRaster(doc("دودھ"))).toBe(true);
+    expect(needsRaster({ ...doc("Milk"), footer: ["شکریہ"] })).toBe(true);
+  });
+
+  it("turns canvas pixels into 1-bit dots by brightness", () => {
+    // Two pixels: black, white (RGBA).
+    expect([...monochrome(Uint8ClampedArray.from([0, 0, 0, 255, 255, 255, 255, 255]), 2, 1)]).toEqual([1, 0]);
+    // A transparent pixel is paper, not ink.
+    expect([...monochrome(Uint8ClampedArray.from([0, 0, 0, 0]), 1, 1)]).toEqual([0]);
+  });
+
+  it("wraps the image in init, GS v 0, feed-and-cut and the drawer kick", () => {
+    const render = () => ({ px: new Uint8Array(16 * 2).fill(1), width: 16, height: 2 });
+    const bytes = [...encodeReceiptRaster(doc("دودھ"), 58, render, { kick: true })];
+    expect(bytes.slice(0, 2)).toEqual([0x1b, 0x40]);
+    expect(bytes.slice(2, 10)).toEqual([0x1d, 0x76, 0x30, 0x00, 2, 0, 2, 0]);
+    expect(bytes.slice(10, 14)).toEqual([0xff, 0xff, 0xff, 0xff]);
+    expect(bytes.slice(-9)).toEqual([0x1d, 0x56, 0x42, 0x03, ...DRAWER_KICK]);
+  });
+  it("sends a tall receipt in bands of 256 rows", () => {
+    const render = () => ({ px: new Uint8Array(8 * 300), width: 8, height: 300 });
+    const bytes = encodeReceiptRaster(doc("دودھ"), 80, render);
+    const heads = [...bytes].map((b, j) => (b === 0x1d && bytes[j + 1] === 0x76 && bytes[j + 2] === 0x30 ? j : -1)).filter((j) => j >= 0);
+    expect(heads).toHaveLength(2);
+    expect([bytes[heads[0] + 6], bytes[heads[0] + 7]]).toEqual([0, 1]);      // 256 rows
+    expect([bytes[heads[1] + 6], bytes[heads[1] + 7]]).toEqual([44, 0]);     // the other 44
   });
 });
