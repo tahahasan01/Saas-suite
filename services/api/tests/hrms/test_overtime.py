@@ -122,3 +122,30 @@ async def test_approvers_without_payroll_access_never_see_the_amount(client, wor
         await lead.aclose()
     # The employee can't approve their own claim.
     assert (await me.post(f"/hrms/overtime/{claim['id']}/approve", json={})).status_code == 403
+
+
+async def test_nobody_decides_their_own_overtime(client, tenant, worker):
+    """Security review: an approver who is also the claimant could pay
+    themselves. Their own claim is refused, approve and reject alike."""
+    me, day = worker["client"], worker["day"]
+    claim = (await me.post("/me/overtime", json={"work_date": str(day), "minutes": 60})).json()
+    owner_id = uuid.UUID((await client.get("/auth/me")).json()["user"]["id"])
+    # The owner (an approver) becomes this employee's login.
+    await _owner("update hrms_employees set user_id = $1 where id = $2", owner_id, uuid.UUID(tenant.employee_id))
+    assert (await client.post(f"/hrms/overtime/{claim['id']}/approve", json={})).status_code == 403
+    assert (await client.post(f"/hrms/overtime/{claim['id']}/reject", json={})).status_code == 403
+
+
+async def test_changing_the_multiplier_needs_payroll_rights(client, worker):
+    me, day = worker["client"], worker["day"]
+    claim = (await me.post("/me/overtime", json={"work_date": str(day), "minutes": 60})).json()
+    rid = await _role(client, [{"permission_key": "hrms.attendance.read", "scope": "all"},
+                               {"permission_key": "hrms.attendance.approve", "scope": "all"}])
+    lead, _, _ = await _user_on(client, [rid])
+    try:
+        r = await lead.post(f"/hrms/overtime/{claim['id']}/approve", json={"rate_multiplier": 5})
+        assert r.status_code == 403
+    finally:
+        await lead.aclose()
+    r = await client.post(f"/hrms/overtime/{claim['id']}/approve", json={"rate_multiplier": 1.5})
+    assert r.status_code == 200 and r.json()["rate_multiplier"] == 1.5

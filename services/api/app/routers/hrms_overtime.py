@@ -90,10 +90,15 @@ async def list_claims(status_filter: OvertimeStatus | None = Query(None, alias="
     return [_out(r, show_pay=show) for r in rows]
 
 
-async def _decide(conn: asyncpg.Connection, claim_id: UUID) -> asyncpg.Record:
-    row = await conn.fetchrow("select * from hrms_overtime_claims where id = $1 for update", claim_id)
+async def _decide(conn: asyncpg.Connection, auth: AuthContext, claim_id: UUID) -> asyncpg.Record:
+    row = await conn.fetchrow(
+        """select c.*, e.user_id as claimant_user from hrms_overtime_claims c
+             join hrms_employees e on e.id = c.employee_id where c.id = $1 for update of c""", claim_id)
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Overtime claim not found")
+    # An approver who is also the claimant would be paying themselves (security review).
+    if row["claimant_user"] is not None and str(row["claimant_user"]) == auth.user_id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "You can't decide your own overtime claim")
     if row["status"] != "pending":
         raise HTTPException(status.HTTP_409_CONFLICT, f"This claim was already {row['status']}")
     return row
@@ -103,7 +108,10 @@ async def _decide(conn: asyncpg.Connection, claim_id: UUID) -> asyncpg.Record:
 async def approve(claim_id: UUID, body: OvertimeDecision,
                   auth: AuthContext = Depends(perm("hrms.attendance.approve"))) -> OvertimeOut:
     async with db.tenant_conn(auth.tenant_id) as conn, conn.transaction():
-        claim = await _decide(conn, claim_id)
+        claim = await _decide(conn, auth, claim_id)
+        # Changing the rate changes pay: that needs payroll rights, not just approval.
+        if body.rate_multiplier is not None and not await rbac.holds_key(conn, auth, "payroll.salary.update"):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Changing the overtime rate needs payroll.salary.update")
         multiplier = Decimal(str(body.rate_multiplier)) if body.rate_multiplier is not None else claim["rate_multiplier"]
         amount = await _price(conn, claim, multiplier)
         one_off = None
@@ -128,7 +136,7 @@ async def approve(claim_id: UUID, body: OvertimeDecision,
 async def reject(claim_id: UUID, body: OvertimeDecision,
                  auth: AuthContext = Depends(perm("hrms.attendance.approve"))) -> OvertimeOut:
     async with db.tenant_conn(auth.tenant_id) as conn, conn.transaction():
-        await _decide(conn, claim_id)
+        await _decide(conn, auth, claim_id)
         await conn.execute(
             """update hrms_overtime_claims set status = 'rejected', decided_by = $2, decided_at = now(),
                       decision_note = $3 where id = $1""", claim_id, auth.user_id, body.note)
