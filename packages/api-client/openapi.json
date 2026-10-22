@@ -47406,6 +47406,11 @@
             },
             "type": "array",
             "title": "Order"
+          },
+          "pays_salary": {
+            "type": "boolean",
+            "title": "Pays Salary",
+            "default": true
           }
         },
         "type": "object",

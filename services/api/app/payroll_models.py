@@ -261,6 +261,7 @@ class StructureOut(BaseModel):
     active: bool
     components: list[ComponentOut]
     order: list[str]           # evaluation order (dependencies first)
+    pays_salary: bool = True   # some earning uses BASE; otherwise the salary is never paid
 
 
 # ── One-offs and advances ───────────────────────────────────────────────────

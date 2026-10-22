@@ -19,12 +19,19 @@ test("payroll is set up from screens: component, structure, salary, loan", async
   await addComponent.getByRole("button", { name: "Add component" }).click();
   await expect(page.getByRole("list", { name: "Pay components" })).toContainText(`House rent ${code}`);
 
+  // The structure lists every earning, so it needs the salary itself (Basic = BASE) too.
+  const basic = await request.post("/api/payroll/components", { data: { code: `B${code}`, name: `Basic ${code}`, calc: "formula", formula: "BASE" } });
+  expect(basic.ok(), await basic.text()).toBeTruthy();
+
   await page.getByRole("tab", { name: "Structures" }).click();
   const addStructure = page.getByRole("form", { name: "Add a structure" });
   await addStructure.getByLabel("Structure name").fill(`Staff ${code}`);
   await addStructure.getByLabel(`House rent ${code}`).check();
+  await addStructure.getByLabel(`Basic ${code}`).check();
   await addStructure.getByRole("button", { name: "Add structure" }).click();
-  await expect(page.getByRole("list", { name: "Structures" })).toContainText(`Staff ${code}`);
+  const structure = page.getByRole("list", { name: "Structures" }).getByRole("listitem").filter({ hasText: `Staff ${code}` });
+  await expect(structure).toBeVisible();
+  await expect(structure).not.toContainText("Nothing here pays the monthly salary");
 
   await page.getByRole("tab", { name: "Loans & advances" }).click();
   const loan = page.getByRole("form", { name: "Record a loan or advance" });

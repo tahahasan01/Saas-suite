@@ -301,6 +301,8 @@ def _calculate(inp: EmployeeInput, res: PayslipResult, ty: payroll.TaxYear) -> N
         order = formula.topo_order({c.code: formula.references(trees[c.code]) for c in comps})
     except formula.CycleError as e:
         raise _Fail(str(e))
+    if inp.components and base_full > 0 and not pays_salary(comps):
+        raise _Fail(f"{inp.name}'s salary structure doesn't pay their salary: add a Basic pay component = BASE")
     by_code = {c.code: c for c in comps}
     full: dict[str, int] = {}
     built: dict[str, Line] = {}
@@ -490,6 +492,25 @@ def difference(recomputed: PayslipResult, paid: list[PaidLine]) -> PayslipResult
         (ln.amount_minor for ln in out.lines if ln.code == "ABSENCE"), 0)
     out.tax_minor = next((ln.amount_minor for ln in out.lines if ln.code == "INCOME_TAX"), 0)
     return out
+
+
+def pays_salary(components: list[Component]) -> bool:
+    """Whether some earning uses BASE, directly or through the components it
+    reads. A structure is the whole list of earnings, so one that never
+    reaches BASE never pays the monthly salary (bug of 2026-10-23)."""
+    refs: dict[str, set[str]] = {}
+    for c in components:
+        try:
+            refs[c.code] = formula.references(formula.parse(c.expression()))
+        except formula.FormulaError:
+            refs[c.code] = set()
+
+    def reaches(code: str, seen: set[str]) -> bool:
+        if code in seen:
+            return False
+        seen.add(code)
+        return any(r == "BASE" or (r in refs and reaches(r, seen)) for r in refs.get(code, set()))
+    return any(c.kind == "earning" and reaches(c.code, set()) for c in components)
 
 
 def structure_order(components: list[Component]) -> list[str]:

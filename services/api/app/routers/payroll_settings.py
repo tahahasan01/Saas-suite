@@ -143,7 +143,8 @@ async def _structure(conn: Any, row: Any) -> StructureOut:
     except (formula.FormulaError, formula.CycleError):
         order = []
     return StructureOut(id=str(row["id"]), name=row["name"], active=row["active"],
-                        components=[_component(c) for c in comps], order=order)
+                        components=[_component(c) for c in comps], order=order,
+                        pays_salary=eng.pays_salary([_engine_component(c) for c in comps]))
 
 
 async def _save_lines(conn: Any, tenant_id: str, structure_id: Any, ids: list[uuid.UUID]) -> None:

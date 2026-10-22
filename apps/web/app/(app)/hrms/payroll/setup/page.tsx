@@ -189,6 +189,11 @@ function Structures() {
             <li key={s.id} className="px-4 py-2.5">
               <span className="font-medium">{s.name}</span>{!s.active && <> <Badge>off</Badge></>}
               <span className="block text-xs text-fg-muted">{s.components.map((c) => c.name).join(", ") || "Basic only"}</span>
+              {s.components.length > 0 && s.pays_salary === false && (
+                <span role="status" className="mt-1 block text-xs font-medium text-warning">
+                  Nothing here pays the monthly salary, so payslips on it will fail. Add a component Basic pay = BASE.
+                </span>
+              )}
             </li>
           ))}
         </ul>
@@ -208,6 +213,7 @@ function Structures() {
               ))}
               {active.length === 0 && <span className="text-fg-subtle">Add pay components first.</span>}
             </fieldset>
+            <p className="text-xs text-fg-muted">A structure lists every earning, so include one that pays the salary (Basic pay = BASE).</p>
             <div className="flex justify-end"><Button type="submit" disabled={add.busy}>{add.busy ? "Adding…" : "Add structure"}</Button></div>
           </form>
         </Card>

@@ -13717,6 +13717,11 @@ export interface components {
             components: components["schemas"]["ComponentOut"][];
             /** Order */
             order: string[];
+            /**
+             * Pays Salary
+             * @default true
+             */
+            pays_salary: boolean;
         };
         /** SupplierCreate */
         SupplierCreate: {
