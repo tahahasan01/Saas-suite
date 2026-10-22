@@ -3673,6 +3673,160 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/payroll/gratuity-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Gratuity */
+        get: operations["get_gratuity_payroll_gratuity_settings_get"];
+        /** Put Gratuity */
+        put: operations["put_gratuity_payroll_gratuity_settings_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/employees/{employee_id}/final-settlement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Draft */
+        post: operations["draft_hrms_employees__employee_id__final_settlement_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/final-settlements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Settlements */
+        get: operations["list_settlements_hrms_final_settlements_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/final-settlements/{settlement_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Settlement */
+        get: operations["get_settlement_hrms_final_settlements__settlement_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/final-settlements/{settlement_id}/recalculate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Recalculate */
+        post: operations["recalculate_hrms_final_settlements__settlement_id__recalculate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/final-settlements/{settlement_id}/lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Line */
+        post: operations["add_line_hrms_final_settlements__settlement_id__lines_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/final-settlement-lines/{line_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Line */
+        delete: operations["delete_line_hrms_final_settlement_lines__line_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/final-settlements/{settlement_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve */
+        post: operations["approve_hrms_final_settlements__settlement_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/final-settlements/{settlement_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel */
+        post: operations["cancel_hrms_final_settlements__settlement_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/hrms/comp-off": {
         parameters: {
             query?: never;
@@ -8929,6 +9083,67 @@ export interface components {
             /** Grants */
             grants: components["schemas"]["GrantIn"][];
         };
+        /** GratuitySettings */
+        GratuitySettings: {
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled: boolean;
+            /**
+             * Days Per Year
+             * @default 30
+             */
+            days_per_year: number;
+            /**
+             * Min Service Months
+             * @default 12
+             */
+            min_service_months: number;
+            /**
+             * Part Year Months
+             * @default 6
+             */
+            part_year_months: number;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /** GratuitySettingsOut */
+        GratuitySettingsOut: {
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled: boolean;
+            /**
+             * Days Per Year
+             * @default 30
+             */
+            days_per_year: number;
+            /**
+             * Min Service Months
+             * @default 12
+             */
+            min_service_months: number;
+            /**
+             * Part Year Months
+             * @default 6
+             */
+            part_year_months: number;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+            /**
+             * Verified
+             * @default false
+             */
+            verified: boolean;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -12674,6 +12889,104 @@ export interface components {
             notes: string;
             /** Warnings */
             warnings: string[];
+        };
+        /** SettlementLineIn */
+        SettlementLineIn: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "payable" | "receivable";
+            /**
+             * Code
+             * @enum {string}
+             */
+            code: "GRATUITY" | "LEAVE_ENCASH" | "NOTICE_PAY" | "BONUS" | "OTHER" | "ADVANCE_SETTLE" | "ASSET_RECOVERY" | "NOTICE_SHORTFALL" | "OTHER_RECOVERY";
+            /** Name */
+            name: string;
+            /** Amount Minor */
+            amount_minor: number;
+            /** Taxable */
+            taxable?: boolean | null;
+        };
+        /** SettlementLineOut */
+        SettlementLineOut: {
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "payable" | "receivable";
+            /**
+             * Code
+             * @enum {string}
+             */
+            code: "GRATUITY" | "LEAVE_ENCASH" | "NOTICE_PAY" | "BONUS" | "OTHER" | "ADVANCE_SETTLE" | "ASSET_RECOVERY" | "NOTICE_SHORTFALL" | "OTHER_RECOVERY";
+            /** Name */
+            name: string;
+            /** Amount Minor */
+            amount_minor: number;
+            /** Taxable */
+            taxable: boolean;
+            /** Auto */
+            auto: boolean;
+            /** Days */
+            days: number | null;
+            /** Explain */
+            explain: {
+                [key: string]: unknown;
+            };
+            /** One Off Id */
+            one_off_id: string | null;
+        };
+        /** SettlementOut */
+        SettlementOut: {
+            /** Id */
+            id: string;
+            /** Employee Id */
+            employee_id: string;
+            /** Employee Name */
+            employee_name: string;
+            /** Join Date */
+            join_date: string | null;
+            /**
+             * Last Working Day
+             * Format: date
+             */
+            last_working_day: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "approved" | "paid" | "cancelled";
+            /** Service Years */
+            service_years: number;
+            /** Pay Month */
+            pay_month: string | null;
+            /** Payable Minor */
+            payable_minor: number;
+            /** Receivable Minor */
+            receivable_minor: number;
+            /** Net Minor */
+            net_minor: number;
+            /** Assets Held */
+            assets_held?: components["schemas"]["HeldAsset"][];
+            /** Gratuity Verified */
+            gratuity_verified: boolean;
+            /** Note */
+            note: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Approved At */
+            approved_at: string | null;
+            /** Paid At */
+            paid_at: string | null;
+            /** Lines */
+            lines?: components["schemas"]["SettlementLineOut"][];
         };
         /** ShiftAssign */
         ShiftAssign: {
@@ -21905,6 +22218,338 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AssetOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_gratuity_payroll_gratuity_settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GratuitySettingsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_gratuity_payroll_gratuity_settings_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GratuitySettings"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GratuitySettingsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    draft_hrms_employees__employee_id__final_settlement_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employee_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettlementOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_settlements_hrms_final_settlements_get: {
+        parameters: {
+            query?: {
+                status?: ("draft" | "approved" | "paid" | "cancelled") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettlementOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_settlement_hrms_final_settlements__settlement_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                settlement_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettlementOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    recalculate_hrms_final_settlements__settlement_id__recalculate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                settlement_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettlementOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_line_hrms_final_settlements__settlement_id__lines_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                settlement_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SettlementLineIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettlementLineOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_line_hrms_final_settlement_lines__line_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                line_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_hrms_final_settlements__settlement_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                settlement_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettlementOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_hrms_final_settlements__settlement_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                settlement_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettlementOut"];
                 };
             };
             /** @description Validation Error */

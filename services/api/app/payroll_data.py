@@ -248,7 +248,10 @@ async def load_inputs(conn: Any, *, period_start: date, period_end: date, pay_da
     ids = [uuid.UUID(i) for i in employee_ids] if employee_ids is not None else None
     emps = await conn.fetch(
         """select * from hrms_employees where status = 'active' and ($1::uuid[] is null or id = any($1::uuid[]))
-              and (exit_date is null or exit_date >= $2)       -- a leaver is paid to their exit month
+              -- A leaver is paid to their exit month, and later only for one-offs still due (a settlement).
+              and (exit_date is null or exit_date >= $2
+                   or exists (select 1 from pay_one_offs o where o.employee_id = hrms_employees.id
+                                and o.period = $2 and o.status = 'pending'))
             order by name, id""", ids, period_start)
     if not emps:
         return []

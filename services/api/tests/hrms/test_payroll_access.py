@@ -62,7 +62,8 @@ def test_the_payroll_module_declares_its_permission_keys():
 
 
 def test_a_legacy_read_grant_carries_only_read_keys():
-    assert rbac.keys_for_grant("payroll", "read") == {"payroll.run.read", "payroll.salary.read"}
+    assert rbac.keys_for_grant("payroll", "read") == {"payroll.run.read", "payroll.salary.read",
+                                                      "payroll.settlement.read"}   # wave C, 0104
     assert "payroll.salary.update" in rbac.keys_for_grant("payroll", "write")
     assert rbac.keys_for_grant("payroll", "admin") == set(rbac.MODULE_KEYS["payroll"])
     # HR grants never carry payroll keys (TR-SEC-36).

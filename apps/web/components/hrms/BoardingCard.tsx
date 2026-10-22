@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import type { Schema } from "@business-os/api-client";
 import { api } from "@/lib/api";
 import { Can } from "@/lib/can";
@@ -29,7 +30,12 @@ export function BoardingCard({ employeeId, exitDate, onChanged }: { employeeId: 
   return (
     <Card className="space-y-2">
       <h2 className="text-sm font-semibold">Joining and leaving</h2>
-      {exitDate && <p className="text-sm">Leaving on <span className="font-medium">{formatDay(exitDate)}</span>.</p>}
+      {exitDate && (
+        <p className="text-sm">
+          Leaving on <span className="font-medium">{formatDay(exitDate)}</span>.{" "}
+          <Can perm="payroll.settlement.read"><Link href="/hrms/payroll/settlements" className="text-brand hover:underline">Final settlement →</Link></Can>
+        </p>
+      )}
       {rows && rows.length > 0 && (
         <ul className="text-sm" aria-label="Open checklists">
           {rows.map((b) => (

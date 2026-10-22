@@ -3051,3 +3051,76 @@ class EncashOut(BaseModel):
     one_off_id: str | None
     note: str
     created_at: datetime
+
+
+# ─── Final settlement and gratuity (wave C, H12, 0104) ──────────────────────
+SettlementStatus = Literal["draft", "approved", "paid", "cancelled"]
+SETTLEMENT_STATUSES = list(get_args(SettlementStatus))
+SettlementKind = Literal["payable", "receivable"]
+SETTLEMENT_KINDS = list(get_args(SettlementKind))
+SettlementCode = Literal["GRATUITY", "LEAVE_ENCASH", "NOTICE_PAY", "BONUS", "OTHER",
+                         "ADVANCE_SETTLE", "ASSET_RECOVERY", "NOTICE_SHORTFALL", "OTHER_RECOVERY"]
+SETTLEMENT_CODES = list(get_args(SettlementCode))
+# What HR may add by hand, per side (the rest are worked out).
+SETTLEMENT_MANUAL = {"payable": {"NOTICE_PAY", "BONUS", "OTHER", "GRATUITY"},
+                     "receivable": {"NOTICE_SHORTFALL", "OTHER_RECOVERY"}}   # asset charges come from the asset
+
+
+class GratuitySettings(BaseModel):
+    enabled: bool = False
+    days_per_year: int = Field(default=30, ge=1, le=60)
+    min_service_months: int = Field(default=12, ge=0, le=120)
+    part_year_months: int = Field(default=6, ge=0, le=11)
+    note: str = Field(default="", max_length=500)
+
+
+class GratuitySettingsOut(GratuitySettings):
+    verified: bool = False
+
+
+class SettlementLineIn(BaseModel):
+    kind: SettlementKind
+    code: SettlementCode
+    name: str = Field(min_length=1, max_length=120)
+    amount_minor: int = Field(gt=0, le=10**12)
+    taxable: bool | None = None          # payables default to taxable
+
+    @model_validator(mode="after")
+    def _side(self):
+        if self.code not in SETTLEMENT_MANUAL[self.kind]:
+            raise ValueError(f"{self.code} can't be added as a {self.kind}")
+        return self
+
+
+class SettlementLineOut(BaseModel):
+    id: str
+    kind: SettlementKind
+    code: SettlementCode
+    name: str
+    amount_minor: int
+    taxable: bool
+    auto: bool
+    days: float | None
+    explain: dict[str, Any]
+    one_off_id: str | None
+
+
+class SettlementOut(BaseModel):
+    id: str
+    employee_id: str
+    employee_name: str
+    join_date: date | None
+    last_working_day: date
+    status: SettlementStatus
+    service_years: int
+    pay_month: date | None
+    payable_minor: int
+    receivable_minor: int
+    net_minor: int
+    assets_held: list[HeldAsset] = Field(default_factory=list)
+    gratuity_verified: bool
+    note: str
+    created_at: datetime
+    approved_at: datetime | None
+    paid_at: datetime | None
+    lines: list[SettlementLineOut] = Field(default_factory=list)

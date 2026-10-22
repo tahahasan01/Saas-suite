@@ -172,6 +172,11 @@ register("payroll", {
     "payroll.report.export": ("payroll", "admin"),
     "payroll.settings.manage": ("payroll", "admin"),
 })
+register("payroll", {
+    # Final settlement and gratuity (wave C, 0104): a leaver's last pay.
+    "payroll.settlement.read": ("payroll", "read"),
+    "payroll.settlement.manage": ("payroll", "admin"),
+})
 # CRM v2 (Phase 3, 3B): shaping the pipeline and its lists is admin work; a
 # rep with `crm:write` works leads and activities but doesn't redesign stages.
 register("crm", {

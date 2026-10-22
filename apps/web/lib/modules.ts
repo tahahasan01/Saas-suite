@@ -114,6 +114,7 @@ export const MODULES: Module[] = [
     tabs: [
       { href: "/hrms/payroll", label: "Runs" },
       { href: "/hrms/payroll/setup", label: "Set-up" },
+      { href: "/hrms/payroll/settlements", label: "Leavers" },
     ],
   },
   {

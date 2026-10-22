@@ -144,6 +144,8 @@ export const PERMISSION_KEYS = [
   "payroll.salary.update",
   "payroll.report.export",
   "payroll.settings.manage",
+  "payroll.settlement.read",
+  "payroll.settlement.manage",
   // crm v2 (3B)
   "crm.pipeline.manage",
   "crm.settings.manage",

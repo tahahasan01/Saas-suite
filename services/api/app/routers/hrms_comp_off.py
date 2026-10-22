@@ -14,21 +14,20 @@ ledger entry takes the days off.
 from __future__ import annotations
 
 from datetime import date
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal
 from uuid import UUID
 
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from .. import db, holidays, leave, payroll_data, rbac, refs
+from ..payroll_engine import encash_amount
 from ..deps import AuthContext, current_auth, current_employee
 from ..models import CompOffApprove, CompOffIn, CompOffOut, CompOffReject, CompOffStatus, EncashIn, EncashOut
 from ..rbac import perm
 
 router = APIRouter(prefix="/hrms", tags=["hrms"])
 portal = APIRouter(prefix="/me", tags=["portal"])
-
-DAYS_PER_MONTH = 30      # the per-day divisor for encashment (St12 §5: founder to confirm)
 
 _SELECT = """select c.*, e.name as employee_name, e.user_id as claimant_user, lt.name as leave_type_name
                from hrms_comp_off_requests c join hrms_employees e on e.id = c.employee_id
@@ -135,13 +134,6 @@ async def reject(comp_off_id: UUID, body: CompOffReject,
 
 
 # ── Encashment ──────────────────────────────────────────────────────────────
-def encash_amount(base_minor: int, days: Decimal) -> tuple[int, int]:
-    """(per-day rate, amount) in paisa: salary ÷ 30 a day, each rounded half-up once."""
-    per_day = int((Decimal(base_minor) / DAYS_PER_MONTH).quantize(Decimal(1), ROUND_HALF_UP))
-    amount = int((Decimal(base_minor) * days / DAYS_PER_MONTH).quantize(Decimal(1), ROUND_HALF_UP))
-    return per_day, amount
-
-
 def _encash(r: asyncpg.Record, *, show_pay: bool = True) -> EncashOut:
     return EncashOut(id=str(r["id"]), employee_id=str(r["employee_id"]), leave_type_id=str(r["leave_type_id"]),
                      leave_type_name=r["leave_type_name"], days=float(r["days"]),

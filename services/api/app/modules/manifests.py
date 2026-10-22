@@ -147,6 +147,7 @@ _MANIFESTS = [
                      children=(
                          NavChild("/hrms/payroll", "nav.payroll.runs", "payroll.run.read"),
                          NavChild("/hrms/payroll/setup", "nav.payroll.setup", "payroll.run.read"),
+                         NavChild("/hrms/payroll/settlements", "nav.payroll.settlements", "payroll.settlement.read"),
                      )),),
     ),
     ModuleSpec(

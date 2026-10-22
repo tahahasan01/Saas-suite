@@ -58,6 +58,8 @@ KIND_OF = {
     "claim_id": "overtime_claim",
     # assets (wave A, 0087)
     "asset_id": "asset",
+    "settlement_id": "settlement",
+    "line_id": "settlement_line",
     "comp_off_id": "comp_off",
     "expense_id": "expense_claim",
     "receipt_file_id": "file",
@@ -172,6 +174,12 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
     appraisal = (await c.post(f"/hrms/appraisal-cycles/{cycle['id']}/open")).json()["appraisals"][0]
     expense = (await c.post("/hrms/expenses", json={"employee_id": employee["id"], "title": "Probe", "lines": [
         {"spent_on": "2026-01-05", "category": "fuel", "amount_minor": 100}]})).json()
+    leaver = (await c.post("/hrms/employees", json={"name": "Probe leaver"})).json()
+    await c.post(f"/hrms/employees/{leaver['id']}/offboarding", json={"reason": "resigned",
+                                                                      "last_working_day": "2026-12-31"})
+    settle = (await c.post(f"/hrms/employees/{leaver['id']}/final-settlement")).json()
+    settle_line = (await c.post(f"/hrms/final-settlements/{settle['id']}/lines", json={
+        "kind": "payable", "code": "BONUS", "name": "Probe", "amount_minor": 100})).json()
     return {
         "activity_type": activity_type["id"], "activity": activity["id"],
         "lost_reason": (await c.get("/crm/lost-reasons")).json()[0]["id"],
@@ -189,6 +197,7 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
         "appraisal_cycle": cycle["id"], "appraisal": appraisal["id"],
         "expense_claim": expense["id"],
         "comp_off": str(comp_off),
+        "settlement": settle["id"], "settlement_line": settle_line["id"],
         # No payslip exists before a run is calculated; any id stands in (it must still 404).
         "payslip": str(uuid.uuid4()),
         "role": (await c.get("/team/roles")).json()[0]["id"],
