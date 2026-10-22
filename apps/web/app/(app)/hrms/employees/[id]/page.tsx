@@ -7,7 +7,7 @@ import {
   type Department, type Employee, type EmployeeDocument, type EmployeeProfile, type JobTitle,
   type LeaveBalanceV2, type WorkLocation,
 } from "@business-os/types";
-import { api } from "@/lib/api";
+import { api, apiUrl } from "@/lib/api";
 import { Can, useCan } from "@/lib/can";
 import { formatDay } from "@/lib/format";
 import { errorText, useAction } from "@/lib/useAction";
@@ -236,15 +236,24 @@ function Balances({ employeeId }: { employeeId: string }) {
 function Documents({ employeeId, onChanged }: { employeeId: string; onChanged: () => void }) {
   const [rows, setRows] = useState<EmployeeDocument[] | null>(null);
   const [f, setF] = useState({ kind: "cnic" as (typeof DOCUMENT_KINDS)[number], title: "", number: "", expires_on: "" });
+  // The scan (PDF or photo, up to 10 MB): uploaded first, then claimed by the document.
+  const [file, setFile] = useState<File | null>(null);
+  const [fileKey, setFileKey] = useState(0);
   const confirm = useConfirm();
   const load = useCallback(() => {
     api<EmployeeDocument[]>(`/hrms/employees/${employeeId}/documents`).then(setRows).catch(() => setRows([]));
   }, [employeeId]);
   useEffect(load, [load]);
   const add = useAction(
-    () => api(`/hrms/employees/${employeeId}/documents`, {
-      method: "POST", body: JSON.stringify({ ...f, title: f.title || DOC_LABEL[f.kind], expires_on: f.expires_on || null }),
-    }),
+    async () => {
+      const file_id = file
+        ? (await api<{ id: string }>(`/files?name=${encodeURIComponent(file.name)}`, { method: "POST", body: file })).id
+        : null;
+      return api(`/hrms/employees/${employeeId}/documents`, {
+        method: "POST",
+        body: JSON.stringify({ ...f, title: f.title || DOC_LABEL[f.kind], expires_on: f.expires_on || null, file_id }),
+      });
+    },
     { success: "Document added", failure: "Couldn't add the document" },
   );
   const del = useAction(
@@ -267,6 +276,10 @@ function Documents({ employeeId, onChanged }: { employeeId: string; onChanged: (
                 {d.title}{d.number && <span className="text-fg-subtle"> · {d.number}</span>}
                 <span className="block text-xs text-fg-subtle">{DOC_LABEL[d.kind]}{d.expires_on && ` · expires ${formatDay(d.expires_on)}`}</span>
               </span>
+              {d.file_id && (
+                <a href={apiUrl(`/files/${d.file_id}`)} target="_blank" rel="noopener noreferrer"
+                   className="text-xs text-brand hover:underline">Open scan<span className="sr-only"> of {d.title}</span></a>
+              )}
               <ExpiryBadge days={d.days_left} />
               <Can perm="hrms.document.manage">
                 <Button size="sm" variant="ghost" aria-label={`Remove ${d.title}`} onClick={() => void confirm({
@@ -281,7 +294,12 @@ function Documents({ employeeId, onChanged }: { employeeId: string; onChanged: (
       <Can perm="hrms.document.manage">
         <form className="grid gap-2 sm:grid-cols-2" onSubmit={async (e) => {
           e.preventDefault();
-          if ((await add.run()) !== undefined) { setF({ kind: "cnic", title: "", number: "", expires_on: "" }); load(); onChanged(); }
+          if ((await add.run()) !== undefined) {
+            setF({ kind: "cnic", title: "", number: "", expires_on: "" });
+            setFile(null);
+            setFileKey((k) => k + 1);   // clears the file input
+            load(); onChanged();
+          }
         }}>
           <Field label="Kind">
             <Select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value as typeof f.kind })}>
@@ -291,9 +309,12 @@ function Documents({ employeeId, onChanged }: { employeeId: string; onChanged: (
           <Field label="Title"><Input value={f.title} placeholder={DOC_LABEL[f.kind]} maxLength={160} onChange={(e) => setF({ ...f, title: e.target.value })} /></Field>
           <Field label="Number"><Input value={f.number} maxLength={80} onChange={(e) => setF({ ...f, number: e.target.value })} /></Field>
           <Field label="Expires on"><Input type="date" value={f.expires_on} onChange={(e) => setF({ ...f, expires_on: e.target.value })} /></Field>
+          <Field label="Scan (PDF or photo, optional)">
+            <Input key={fileKey} type="file" accept="application/pdf,image/png,image/jpeg,image/webp"
+                   onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+          </Field>
           <div className="sm:col-span-2">
             <Button type="submit" variant="subtle" disabled={add.busy}>{add.busy ? "Adding…" : "Add document"}</Button>
-            <span className="ms-2 text-xs text-fg-subtle">File upload is coming; record the details for now.</span>
           </div>
         </form>
       </Can>

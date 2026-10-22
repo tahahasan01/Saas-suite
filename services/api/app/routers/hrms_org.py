@@ -9,7 +9,7 @@ import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel
 
-from .. import db, hrorg, refs
+from .. import db, files, hrorg, rbac, refs
 from ..deps import AuthContext
 from ..models import (
     DepartmentCreate,
@@ -270,6 +270,20 @@ def _doc(r: asyncpg.Record) -> DocumentOut:
 
 _DOC_SELECT = """select d.*, e.name as employee_name, (d.expires_on - current_date) as days_left
                    from hrms_employee_documents d join hrms_employees e on e.id = d.employee_id"""
+_DOC_ENTITY = "hrms_employee_document"
+
+
+async def _doc_file_reader(conn: asyncpg.Connection, user_id: str, row: asyncpg.Record) -> bool:
+    """A document's scan (a CNIC, a contract) opens for hrms.document.read
+    holders who can see that document (RLS and branch)."""
+    if not await conn.fetchval("select 1 from hrms_employee_documents where id = $1", row["entity_id"]):
+        return False
+    u = await conn.fetchrow("select role_id from users where id = $1", user_id)
+    held = await rbac.effective_permissions(conn, str(row["tenant_id"]), u["role_id"] if u else None, user_id)
+    return "hrms.document.read" in held
+
+
+files.register_reader(_DOC_ENTITY, _doc_file_reader)
 
 
 @router.get("/employees/{employee_id}/documents", response_model=list[DocumentOut])
@@ -293,6 +307,12 @@ async def add_document(employee_id: str, body: DocumentCreate,
                values ($1,$2,$3,btrim($4),$5,$6,$7,$8,$9,$10) returning id""",
             auth.tenant_id, employee_id, body.kind, body.title, body.number, body.issued_on,
             body.expires_on, body.file_id, body.note, auth.user_id)
+        # The scan must be the caller's own fresh upload: claiming it makes it
+        # the document's (and readable by HR); anyone else's is refused.
+        if body.file_id is not None and await files.attach(
+                conn, str(body.file_id), entity=_DOC_ENTITY, entity_id=str(did), field="file",
+                user_id=auth.user_id) is None:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Upload the file again, then save the document")
         return _doc(await conn.fetchrow(_DOC_SELECT + " where d.id=$1", did))
 
 
@@ -302,6 +322,8 @@ async def delete_document(doc_id: str, response: Response,
     async with db.tenant_conn(auth.tenant_id) as conn:
         if await conn.fetchval("delete from hrms_employee_documents where id=$1 returning id", doc_id) is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Document not found")
+        # Its scan goes back to a draft, which the files GC removes.
+        await files.detach(conn, entity=_DOC_ENTITY, entity_id=doc_id, field="file")
     response.status_code = status.HTTP_204_NO_CONTENT
     return response
 
