@@ -63,7 +63,16 @@ export default function KhataPage() {
 function AccountSheet({ id, onClose, onChanged }: { id: string | null; onClose: () => void; onChanged: () => void }) {
   const can = useCan();
   const [acct, setAcct] = useState<Account | null>(null);
-  const [pay, setPay] = useState({ amount: "", method: "cash", note: "" });
+  const [pay, setPay] = useState({ amount: "", method: "cash", note: "", reference: "" });
+  const [registers, setRegisters] = useState<{ id: string; name: string; is_default: boolean; open_session_id: string | null }[]>([]);
+  const [registerId, setRegisterId] = useState("");
+  useEffect(() => {
+    api<typeof registers>("/pos/registers").then((rs) => {
+      setRegisters(rs);
+      const open = rs.find((r) => r.open_session_id) ?? rs.find((r) => r.is_default);
+      setRegisterId(open?.id ?? "");
+    }).catch(() => setRegisters([]));
+  }, []);
   const [limit, setLimit] = useState("");
   const load = useCallback(() => {
     if (!id) return;
@@ -74,7 +83,8 @@ function AccountSheet({ id, onClose, onChanged }: { id: string | null; onClose: 
 
   const receive = useAction(
     () => api<Account>(`/khata/${id}/payments`, { method: "POST", body: JSON.stringify({
-      amount_minor: toMinor(pay.amount), method: pay.method, note: pay.note }) }),
+      amount_minor: toMinor(pay.amount), method: pay.method, note: pay.note,
+      reference: pay.reference, register_id: pay.method === "cash" ? registerId || null : null }) }),
     { success: "Payment recorded", failure: "Couldn't record the payment" });
   const saveLimit = useAction(
     () => api<Account>(`/khata/${id}`, { method: "PATCH", body: JSON.stringify({
@@ -90,7 +100,7 @@ function AccountSheet({ id, onClose, onChanged }: { id: string | null; onClose: 
             <form className="space-y-2 rounded-lg border border-line p-3" onSubmit={async (e) => {
               e.preventDefault();
               const a = await receive.run();
-              if (a) { setAcct(a); setPay({ amount: "", method: "cash", note: "" }); onChanged(); }
+              if (a) { setAcct(a); setPay({ amount: "", method: "cash", note: "", reference: "" }); onChanged(); }
             }}>
               <h3 className="font-semibold">Take a payment</h3>
               <div className="grid grid-cols-2 gap-2">
@@ -103,7 +113,18 @@ function AccountSheet({ id, onClose, onChanged }: { id: string | null; onClose: 
                   </Select>
                 </Field>
               </div>
-              <Field label="Note"><Input value={pay.note} maxLength={300} onChange={(e) => setPay({ ...pay, note: e.target.value })} /></Field>
+              {pay.method === "cash" ? (
+                <Field label="Into the drawer of">
+                  <Select value={registerId} onChange={(e) => setRegisterId(e.target.value)}>
+                    {registers.map((r) => <option key={r.id} value={r.id}>{r.name}{r.open_session_id ? "" : " (not open)"}</option>)}
+                  </Select>
+                </Field>
+              ) : (
+                <Field label="Reference (transfer, wallet or cheque no.)">
+                  <Input value={pay.reference} maxLength={80} required onChange={(e) => setPay({ ...pay, reference: e.target.value })} />
+                </Field>
+              )}
+              <Field label="Note"><Input value={pay.note} maxLength={200} onChange={(e) => setPay({ ...pay, note: e.target.value })} /></Field>
               <Button type="submit" size="sm" disabled={receive.busy}>{receive.busy ? "Saving…" : "Record payment"}</Button>
             </form>
           )}

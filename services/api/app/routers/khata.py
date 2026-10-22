@@ -53,8 +53,9 @@ class LimitIn(BaseModel):
 class PaymentIn(BaseModel):
     amount_minor: int = Field(gt=0, le=10**12)
     method: Literal["cash", "card", "jazzcash", "easypaisa", "raast", "bank", "cheque"]
-    register_id: UUID | None = None      # cash taken at a till counts into its open session
-    note: str = Field(default="", max_length=300)
+    register_id: UUID | None = None      # cash: the till whose open session takes it (required)
+    reference: str = Field(default="", max_length=80)   # non-cash: the transfer / cheque number (required)
+    note: str = Field(default="", max_length=200)
 
 
 @router.get("", response_model=list[BalanceRow])
@@ -115,6 +116,13 @@ async def receive_payment(contact_id: str, body: PaymentIn,
         if body.amount_minor > owed:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
                                 f"{name} owes Rs {max(owed, 0) / 100:,.2f}; take no more than that")
+        # No silent write-offs (security review): cash must land in an open
+        # drawer, and any other payment must say which transfer it was.
+        if body.method == "cash" and body.register_id is None:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Cash must be taken at a till: choose the register")
+        if body.method != "cash" and len(body.reference.strip()) < 3:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+                                "Give the transfer, wallet or cheque reference for this payment")
         session_id = None
         if body.register_id is not None:
             reg = await pos_sessions.register(conn, body.register_id)
@@ -129,5 +137,6 @@ async def receive_payment(contact_id: str, body: PaymentIn,
         await conn.execute(
             """insert into customer_ledger (tenant_id, contact_id, kind, amount_minor, method, session_id, note, user_id)
                values ($1, $2, 'payment', $3, $4, $5, $6, $7)""",
-            auth.tenant_id, contact_id, -body.amount_minor, body.method, session_id, body.note, auth.user_id)
+            auth.tenant_id, contact_id, -body.amount_minor, body.method, session_id,
+            " · ".join(x for x in (body.reference.strip(), body.note.strip()) if x)[:300], auth.user_id)
         return await _account(conn, contact_id)

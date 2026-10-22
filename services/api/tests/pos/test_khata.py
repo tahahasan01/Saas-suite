@@ -117,3 +117,15 @@ async def test_recording_payments_and_limits_need_their_keys(client, pos_tenant,
         assert (await mate.patch(f"/khata/{customer}", json={"credit_limit_minor": 1})).status_code == 403
     finally:
         await mate.aclose()
+
+
+async def test_cash_must_be_taken_at_a_till_and_other_payments_need_a_reference(client, pos_tenant, item, customer):
+    """No silent write-offs: cash has to land in an open drawer, and a bank or
+    wallet payment has to say which transfer it was."""
+    await _khata_sale(client, item, customer, qty=2)
+    url = f"/khata/{customer}/payments"
+    assert (await client.post(url, json={"amount_minor": 1_000, "method": "cash"})).status_code == 422
+    assert (await client.post(url, json={"amount_minor": 1_000, "method": "bank"})).status_code == 422
+    r = await client.post(url, json={"amount_minor": 1_000, "method": "bank", "reference": "IBFT 88213"})
+    assert r.status_code == 201, r.text
+    assert r.json()["entries"][-1]["note"].startswith("IBFT 88213")

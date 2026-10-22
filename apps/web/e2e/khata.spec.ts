@@ -19,6 +19,8 @@ test.describe("khata", () => {
     const sheet = page.getByRole("dialog", { name: new RegExp(name) });
     await expect(sheet).toContainText("Bought on khata");
     await sheet.getByLabel("Amount (PKR)").fill(String(owed / 200));     // half of it
+    await sheet.getByLabel("How").selectOption("bank");
+    await sheet.getByLabel(/^Reference/).fill("IBFT 4411");
     await sheet.getByRole("button", { name: "Record payment" }).click();
     await expect(sheet.getByRole("listitem").first()).toContainText("Paid");
   });
