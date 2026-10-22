@@ -8636,6 +8636,10 @@ export interface components {
             client_total_minor: number;
             /** Cashier Token */
             cashier_token?: string | null;
+            /** Approver Id */
+            approver_id?: string | null;
+            /** Approver Pin */
+            approver_pin?: string | null;
         };
         /** OneOffIn */
         OneOffIn: {

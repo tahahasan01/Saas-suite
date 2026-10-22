@@ -37,6 +37,9 @@ class OfflineOrder(BaseModel):
     contact_id: UUID | None = None
     client_total_minor: int = Field(ge=0)
     cashier_token: str | None = Field(default=None, max_length=200)
+    # A discount the cashier can't give: the manager's PIN, taken at the till.
+    approver_id: UUID | None = None
+    approver_pin: str | None = Field(default=None, pattern=r"^\d{6}$")
 
 
 class SyncIn(BaseModel):
@@ -78,7 +81,8 @@ async def sync_orders(body: SyncIn, x_device_token: str | None = Header(default=
     for o in body.orders:
         sale = SaleCreate(client_uuid=o.client_uuid, items=o.items, discount_minor=o.discount_minor,
                           paid_minor=o.paid_minor, payment_method=o.payment_method, payments=o.payments,
-                          register_id=dev["register_id"], device_id=dev["id"], contact_id=o.contact_id)
+                          register_id=dev["register_id"], device_id=dev["id"], contact_id=o.contact_id,
+                          approver_id=o.approver_id, approver_pin=o.approver_pin)
         fingerprint = _fingerprint(sale)
         uid = str(o.client_uuid)
         try:
@@ -98,8 +102,9 @@ async def sync_orders(body: SyncIn, x_device_token: str | None = Header(default=
                            if replay else SyncResult(client_uuid=uid, status="conflict",
                                                      error="That receipt number was already used"))
         except HTTPException as e:
-            # Can't be recorded as sent (an unknown product, khata without a
-            # customer, a cart id reused): never retried by itself, a person decides.
+            # Can't be recorded as sent (an unknown product, a discount nobody
+            # approved, khata over the limit, a cart id reused): never retried
+            # by itself, a person decides.
             results.append(SyncResult(client_uuid=uid, status="conflict", error=str(e.detail)))
     return SyncOut(results=results)
 

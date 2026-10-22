@@ -174,3 +174,31 @@ async def test_another_tenants_device_or_product_never_syncs(client, till):
             assert res["status"] == "conflict" and res["sale_id"] is None
         finally:
             await _drop(other_tenant)
+
+
+async def test_sync_is_no_way_around_a_managers_approval(client, till):
+    """Security review: a discount the cashier can't give, or khata past the
+    customer's limit, is refused (conflict) at sync just as online, unless
+    the order carries a manager's PIN, checked here with the same lockouts."""
+    clerk_role = await _role(client, [{"permission_key": k, "scope": "all"} for k in ("pos.sale.create", "pos.sale.read")])
+    clerk, _, _ = await _user_on(client, [clerk_role])
+    me = (await client.get("/auth/me")).json()["user"]["id"]
+    await client.put("/pos/pin", json={"pin": "246813"})
+    try:
+        discounted = _order(till, total=9_000, discount_minor=1_000)
+        res = (await clerk.post("/pos/sync/orders", json={"device_id": till["device"]["id"], "orders": [discounted]},
+                                headers=till["headers"])).json()["results"][0]
+        assert res["status"] == "conflict" and res["sale_id"] is None
+
+        approved = {**_order(till, total=9_000, discount_minor=1_000), "approver_id": me, "approver_pin": "246813"}
+        res = (await clerk.post("/pos/sync/orders", json={"device_id": till["device"]["id"], "orders": [approved]},
+                                headers=till["headers"])).json()["results"][0]
+        assert res["status"] == "created" and not res["needs_review"], res
+    finally:
+        await clerk.aclose()
+
+    contact = (await client.post("/contacts", json={"name": "Khata Khan", "phone": "03001234567"})).json()
+    await client.patch(f"/khata/{contact['id']}", json={"credit_limit_minor": 5_000})
+    over = _order(till, payment_method="khata", contact_id=contact["id"])
+    res = (await _sync(client, till, [over])).json()["results"][0]
+    assert res["status"] == "conflict" and "limit" in res["error"]

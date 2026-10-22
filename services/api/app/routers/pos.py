@@ -374,7 +374,9 @@ async def _check_customer(conn, contact_id) -> None:
 @dataclass
 class Offline:
     """An offline till's sale (3D): it already happened and was paid, so
-    what the online path refuses is recorded and flagged instead (D-23)."""
+    what an offline till can't know (prices, stock, the session, the clock)
+    is recorded and flagged instead of refused (D-23). Permissions are not
+    relaxed: an unapproved discount or khata over the limit is refused."""
     created_at: datetime
     offline_ref: str
     client_total_minor: int
@@ -406,7 +408,10 @@ async def _record_sale(body: SaleCreate, auth: AuthContext, fingerprint: str,
                                                    archived_ok=off is not None)
         if off and any(not p["active"] for p, *_ in lines):
             off.reasons.append("archived_product")
-        approved_by = await _flag(off, "unapproved_discount", lambda: _approve_lines(conn, auth, body, lines))
+        # Never relaxed offline (security review): otherwise any session could
+        # send a discount through sync to skip the manager. The till collects
+        # the manager's PIN offline too; it is checked here, with its lockouts.
+        approved_by = await _approve_lines(conn, auth, body, lines)
         total = priced.total_minor
         reg = await pos_sessions.register(conn, body.register_id)
         if not reg["active"]:
@@ -470,11 +475,9 @@ async def _record_sale(body: SaleCreate, auth: AuthContext, fingerprint: str,
         await pos_sessions.record_tenders(conn, auth.tenant_id, sale_id, session_id, plan, employee_id)
         # The khata part goes on the customer's account, in this transaction.
         on_credit = sum(t.amount_minor for t in plan.tenders if t.method == "khata")
+        # The khata limit holds offline too: credit isn't a paid sale (D-23).
         if on_credit:
-            over = await khata.post_sale(conn, auth.tenant_id, body.contact_id, sale_id, on_credit, auth.user_id,
-                                         over_limit_ok=off is not None)
-            if over and off:
-                off.reasons.append("over_credit_limit")
+            await khata.post_sale(conn, auth.tenant_id, body.contact_id, sale_id, on_credit, auth.user_id)
         fbr_on = bool(fbr_cfg and fbr_cfg["enabled"])
         inclusive = bool(fbr_on and fbr_cfg["prices_include_tax"])
         items = []
