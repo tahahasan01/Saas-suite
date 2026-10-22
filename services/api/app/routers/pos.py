@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
@@ -825,6 +826,10 @@ select i.id as sale_item_id, i.product_id, i.name, i.qty as qty_sold, i.price_mi
 """
 
 
+# Online {REG}-{FY}-{N} (0078) or an offline till's <REG>-<DEV>-NNNNNN (3D).
+_RECEIPT_NO = re.compile(r"[A-Z0-9]{1,6}-(\d{4}-\d{2}-\d{4,}|[A-Z0-9]{1,6}-\d{6})")
+
+
 @router.get("/sales/{sale_id}", response_model=SaleLookup)
 async def get_sale(sale_id: str, auth: AuthContext = Depends(perm("pos.sale.read"))):
     """One sale with what can still be returned. `sale_id` is the sale's id
@@ -834,6 +839,9 @@ async def get_sale(sale_id: str, auth: AuthContext = Depends(perm("pos.sale.read
         by_id: UUID | None = UUID(sale_id)
     except ValueError:
         by_id = None
+        # Neither an id nor shaped like one of our receipt numbers: bad input, not "not found".
+        if not _RECEIPT_NO.fullmatch(sale_id.strip()):
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Not a sale id or receipt number")
     async with db.tenant_conn(auth.tenant_id) as conn:
         scope = await scope_of(conn, auth, "pos.sale.read")   # own = the cashier's own sales (D-04)
         sale = await conn.fetchrow(
