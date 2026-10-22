@@ -48,6 +48,12 @@ export function TillDeviceCard({ register }: { register: { id: string; code: str
       ) : (
         <Can perm="pos.register.manage" fallback={<p className="text-sm text-fg-muted">A manager sets a till up for offline selling here.</p>}>
           <p className="text-xs text-fg-muted">Give this till a short code (for example T1). Its offline receipts are numbered {register.code}-T1-000001 and up.</p>
+          {/* D-25 is open: FBR/PRAL haven't confirmed late filing of offline sales. */}
+          <p className="rounded-lg border border-warning/40 bg-warning/5 p-2 text-xs">
+            If FBR invoicing is on: sales made offline are sent to FBR when the till is back online, so their
+            receipts say &ldquo;FBR pending&rdquo; until then. FBR hasn&apos;t confirmed that late filing is accepted;
+            turn this on only if you accept that.
+          </p>
           <form onSubmit={register_} className="flex items-end gap-2">
             <Field label="Till code">
               <Input value={code} required maxLength={6} pattern="[A-Z0-9]{1,6}" placeholder="T1"
