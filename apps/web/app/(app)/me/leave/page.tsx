@@ -8,6 +8,7 @@ import { errorText, useAction } from "@/lib/useAction";
 import { useConfirm } from "@/components/Confirm";
 import { DataTable, type Column } from "@/components/DataTable";
 import { LeaveRequestForm, daysLabel, halvesLabel, leaveTone, stepLabel, type LeaveDraft } from "@/components/hrms/LeaveRequestForm";
+import { MyCompOff } from "@/components/hrms/CompOff";
 import { Badge, Button, Card, EmptyState, ErrorState } from "@/components/ui";
 
 const day = (d: string) => formatDay(d, { day: "numeric", month: "short" });
@@ -114,6 +115,7 @@ export default function MyLeave() {
           <h2 className="text-sm font-semibold">New request</h2>
           <LeaveRequestForm types={types} busy={submitAction.busy} onSubmit={submit} />
         </Card>
+        <MyCompOff />
       </div>
     </div>
   );

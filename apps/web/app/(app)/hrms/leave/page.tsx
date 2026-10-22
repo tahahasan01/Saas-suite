@@ -8,6 +8,7 @@ import { errorText, useAction } from "@/lib/useAction";
 import { useConfirm } from "@/components/Confirm";
 import { DataTable, type Column } from "@/components/DataTable";
 import { Dialog } from "@/components/Dialog";
+import { CompOffApprovals } from "@/components/hrms/CompOff";
 import { LeaveRequestForm, daysLabel, halvesLabel, leaveTone, stepLabel, type LeaveDraft } from "@/components/hrms/LeaveRequestForm";
 import { Badge, Button, Card, EmptyState, ErrorState, Field, Input, Select, Switch, cx } from "@/components/ui";
 import { useHrmsSummary } from "../summary";
@@ -170,6 +171,7 @@ export default function LeavePage() {
 
   return (
     <div className="space-y-8">
+      <CompOffApprovals leaveTypes={types.filter((t) => t.active)} />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-3">
           <div className="flex flex-wrap items-center gap-1">

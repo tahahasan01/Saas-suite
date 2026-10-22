@@ -16,7 +16,7 @@ from uuid import UUID, uuid4
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from .. import db, files, rbac, refs
+from .. import db, files, payroll_data, rbac, refs
 from ..deps import AuthContext, current_auth, current_employee
 from ..models import (ExpenseApprove, ExpenseClaimFor, ExpenseClaimIn, ExpenseClaimOut, ExpenseLineIn,
                       ExpenseLineOut, ExpenseReject, ExpenseStatus)
@@ -25,7 +25,6 @@ from ..rbac import perm
 router = APIRouter(prefix="/hrms", tags=["hrms"])
 portal = APIRouter(prefix="/me", tags=["portal"])
 
-FINAL_RUN = ("approved", "paid", "locked")
 _ENTITY = "hrms_expense_line"
 
 _SELECT = """select c.*, e.name as employee_name, e.user_id as claimant_user, o.period as pay_month,
@@ -97,18 +96,6 @@ async def _receipt_reader(conn: asyncpg.Connection, user_id: str, row: asyncpg.R
 files.register_reader(_ENTITY, _receipt_reader)
 
 
-async def _pay_month(conn: asyncpg.Connection) -> date:
-    """This month, unless its regular payroll is already final; then next month."""
-    today: date = await conn.fetchval("select current_date")
-    first = today.replace(day=1)
-    closed = await conn.fetchval(
-        "select 1 from payroll_runs where kind = 'regular' and period_start = $1 and status = any($2::text[])",
-        first, list(FINAL_RUN))
-    if not closed:
-        return first
-    return date(first.year + (first.month == 12), first.month % 12 + 1, 1)
-
-
 # ── HR side ─────────────────────────────────────────────────────────────────
 @router.get("/expenses", response_model=list[ExpenseClaimOut])
 async def list_claims(status_filter: ExpenseStatus | None = Query(None, alias="status"),
@@ -161,7 +148,7 @@ async def approve(expense_id: UUID, body: ExpenseApprove,
             """insert into pay_one_offs (tenant_id, employee_id, period, code, name, kind, amount_minor, taxable,
                                          note, created_by)
                values ($1, $2, $3, 'EXPENSE', $4, 'earning', $5, false, $6, $7) returning id""",
-            auth.tenant_id, row["employee_id"], await _pay_month(conn), f"Expenses: {row['title']}"[:120], amount,
+            auth.tenant_id, row["employee_id"], await payroll_data.next_pay_month(conn), f"Expenses: {row['title']}"[:120], amount,
             f"expense claim {expense_id}", auth.user_id)
         await conn.execute(
             """update hrms_expense_claims set status = 'approved', approved_minor = $2, one_off_id = $3,

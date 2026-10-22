@@ -17,6 +17,7 @@ import { PayrollDetailsCard } from "@/components/hrms/PayrollDetailsCard";
 import { SalaryCard } from "@/components/hrms/SalaryCard";
 import { HeldAssetsCard } from "@/components/hrms/HeldAssetsCard";
 import { BoardingCard } from "@/components/hrms/BoardingCard";
+import { EncashButton } from "@/components/hrms/CompOff";
 import { Badge, Button, Card, ErrorState, Field, Input, LoadingRows, Select } from "@/components/ui";
 
 /* One employee: details, their place in the org, kiosk PIN, documents with
@@ -221,13 +222,17 @@ function KioskPin({ p, onSaved }: { p: EmployeeProfile; onSaved: () => void }) {
 
 function Balances({ employeeId }: { employeeId: string }) {
   const [rows, setRows] = useState<LeaveBalanceV2[] | null>(null);
-  useEffect(() => {
+  const load = useCallback(() => {
     api<LeaveBalanceV2[]>(`/hrms/leave/balances?employee_id=${employeeId}`).then(setRows).catch(() => setRows([]));
   }, [employeeId]);
+  useEffect(load, [load]);
   if (!rows?.length) return null;
   return (
     <Card className="space-y-2">
-      <h2 className="text-sm font-semibold">Leave left</h2>
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold">Leave left</h2>
+        <EncashButton employeeId={employeeId} balances={rows} onDone={load} />
+      </div>
       <div className="grid grid-cols-3 gap-2">
         {rows.map((b) => (
           <div key={b.leave_type} className="rounded-lg border border-line px-2 py-1.5 text-center">

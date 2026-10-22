@@ -99,6 +99,8 @@ APP_USER: dict[str, set[str]] = {
     "hrms_overtime_claims":    {S, I, U},       # decided, never deleted (0086)
     "hrms_assets":             {S, I, U},       # retired, never deleted (0087)
     "hrms_asset_assignments":  {S, I, U},       # closed on return, never deleted
+    "hrms_comp_off_requests":  {S, I, U},       # decided, never deleted (0103)
+    "hrms_leave_encashments":  {S, I},       # append-only
     "hrms_expense_claims":   {S, I, U},       # decided or cancelled, never deleted (0102)
     "hrms_expense_lines":    {S, I},       # fixed once claimed
     "hrms_probation_reviews":  {S, I},       # append-only (0101)

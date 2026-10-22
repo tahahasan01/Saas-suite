@@ -81,6 +81,7 @@ ENUM_COLUMNS = {
     ("hrms_assets", "condition"): models.ASSET_CONDITIONS,
     ("hrms_assets", "status"): models.ASSET_STATUSES,
     ("hrms_asset_assignments", "return_condition"): models.ASSET_CONDITIONS,
+    ("hrms_comp_off_requests", "status"): models.COMP_OFF_STATUSES,
     ("hrms_expense_claims", "status"): models.EXPENSE_STATUSES,
     ("hrms_expense_lines", "category"): models.EXPENSE_CATEGORIES,
     ("hrms_probation_reviews", "outcome"): models.PROBATION_OUTCOMES,

@@ -2468,7 +2468,8 @@ LeaveGrantMode = Literal["annual_upfront", "monthly_accrual", "none"]
 LEAVE_GRANT_MODES = list(get_args(LeaveGrantMode))
 LeaveCarry = Literal["none", "all", "capped"]
 LEAVE_CARRY_MODES = list(get_args(LeaveCarry))
-LedgerEntry = Literal["grant", "accrual", "carry_in", "carry_expire", "taken", "reversal", "adjust"]
+LedgerEntry = Literal["grant", "accrual", "carry_in", "carry_expire", "taken", "reversal", "adjust",
+                      "comp_off", "encash"]   # the last two: wave C, 0103
 LEDGER_ENTRIES = list(get_args(LedgerEntry))
 Half = Literal["am", "pm"]
 HALVES = list(get_args(Half))
@@ -2983,3 +2984,70 @@ class ExpenseClaimOut(BaseModel):
     decided_at: datetime | None
     created_at: datetime
     lines: list[ExpenseLineOut] = Field(default_factory=list)
+
+
+# ─── Compensatory leave and encashment (wave C, H8, 0103) ───────────────────
+CompOffStatus = Literal["pending", "approved", "rejected"]
+COMP_OFF_STATUSES = list(get_args(CompOffStatus))
+
+
+class CompOffIn(BaseModel):
+    work_date: date
+    days: float = 1
+    reason: str = Field(default="", max_length=500)
+
+    @field_validator("days")
+    @classmethod
+    def _whole_or_half(cls, v: float) -> float:
+        if v not in (0.5, 1):
+            raise ValueError("A comp-off is a whole day or a half day")
+        return v
+
+
+class CompOffApprove(BaseModel):
+    leave_type_id: UUID
+    note: str = Field(default="", max_length=500)
+
+
+class CompOffReject(BaseModel):
+    note: str = Field(max_length=500)
+
+
+class CompOffOut(BaseModel):
+    id: str
+    employee_id: str
+    employee_name: str
+    work_date: date
+    days: float
+    reason: str
+    status: CompOffStatus
+    leave_type_name: str | None
+    decision_note: str
+    decided_at: datetime | None
+    created_at: datetime
+
+
+class EncashIn(BaseModel):
+    leave_type_id: UUID
+    days: float = Field(gt=0, le=366)
+    note: str = Field(default="", max_length=500)
+
+    @field_validator("days")
+    @classmethod
+    def _halves(cls, v: float) -> float:
+        if (v * 2) != int(v * 2):
+            raise ValueError("Encash whole or half days")
+        return v
+
+
+class EncashOut(BaseModel):
+    id: str
+    employee_id: str
+    leave_type_id: str
+    leave_type_name: str
+    days: float
+    per_day_minor: int | None          # pay: payroll.salary.read only
+    amount_minor: int | None
+    one_off_id: str | None
+    note: str
+    created_at: datetime

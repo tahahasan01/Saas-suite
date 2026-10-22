@@ -58,6 +58,7 @@ KIND_OF = {
     "claim_id": "overtime_claim",
     # assets (wave A, 0087)
     "asset_id": "asset",
+    "comp_off_id": "comp_off",
     "expense_id": "expense_claim",
     "receipt_file_id": "file",
     "cycle_id": "appraisal_cycle",
@@ -144,6 +145,10 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
             """insert into hrms_overtime_claims (tenant_id, employee_id, work_date, minutes)
                select tenant_id, id, '2027-03-03', 30 from hrms_employees where id=$1 returning id""",
             uuid.UUID(employee["id"]))
+        comp_off = await owner.fetchval(
+            """insert into hrms_comp_off_requests (tenant_id, employee_id, work_date, days)
+               select tenant_id, id, '2026-01-04', 1 from hrms_employees where id=$1 returning id""",
+            uuid.UUID(employee["id"]))
     finally:
         await owner.close()
     run = (await c.post("/payroll/runs", json={"month": "2026-09"})).json()
@@ -183,6 +188,7 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
         "boarding_task": boarding["tasks"][0]["id"],
         "appraisal_cycle": cycle["id"], "appraisal": appraisal["id"],
         "expense_claim": expense["id"],
+        "comp_off": str(comp_off),
         # No payslip exists before a run is calculated; any id stands in (it must still 404).
         "payslip": str(uuid.uuid4()),
         "role": (await c.get("/team/roles")).json()[0]["id"],

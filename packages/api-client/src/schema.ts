@@ -3673,6 +3673,93 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/hrms/comp-off": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Requests */
+        get: operations["list_requests_hrms_comp_off_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/comp-off/{comp_off_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve */
+        post: operations["approve_hrms_comp_off__comp_off_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/comp-off/{comp_off_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject */
+        post: operations["reject_hrms_comp_off__comp_off_id__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/employees/{employee_id}/leave-encashments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Encashments */
+        get: operations["list_encashments_hrms_employees__employee_id__leave_encashments_get"];
+        put?: never;
+        /** Create Encashment */
+        post: operations["create_encashment_hrms_employees__employee_id__leave_encashments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/comp-off": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mine */
+        get: operations["mine_me_comp_off_get"];
+        put?: never;
+        /** Ask */
+        post: operations["ask_me_comp_off_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/hrms/expenses": {
         parameters: {
             query?: never;
@@ -7283,6 +7370,76 @@ export interface components {
              */
             mock_gps: boolean;
         };
+        /** CompOffApprove */
+        CompOffApprove: {
+            /**
+             * Leave Type Id
+             * Format: uuid
+             */
+            leave_type_id: string;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /** CompOffIn */
+        CompOffIn: {
+            /**
+             * Work Date
+             * Format: date
+             */
+            work_date: string;
+            /**
+             * Days
+             * @default 1
+             */
+            days: number;
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+        };
+        /** CompOffOut */
+        CompOffOut: {
+            /** Id */
+            id: string;
+            /** Employee Id */
+            employee_id: string;
+            /** Employee Name */
+            employee_name: string;
+            /**
+             * Work Date
+             * Format: date
+             */
+            work_date: string;
+            /** Days */
+            days: number;
+            /** Reason */
+            reason: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "approved" | "rejected";
+            /** Leave Type Name */
+            leave_type_name: string | null;
+            /** Decision Note */
+            decision_note: string;
+            /** Decided At */
+            decided_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** CompOffReject */
+        CompOffReject: {
+            /** Note */
+            note: string;
+        };
         /** CompanyOut */
         CompanyOut: {
             /** Name */
@@ -8364,6 +8521,47 @@ export interface components {
             violations: string[];
             /** Applied */
             applied: boolean;
+        };
+        /** EncashIn */
+        EncashIn: {
+            /**
+             * Leave Type Id
+             * Format: uuid
+             */
+            leave_type_id: string;
+            /** Days */
+            days: number;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /** EncashOut */
+        EncashOut: {
+            /** Id */
+            id: string;
+            /** Employee Id */
+            employee_id: string;
+            /** Leave Type Id */
+            leave_type_id: string;
+            /** Leave Type Name */
+            leave_type_name: string;
+            /** Days */
+            days: number;
+            /** Per Day Minor */
+            per_day_minor: number | null;
+            /** Amount Minor */
+            amount_minor: number | null;
+            /** One Off Id */
+            one_off_id: string | null;
+            /** Note */
+            note: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** EntitlementOut */
         EntitlementOut: {
@@ -21707,6 +21905,249 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AssetOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_requests_hrms_comp_off_get: {
+        parameters: {
+            query?: {
+                status?: ("pending" | "approved" | "rejected") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompOffOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_hrms_comp_off__comp_off_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comp_off_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompOffApprove"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompOffOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reject_hrms_comp_off__comp_off_id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comp_off_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompOffReject"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompOffOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_encashments_hrms_employees__employee_id__leave_encashments_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employee_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EncashOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_encashment_hrms_employees__employee_id__leave_encashments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employee_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EncashIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EncashOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mine_me_comp_off_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompOffOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ask_me_comp_off_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompOffIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompOffOut"];
                 };
             };
             /** @description Validation Error */

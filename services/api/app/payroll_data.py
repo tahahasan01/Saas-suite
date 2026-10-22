@@ -348,3 +348,16 @@ async def load_inputs(conn: Any, *, period_start: date, period_end: date, pay_da
 def _month_end(first: date) -> date:
     nxt = date(first.year + (first.month == 12), first.month % 12 + 1, 1)
     return nxt - timedelta(days=1)
+
+
+async def next_pay_month(conn: Any) -> date:
+    """The month a one-off approved today is paid in (wave C): this month,
+    unless its regular payroll is already final; then next month."""
+    today: date = await conn.fetchval("select current_date")
+    first = today.replace(day=1)
+    closed = await conn.fetchval(
+        "select 1 from payroll_runs where kind = 'regular' and period_start = $1 and status = any($2::text[])",
+        first, list(FINAL))
+    if not closed:
+        return first
+    return date(first.year + (first.month == 12), first.month % 12 + 1, 1)
