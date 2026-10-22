@@ -12,6 +12,7 @@ import { Badge, Button, ErrorState, Field, Input, LoadingRows, Select } from "@/
 import { ActivityActions, LostDialog, PriorityPicker, ScheduleActivity, TypeIcon } from "./bits";
 import { TimelineList } from "./Timeline";
 import { DealLinesPanel } from "./DealLines";
+import { QuotesPanel } from "./Quotes";
 import { LeadContactCard } from "@/components/contacts/LeadContactCard";
 import { TagChip } from "@/components/contacts/ContactForm";
 
@@ -133,6 +134,9 @@ export function LeadDrawer({ leadId, name, stages, onMove, onClose, onChanged }:
             <DealFields lead={lead} disabled={!mayEdit} onSaved={refresh} />
 
             <DealLinesPanel leadId={leadId} open={lead.status === "open"} mayEdit={mayEdit} onChanged={refresh} />
+
+            <QuotesPanel leadId={leadId} leadName={lead.name} open={lead.status === "open"}
+                         hasLines={lead.line_count > 0} onChanged={refresh} />
 
             {lead.status === "won" && <Fulfillment leadId={leadId} />}
 

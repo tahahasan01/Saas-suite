@@ -44,3 +44,50 @@ test.describe("products on a deal", () => {
     await expect(drawer.getByLabel("Value (PKR)")).toBeDisabled();
   });
 });
+
+test.describe("quotes the customer accepts online", () => {
+  test("a rep sends a quote, the customer accepts it from the link, and the deal is won", async ({ page, request, browser }) => {
+    const lead = await freshLead(request);
+    const lines = await request.put(`${API}/crm/leads/${lead.id}/lines`, {
+      data: { lines: [{ description: "Rooftop solar, 5 kW", qty: 1, unit_price_minor: 850_000_00 }] },
+    });
+    expect(lines.ok()).toBeTruthy();
+
+    await page.goto("/crm");
+    await page.getByRole("main").getByRole("button", { name: `Open ${lead.name}` }).click();
+    const drawer = page.getByRole("dialog", { name: lead.name });
+    const quotes = drawer.getByRole("region", { name: "Quotes" });
+    await quotes.getByRole("button", { name: "Send a quote" }).click();
+    await quotes.getByLabel("Terms").fill("50% advance, rest on installation");
+    await quotes.getByRole("button", { name: "Make quote" }).click();
+    await expect(quotes.getByText(/^QT-/)).toBeVisible();
+    await expect(quotes.getByRole("link", { name: "Share on WhatsApp" })).toHaveAttribute("href", /wa\.me/);
+
+    const [quote] = await (await request.get(`${API}/crm/leads/${lead.id}/quotes`)).json();
+
+    // The customer: no session at all.
+    const customer = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+    const cp = await customer.newPage();
+    const res = await cp.goto(quote.link);
+    expect(res?.headers()["referrer-policy"]).toBe("no-referrer");
+    await expect(cp.getByRole("heading", { name: `Quote ${quote.number}` })).toBeVisible();
+    await expect(cp.getByText("Rooftop solar, 5 kW")).toBeVisible();
+    await expect(cp.getByText("50% advance, rest on installation")).toBeVisible();
+    await cp.getByLabel("Your full name").fill("Bilal Ahmed");
+    await cp.getByRole("checkbox").check();
+    await cp.getByRole("button", { name: "Accept quote" }).click();
+    await expect(cp.getByText(/by Bilal Ahmed/)).toBeVisible();
+    await customer.close();
+
+    // Back with the rep: the deal is won and the quote shows who accepted it.
+    await page.reload();
+    await page.getByRole("main").getByRole("button", { name: `Open ${lead.name}` }).click();
+    const again = page.getByRole("dialog", { name: lead.name });
+    await expect(again.getByText("Won", { exact: true }).first()).toBeVisible();
+    const quotesNow = again.getByRole("region", { name: "Quotes" });
+    await expect(quotesNow.getByText("Accepted", { exact: true })).toBeVisible();
+    await expect(quotesNow.getByText(/Accepted by Bilal Ahmed/)).toBeVisible();
+    const after = await (await request.get(`${API}/crm/quotes/${quote.id}`)).json();
+    expect(after.view_count).toBeGreaterThan(0);   // the page's beacon, not the preview GET
+  });
+});

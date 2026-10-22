@@ -53,7 +53,16 @@ export default function nextConfig(phase) {
     },
     async headers() {
       // CSP is per request (it carries a nonce), so middleware.ts sets it.
-      return [{ source: "/:path*", headers: SECURITY_HEADERS }];
+      return [
+        { source: "/:path*", headers: SECURITY_HEADERS },
+        // The customer's quote page (wave D): the link's token is in the path, so
+        // it must not leak through a Referer header, a cache or a search engine.
+        { source: "/q/:path*", headers: [
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+          { key: "Cache-Control", value: "no-store" },
+        ] },
+      ];
     },
   };
 }

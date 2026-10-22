@@ -142,7 +142,8 @@ export type ErrorUi = {
 
 /** Pages that work signed-out; a 401 there is an answer, not an expired session. */
 // kiosk: the shared clock-in screen has no session by design (3F, D-43).
-const PUBLIC = /^\/(login|signup|forgot|reset|verify|accept-invite|pricing|kiosk)?(\/|$)/;
+// q: the customer's quote page; its link is the only credential (wave D).
+const PUBLIC = /^\/(login|signup|forgot|reset|verify|accept-invite|pricing|kiosk|q)?(\/|$)/;
 
 /** The order matters: the first handler that claims an error ends the chain. */
 export function buildChain(ui: ErrorUi): ErrorHandler[] {
