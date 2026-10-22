@@ -15220,6 +15220,87 @@
         }
       }
     },
+    "/hrms/analytics": {
+      "get": {
+        "tags": [
+          "hrms"
+        ],
+        "summary": "Analytics",
+        "operationId": "analytics_hrms_analytics_get",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HrAnalytics"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/hrms/employees/{employee_id}/job-changes": {
       "post": {
         "tags": [
@@ -35975,6 +36056,133 @@
           "name"
         ],
         "title": "HolidayOut"
+      },
+      "HrAnalytics": {
+        "properties": {
+          "months": {
+            "items": {
+              "$ref": "#/components/schemas/HrMonth"
+            },
+            "type": "array",
+            "title": "Months"
+          },
+          "headcount_now": {
+            "type": "integer",
+            "title": "Headcount Now"
+          },
+          "joiners": {
+            "type": "integer",
+            "title": "Joiners"
+          },
+          "leavers": {
+            "type": "integer",
+            "title": "Leavers"
+          },
+          "attrition_pct": {
+            "type": "number",
+            "title": "Attrition Pct"
+          },
+          "absenteeism_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Absenteeism Pct"
+          },
+          "absenteeism_month": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Absenteeism Month"
+          },
+          "leaving_reasons": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Leaving Reasons"
+          },
+          "by_department": {
+            "items": {
+              "$ref": "#/components/schemas/HrDepartment"
+            },
+            "type": "array",
+            "title": "By Department"
+          }
+        },
+        "type": "object",
+        "required": [
+          "months",
+          "headcount_now",
+          "joiners",
+          "leavers",
+          "attrition_pct",
+          "absenteeism_pct",
+          "absenteeism_month",
+          "leaving_reasons",
+          "by_department"
+        ],
+        "title": "HrAnalytics"
+      },
+      "HrDepartment": {
+        "properties": {
+          "department": {
+            "type": "string",
+            "title": "Department"
+          },
+          "headcount": {
+            "type": "integer",
+            "title": "Headcount"
+          },
+          "leavers": {
+            "type": "integer",
+            "title": "Leavers"
+          }
+        },
+        "type": "object",
+        "required": [
+          "department",
+          "headcount",
+          "leavers"
+        ],
+        "title": "HrDepartment"
+      },
+      "HrMonth": {
+        "properties": {
+          "month": {
+            "type": "string",
+            "title": "Month"
+          },
+          "headcount": {
+            "type": "integer",
+            "title": "Headcount"
+          },
+          "joiners": {
+            "type": "integer",
+            "title": "Joiners"
+          },
+          "leavers": {
+            "type": "integer",
+            "title": "Leavers"
+          }
+        },
+        "type": "object",
+        "required": [
+          "month",
+          "headcount",
+          "joiners",
+          "leavers"
+        ],
+        "title": "HrMonth"
       },
       "HrmsSummary": {
         "properties": {

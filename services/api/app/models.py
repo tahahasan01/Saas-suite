@@ -3244,3 +3244,29 @@ class JobChangeOut(BaseModel):
     note: str
     applied_at: datetime | None
     created_at: datetime
+
+
+# ─── HR analytics (wave C, H39) ─────────────────────────────────────────────
+class HrMonth(BaseModel):
+    month: str                       # YYYY-MM
+    headcount: int                   # at the month's end
+    joiners: int
+    leavers: int
+
+
+class HrDepartment(BaseModel):
+    department: str
+    headcount: int
+    leavers: int
+
+
+class HrAnalytics(BaseModel):
+    months: list[HrMonth]
+    headcount_now: int
+    joiners: int
+    leavers: int
+    attrition_pct: float             # leavers over the average headcount, for the range
+    absenteeism_pct: float | None    # absent ÷ working days in the last complete month of the range
+    absenteeism_month: str | None
+    leaving_reasons: dict[str, int]
+    by_department: list[HrDepartment]

@@ -3,6 +3,7 @@
 import { api } from "@/lib/api";
 import { useCan } from "@/lib/can";
 import { ReportView, type ReportDef } from "@/components/reports/ReportView";
+import { HrAnalyticsSection } from "@/components/hrms/HrAnalytics";
 
 const ATTENDANCE: ReportDef = {
   id: "attendance", label: "Attendance", path: "/reports/attendance", cols: [
@@ -36,6 +37,7 @@ export default function HrmsReportsPage() {
   const reports = can("payroll.report.export") ? [ATTENDANCE, PAYROLL] : [ATTENDANCE];
   return (
     <>
+      {can("hrms.employee.read") && <HrAnalyticsSection />}
       <p className="mb-6 text-sm text-fg-muted">Attendance and payroll for your team, ready to download as CSV.</p>
       <ReportView reports={reports} />
     </>

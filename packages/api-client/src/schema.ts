@@ -3673,6 +3673,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/hrms/analytics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Analytics */
+        get: operations["analytics_hrms_analytics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/hrms/employees/{employee_id}/job-changes": {
         parameters: {
             query?: never;
@@ -9524,6 +9541,49 @@ export interface components {
              * @default false
              */
             half_day: boolean;
+        };
+        /** HrAnalytics */
+        HrAnalytics: {
+            /** Months */
+            months: components["schemas"]["HrMonth"][];
+            /** Headcount Now */
+            headcount_now: number;
+            /** Joiners */
+            joiners: number;
+            /** Leavers */
+            leavers: number;
+            /** Attrition Pct */
+            attrition_pct: number;
+            /** Absenteeism Pct */
+            absenteeism_pct: number | null;
+            /** Absenteeism Month */
+            absenteeism_month: string | null;
+            /** Leaving Reasons */
+            leaving_reasons: {
+                [key: string]: number;
+            };
+            /** By Department */
+            by_department: components["schemas"]["HrDepartment"][];
+        };
+        /** HrDepartment */
+        HrDepartment: {
+            /** Department */
+            department: string;
+            /** Headcount */
+            headcount: number;
+            /** Leavers */
+            leavers: number;
+        };
+        /** HrMonth */
+        HrMonth: {
+            /** Month */
+            month: string;
+            /** Headcount */
+            headcount: number;
+            /** Joiners */
+            joiners: number;
+            /** Leavers */
+            leavers: number;
         };
         /** HrmsSummary */
         HrmsSummary: {
@@ -22695,6 +22755,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AssetOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    analytics_hrms_analytics_get: {
+        parameters: {
+            query?: {
+                from?: string | null;
+                to?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HrAnalytics"];
                 };
             };
             /** @description Validation Error */
