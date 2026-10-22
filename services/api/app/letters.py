@@ -70,6 +70,13 @@ def uses_salary(text: str) -> bool:
     return SALARY in _TOKEN.findall(text)
 
 
+def shows_pay(text: str, *, revealed: bool) -> bool:
+    """Whether the issued text carries pay or the full CNIC (security review):
+    the salary always needs pay access; the CNIC is full only when it had it."""
+    used = set(_TOKEN.findall(text))
+    return SALARY in used or (revealed and "employee.cnic" in used)
+
+
 def _day(d: date | None, empty: str = "") -> str:
     return f"{d.day} {d:%B %Y}" if d else empty
 
