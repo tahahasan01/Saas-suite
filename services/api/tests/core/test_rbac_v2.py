@@ -65,7 +65,9 @@ def test_legacy_section_action_maps_onto_the_catalog():
     # Mirrors the old guards exactly: `write` never carried `read` there either.
     assert rbac.legacy_grants("crm", "write") >= {"crm.lead.create", "crm.lead.update"}
     assert rbac.legacy_grants("crm", "admin") >= read | rbac.legacy_grants("crm", "write")
-    assert rbac.legacy_grants("accounts", "admin") == {"invoicing.invoice.approve"}
+    # Accounts approves, takes payments and voids (invoices v2, 0074).
+    assert rbac.legacy_grants("accounts", "admin") == {"invoicing.invoice.approve", "invoicing.payment.record",
+                                                       "invoicing.invoice.void"}
     # Salary and CNIC never ride on an HRMS grant (TR-SEC-36).
     assert not {k for k in rbac.legacy_grants("hrms", "admin") if k.startswith("payroll.")}
 

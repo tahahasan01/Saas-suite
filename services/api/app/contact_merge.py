@@ -42,6 +42,7 @@ REGISTRY: dict[tuple[str, str], Strategy] = {
     ("crm_leads", "contact_id"): "repoint",
     ("crm_invoice_requests", "contact_id"): "repoint",   # v1 history (0074)
     ("invoices", "contact_id"): "repoint",
+    ("customer_ledger", "contact_id"): "repoint",     # khata balances follow the person (0079)
     ("pos_sales", "contact_id"): "repoint",
     ("timeline_events", "contact_id"): "follow",      # append-only
 }

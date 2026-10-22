@@ -106,6 +106,13 @@ register("pos", {
     "pos.price.override": ("pos", "admin"),
     "pos.report.sales": ("pos", "read"),
 })
+register("khata", {
+    # Customer credit (0079): reading accounts and taking payments at the
+    # counter are a cashier's; setting how much a customer may owe isn't.
+    "khata.ledger.read": ("pos", "read"),
+    "khata.payment.record": ("pos", "write"),
+    "khata.limit.manage": ("pos", "admin"),
+})
 register("products", {
     "products.product.read": ("pos", "read"),
     "products.product.create": ("pos", "write"),

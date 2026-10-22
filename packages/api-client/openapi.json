@@ -3010,7 +3010,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PaymentIn"
+                "$ref": "#/components/schemas/app__invoice_models__PaymentIn"
               }
             }
           }
@@ -19493,6 +19493,273 @@
           }
         }
       }
+    },
+    "/khata": {
+      "get": {
+        "tags": [
+          "khata"
+        ],
+        "summary": "Balances",
+        "operationId": "balances_khata_get",
+        "parameters": [
+          {
+            "name": "owing_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "title": "Owing Only"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 200,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BalanceRow"
+                  },
+                  "title": "Response Balances Khata Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/khata/{contact_id}": {
+      "get": {
+        "tags": [
+          "khata"
+        ],
+        "summary": "Statement",
+        "operationId": "statement_khata__contact_id__get",
+        "parameters": [
+          {
+            "name": "contact_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Contact Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "khata"
+        ],
+        "summary": "Set Limit",
+        "operationId": "set_limit_khata__contact_id__patch",
+        "parameters": [
+          {
+            "name": "contact_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Contact Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LimitIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/khata/{contact_id}/payments": {
+      "post": {
+        "tags": [
+          "khata"
+        ],
+        "summary": "Receive Payment",
+        "operationId": "receive_payment_khata__contact_id__payments_post",
+        "parameters": [
+          {
+            "name": "contact_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Contact Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/app__routers__khata__PaymentIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -19523,6 +19790,49 @@
           "password"
         ],
         "title": "AcceptInviteRequest"
+      },
+      "Account": {
+        "properties": {
+          "contact_id": {
+            "type": "string",
+            "title": "Contact Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "balance_minor": {
+            "type": "integer",
+            "title": "Balance Minor"
+          },
+          "credit_limit_minor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credit Limit Minor"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/Entry"
+            },
+            "type": "array",
+            "title": "Entries"
+          }
+        },
+        "type": "object",
+        "required": [
+          "contact_id",
+          "name",
+          "balance_minor",
+          "credit_limit_minor",
+          "entries"
+        ],
+        "title": "Account"
       },
       "ActivityCreate": {
         "properties": {
@@ -20750,6 +21060,52 @@
           "invalid_phones"
         ],
         "title": "BackfillReport"
+      },
+      "BalanceRow": {
+        "properties": {
+          "contact_id": {
+            "type": "string",
+            "title": "Contact Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "phone": {
+            "type": "string",
+            "title": "Phone"
+          },
+          "balance_minor": {
+            "type": "integer",
+            "title": "Balance Minor"
+          },
+          "credit_limit_minor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credit Limit Minor"
+          },
+          "last_entry_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Entry At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "contact_id",
+          "name",
+          "phone",
+          "balance_minor",
+          "credit_limit_minor",
+          "last_entry_at"
+        ],
+        "title": "BalanceRow"
       },
       "BarcodeIn": {
         "properties": {
@@ -24836,6 +25192,81 @@
         ],
         "title": "EntitlementUpdate"
       },
+      "Entry": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "amount_minor": {
+            "type": "integer",
+            "title": "Amount Minor"
+          },
+          "balance_after_minor": {
+            "type": "integer",
+            "title": "Balance After Minor"
+          },
+          "sale_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sale Id"
+          },
+          "receipt_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receipt No"
+          },
+          "method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "amount_minor",
+          "balance_after_minor",
+          "sale_id",
+          "receipt_no",
+          "method",
+          "note",
+          "created_at"
+        ],
+        "title": "Entry"
+      },
       "FbrInvoiceOut": {
         "properties": {
           "sale_id": {
@@ -28566,6 +28997,28 @@
         ],
         "title": "LedgerEntryOut"
       },
+      "LimitIn": {
+        "properties": {
+          "credit_limit_minor": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credit Limit Minor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "credit_limit_minor"
+        ],
+        "title": "LimitIn"
+      },
       "LineOut": {
         "properties": {
           "code": {
@@ -30051,48 +30504,6 @@
           "new_password"
         ],
         "title": "PasswordChange"
-      },
-      "PaymentIn": {
-        "properties": {
-          "method": {
-            "type": "string",
-            "enum": [
-              "cash",
-              "bank",
-              "cheque",
-              "card",
-              "jazzcash",
-              "easypaisa",
-              "raast",
-              "wht_adjustment"
-            ],
-            "title": "Method"
-          },
-          "amount_minor": {
-            "type": "integer",
-            "maximum": 10000000000000.0,
-            "exclusiveMinimum": 0.0,
-            "title": "Amount Minor"
-          },
-          "paid_on": {
-            "type": "string",
-            "format": "date",
-            "title": "Paid On"
-          },
-          "reference": {
-            "type": "string",
-            "maxLength": 120,
-            "title": "Reference",
-            "default": ""
-          }
-        },
-        "type": "object",
-        "required": [
-          "method",
-          "amount_minor",
-          "paid_on"
-        ],
-        "title": "PaymentIn"
       },
       "PaymentInstructions": {
         "properties": {
@@ -36620,6 +37031,95 @@
         },
         "type": "object",
         "title": "WorkflowUpdate"
+      },
+      "app__invoice_models__PaymentIn": {
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "cash",
+              "bank",
+              "cheque",
+              "card",
+              "jazzcash",
+              "easypaisa",
+              "raast",
+              "wht_adjustment"
+            ],
+            "title": "Method"
+          },
+          "amount_minor": {
+            "type": "integer",
+            "maximum": 10000000000000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Amount Minor"
+          },
+          "paid_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Paid On"
+          },
+          "reference": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Reference",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "method",
+          "amount_minor",
+          "paid_on"
+        ],
+        "title": "PaymentIn"
+      },
+      "app__routers__khata__PaymentIn": {
+        "properties": {
+          "amount_minor": {
+            "type": "integer",
+            "maximum": 1000000000000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Amount Minor"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "cash",
+              "card",
+              "jazzcash",
+              "easypaisa",
+              "raast",
+              "bank",
+              "cheque"
+            ],
+            "title": "Method"
+          },
+          "register_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Register Id"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "amount_minor",
+          "method"
+        ],
+        "title": "PaymentIn"
       }
     }
   }

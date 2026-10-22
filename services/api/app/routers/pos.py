@@ -10,7 +10,7 @@ from typing import Any
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 
-from .. import audit, catalog, csv_io, db, fbr, fbr_submit, field_guards, pins, pos_sessions, pricing, rbac, refs, sequences
+from .. import audit, catalog, csv_io, db, fbr, fbr_submit, field_guards, khata, pins, pos_sessions, pricing, rbac, refs, sequences
 from ..deps import AuthContext
 from ..models import (
     DrawerClose,
@@ -398,6 +398,10 @@ async def _record_sale(body: SaleCreate, auth: AuthContext, fingerprint: str) ->
             body.client_uuid, fingerprint, plan.rounding_minor, body.contact_id, session_id, reg["id"],
             body.device_id)
         await pos_sessions.record_tenders(conn, auth.tenant_id, sale_id, session_id, plan)
+        # The khata part goes on the customer's account, in this transaction.
+        on_credit = sum(t.amount_minor for t in plan.tenders if t.method == "khata")
+        if on_credit:
+            await khata.post_sale(conn, auth.tenant_id, body.contact_id, sale_id, on_credit, auth.user_id)
         fbr_on = bool(fbr_cfg and fbr_cfg["enabled"])
         inclusive = bool(fbr_on and fbr_cfg["prices_include_tax"])
         items = []
@@ -789,7 +793,8 @@ async def do_return(sale_id: str, body: ReturnCreate, auth: AuthContext, key: st
         # the other, or both see it as still returnable. Out of scope = 404.
         scope = await scope_of(conn, auth, key)
         sale = await conn.fetchrow(
-            f"""select total_minor, rounding_minor, register_id, payment_method, status, branch_id from pos_sales s
+            f"""select total_minor, rounding_minor, register_id, payment_method, status, branch_id, contact_id
+                  from pos_sales s
                  where s.id=$1 and {where('pos.sale', scope, 's')} for update""", sale_id)
         if sale is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Sale not found")
@@ -869,6 +874,9 @@ async def do_return(sale_id: str, body: ReturnCreate, auth: AuthContext, key: st
                                         session_id, refund_method)
                values ($1,$2,$3,$4,$5,$6,$7,$8) returning id""",
             auth.tenant_id, sale_id, auth.user_id, body.reason, refund, tax_total, session_id, refund_method)
+        if refund_method == "khata" and sale["contact_id"] is not None:
+            # A khata sale is refunded onto the customer's account, not from a drawer.
+            await khata.post_refund(conn, auth.tenant_id, sale["contact_id"], sale_id, return_id, refund, auth.user_id)
 
         items = []
         for row, qty, line_refund in lines:

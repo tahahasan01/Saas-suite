@@ -2408,6 +2408,10 @@ AdjustReason = Literal["adjustment", "damage", "count"]
 # ─── Registers, sessions, split tender (3C, migration 0076) ─────────────────
 TenderMethod = Literal["cash", "card", "jazzcash", "easypaisa", "raast", "bank", "khata"]
 SaleStatus = Literal["completed", "void"]
+LedgerKind = Literal["sale", "refund", "payment", "adjustment"]
+LEDGER_KINDS = list(get_args(LedgerKind))
+LedgerMethod = Literal["cash", "card", "jazzcash", "easypaisa", "raast", "bank", "cheque"]
+LEDGER_METHODS = list(get_args(LedgerMethod))
 SALE_STATUSES = list(get_args(SaleStatus))
 TENDER_METHODS = list(get_args(TenderMethod))
 CashMoveKind = Literal["pay_in", "pay_out", "drop"]

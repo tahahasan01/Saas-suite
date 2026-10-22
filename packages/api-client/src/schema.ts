@@ -4660,6 +4660,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/khata": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Balances */
+        get: operations["balances_khata_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/khata/{contact_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Statement */
+        get: operations["statement_khata__contact_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Set Limit */
+        patch: operations["set_limit_khata__contact_id__patch"];
+        trace?: never;
+    };
+    "/khata/{contact_id}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Receive Payment */
+        post: operations["receive_payment_khata__contact_id__payments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4672,6 +4724,19 @@ export interface components {
             name: string;
             /** Password */
             password: string;
+        };
+        /** Account */
+        Account: {
+            /** Contact Id */
+            contact_id: string;
+            /** Name */
+            name: string;
+            /** Balance Minor */
+            balance_minor: number;
+            /** Credit Limit Minor */
+            credit_limit_minor: number | null;
+            /** Entries */
+            entries: components["schemas"]["Entry"][];
         };
         /** ActivityCreate */
         ActivityCreate: {
@@ -5134,6 +5199,24 @@ export interface components {
              * @default 0
              */
             invoices_linked: number;
+        };
+        /** BalanceRow */
+        BalanceRow: {
+            /** Contact Id */
+            contact_id: string;
+            /** Name */
+            name: string;
+            /** Phone */
+            phone: string;
+            /** Balance Minor */
+            balance_minor: number;
+            /** Credit Limit Minor */
+            credit_limit_minor: number | null;
+            /**
+             * Last Entry At
+             * Format: date-time
+             */
+            last_entry_at: string;
         };
         /** BarcodeIn */
         BarcodeIn: {
@@ -6476,6 +6559,30 @@ export interface components {
             /** Enabled */
             enabled: boolean;
         };
+        /** Entry */
+        Entry: {
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Amount Minor */
+            amount_minor: number;
+            /** Balance After Minor */
+            balance_after_minor: number;
+            /** Sale Id */
+            sale_id: string | null;
+            /** Receipt No */
+            receipt_no: string | null;
+            /** Method */
+            method: string | null;
+            /** Note */
+            note: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** FbrInvoiceOut */
         FbrInvoiceOut: {
             /** Sale Id */
@@ -7782,6 +7889,11 @@ export interface components {
              */
             created_at: string;
         };
+        /** LimitIn */
+        LimitIn: {
+            /** Credit Limit Minor */
+            credit_limit_minor: number | null;
+        };
         /** LineOut */
         LineOut: {
             /** Code */
@@ -8302,26 +8414,6 @@ export interface components {
             current_password: string;
             /** New Password */
             new_password: string;
-        };
-        /** PaymentIn */
-        PaymentIn: {
-            /**
-             * Method
-             * @enum {string}
-             */
-            method: "cash" | "bank" | "cheque" | "card" | "jazzcash" | "easypaisa" | "raast" | "wht_adjustment";
-            /** Amount Minor */
-            amount_minor: number;
-            /**
-             * Paid On
-             * Format: date
-             */
-            paid_on: string;
-            /**
-             * Reference
-             * @default
-             */
-            reference: string;
         };
         /** PaymentInstructions */
         PaymentInstructions: {
@@ -10763,6 +10855,43 @@ export interface components {
             /** Enabled */
             enabled?: boolean | null;
         };
+        /** PaymentIn */
+        app__invoice_models__PaymentIn: {
+            /**
+             * Method
+             * @enum {string}
+             */
+            method: "cash" | "bank" | "cheque" | "card" | "jazzcash" | "easypaisa" | "raast" | "wht_adjustment";
+            /** Amount Minor */
+            amount_minor: number;
+            /**
+             * Paid On
+             * Format: date
+             */
+            paid_on: string;
+            /**
+             * Reference
+             * @default
+             */
+            reference: string;
+        };
+        /** PaymentIn */
+        app__routers__khata__PaymentIn: {
+            /** Amount Minor */
+            amount_minor: number;
+            /**
+             * Method
+             * @enum {string}
+             */
+            method: "cash" | "card" | "jazzcash" | "easypaisa" | "raast" | "bank" | "cheque";
+            /** Register Id */
+            register_id?: string | null;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -12535,7 +12664,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PaymentIn"];
+                "application/json": components["schemas"]["app__invoice_models__PaymentIn"];
             };
         };
         responses: {
@@ -21456,6 +21585,147 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    balances_khata_get: {
+        parameters: {
+            query?: {
+                owing_only?: boolean;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BalanceRow"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    statement_khata__contact_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contact_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Account"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_limit_khata__contact_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contact_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LimitIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Account"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    receive_payment_khata__contact_id__payments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contact_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["app__routers__khata__PaymentIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Account"];
+                };
             };
             /** @description Validation Error */
             422: {

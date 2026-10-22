@@ -92,6 +92,9 @@ export const PERMISSION_KEYS = [
   "pos.sale.void",
   "pos.sale.discount",
   "pos.price.override",
+  "khata.ledger.read",
+  "khata.payment.record",
+  "khata.limit.manage",
   "pos.report.sales",
   // products
   "products.product.read",
