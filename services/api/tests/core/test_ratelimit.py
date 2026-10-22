@@ -237,3 +237,14 @@ async def test_flooding_the_fallback_cannot_evict_a_lock(client, monkeypatch):
         await ratelimit.hit(f"ip:10.9.{i // 250}.{i % 250}:/auth/verify", 5, 900)
     assert await _begin(email, ip, 1) == [423]
     assert await _begin(f"new+{uuid.uuid4().hex[:6]}@example.com", "198.51.100.10", 1) == [429]
+
+
+async def test_decr_gives_one_back_and_never_goes_below_zero():
+    from app import store
+    name = "test:decr:" + __import__("uuid").uuid4().hex
+    assert await store.incr(name, 60) == 1
+    assert await store.incr(name, 60) == 2
+    assert await store.decr(name) == 1
+    assert await store.decr(name) == 0
+    assert await store.decr(name) == 0
+    assert await store.get(name) == 0

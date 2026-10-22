@@ -117,6 +117,13 @@ class _Memory:
         v = self._live(name, k)
         return v[0] if v else 0
 
+    def decr(self, name: str, k: str) -> int:
+        v = self._live(name, k)
+        if v is None or v[0] <= 0:
+            return 0
+        self._put(name, k, v[0] - 1, v[1])
+        return v[0] - 1
+
     def set(self, name: str, k: str, value: int, ttl_s: int) -> None:
         self._put(name, k, value, time.monotonic() + ttl_s)
 
@@ -201,6 +208,25 @@ async def incr(name: str, ttl_s: int) -> int:
 
     out = await _try(op)
     return _mem.incr(name, k, ttl_s) if isinstance(out, _Fallback) else out
+
+
+# Decrement, never below zero, keeping the key's time to live: one round trip.
+_DECR = """
+local v = tonumber(redis.call('GET', KEYS[1]) or '0')
+if v <= 0 then return 0 end
+return redis.call('DECR', KEYS[1])
+"""
+
+
+async def decr(name: str) -> int:
+    """Atomically give one back to a counter (floored at 0)."""
+    k = key(name)
+
+    async def op(r: Any) -> int:
+        return int(await r.eval(_DECR, 1, k))
+
+    out = await _try(op)
+    return _mem.decr(name, k) if isinstance(out, _Fallback) else out
 
 
 async def get(name: str) -> int:
