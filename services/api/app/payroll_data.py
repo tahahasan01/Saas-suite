@@ -66,6 +66,7 @@ select e.id,
        (select count(*) from working_days w
          where w.employee_id = e.id and w.day < current_date
            and w.day >= greatest(coalesce(e.join_date, e.created_at::date), e.created_at::date)
+           and (e.exit_date is null or w.day <= e.exit_date)      -- a leaver isn't absent after leaving
        ) as elapsed_days,
        -- A check-in is presence unless the shift's thresholds derived the
        -- day as an absence (worked under absent_below_min, 0045).
@@ -247,7 +248,8 @@ async def load_inputs(conn: Any, *, period_start: date, period_end: date, pay_da
     ids = [uuid.UUID(i) for i in employee_ids] if employee_ids is not None else None
     emps = await conn.fetch(
         """select * from hrms_employees where status = 'active' and ($1::uuid[] is null or id = any($1::uuid[]))
-            order by name, id""", ids)
+              and (exit_date is null or exit_date >= $2)       -- a leaver is paid to their exit month
+            order by name, id""", ids, period_start)
     if not emps:
         return []
     emp_ids = [e["id"] for e in emps]
@@ -313,7 +315,8 @@ async def load_inputs(conn: Any, *, period_start: date, period_end: date, pay_da
     for e in emps:
         eid = str(e["id"])
         start = max(period_start, e["join_date"] or period_start)
-        segments, row_at_end = _segments(comp_rows.get(eid, []), start, period_end)
+        leaves = e["exit_date"] if e["exit_date"] and e["exit_date"] <= period_end else None
+        segments, row_at_end = _segments(comp_rows.get(eid, []), start, leaves or period_end)
         structure = str(row_at_end["structure_id"]) if row_at_end and row_at_end["structure_id"] else None
         paid = paid_months.get(eid, {})
         assumed = sum(1 for m in months_before
@@ -328,12 +331,14 @@ async def load_inputs(conn: Any, *, period_start: date, period_end: date, pay_da
                                        tax_minor=sum(x for _, x in paid.values()), months=len(paid),
                                        assumed_months=assumed),
             one_offs=one_offs.get(eid, []), advances=advances.get(eid, []), statutory=rules,
-            min_wage_minor=wage["monthly_minor"] if wage else None, province=province, province_source=source)
+            min_wage_minor=wage["monthly_minor"] if wage else None, province=province, province_source=source,
+            leaves_on=leaves)
         snapshot = {
             "name": e["name"], "cnic": e["cnic"], "ntn": e["ntn"], "iban": e["iban"], "bank_name": e["bank_name"],
             "payment_mode": e["payment_mode"], "designation": e["designation"], "department": e["department"],
             "eobi_number": e["eobi_number"], "ss_number": e["ss_number"],
             "join_date": e["join_date"].isoformat() if e["join_date"] else None,
+            "exit_date": leaves.isoformat() if leaves else None,
             "province": province, "province_source": source,
             "base_minor": segments[-1].base_minor if segments else 0}
         out.append(Loaded(inp, snapshot, min_wage_verified=bool(wage["verified"]) if wage else True))

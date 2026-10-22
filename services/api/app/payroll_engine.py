@@ -169,6 +169,9 @@ class EmployeeInput:
     min_wage_minor: int | None = None
     province: str | None = None
     province_source: str = ""
+    # The exit date when they leave in this period (wave C, 0100): no months
+    # follow, so the year's tax is settled on what it actually paid.
+    leaves_on: date | None = None
 
 
 # ── Output ──────────────────────────────────────────────────────────────────
@@ -389,7 +392,7 @@ def withholding(inp: EmployeeInput, ty: payroll.TaxYear, *, taxable_this: int, o
                 recurring_taxable: int) -> tuple[int, dict[str, Any]]:
     """Monthly income tax by annualised YTD projection (D-41, St03 §6.6)."""
     hist = inp.tax_history
-    left = months_left(inp.period_start, ty)
+    left = 1 if inp.leaves_on and inp.leaves_on <= inp.period_end else months_left(inp.period_start, ty)
     without = (hist.taxable_minor + hist.assumed_months * recurring_taxable
                + (taxable_this - one_off_taxable) + recurring_taxable * (left - 1))
     with_one_off = without + one_off_taxable
