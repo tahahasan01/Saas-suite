@@ -3778,6 +3778,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/hrms/attendance/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import Log */
+        post: operations["import_log_hrms_attendance_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/hrms/leave-types": {
         parameters: {
             query?: never;
@@ -6048,6 +6065,17 @@ export interface components {
             seats_used: number;
             /** Sections Used */
             sections_used: number;
+        };
+        /** BiometricImportOut */
+        BiometricImportOut: {
+            /** Imported */
+            imported: number;
+            /** Duplicates */
+            duplicates: number;
+            /** Unknown Codes */
+            unknown_codes: string[];
+            /** Errors */
+            errors: components["schemas"]["ImportRowError"][];
         };
         /** BlackoutCreate */
         BlackoutCreate: {
@@ -20587,6 +20615,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CelebrationSettings"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_log_hrms_attendance_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BiometricImportOut"];
                 };
             };
             /** @description Validation Error */

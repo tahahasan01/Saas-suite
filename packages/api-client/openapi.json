@@ -15569,6 +15569,55 @@
         }
       }
     },
+    "/hrms/attendance/import": {
+      "post": {
+        "tags": [
+          "hrms"
+        ],
+        "summary": "Import Log",
+        "operationId": "import_log_hrms_attendance_import_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BiometricImportOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/hrms/leave-types": {
       "get": {
         "tags": [
@@ -24269,6 +24318,40 @@
           "sections_used"
         ],
         "title": "BillingOut"
+      },
+      "BiometricImportOut": {
+        "properties": {
+          "imported": {
+            "type": "integer",
+            "title": "Imported"
+          },
+          "duplicates": {
+            "type": "integer",
+            "title": "Duplicates"
+          },
+          "unknown_codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Unknown Codes"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/ImportRowError"
+            },
+            "type": "array",
+            "title": "Errors"
+          }
+        },
+        "type": "object",
+        "required": [
+          "imported",
+          "duplicates",
+          "unknown_codes",
+          "errors"
+        ],
+        "title": "BiometricImportOut"
       },
       "BlackoutCreate": {
         "properties": {
