@@ -2240,6 +2240,150 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/contacts/{contact_id}/consents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Consents */
+        get: operations["list_consents_contacts__contact_id__consents_get"];
+        /** Set Consent */
+        put: operations["set_consent_contacts__contact_id__consents_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/segments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Segments */
+        get: operations["list_segments_crm_segments_get"];
+        put?: never;
+        /** Create Segment */
+        post: operations["create_segment_crm_segments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/segments/{segment_id}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preview Segment */
+        get: operations["preview_segment_crm_segments__segment_id__preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Templates */
+        get: operations["list_templates_crm_templates_get"];
+        put?: never;
+        /** Create Template */
+        post: operations["create_template_crm_templates_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/campaigns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Campaigns */
+        get: operations["list_campaigns_crm_campaigns_get"];
+        put?: never;
+        /** Create Campaign */
+        post: operations["create_campaign_crm_campaigns_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/campaigns/{campaign_id}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send Campaign */
+        post: operations["send_campaign_crm_campaigns__campaign_id__send_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/campaigns/{campaign_id}/recipients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Recipients */
+        get: operations["recipients_crm_campaigns__campaign_id__recipients_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/unsubscribe/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Unsubscribe Page
+         * @description Shows who is asking; changes nothing (mail scanners open links).
+         */
+        get: operations["unsubscribe_page_public_unsubscribe__token__get"];
+        put?: never;
+        /** Unsubscribe */
+        post: operations["unsubscribe_public_unsubscribe__token__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/activities": {
         parameters: {
             query?: never;
@@ -6612,6 +6756,59 @@ export interface components {
             /** Layout */
             layout?: ("classic" | "compact" | "bold") | null;
         };
+        /** CampaignIn */
+        CampaignIn: {
+            /** Name */
+            name: string;
+            /**
+             * Channel
+             * @default email
+             * @enum {string}
+             */
+            channel: "email" | "sms" | "whatsapp";
+            /**
+             * Segment Id
+             * Format: uuid
+             */
+            segment_id: string;
+            /**
+             * Template Id
+             * Format: uuid
+             */
+            template_id: string;
+        };
+        /** CampaignOut */
+        CampaignOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Channel
+             * @enum {string}
+             */
+            channel: "email" | "sms" | "whatsapp";
+            /** Segment Id */
+            segment_id: string;
+            /** Template Id */
+            template_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "sent" | "cancelled";
+            /** Queued Count */
+            queued_count: number;
+            /** Skipped Count */
+            skipped_count: number;
+            /** Sent At */
+            sent_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** CashMoveIn */
         CashMoveIn: {
             /**
@@ -6955,6 +7152,44 @@ export interface components {
             sort?: number | null;
             /** Active */
             active?: boolean | null;
+        };
+        /** ConsentIn */
+        ConsentIn: {
+            /**
+             * Channel
+             * @enum {string}
+             */
+            channel: "email" | "sms" | "whatsapp";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "opted_in" | "opted_out";
+            /**
+             * Source
+             * @default
+             */
+            source: string;
+        };
+        /** ConsentOut */
+        ConsentOut: {
+            /**
+             * Channel
+             * @enum {string}
+             */
+            channel: "email" | "sms" | "whatsapp";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "opted_in" | "opted_out";
+            /** Source */
+            source: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /** ContactBrief */
         ContactBrief: {
@@ -7314,15 +7549,25 @@ export interface components {
             /** Amount Minor */
             amount_minor?: number | null;
         };
-        /** CrmSettingsIn */
+        /**
+         * CrmSettingsIn
+         * @description Only the fields sent change.
+         */
         CrmSettingsIn: {
             /** Max Discount Pct */
             max_discount_pct?: number | string | null;
+            /** Campaign Daily Cap */
+            campaign_daily_cap?: number | null;
         };
         /** CrmSettingsOut */
         CrmSettingsOut: {
             /** Max Discount Pct */
             max_discount_pct?: number | null;
+            /**
+             * Campaign Daily Cap
+             * @default 500
+             */
+            campaign_daily_cap: number;
         };
         /** CrmSummary */
         CrmSummary: {
@@ -11015,6 +11260,22 @@ export interface components {
              */
             reason: string;
         };
+        /** RecipientOut */
+        RecipientOut: {
+            /** Contact Id */
+            contact_id: string;
+            /** Name */
+            name: string;
+            /** Address */
+            address: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "skipped";
+            /** Skip Reason */
+            skip_reason: ("no_address" | "no_consent" | "opted_out" | "daily_cap") | null;
+        };
         /**
          * RecomputeCreate
          * @description The one-time "recompute this tax year" run (St03 risk 2).
@@ -11852,6 +12113,54 @@ export interface components {
             overdue: components["schemas"]["ForecastBucket"];
             no_date: components["schemas"]["ForecastBucket"];
         };
+        /**
+         * SegmentFilter
+         * @description The only things a segment can filter on (compiled to parameterised SQL).
+         */
+        SegmentFilter: {
+            /** Tag Ids */
+            tag_ids?: string[];
+            /** Kind */
+            kind?: ("person" | "company") | null;
+            /** Roles */
+            roles?: ("customer" | "supplier" | "patient" | "student" | "parent" | "partner")[];
+            /** City */
+            city?: string | null;
+            /** Has Email */
+            has_email?: boolean | null;
+        };
+        /** SegmentIn */
+        SegmentIn: {
+            /** Name */
+            name: string;
+            filter?: components["schemas"]["SegmentFilter"];
+        };
+        /** SegmentOut */
+        SegmentOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            filter: components["schemas"]["SegmentFilter"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** SegmentPreview */
+        SegmentPreview: {
+            /** Total */
+            total: number;
+            /** Reachable */
+            reachable: number;
+            /** Skipped */
+            skipped: {
+                [key: string]: number;
+            };
+            /** Sample */
+            sample: components["schemas"]["PersonOut"][];
+        };
         /** SequenceOut */
         SequenceOut: {
             /** Id */
@@ -12583,6 +12892,45 @@ export interface components {
             /** Roles */
             roles?: components["schemas"]["RoleRef"][];
         };
+        /** TemplateIn */
+        TemplateIn: {
+            /** Name */
+            name: string;
+            /**
+             * Channel
+             * @default email
+             * @enum {string}
+             */
+            channel: "email" | "sms" | "whatsapp";
+            /**
+             * Subject
+             * @default
+             */
+            subject: string;
+            /** Body */
+            body: string;
+        };
+        /** TemplateOut */
+        TemplateOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Channel
+             * @enum {string}
+             */
+            channel: "email" | "sms" | "whatsapp";
+            /** Subject */
+            subject: string;
+            /** Body */
+            body: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** TenantOut */
         TenantOut: {
             /** Id */
@@ -12726,6 +13074,18 @@ export interface components {
             day: string;
             /** Value */
             value: number;
+        };
+        /** UnsubscribePage */
+        UnsubscribePage: {
+            /** Business Name */
+            business_name: string;
+            /**
+             * Channel
+             * @enum {string}
+             */
+            channel: "email" | "sms" | "whatsapp";
+            /** Done */
+            done: boolean;
         };
         /** UpgradeRequest */
         UpgradeRequest: {
@@ -18070,6 +18430,437 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WebFormAnswer"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_consents_contacts__contact_id__consents_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contact_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsentOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_consent_contacts__contact_id__consents_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contact_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsentIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_segments_crm_segments_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SegmentOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_segment_crm_segments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SegmentIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SegmentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_segment_crm_segments__segment_id__preview_get: {
+        parameters: {
+            query?: {
+                channel?: "email" | "sms" | "whatsapp";
+            };
+            header?: never;
+            path: {
+                segment_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SegmentPreview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_templates_crm_templates_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_template_crm_templates_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_campaigns_crm_campaigns_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_campaign_crm_campaigns_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CampaignIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_campaign_crm_campaigns__campaign_id__send_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    recipients_crm_campaigns__campaign_id__recipients_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipientOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unsubscribe_page_public_unsubscribe__token__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnsubscribePage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unsubscribe_public_unsubscribe__token__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnsubscribePage"];
                 };
             };
             /** @description Validation Error */

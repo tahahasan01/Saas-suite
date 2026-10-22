@@ -187,6 +187,10 @@ register("crm", {
     "crm.quote.send": ("crm", "write"),
     # Targets (0123): setting what reps must reach is a manager's.
     "crm.target.manage": ("crm", "admin"),
+    # Campaigns (0124): drafting lists, templates and campaigns is a rep's;
+    # sending to customers in bulk is a manager's.
+    "crm.campaign.manage": ("crm", "write"),
+    "crm.campaign.send": ("crm", "admin"),
 })
 # Contacts (D-30) is a supporting module of CRM, POS and invoicing. Until the
 # module registry lands its keys ride on the `crm` grant; the till reaches

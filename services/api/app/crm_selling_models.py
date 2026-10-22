@@ -10,7 +10,18 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from .models import QuoteStatus, TargetMetric, WebFormField
+from .models import (
+    CampaignStatus,
+    ContactKind,
+    ContactRole,
+    ConsentStatus,
+    MessageChannel,
+    QuoteStatus,
+    RecipientStatus,
+    SkipReason,
+    TargetMetric,
+    WebFormField,
+)
 
 
 class DealLineIn(BaseModel):
@@ -72,11 +83,14 @@ class DealProductOut(BaseModel):
 
 class CrmSettingsOut(BaseModel):
     max_discount_pct: float | None = None
+    campaign_daily_cap: int = 500
 
 
 class CrmSettingsIn(BaseModel):
+    """Only the fields sent change."""
     model_config = ConfigDict(extra="forbid")
     max_discount_pct: Decimal | None = Field(default=None, ge=0, le=100, decimal_places=2)
+    campaign_daily_cap: int | None = Field(default=None, ge=0, le=100000)
 
 
 # ── Quotes (0121) ───────────────────────────────────────────────────────────
@@ -338,3 +352,100 @@ class SalesForecastOut(BaseModel):
     months: list[ForecastBucket]
     overdue: ForecastBucket       # open deals whose close date has passed
     no_date: ForecastBucket       # open deals with no close date
+
+
+# ── Consent, segments, templates, campaigns (0124) ──────────────────────────
+class ConsentIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    channel: MessageChannel
+    status: ConsentStatus
+    source: str = Field(default="", max_length=120)
+
+
+class ConsentOut(BaseModel):
+    channel: MessageChannel
+    status: ConsentStatus
+    source: str
+    updated_at: datetime
+
+
+class SegmentFilter(BaseModel):
+    """The only things a segment can filter on (compiled to parameterised SQL)."""
+    model_config = ConfigDict(extra="forbid")
+    tag_ids: list[UUID] = Field(default_factory=list, max_length=20)
+    kind: ContactKind | None = None
+    roles: list[ContactRole] = Field(default_factory=list, max_length=6)
+    city: str | None = Field(default=None, max_length=80)
+    has_email: bool | None = None
+
+
+class SegmentIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str = Field(min_length=1, max_length=120)
+    filter: SegmentFilter = Field(default_factory=SegmentFilter)
+
+
+class SegmentOut(BaseModel):
+    id: str
+    name: str
+    filter: SegmentFilter
+    created_at: datetime
+
+
+class SegmentPreview(BaseModel):
+    total: int
+    reachable: int
+    skipped: dict[str, int]
+    sample: list[PersonOut]
+
+
+class TemplateIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str = Field(min_length=1, max_length=120)
+    channel: MessageChannel = "email"
+    subject: str = Field(default="", max_length=200)
+    body: str = Field(min_length=1, max_length=10000)
+
+
+class TemplateOut(BaseModel):
+    id: str
+    name: str
+    channel: MessageChannel
+    subject: str
+    body: str
+    created_at: datetime
+
+
+class CampaignIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str = Field(min_length=1, max_length=120)
+    channel: MessageChannel = "email"
+    segment_id: UUID
+    template_id: UUID
+
+
+class CampaignOut(BaseModel):
+    id: str
+    name: str
+    channel: MessageChannel
+    segment_id: str
+    template_id: str
+    status: CampaignStatus
+    queued_count: int
+    skipped_count: int
+    sent_at: datetime | None
+    created_at: datetime
+
+
+class RecipientOut(BaseModel):
+    contact_id: str
+    name: str
+    address: str
+    status: RecipientStatus
+    skip_reason: SkipReason | None
+
+
+class UnsubscribePage(BaseModel):
+    business_name: str
+    channel: MessageChannel
+    done: bool

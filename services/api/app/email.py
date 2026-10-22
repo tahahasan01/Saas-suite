@@ -85,11 +85,11 @@ def _send_smtp(to: str, subject: str, body: str) -> None:
 
 
 # ── Enqueue (inside the caller's transaction) ───────────────────────────────
-async def _enqueue(conn, tenant_id: str, template: str, to: str, **params) -> int:
+async def _enqueue(conn, tenant_id: str, template: str, to: str, *, run_after=None, **params) -> int:
     return await conn.fetchval(
-        """insert into outbox (tenant_id, kind, dedup_key, payload, max_attempts)
-           values ($1, $2, $3, $4, $5) returning id""",
-        tenant_id, KIND, uuid.uuid4().hex, {"template": template, "to": to, **params}, MAX_ATTEMPTS)
+        """insert into outbox (tenant_id, kind, dedup_key, payload, max_attempts, run_after)
+           values ($1, $2, $3, $4, $5, coalesce($6, now())) returning id""",
+        tenant_id, KIND, uuid.uuid4().hex, {"template": template, "to": to, **params}, MAX_ATTEMPTS, run_after)
 
 
 async def queue_password_reset(conn, tenant_id: str, user_id: str, to: str) -> int:
@@ -111,6 +111,14 @@ async def queue_invoice_overdue(conn, tenant_id: str, to: str, *, company: str, 
                                 due: str, balance_minor: int) -> int:
     return await _enqueue(conn, tenant_id, "invoice_overdue", to, company=company, customer=customer,
                           number=number, due=due, balance_minor=balance_minor)
+
+
+async def queue_campaign(conn, tenant_id: str, to: str, *, subject: str, body: str, business: str,
+                         unsubscribe_token: str, run_after=None) -> int:
+    """A marketing email (wave D campaigns), already merged; `run_after`
+    holds it past the quiet hours."""
+    return await _enqueue(conn, tenant_id, "campaign", to, run_after=run_after, subject=subject, body=body,
+                          business=business, unsubscribe_url=f"{WEB}/u/{unsubscribe_token}")
 
 
 # ── Rendering (at delivery: the link's token is minted here) ────────────────
@@ -138,6 +146,9 @@ async def _render(row) -> tuple[str, str]:
         return (f"Payment reminder: invoice {p['number']} from {p['company']}",
                 f"Dear {p['customer']},\n\nInvoice {p['number']} was due on {p['due']} and {amount} is still "
                 f"outstanding. If you've already paid, please ignore this reminder.\n\nThank you,\n{p['company']}")
+    if template == "campaign":
+        return (p["subject"] or p["business"],
+                f"{p['body']}\n\n--\n{p['business']}\nTo stop these emails: {p['unsubscribe_url']}")
     raise ValueError(f"unknown email template {template!r}")
 
 

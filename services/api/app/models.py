@@ -239,6 +239,12 @@ QuoteStatus = Literal["sent", "accepted", "declined", "superseded", "cancelled"]
 WebFormField = Literal["phone", "email", "company", "city", "message"]
 # Sales targets (0123).
 TargetMetric = Literal["won_value", "invoiced", "collected"]
+# Consent and campaigns (0124).
+MessageChannel = Literal["email", "sms", "whatsapp"]
+ConsentStatus = Literal["opted_in", "opted_out"]
+CampaignStatus = Literal["draft", "sent", "cancelled"]
+RecipientStatus = Literal["queued", "skipped"]
+SkipReason = Literal["no_address", "no_consent", "opted_out", "daily_cap"]
 LEAD_STATUSES = list(get_args(LeadStatus))
 # Activities (D-32, 0063). Polymorphic: 'contact' arrives with the contacts module.
 ActivityEntity = Literal["lead", "contact"]

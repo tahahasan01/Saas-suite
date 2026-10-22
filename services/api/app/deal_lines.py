@@ -50,9 +50,10 @@ async def read(conn: asyncpg.Connection, lead_id: str) -> DealLines:
 
 
 async def settings(conn: asyncpg.Connection) -> CrmSettingsOut:
-    row = await conn.fetchrow("select max_discount_pct from crm_settings")
+    row = await conn.fetchrow("select max_discount_pct, campaign_daily_cap from crm_settings")
     pct = row["max_discount_pct"] if row else None
-    return CrmSettingsOut(max_discount_pct=float(pct) if pct is not None else None)
+    return CrmSettingsOut(max_discount_pct=float(pct) if pct is not None else None,
+                          campaign_daily_cap=row["campaign_daily_cap"] if row else 500)
 
 
 async def _products(conn: asyncpg.Connection, lines: list[DealLineIn]) -> dict[Any, asyncpg.Record]:
@@ -77,9 +78,9 @@ async def replace(conn: asyncpg.Connection, tenant_id: str, actor_id: str, lead_
                   lines: list[DealLineIn], tax_inclusive: bool, *, can_override: bool) -> DealLines:
     """Price `lines` and make them the deal's lines; the deal's value follows."""
     before = await leads.lock(conn, lead_id)
+    catalog = await _products(conn, lines)      # ids first: a foreign product is a 404 whatever the deal's state
     if before["status"] != "open":
         raise HTTPException(status.HTTP_409_CONFLICT, "Only an open deal's products can change")
-    catalog = await _products(conn, lines)
     rows: list[dict[str, Any]] = []
     for ln in lines:
         p = catalog.get(ln.product_id) if ln.product_id else None

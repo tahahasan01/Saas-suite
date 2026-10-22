@@ -87,11 +87,13 @@ async def get_settings(auth: AuthContext = Depends(perm("crm.lead.read"))) -> Cr
 async def put_settings(body: CrmSettingsIn,
                        auth: AuthContext = Depends(perm("crm.settings.manage"))) -> CrmSettingsOut:
     async with db.tenant_conn(auth.tenant_id) as conn:
-        await conn.execute(
-            """insert into crm_settings (tenant_id, max_discount_pct) values ($1, $2)
-               on conflict (tenant_id) do update set max_discount_pct = excluded.max_discount_pct,
-                                                     updated_at = now()""",
-            auth.tenant_id, body.max_discount_pct)
+        fields = body.model_dump(exclude_unset=True)
+        if fields.get("campaign_daily_cap", 0) is None:
+            fields.pop("campaign_daily_cap")      # not nullable: absent means unchanged
+        await conn.execute("insert into crm_settings (tenant_id) values ($1) on conflict do nothing", auth.tenant_id)
+        if fields:
+            cols = ", ".join(f"{k} = ${i + 1}" for i, k in enumerate(fields))
+            await conn.execute(f"update crm_settings set {cols}, updated_at = now()", *fields.values())
         return await deal_lines.settings(conn)
 
 

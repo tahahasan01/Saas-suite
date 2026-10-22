@@ -158,6 +158,11 @@ APP_USER: dict[str, set[str]] = {
     "crm_web_forms":        {S, I, U},          # switched off, never deleted
     "crm_assignment_pool":  {S, I, U, D},       # members added and removed
     "crm_targets":          {S, I, U, D},       # set, replaced and removed by managers
+    "contact_consents":     {S, I, U},          # per channel; history in the audit/timeline
+    "crm_segments":         {S, I, U},          # archived, never deleted
+    "crm_templates":        {S, I, U},          # archived, never deleted
+    "crm_campaigns":        {S, I, U},          # draft -> sent; never deleted
+    "crm_campaign_recipients": {S, I},          # written once, when sent
     # catalog v2 and stock (0075)
     "pos_categories":       {S, I, U},          # retired, never deleted
     "pos_product_barcodes": {S, I, D},

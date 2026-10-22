@@ -152,6 +152,8 @@ export const PERMISSION_KEYS = [
   "crm.deal.discount_override",
   "crm.quote.send",
   "crm.target.manage",
+  "crm.campaign.manage",
+  "crm.campaign.send",
   // contacts
   "contacts.contact.read",
   "contacts.contact.create",

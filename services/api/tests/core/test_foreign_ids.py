@@ -64,6 +64,8 @@ KIND_OF = {
     "form_id": "web_form",
     # targets (wave D, 0123)
     "target_id": "target",
+    # campaigns (wave D, 0124)
+    "segment_id": "segment", "template_id": "template", "campaign_id": "campaign",
 }
 
 # Path parameters that are not ids: a fixed, valid value. (scheme_code names
@@ -163,7 +165,12 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
     web_form = (await c.post("/crm/web-forms", json={"name": "Probe form"})).json()
     target = (await c.put("/crm/targets", json={"month": "2027-04", "metric": "won_value",
                                                 "amount_minor": 100})).json()
+    segment = (await c.post("/crm/segments", json={"name": "Probe segment"})).json()
+    template = (await c.post("/crm/templates", json={"name": "Probe", "body": "Hi"})).json()
+    campaign = (await c.post("/crm/campaigns", json={"name": "Probe", "segment_id": segment["id"],
+                                                     "template_id": template["id"]})).json()
     return {
+        "segment": segment["id"], "template": template["id"], "campaign": campaign["id"],
         "target": target["id"],
         "quote": quote["id"], "web_form": web_form["id"],
         "activity_type": activity_type["id"], "activity": activity["id"],
