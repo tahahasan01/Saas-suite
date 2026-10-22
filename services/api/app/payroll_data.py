@@ -38,66 +38,80 @@ with leave as (
     from hrms_leave_requests l left join hrms_leave_types lt on lt.id = l.leave_type_id
    where l.status = 'approved'
 ),
+emp as (
+  select e.* from hrms_employees e
+   where e.status = 'active' and ($3::uuid[] is null or e.id = any($3::uuid[]))
+),
+-- Each employee's own working days: the weekly rest days and the holidays
+-- that apply to THEM (federal, company, their work location's province; never
+-- another province's or an optional day — hrms_employee_holidays, 0067).
 working_days as (
-  select d::date as day
-    from generate_series($1::date,
-                         ($1::date + interval '1 month' - interval '1 day')::date,
-                         interval '1 day') d
+  select e.id as employee_id, d::date as day
+    from emp e
+   cross join generate_series($1::date,
+                              ($1::date + interval '1 month' - interval '1 day')::date,
+                              interval '1 day') d
    where not (extract(dow from d)::int = any($2::int[]))
-     and not exists (select 1 from hrms_holidays h where h.holiday_date = d::date)
+     and not exists (select 1 from hrms_employee_holidays(
+                       e.id, $1::date, ($1::date + interval '1 month' - interval '1 day')::date) h
+                      where h.holiday_date = d::date)
 )
 select e.id,
        -- Per-day pay divides by the whole month's working days …
-       (select count(*) from working_days) as month_days,
+       (select count(*) from working_days w where w.employee_id = e.id) as month_days,
        -- … and only *completed* working days can be judged: `< current_date`,
        -- never `<=`, or everyone is absent until they clock in this morning.
        -- The created_at floor matters too — without it a business that signs up
        -- mid-month sees staff docked for days before the system existed.
        (select count(*) from working_days w
-         where w.day < current_date
+         where w.employee_id = e.id and w.day < current_date
            and w.day >= greatest(coalesce(e.join_date, e.created_at::date), e.created_at::date)
        ) as elapsed_days,
        -- A check-in is presence unless the shift's thresholds derived the
        -- day as an absence (worked under absent_below_min, 0045).
        (select count(distinct a.work_date) from hrms_attendance a
          where a.employee_id = e.id and a.check_in is not null and a.status <> 'absent'
-           and a.work_date in (select day from working_days)) as present_days,
+           and a.work_date in (select day from working_days w where w.employee_id = e.id)) as present_days,
        -- Half days cost half a day, unless approved leave or WFH covers them.
        (select count(distinct a.work_date) from hrms_attendance a
          where a.employee_id = e.id and a.status = 'half_day'
-           and a.work_date in (select day from working_days)
+           and a.work_date in (select day from working_days w where w.employee_id = e.id)
            and not exists (select 1 from leave l
                             where l.employee_id = e.id
                               and a.work_date between l.from_date and l.to_date)) as half_days,
        (select count(*) from working_days w
-         where w.day < current_date
+         where w.employee_id = e.id and w.day < current_date
            and exists (select 1 from leave l
                         where l.employee_id = e.id and not l.is_wfh and l.is_paid
                           and w.day between l.from_date and l.to_date)) as paid_leave_days,
        (select count(*) from working_days w
-         where w.day < current_date
+         where w.employee_id = e.id and w.day < current_date
            and exists (select 1 from leave l
                         where l.employee_id = e.id and not l.is_wfh and not l.is_paid
                           and w.day between l.from_date and l.to_date)) as unpaid_leave_days,
        -- Approved WFH is time worked. It counts toward presence and is never
        -- deducted; the `is_wfh` filters above keep it out of leave.
        (select count(*) from working_days w
-         where w.day < current_date
+         where w.employee_id = e.id and w.day < current_date
            and exists (select 1 from leave l
                         where l.employee_id = e.id and l.is_wfh
                           and w.day between l.from_date and l.to_date)) as wfh_days
-  from hrms_employees e
- where e.status = 'active' and ($3::uuid[] is null or e.id = any($3::uuid[]))
+  from emp e
 """
 
 
 async def working_days(conn: Any, first: date) -> int:
+    """The month's working days for the page headline: the holidays everyone
+    gets (federal and company calendars). Each payslip counts its own, with
+    the employee's province on top."""
     off = await conn.fetchval("select weekly_off_days from tenants where id = current_setting('app.tenant_id')::uuid")
     return int(await conn.fetchval(
         """select count(*) from generate_series($1::date, ($1::date + interval '1 month' - interval '1 day')::date,
                                                  interval '1 day') d
             where not (extract(dow from d)::int = any($2::int[]))
-              and not exists (select 1 from hrms_holidays h where h.holiday_date = d::date)""",
+              and not exists (select 1 from hrms_holidays h join hrms_holiday_calendars c on c.id = h.calendar_id
+                               where h.holiday_date = d::date and h.kind <> 'optional'
+                                 and c.scope in ('federal', 'company'))""",
         first, list(off or [0])))
 
 

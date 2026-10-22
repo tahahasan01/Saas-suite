@@ -8,7 +8,7 @@ from datetime import date
 
 import asyncpg
 
-from app import db, holidays
+from app import db, holidays, payroll_data
 from app.config import settings
 
 
@@ -168,3 +168,47 @@ async def test_editing_holidays_needs_the_holiday_key(client, tenant):
     assert (await client.get("/hrms/holidays")).status_code == 200
     assert (await client.post("/hrms/holidays", json={"holiday_date": "2030-01-01", "name": "x"})).status_code == 403
     assert (await client.post("/hrms/holiday-calendars", json={"name": "C", "scope": "company"})).status_code == 403
+
+
+async def test_payroll_working_days_follow_the_employees_own_holidays(client, tenant):
+    """Payroll used to drop every holiday in the tenant: a Punjab holiday or
+    an optional day shortened a Karachi employee's month and raised their
+    per-day deduction. Only federal, company and their province's days count."""
+    emp = tenant.employee_id
+    fed = next(c for c in (await _calendars(client)).values() if c["scope"] == "federal")
+    sd = (await client.post("/hrms/holiday-calendars",
+                            json={"name": "Sindh", "scope": "province", "province": "SD"})).json()
+    pb = (await client.post("/hrms/holiday-calendars",
+                            json={"name": "Punjab", "scope": "province", "province": "PB"})).json()
+    async with db.tenant_conn(tenant.tenant_id) as conn:
+        before = (await payroll_data.absence_counts(conn, date(2030, 7, 1), [uuid.UUID(emp)]))[emp].working_days
+    # July 2030: the 2nd–5th are Tuesday–Friday, never the default Sunday off.
+    for cal, d, kind in ((fed, "2030-07-02", "public"), (sd, "2030-07-03", "public"),
+                         (pb, "2030-07-04", "public"), (fed, "2030-07-05", "optional")):
+        assert (await client.post("/hrms/holidays", json={"holiday_date": d, "name": d, "kind": kind,
+                                                          "calendar_id": cal["id"]})).status_code == 201
+    loc = (await client.post("/hrms/locations", json={"name": "Karachi office", "province": "SD"})).json()
+    await client.patch(f"/hrms/employees/{emp}/job", json={"location_id": loc["id"]})
+    async with db.tenant_conn(tenant.tenant_id) as conn:
+        after = (await payroll_data.absence_counts(conn, date(2030, 7, 1), [uuid.UUID(emp)]))[emp].working_days
+        headline = await payroll_data.working_days(conn, date(2030, 7, 1))
+    assert after == before - 2                      # federal + Sindh; not Punjab's, not the optional day
+    assert headline == before - 1                   # the page headline counts the federal day only
+
+
+async def test_the_week_grid_shows_only_the_employees_own_holidays(client, tenant):
+    emp = tenant.employee_id
+    today = (await client.get("/hrms/attendance/week")).json()["days"][-1]
+    pb = (await client.post("/hrms/holiday-calendars",
+                            json={"name": "Punjab", "scope": "province", "province": "PB"})).json()
+    loc = (await client.post("/hrms/locations", json={"name": "Karachi office", "province": "SD"})).json()
+    await client.patch(f"/hrms/employees/{emp}/job", json={"location_id": loc["id"]})
+    await client.post("/hrms/holidays", json={"holiday_date": today, "name": "Punjab day", "calendar_id": pb["id"]})
+
+    def cell(week):
+        return next(r for r in week["employees"] if r["id"] == emp)["cells"][-1]
+    assert cell((await client.get("/hrms/attendance/week")).json()) != "holiday"
+    sd = (await client.post("/hrms/holiday-calendars",
+                            json={"name": "Sindh", "scope": "province", "province": "SD"})).json()
+    await client.post("/hrms/holidays", json={"holiday_date": today, "name": "Sindh day", "calendar_id": sd["id"]})
+    assert cell((await client.get("/hrms/attendance/week")).json()) == "holiday"

@@ -259,8 +259,11 @@ async def attendance_week(auth: AuthContext = Depends(require("hrms", "read"))):
         leave = await conn.fetch(
             """select employee_id, request_type, from_date, to_date from hrms_leave_requests
                 where status='approved' and to_date >= $1 and from_date <= $2""", days[0], today)
-        holidays = {r["holiday_date"] for r in await conn.fetch(
-            "select holiday_date from hrms_holidays where holiday_date between $1 and $2", days[0], today)}
+        # Each employee's own holidays (their province, never another's), as payroll counts them.
+        holidays = {(r["employee_id"], r["holiday_date"]) for r in await conn.fetch(
+            """select e.id as employee_id, h.holiday_date
+                 from hrms_employees e cross join lateral hrms_employee_holidays(e.id, $1, $2) h
+                where e.status = 'active'""", days[0], today)}
         off_days = set(await conn.fetchval(
             "select weekly_off_days from tenants where id=$1", auth.tenant_id) or [0])
 
@@ -276,7 +279,7 @@ async def attendance_week(auth: AuthContext = Depends(require("hrms", "read"))):
             return derived                     # 'present' | 'late' | 'half_day'
         if (emp["id"], d) in on_leave:
             return on_leave[(emp["id"], d)]
-        if d in holidays:
+        if (emp["id"], d) in holidays:
             return "holiday"
         if d.isoweekday() % 7 in off_days:     # ISO Mon=1..Sun=7 -> dow Sun=0
             return "off"
