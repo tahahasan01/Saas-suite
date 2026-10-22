@@ -168,3 +168,20 @@ async def test_payroll_report_for_an_approved_run_is_audited(client, tenant):
     assert audited
     draft = (await client.post("/payroll/runs", json={"month": "2026-07"})).json()
     assert (await client.get(f"/reports/payroll?run_id={draft['id']}")).status_code == 409
+
+
+async def test_the_attendance_report_answers_only_to_an_all_grant(client, tenant):
+    """The report is tenant-wide. hrms.attendance.read can't be granted at
+    'own' or 'team' yet (it isn't scope-wired), so only 'all' holders reach
+    it: the same people who see everyone on /hrms/attendance. Wiring the key
+    later makes test_scope_wiring demand this route filter too."""
+    for scope in ("own", "team"):
+        r = await client.post("/roles", json={"name": f"Att {scope} {uuid.uuid4().hex[:4]}",
+                                              "grants": [{"permission_key": "hrms.attendance.read", "scope": scope}]})
+        assert r.status_code == 422 and "must be 'all'" in r.json()["detail"]
+    reader = await _role(client, [{"permission_key": "hrms.attendance.read", "scope": "all"}])
+    mate, _, _ = await _user_on(client, [reader])
+    try:
+        assert (await mate.get("/reports/attendance")).status_code == 200
+    finally:
+        await mate.aclose()
