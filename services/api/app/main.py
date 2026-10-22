@@ -50,6 +50,7 @@ from .routers import (  # org data (3A, p3-orgdata)
     pos_cashiers,
     pos_sync,
     reports,
+    restaurant_setup,
     profile,
     roles,
     sequences,
@@ -168,6 +169,7 @@ app.include_router(khata_routes.router)   # customer credit (3C, 0079)
 app.include_router(pos_cashiers.router)   # cashier = employee PIN (3C, 0080)
 app.include_router(pos_sync.router)       # offline till sync and review (3D, 0081)
 app.include_router(reports.router)        # reports with CSV (3G)
+app.include_router(restaurant_setup.router)   # floors, tables, stations (wave B, 0089)
 
 
 @app.exception_handler(asyncpg.DataError)

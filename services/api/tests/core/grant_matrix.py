@@ -99,6 +99,10 @@ APP_USER: dict[str, set[str]] = {
     "hrms_overtime_claims":    {S, I, U},       # decided, never deleted (0086)
     "hrms_assets":             {S, I, U},       # retired, never deleted (0087)
     "hrms_asset_assignments":  {S, I, U},       # closed on return, never deleted
+    "restaurant_floors":       {S, I, U},       # retired, never deleted (0089)
+    "restaurant_tables":       {S, I, U},
+    "restaurant_stations":     {S, I, U},
+    "restaurant_station_categories": {S, I, D},   # the list is replaced
     # attendance v2 (0066)
     "hrms_kiosks":          {S, I, U},          # revoke; last_seen_at is written by the owner
     "hrms_attendance_corrections": {S, I, U},   # decided in place, audited by trigger

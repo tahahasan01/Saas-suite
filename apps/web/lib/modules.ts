@@ -9,7 +9,7 @@
 import {
   Banknote, BarChart3, BookUser, Boxes, CalendarCheck, CalendarDays, ClipboardList, Clock, FileText, Gauge,
   HandCoins, KanbanSquare, Laptop, LayoutGrid, type LucideIcon, Megaphone, Palmtree, Receipt, RotateCcw,
-  Settings, ShoppingCart, Sparkles, Store, Truck, UserRound, Users, Wallet, Workflow,
+  Settings, ShoppingCart, Sparkles, Store, Truck, UserRound, Users, UtensilsCrossed, Wallet, Workflow,
 } from "lucide-react";
 import type { MeResponse, Section } from "@business-os/types";
 
@@ -80,6 +80,15 @@ export const MODULES: Module[] = [
       { href: "/pos/returns", label: "Returns" },
       { href: "/pos/insights", label: "Insights" },
       { href: "/pos/reports", label: "Reports" },
+    ],
+  },
+  {
+    // Table service (wave B, 0089): only restaurants turn it on.
+    key: "restaurant", label: () => "Tables & kitchen", icon: UtensilsCrossed, color: "--color-mod-pos",
+    href: "/restaurant", group: "sell", requires: "pos",
+    tabs: [
+      { href: "/restaurant", label: "Floor" },
+      { href: "/restaurant/setup", label: "Set-up" },
     ],
   },
   {
@@ -199,6 +208,7 @@ const MODULE_LABELS: Record<string, string> = {
   hrms: "Staff / HRMS",
   payroll: "Payroll",
   pos_hrms: "Cashiers are staff",
+  restaurant: "Table service",
 };
 
 /** Which module a path belongs to: the longest matching module or tab href wins. */

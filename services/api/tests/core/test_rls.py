@@ -150,6 +150,7 @@ _SHAPED = {
     "pos_registers": {"code": lambda: "Q" + uuid.uuid4().hex[:4].upper()},
     "pos_devices": {"device_code": lambda: "D" + uuid.uuid4().hex[:4].upper()},
     "pos_cashier_sessions": {"token_hash": lambda: uuid.uuid4().hex},
+    "restaurant_tables": {"label": lambda: "T" + uuid.uuid4().hex[:6]},   # 1-12 characters (0089)
 }
 
 

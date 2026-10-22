@@ -106,6 +106,12 @@ register("pos", {
     "pos.price.override": ("pos", "admin"),
     "pos.report.sales": ("pos", "read"),
 })
+register("restaurant", {
+    # Table service (wave B, 0089): waiters and the kitchen read the floor and
+    # stations; setting them up is a manager's.
+    "restaurant.order.read": ("pos", "read"),
+    "restaurant.setup.manage": ("pos", "admin"),
+})
 register("khata", {
     # Customer credit (0079): reading accounts and taking payments at the
     # counter are a cashier's; setting how much a customer may owe isn't.

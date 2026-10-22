@@ -147,6 +147,18 @@ _MANIFESTS = [
                      )),),
     ),
     ModuleSpec(
+        # Opt-in on top of POS (wave B, study 11): a shop never sees tables.
+        "restaurant", "Table service", "Floors and tables, kitchen tickets and stations.",
+        depends=("pos",),
+        purge_tables=("restaurant_tables", "restaurant_floors", "restaurant_stations"),   # children first
+        nav=(NavItem("restaurant", "/restaurant", "nav.restaurant", "utensils", "sell",
+                     perm="restaurant.order.read",
+                     children=(
+                         NavChild("/restaurant", "nav.restaurant.floor", "restaurant.order.read"),
+                         NavChild("/restaurant/setup", "nav.restaurant.setup", "restaurant.setup.manage"),
+                     )),),
+    ),
+    ModuleSpec(
         "pos_hrms", "Cashiers are staff", "Cashier sign-in with the employee PIN.",
         depends=("pos", "hrms"), auto_enable=("pos", "hrms"),
     ),
