@@ -176,3 +176,15 @@ async def test_the_lead_shows_the_tick(client, shop):
     lead = await ticked_lead(client, shop, "Shown", email="s@example.com")
     out = (await client.get(f"/crm/leads/{lead['id']}")).json()["lead"]
     assert out["consent_at"] is not None and out["consent_text"] == WORDING
+
+
+async def test_the_confirmation_goes_out_at_once(client, shop, monkeypatch):
+    sent: list[str] = []
+
+    async def capture(to, subject, body):
+        sent.append(to)
+
+    monkeypatch.setattr(email, "_send", capture)
+    lead = await ticked_lead(client, shop, "Quick", email="quick@example.com", phone="")
+    await client.post(f"/crm/leads/{lead['id']}/qualify", json={"mode": "create"})
+    assert sent == ["quick@example.com"]

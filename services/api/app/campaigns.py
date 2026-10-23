@@ -286,22 +286,23 @@ async def resolve_consent(token: str) -> asyncpg.Record:
     return row
 
 
-async def ask_to_confirm(conn: asyncpg.Connection, tenant_id: Any, lead: asyncpg.Record, contact_id: Any) -> bool:
+async def ask_to_confirm(conn: asyncpg.Connection, tenant_id: Any, lead: asyncpg.Record,
+                         contact_id: Any) -> int | None:
     """After qualifying a lead that ticked the form's box: email the contact
     a confirmation link, if the email the visitor typed is the contact's own
-    and they haven't opted out. Opts nobody in. True when one was queued."""
+    and they haven't opted out. Opts nobody in. Returns the outbox row queued."""
     if lead["consent_at"] is None or not lead["email"]:
-        return False
+        return None
     c = await conn.fetchrow("select email_normalized from contacts where id = $1", contact_id)
     if c is None or not c["email_normalized"] or normalize_email(lead["email"]) != c["email_normalized"]:
-        return False
+        return None
     if await conn.fetchval(
             "select 1 from contact_consents where contact_id = $1 and channel = 'email'", contact_id):
-        return False      # already decided, either way: an opt-out stays, an opt-in needs nothing
-    await email.queue_consent_confirm(conn, str(tenant_id), c["email_normalized"], str(contact_id))
+        return None       # already decided, either way: an opt-out stays, an opt-in needs nothing
+    mail: int = await email.queue_consent_confirm(conn, str(tenant_id), c["email_normalized"], str(contact_id))
     await audit.track(conn, entity_type="contact", entity_id=str(contact_id), contact_id=str(contact_id),
                       kind="system", body="Asked to confirm marketing by email (they ticked it on a web form)")
-    return True
+    return mail
 
 
 async def confirm(conn: asyncpg.Connection, tenant_id: Any, contact_id: Any) -> bool:

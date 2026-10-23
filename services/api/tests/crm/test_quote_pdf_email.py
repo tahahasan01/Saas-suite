@@ -99,8 +99,7 @@ async def test_emailing_queues_a_pointer_and_delivery_adds_the_link_and_pdf(clie
     [row] = await outbox(shop)
     assert row["payload"] == {"template": "quote", "to": "buyer@bilal.example", "quote_id": qt["id"]}
 
-    await q("update outbox set run_after = now() where id = $1", row["id"])
-    assert await email.process_outbox() >= 1
+    # Delivered at once (the post-commit fast path), not left for the worker.
     [(to, subject, body, files)] = attached
     assert to == "buyer@bilal.example" and qt["number"] in subject
     assert f"/q/{token_of(qt)}" in body                 # the link, made at delivery
@@ -110,11 +109,14 @@ async def test_emailing_queues_a_pointer_and_delivery_adds_the_link_and_pdf(clie
 
 
 async def test_a_quote_closed_before_delivery_sends_no_link(client, shop, attached):
+    """When the fast path failed and the worker retries later, a quote
+    cancelled meanwhile isn't sent (its link is dead)."""
+    from app import db
     qt = await quote(client, (await with_contact(client))["id"])
-    await client.post(f"/crm/quotes/{qt['id']}/send", json={})
     await client.post(f"/crm/quotes/{qt['id']}/cancel")
+    async with db.tenant_conn(shop) as conn:          # a row left over for the worker
+        await email.queue_quote(conn, shop, "buyer@bilal.example", qt["id"])
     [row] = await outbox(shop)
-    await q("update outbox set run_after = now() where id = $1", row["id"])
     await email.process_outbox()
     assert attached == []                               # nothing goes out for a dead quote
     [after] = await q("select status from outbox where id = $1", row["id"])
@@ -146,3 +148,9 @@ async def test_emailing_needs_quote_rights(client, shop):
     await login_as_rep(client, shop, ["read"])
     assert (await client.post(f"/crm/quotes/{qt['id']}/send", json={})).status_code == 403
     assert (await client.get(f"/crm/quotes/{qt['id']}/pdf")).status_code == 200      # reading is enough for the PDF
+
+
+async def test_a_quote_email_goes_out_at_once(client, shop, attached):
+    qt = await quote(client, (await with_contact(client))["id"])
+    assert (await client.post(f"/crm/quotes/{qt['id']}/send", json={})).status_code == 202
+    assert len(attached) == 1

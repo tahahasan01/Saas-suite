@@ -6,7 +6,7 @@ ceiling needs crm.deal.discount_override."""
 from __future__ import annotations
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
 
 from .. import audit, db, deal_lines, email, invoicing, leads, quotes, quotes_pdf, ratelimit, rbac, sequences, targets
 from ..crm_selling_models import (
@@ -144,7 +144,7 @@ SENDS_PER_DAY = 200
 
 
 @router.post("/quotes/{quote_id}/send", response_model=QuoteEmailed, status_code=status.HTTP_202_ACCEPTED)
-async def email_quote(quote_id: str, body: QuoteEmail,
+async def email_quote(quote_id: str, body: QuoteEmail, background: BackgroundTasks,
                       auth: AuthContext = Depends(perm("crm.quote.send"))) -> QuoteEmailed:
     """Email the customer the link and the PDF, through the outbox. Only an
     open quote; one plain address; a few times an hour per quote and a daily
@@ -169,9 +169,10 @@ async def email_quote(quote_id: str, body: QuoteEmail,
             retry = await ratelimit.hit(bucket, limit, window)
             if retry:
                 raise ratelimit.too_many(retry)
-        await email.queue_quote(conn, auth.tenant_id, to, quote_id)
+        mail = await email.queue_quote(conn, auth.tenant_id, to, quote_id)
         await conn.execute("update crm_quotes set last_emailed_at = now(), updated_at = now() where id = $1", quote_id)
         await audit.event(conn, "crm.quote.email", "crm_quotes", quote_id, data={"to": to})
+    background.add_task(email.deliver_now, mail)    # after commit; the worker retries if this fails
     return QuoteEmailed(to=to)
 
 

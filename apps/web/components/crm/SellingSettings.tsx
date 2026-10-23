@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { errorText, useAction } from "@/lib/useAction";
 import { useToast } from "@/components/Toast";
 import { Badge, Button, Card, ErrorState, Field, Input, LoadingRows, Select, Switch, Textarea } from "@/components/ui";
+import { AssignmentRules } from "./AssignmentRules";
 import { CustomFieldsEditor } from "@/components/CustomFields";
 
 type WebForm = Schema<"WebFormOut">;
@@ -26,8 +27,9 @@ export function SellingSettings() {
       <WebFormsEditor />
       <div className="grid gap-6 lg:grid-cols-2">
         <LeadPoolEditor />
-        <DiscountCeiling />
+        <AssignmentRules />
       </div>
+      <DiscountCeiling />
     </div>
   );
 }
