@@ -139,6 +139,7 @@ ENUM_COLUMNS = {
     # catalog v2 and stock (0075)
     ("pos_barcode_rules", "kind"): models.BARCODE_RULE_KINDS,
     ("pos_stock_moves", "reason"): models.STOCK_MOVE_REASONS,
+    ("stock_transfers", "status"): models.TRANSFER_STATUSES,
     # registers and sessions (0076)
     ("pos_payments", "method"): models.TENDER_METHODS,
     ("pos_returns", "refund_method"): models.TENDER_METHODS,

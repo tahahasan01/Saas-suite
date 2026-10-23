@@ -2633,8 +2633,11 @@ INVOICE_PAYMENT_METHODS = list(get_args(InvoicePaymentMethod))
 # ─── Catalog v2 and stock (3C, migration 0075) ──────────────────────────────
 BarcodeRuleKind = Literal["weight", "price"]
 BARCODE_RULE_KINDS = list(get_args(BarcodeRuleKind))
-StockMoveReason = Literal["opening", "sale", "return", "purchase", "adjustment", "damage", "count", "void"]
+StockMoveReason = Literal["opening", "sale", "return", "purchase", "adjustment", "damage", "count", "void",
+                          "transfer_out", "transfer_in"]   # transfers (0092)
 STOCK_MOVE_REASONS = list(get_args(StockMoveReason))
+TransferStatus = Literal["draft", "dispatched", "received", "cancelled"]
+TRANSFER_STATUSES = list(get_args(TransferStatus))
 # What a person may record by hand; the rest are written by the documents.
 AdjustReason = Literal["adjustment", "damage", "count"]
 

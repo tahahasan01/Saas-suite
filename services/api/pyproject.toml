@@ -140,6 +140,7 @@ module = [
     "app.routers.hrms_people",
     "app.routers.hrms_biometric",
     "app.routers.restaurant_setup",
+    "app.routers.stock_transfers",
     # CRM selling (wave D)
     "app.crm_selling_models",
     "app.deal_lines",

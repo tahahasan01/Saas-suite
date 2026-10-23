@@ -96,6 +96,9 @@ export const PERMISSION_KEYS = [
   "khata.payment.record",
   "khata.limit.manage",
   "pos.report.sales",
+  // stock transfers (wave B, 0092)
+  "products.transfer.manage",
+  "products.transfer.receive",
   // table service (wave B, 0089)
   "restaurant.order.read",
   "restaurant.setup.manage",

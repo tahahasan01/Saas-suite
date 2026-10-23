@@ -129,6 +129,10 @@ register("products", {
     "products.cost.read": ("pos", "admin"),
     "products.cost.update": ("pos", "admin"),     # change what was paid, not just see it (0075)
     "products.stock.adjust": ("pos", "admin"),    # shrinkage and counts are a manager's call
+    # Transfers between branches (0092): sending stock is a manager's; the
+    # receiving shop confirms what arrived.
+    "products.transfer.manage": ("pos", "admin"),
+    "products.transfer.receive": ("pos", "write"),
 })
 register("purchasing", {
     "purchasing.po.read": ("pos", "read"),
