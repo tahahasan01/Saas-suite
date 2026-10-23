@@ -13,11 +13,19 @@ from . import pins, rbac
 from .deps import AuthContext
 
 
+async def ensure_known(conn: asyncpg.Connection, approver_id: Any) -> None:
+    """A named approver must be someone of this company, needed or not: an
+    id from elsewhere is refused, never silently ignored (foreign-id walk)."""
+    if approver_id is not None and not await conn.fetchval("select 1 from users where id = $1", approver_id):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Approver not found")
+
+
 async def approve(conn: asyncpg.Connection, auth: AuthContext, needs: set[str], approver_id: Any,
                   approver_pin: str | None, *, ask: str) -> str:
     """The id of whoever approves `needs`: the caller if they hold every key,
     else the named manager after their PIN checks out. `ask` is the refusal
     shown when no manager was named."""
+    await ensure_known(conn, approver_id)
     held = await rbac.effective_permissions(conn, auth.tenant_id, auth.role_id, auth.user_id)
     if needs <= set(held):
         return auth.user_id

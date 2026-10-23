@@ -111,6 +111,10 @@ register("restaurant", {
     # stations; setting them up is a manager's.
     "restaurant.order.read": ("pos", "read"),
     "restaurant.setup.manage": ("pos", "admin"),
+    # Orders and kitchen tickets (0094): waiters take orders; cancelling what
+    # the kitchen already has is a manager's (or their PIN).
+    "restaurant.order.create": ("pos", "write"),
+    "restaurant.order.void": ("pos", "admin"),
 })
 register("khata", {
     # Customer credit (0079): reading accounts and taking payments at the

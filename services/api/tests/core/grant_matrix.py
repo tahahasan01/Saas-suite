@@ -112,6 +112,10 @@ APP_USER: dict[str, set[str]] = {
     "stock_transfer_lines":    {S, I, U},
     "stock_counts":            {S, I, U},       # cancelled, never deleted (0093)
     "stock_count_lines":       {S, I, U},       # a recount replaces the line
+    "restaurant_orders":       {S, I, U},       # closed or cancelled, never deleted (0094)
+    "restaurant_order_lines":  {S, I, U},       # voids lower qty
+    "restaurant_kots":         {S, I, U},       # printed and readied
+    "restaurant_kot_lines":    {S, I},          # a ticket never changes
     "pay_advance_repayments":  {S, I},       # append-only (0107)
     "hrms_job_changes":      {S, I, U},       # applied or cancelled, never deleted (0106)
     "hrms_letter_templates":  {S, I, U},       # (0105)

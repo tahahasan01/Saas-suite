@@ -29851,7 +29851,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/VoidIn"
+                "$ref": "#/components/schemas/app__routers__pos_sales__VoidIn"
               }
             }
           }
@@ -31775,6 +31775,570 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/StationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/restaurant/approvers": {
+      "get": {
+        "tags": [
+          "restaurant"
+        ],
+        "summary": "Approvers",
+        "description": "Who can approve a void at this company: holds restaurant.order.void and\nhas set a till PIN. Names only; the PIN is checked on the void itself.",
+        "operationId": "approvers_restaurant_approvers_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Approver"
+                  },
+                  "title": "Response Approvers Restaurant Approvers Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/restaurant/orders": {
+      "get": {
+        "tags": [
+          "restaurant"
+        ],
+        "summary": "List Orders",
+        "operationId": "list_orders_restaurant_orders_get",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "open",
+                "paid",
+                "cancelled"
+              ],
+              "type": "string",
+              "default": "open",
+              "title": "Status"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrderOut"
+                  },
+                  "title": "Response List Orders Restaurant Orders Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "restaurant"
+        ],
+        "summary": "Open Order",
+        "operationId": "open_order_restaurant_orders_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/restaurant/orders/{order_id}": {
+      "get": {
+        "tags": [
+          "restaurant"
+        ],
+        "summary": "Get Order",
+        "operationId": "get_order_restaurant_orders__order_id__get",
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Order Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/restaurant/orders/{order_id}/lines": {
+      "post": {
+        "tags": [
+          "restaurant"
+        ],
+        "summary": "Add Line",
+        "operationId": "add_line_restaurant_orders__order_id__lines_post",
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Order Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LineIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/restaurant/order-lines/{line_id}": {
+      "patch": {
+        "tags": [
+          "restaurant"
+        ],
+        "summary": "Update Line",
+        "operationId": "update_line_restaurant_order_lines__line_id__patch",
+        "parameters": [
+          {
+            "name": "line_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Line Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LineUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/restaurant/orders/{order_id}/send": {
+      "post": {
+        "tags": [
+          "restaurant"
+        ],
+        "summary": "Send To Kitchen",
+        "operationId": "send_to_kitchen_restaurant_orders__order_id__send_post",
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Order Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/restaurant/order-lines/{line_id}/void": {
+      "post": {
+        "tags": [
+          "restaurant"
+        ],
+        "summary": "Void Line",
+        "description": "Unsent quantity goes quietly; anything the kitchen already has needs\na reason and restaurant.order.void (or a manager's PIN), and a VOID\nticket tells that station.",
+        "operationId": "void_line_restaurant_order_lines__line_id__void_post",
+        "parameters": [
+          {
+            "name": "line_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Line Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/app__routers__restaurant_orders__VoidIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/restaurant/orders/{order_id}/cancel": {
+      "post": {
+        "tags": [
+          "restaurant"
+        ],
+        "summary": "Cancel Order",
+        "operationId": "cancel_order_restaurant_orders__order_id__cancel_post",
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Order Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderOut"
                 }
               }
             }
@@ -44906,6 +45470,128 @@
         ],
         "title": "KioskPunchRequest"
       },
+      "KotLineOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "qty": {
+            "type": "number",
+            "title": "Qty"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "qty",
+          "note"
+        ],
+        "title": "KotLineOut"
+      },
+      "KotOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "number": {
+            "type": "integer",
+            "title": "Number"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "order",
+              "void"
+            ],
+            "title": "Kind"
+          },
+          "station_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Station Id"
+          },
+          "station_name": {
+            "type": "string",
+            "title": "Station Name"
+          },
+          "table_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table Label"
+          },
+          "token": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "approved_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved By Name"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/KotLineOut"
+            },
+            "type": "array",
+            "title": "Lines"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "number",
+          "kind",
+          "station_id",
+          "station_name",
+          "table_label",
+          "token",
+          "reason",
+          "approved_by_name",
+          "created_at",
+          "lines"
+        ],
+        "title": "KotOut"
+      },
       "Kpi": {
         "properties": {
           "key": {
@@ -47177,6 +47863,33 @@
         ],
         "title": "LimitIn"
       },
+      "LineIn": {
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Product Id"
+          },
+          "qty": {
+            "type": "number",
+            "maximum": 1000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Qty"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "product_id",
+          "qty"
+        ],
+        "title": "LineIn"
+      },
       "LineOut": {
         "properties": {
           "code": {
@@ -47214,6 +47927,37 @@
           "amount_minor"
         ],
         "title": "LineOut"
+      },
+      "LineUpdate": {
+        "properties": {
+          "qty": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qty"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "title": "LineUpdate"
       },
       "LocaleOut": {
         "properties": {
@@ -49241,6 +49985,268 @@
           "run_id"
         ],
         "title": "OneOffOut"
+      },
+      "OpenOrder": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "guests": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guests"
+          },
+          "items": {
+            "type": "number",
+            "title": "Items"
+          },
+          "total_minor": {
+            "type": "integer",
+            "title": "Total Minor"
+          },
+          "opened_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Opened At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "guests",
+          "items",
+          "total_minor",
+          "opened_at"
+        ],
+        "title": "OpenOrder",
+        "description": "What the floor shows on an occupied table (0094)."
+      },
+      "OrderIn": {
+        "properties": {
+          "order_type": {
+            "type": "string",
+            "enum": [
+              "dine_in",
+              "takeaway"
+            ],
+            "title": "Order Type"
+          },
+          "table_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table Id"
+          },
+          "guests": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guests"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "order_type"
+        ],
+        "title": "OrderIn"
+      },
+      "OrderLineOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "product_id": {
+            "type": "string",
+            "title": "Product Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "qty": {
+            "type": "number",
+            "title": "Qty"
+          },
+          "sent_qty": {
+            "type": "number",
+            "title": "Sent Qty"
+          },
+          "unit_price_minor": {
+            "type": "integer",
+            "title": "Unit Price Minor"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "product_id",
+          "name",
+          "qty",
+          "sent_qty",
+          "unit_price_minor",
+          "note"
+        ],
+        "title": "OrderLineOut"
+      },
+      "OrderOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "branch_id": {
+            "type": "string",
+            "title": "Branch Id"
+          },
+          "order_type": {
+            "type": "string",
+            "enum": [
+              "dine_in",
+              "takeaway"
+            ],
+            "title": "Order Type"
+          },
+          "table_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table Id"
+          },
+          "table_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table Label"
+          },
+          "token": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token"
+          },
+          "guests": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guests"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "paid",
+              "cancelled"
+            ],
+            "title": "Status"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          },
+          "opened_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Opened At"
+          },
+          "opened_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opened By Name"
+          },
+          "total_minor": {
+            "type": "integer",
+            "title": "Total Minor"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/OrderLineOut"
+            },
+            "type": "array",
+            "title": "Lines"
+          },
+          "kots": {
+            "items": {
+              "$ref": "#/components/schemas/KotOut"
+            },
+            "type": "array",
+            "title": "Kots"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "branch_id",
+          "order_type",
+          "table_id",
+          "table_label",
+          "token",
+          "guests",
+          "status",
+          "note",
+          "opened_at",
+          "opened_by_name",
+          "total_minor",
+          "lines",
+          "kots"
+        ],
+        "title": "OrderOut"
       },
       "OrgChartPerson": {
         "properties": {
@@ -57219,6 +58225,16 @@
           "active": {
             "type": "boolean",
             "title": "Active"
+          },
+          "open_order": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OpenOrder"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -58756,33 +59772,6 @@
         ],
         "title": "VerifyRequest"
       },
-      "VoidIn": {
-        "properties": {
-          "reason": {
-            "type": "string",
-            "maxLength": 300,
-            "minLength": 1,
-            "title": "Reason"
-          },
-          "register_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Register Id"
-          }
-        },
-        "type": "object",
-        "required": [
-          "reason"
-        ],
-        "title": "VoidIn"
-      },
       "VoidOut": {
         "properties": {
           "sale_id": {
@@ -59635,6 +60624,78 @@
           "method"
         ],
         "title": "PaymentIn"
+      },
+      "app__routers__pos_sales__VoidIn": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Reason"
+          },
+          "register_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Register Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "VoidIn"
+      },
+      "app__routers__restaurant_orders__VoidIn": {
+        "properties": {
+          "qty": {
+            "type": "number",
+            "maximum": 1000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Qty"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Reason",
+            "default": ""
+          },
+          "approver_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approver Id"
+          },
+          "approver_pin": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 12
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approver Pin"
+          }
+        },
+        "type": "object",
+        "required": [
+          "qty"
+        ],
+        "title": "VoidIn"
       }
     }
   }

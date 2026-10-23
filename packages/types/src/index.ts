@@ -103,6 +103,8 @@ export const PERMISSION_KEYS = [
   // table service (wave B, 0089)
   "restaurant.order.read",
   "restaurant.setup.manage",
+  "restaurant.order.create",
+  "restaurant.order.void",
   // products
   "products.product.read",
   "products.product.create",

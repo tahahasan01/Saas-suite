@@ -5,16 +5,18 @@ import { api } from "@/lib/api";
 import { Dialog } from "@/components/Dialog";
 import { Button, Field, Input, Select } from "@/components/ui";
 
-export type ApprovalKey = "pos.sale.discount" | "pos.price.override" | "pos.session.approve";
+export type ApprovalKey = "pos.sale.discount" | "pos.price.override" | "pos.session.approve" | "restaurant.order.void";
 export interface Approval { approver_id: string; approver_pin: string }
 interface Approver { user_id: string; name: string }
 
 /** A manager approves at the till with their 6-digit PIN (0076/0078). The
  *  server checks the PIN on the action itself; this only collects it.
  *  `onApprove` resolves to an error message to show, or null when done. */
-export function ApprovalPrompt({ open, need, reason, onApprove, onCancel }: {
+export function ApprovalPrompt({ open, need, reason, onApprove, onCancel, source }: {
   open: boolean;
   need: ApprovalKey;
+  /** Where to list who can approve; the till's list by default (restaurant voids have their own). */
+  source?: string;
   reason: string;
   onApprove: (a: Approval) => Promise<string | null>;
   onCancel: () => void;
@@ -30,10 +32,10 @@ export function ApprovalPrompt({ open, need, reason, onApprove, onCancel }: {
     setPin("");
     setError(null);
     setPeople(null);
-    api<Approver[]>(`/pos/approvers?need=${need}`, { notify: false })
+    api<Approver[]>(source ?? `/pos/approvers?need=${need}`, { notify: false })
       .then((p) => { setPeople(p); setWho((w) => (p.some((x) => x.user_id === w) ? w : p[0]?.user_id ?? "")); })
       .catch(() => setPeople([]));
-  }, [open, need]);
+  }, [open, need, source]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();

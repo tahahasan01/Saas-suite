@@ -22,7 +22,7 @@ from typing import Any
 import asyncpg
 from fastapi import HTTPException, status
 
-from . import db, notifications, pins, pricing, rbac, store
+from . import approvals, db, notifications, pins, pricing, rbac, store
 from .deps import AuthContext
 
 METHODS = ("cash", "card", "jazzcash", "easypaisa", "raast", "bank", "khata")
@@ -241,6 +241,7 @@ async def close(conn: asyncpg.Connection, auth: AuthContext, session_id: str, co
     cash_counted = int(counted.get("cash", 0))
     variance = cash_counted - expected.get("cash", 0)
     approver = None
+    await approvals.ensure_known(conn, approver_id)
     if abs(variance) > reg["max_variance_minor"]:
         if approver_id is None or not approver_pin:
             raise HTTPException(status.HTTP_403_FORBIDDEN,

@@ -2673,6 +2673,15 @@ TransferStatus = Literal["draft", "dispatched", "received", "cancelled"]
 TRANSFER_STATUSES = list(get_args(TransferStatus))
 CountStatus = Literal["open", "applied", "cancelled"]       # stock counts (0093)
 COUNT_STATUSES = list(get_args(CountStatus))
+# Restaurant orders and kitchen tickets (0094)
+RestaurantOrderType = Literal["dine_in", "takeaway"]
+RESTAURANT_ORDER_TYPES = list(get_args(RestaurantOrderType))
+OrderStatus = Literal["open", "paid", "cancelled"]
+ORDER_STATUSES = list(get_args(OrderStatus))
+KotKind = Literal["order", "void"]
+KOT_KINDS = list(get_args(KotKind))
+KotStatus = Literal["new", "ready"]
+KOT_STATUSES = list(get_args(KotStatus))
 # What a person may record by hand; the rest are written by the documents.
 AdjustReason = Literal["adjustment", "damage", "count"]
 

@@ -7549,6 +7549,152 @@ export interface paths {
         patch: operations["update_station_restaurant_stations__station_id__patch"];
         trace?: never;
     };
+    "/restaurant/approvers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Approvers
+         * @description Who can approve a void at this company: holds restaurant.order.void and
+         *     has set a till PIN. Names only; the PIN is checked on the void itself.
+         */
+        get: operations["approvers_restaurant_approvers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/restaurant/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Orders */
+        get: operations["list_orders_restaurant_orders_get"];
+        put?: never;
+        /** Open Order */
+        post: operations["open_order_restaurant_orders_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/restaurant/orders/{order_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Order */
+        get: operations["get_order_restaurant_orders__order_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/restaurant/orders/{order_id}/lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Line */
+        post: operations["add_line_restaurant_orders__order_id__lines_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/restaurant/order-lines/{line_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Line */
+        patch: operations["update_line_restaurant_order_lines__line_id__patch"];
+        trace?: never;
+    };
+    "/restaurant/orders/{order_id}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send To Kitchen */
+        post: operations["send_to_kitchen_restaurant_orders__order_id__send_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/restaurant/order-lines/{line_id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Void Line
+         * @description Unsent quantity goes quietly; anything the kitchen already has needs
+         *     a reason and restaurant.order.void (or a manager's PIN), and a VOID
+         *     ticket tells that station.
+         */
+        post: operations["void_line_restaurant_order_lines__line_id__void_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/restaurant/orders/{order_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Order */
+        post: operations["cancel_order_restaurant_orders__order_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pos/transfers": {
         parameters: {
             query?: never;
@@ -12028,6 +12174,46 @@ export interface components {
             /** Pin */
             pin: string;
         };
+        /** KotLineOut */
+        KotLineOut: {
+            /** Name */
+            name: string;
+            /** Qty */
+            qty: number;
+            /** Note */
+            note: string;
+        };
+        /** KotOut */
+        KotOut: {
+            /** Id */
+            id: string;
+            /** Number */
+            number: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "order" | "void";
+            /** Station Id */
+            station_id: string | null;
+            /** Station Name */
+            station_name: string;
+            /** Table Label */
+            table_label: string | null;
+            /** Token */
+            token: number | null;
+            /** Reason */
+            reason: string;
+            /** Approved By Name */
+            approved_by_name: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Lines */
+            lines: components["schemas"]["KotLineOut"][];
+        };
         /** Kpi */
         Kpi: {
             /** Key */
@@ -12854,6 +13040,21 @@ export interface components {
             /** Credit Limit Minor */
             credit_limit_minor: number | null;
         };
+        /** LineIn */
+        LineIn: {
+            /**
+             * Product Id
+             * Format: uuid
+             */
+            product_id: string;
+            /** Qty */
+            qty: number;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
         /** LineOut */
         LineOut: {
             /** Code */
@@ -12873,6 +13074,13 @@ export interface components {
             explain?: {
                 [key: string]: unknown;
             };
+        };
+        /** LineUpdate */
+        LineUpdate: {
+            /** Qty */
+            qty?: number | null;
+            /** Note */
+            note?: string | null;
         };
         /**
          * LocaleOut
@@ -13575,6 +13783,99 @@ export interface components {
             status: string;
             /** Run Id */
             run_id: string | null;
+        };
+        /**
+         * OpenOrder
+         * @description What the floor shows on an occupied table (0094).
+         */
+        OpenOrder: {
+            /** Id */
+            id: string;
+            /** Guests */
+            guests: number | null;
+            /** Items */
+            items: number;
+            /** Total Minor */
+            total_minor: number;
+            /**
+             * Opened At
+             * Format: date-time
+             */
+            opened_at: string;
+        };
+        /** OrderIn */
+        OrderIn: {
+            /**
+             * Order Type
+             * @enum {string}
+             */
+            order_type: "dine_in" | "takeaway";
+            /** Table Id */
+            table_id?: string | null;
+            /** Guests */
+            guests?: number | null;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /** OrderLineOut */
+        OrderLineOut: {
+            /** Id */
+            id: string;
+            /** Product Id */
+            product_id: string;
+            /** Name */
+            name: string;
+            /** Qty */
+            qty: number;
+            /** Sent Qty */
+            sent_qty: number;
+            /** Unit Price Minor */
+            unit_price_minor: number;
+            /** Note */
+            note: string;
+        };
+        /** OrderOut */
+        OrderOut: {
+            /** Id */
+            id: string;
+            /** Branch Id */
+            branch_id: string;
+            /**
+             * Order Type
+             * @enum {string}
+             */
+            order_type: "dine_in" | "takeaway";
+            /** Table Id */
+            table_id: string | null;
+            /** Table Label */
+            table_label: string | null;
+            /** Token */
+            token: number | null;
+            /** Guests */
+            guests: number | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "paid" | "cancelled";
+            /** Note */
+            note: string;
+            /**
+             * Opened At
+             * Format: date-time
+             */
+            opened_at: string;
+            /** Opened By Name */
+            opened_by_name: string | null;
+            /** Total Minor */
+            total_minor: number;
+            /** Lines */
+            lines: components["schemas"]["OrderLineOut"][];
+            /** Kots */
+            kots: components["schemas"]["KotOut"][];
         };
         /** OrgChartPerson */
         OrgChartPerson: {
@@ -16573,6 +16874,7 @@ export interface components {
             position: number;
             /** Active */
             active: boolean;
+            open_order?: components["schemas"]["OpenOrder"] | null;
         };
         /** TableUpdate */
         TableUpdate: {
@@ -17113,13 +17415,6 @@ export interface components {
             /** Token */
             token: string;
         };
-        /** VoidIn */
-        VoidIn: {
-            /** Reason */
-            reason: string;
-            /** Register Id */
-            register_id?: string | null;
-        };
         /** VoidOut */
         VoidOut: {
             /** Sale Id */
@@ -17435,6 +17730,27 @@ export interface components {
              * @default
              */
             note: string;
+        };
+        /** VoidIn */
+        app__routers__pos_sales__VoidIn: {
+            /** Reason */
+            reason: string;
+            /** Register Id */
+            register_id?: string | null;
+        };
+        /** VoidIn */
+        app__routers__restaurant_orders__VoidIn: {
+            /** Qty */
+            qty: number;
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+            /** Approver Id */
+            approver_id?: string | null;
+            /** Approver Pin */
+            approver_pin?: string | null;
         };
     };
     responses: never;
@@ -33891,7 +34207,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["VoidIn"];
+                "application/json": components["schemas"]["app__routers__pos_sales__VoidIn"];
             };
         };
         responses: {
@@ -34873,6 +35189,315 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approvers_restaurant_approvers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Approver"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_orders_restaurant_orders_get: {
+        parameters: {
+            query?: {
+                status?: "open" | "paid" | "cancelled";
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    open_order_restaurant_orders_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrderIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_order_restaurant_orders__order_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_line_restaurant_orders__order_id__lines_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LineIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_line_restaurant_order_lines__line_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                line_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LineUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_to_kitchen_restaurant_orders__order_id__send_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    void_line_restaurant_order_lines__line_id__void_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                line_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["app__routers__restaurant_orders__VoidIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_order_restaurant_orders__order_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderOut"];
                 };
             };
             /** @description Validation Error */

@@ -7,6 +7,7 @@ deleted, because orders will point at them.
 """
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
@@ -21,6 +22,15 @@ from ..rbac import perm
 router = APIRouter(prefix="/restaurant", tags=["restaurant"])
 
 
+class OpenOrder(BaseModel):
+    """What the floor shows on an occupied table (0094)."""
+    id: str
+    guests: int | None
+    items: float
+    total_minor: int
+    opened_at: datetime
+
+
 class TableOut(BaseModel):
     id: str
     floor_id: str
@@ -28,6 +38,7 @@ class TableOut(BaseModel):
     seats: int
     position: int
     active: bool
+    open_order: OpenOrder | None = None
 
 
 class FloorOut(BaseModel):
@@ -89,16 +100,28 @@ class StationUpdate(BaseModel):
 
 
 def _table(r: asyncpg.Record) -> TableOut:
+    order = None
+    if r.get("order_id") is not None:
+        order = OpenOrder(id=str(r["order_id"]), guests=r["guests"], items=float(r["items"] or 0),
+                          total_minor=int(r["total_minor"] or 0), opened_at=r["opened_at"])
     return TableOut(id=str(r["id"]), floor_id=str(r["floor_id"]), label=r["label"], seats=r["seats"],
-                    position=r["position"], active=r["active"])
+                    position=r["position"], active=r["active"], open_order=order)
+
+
+# A table with its open order, if any: guests, items and the running total.
+_TABLES = """select t.*, o.id as order_id, o.guests, o.opened_at,
+                    (select sum(l.qty) from restaurant_order_lines l where l.order_id = o.id) as items,
+                    (select round(sum(l.qty * l.unit_price_minor)) from restaurant_order_lines l
+                      where l.order_id = o.id) as total_minor
+               from restaurant_tables t
+               left join restaurant_orders o on o.table_id = t.id and o.status = 'open'"""
 
 
 async def _floor(conn: asyncpg.Connection, floor_id: Any) -> FloorOut:
     r = await conn.fetchrow("select * from restaurant_floors where id = $1", floor_id)
     if r is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Floor not found")
-    tables = await conn.fetch("select * from restaurant_tables where floor_id = $1 order by position, created_at",
-                              floor_id)
+    tables = await conn.fetch(_TABLES + " where t.floor_id = $1 order by t.position, t.created_at", floor_id)
     return FloorOut(id=str(r["id"]), branch_id=str(r["branch_id"]), name=r["name"], position=r["position"],
                     active=r["active"], tables=[_table(t) for t in tables])
 

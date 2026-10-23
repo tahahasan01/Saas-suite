@@ -147,6 +147,10 @@ ENUM_COLUMNS = {
     ("pos_stock_moves", "reason"): models.STOCK_MOVE_REASONS,
     ("stock_transfers", "status"): models.TRANSFER_STATUSES,
     ("stock_counts", "status"): models.COUNT_STATUSES,
+    ("restaurant_orders", "order_type"): models.RESTAURANT_ORDER_TYPES,
+    ("restaurant_orders", "status"): models.ORDER_STATUSES,
+    ("restaurant_kots", "kind"): models.KOT_KINDS,
+    ("restaurant_kots", "status"): models.KOT_STATUSES,
     # registers and sessions (0076)
     ("pos_payments", "method"): models.TENDER_METHODS,
     ("pos_returns", "refund_method"): models.TENDER_METHODS,

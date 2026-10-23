@@ -153,6 +153,7 @@ _SHAPED = {
     "pos_devices": {"device_code": lambda: "D" + uuid.uuid4().hex[:4].upper()},
     "pos_cashier_sessions": {"token_hash": lambda: uuid.uuid4().hex},
     "restaurant_tables": {"label": lambda: "T" + uuid.uuid4().hex[:6]},   # 1-12 characters (0089)
+    "restaurant_orders": {"order_type": lambda: "takeaway", "token": lambda: "1"},   # a takeaway needs a token (0094)
     # quotes (wave D, 0121): sha256 hex digests
     "crm_quotes": {"content_hash": lambda: uuid.uuid4().hex * 2, "token_hash": lambda: uuid.uuid4().hex * 2},
     "crm_web_forms": {"public_id": lambda: uuid.uuid4().hex},

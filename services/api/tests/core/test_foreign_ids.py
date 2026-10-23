@@ -40,6 +40,7 @@ KIND_OF = {
     "branch_id": "branch", "sequence_id": "sequence", "logo_file_id": "file",
     "from_branch_id": "branch", "to_branch_id": "branch",   # transfers (0092)
     "transfer_id": "transfer", "count_id": "stock_count",   # 0092, 0093
+    "order_id": "restaurant_order", "approver_id": "user",   # 0094
     "team_id": "team", "lead_user_id": "user",
     # HR org, attendance v2, holidays, leave v2 (3F)
     "dept_id": "department", "department_id": "department", "parent_id": "department",
@@ -92,7 +93,8 @@ KIND_OF = {
 # matching path prefix wins, otherwise KIND_OF. (template_id is a boarding,
 # appraisal, letter or CRM message template depending on where it's sent.)
 ROUTE_KINDS: dict[str, tuple[tuple[str, str], ...]] = {
-    "line_id": (("/pos/transfers", "transfer_line"),),     # a settlement line elsewhere (KIND_OF)
+    "line_id": (("/pos/transfers", "transfer_line"),      # a settlement line elsewhere (KIND_OF)
+                ("/restaurant/order-lines", "order_line")),
     "template_id": (
         ("/hrms/letter-templates", "letter_template"),
         ("/hrms/employees/{employee_id}/letters", "letter_template"),
@@ -228,6 +230,9 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
     floor = (await c.post("/restaurant/floors", json={"name": "Probe floor"})).json()
     table = (await c.post(f"/restaurant/floors/{floor['id']}/tables", json={"labels": ["P1"]})).json()[0]
     station = (await c.post("/restaurant/stations", json={"name": "Probe station"})).json()
+    r_order = (await c.post("/restaurant/orders", json={"order_type": "dine_in", "table_id": table["id"]})).json()
+    r_order = (await c.post(f"/restaurant/orders/{r_order['id']}/lines",
+                            json={"product_id": product["id"], "qty": 1})).json()
     btemplate = (await c.post("/hrms/boarding-templates", json={"kind": "onboarding", "name": "Probe",
                                                                 "tasks": [{"title": "Probe task"}]})).json()
     boarding = (await c.post(f"/hrms/employees/{employee['id']}/onboarding", json={})).json()
@@ -301,6 +306,7 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
         "one_off": one_off["id"], "advance": advance["id"], "notice": notice["id"],
         "overtime_claim": str(overtime_claim), "asset": asset["id"],
         "floor": floor["id"], "table": table["id"], "station": station["id"],
+        "restaurant_order": r_order["id"], "order_line": r_order["lines"][0]["id"],
         "boarding_template": btemplate["id"], "boarding": boarding["id"],
         "appraisal_template": atemplate["id"], "letter_template": ltemplate["id"],
         "boarding_task": boarding["tasks"][0]["id"],
