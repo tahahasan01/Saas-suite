@@ -44,10 +44,13 @@ OWNERSHIP: dict[str, str] = {res: col for m in MODULES.values() for res, col in 
 # them is listed here. Wiring a new route = apply where() and add it here.
 WIRED: dict[str, tuple[str, ...]] = {
     "crm.lead.read": ("GET /crm/leads", "GET /crm/leads/{lead_id}", "GET /crm/leads/{lead_id}/timeline",
-                      "GET /crm/leads/{lead_id}/contact", "GET /activities"),
+                      "GET /crm/leads/{lead_id}/contact", "GET /activities",
+                      # wave D: deal lines and quotes check the lead (leads.ensure_in_scope)
+                      "GET /crm/leads/{lead_id}/lines", "GET /crm/leads/{lead_id}/quotes", "GET /crm/quotes/{quote_id}"),
     "crm.lead.update": ("PATCH /crm/leads/{lead_id}", "POST /crm/leads/{lead_id}/won",
                         "POST /crm/leads/{lead_id}/lost", "POST /crm/leads/{lead_id}/restore",
-                        "POST /crm/leads/{lead_id}/notes", "POST /contacts/review/{item_id}/dismiss"),
+                        "POST /crm/leads/{lead_id}/notes", "POST /contacts/review/{item_id}/dismiss",
+                        "PUT /crm/leads/{lead_id}/lines", "POST /crm/leads/{lead_id}/lines/update-prices"),
     "pos.sale.read": ("GET /pos/sales/{sale_id}", "GET /pos/sales", "POST /pos/sales/{sale_id}/print"),
     "pos.sale.refund": ("POST /pos/sales/{sale_id}/returns",),
 }
@@ -58,7 +61,8 @@ WIRED: dict[str, tuple[str, ...]] = {
 # test fails on any guarded route that is in neither list.
 EXEMPT: dict[str, tuple[str, ...]] = {
     "crm.lead.read": ("GET /crm/pipelines", "GET /crm/lost-reasons", "GET /activity-types",
-                      "GET /activities/summary"),
+                      "GET /activities/summary", "GET /crm/settings"),
+    "crm.lead.update": ("GET /crm/products",),   # the product picker for deal lines
 }
 
 _ACTOR = "nullif(current_setting('app.actor_id', true), '')::uuid"

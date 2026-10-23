@@ -7,6 +7,7 @@ deleted, because orders will point at them.
 """
 from __future__ import annotations
 
+from typing import Any
 from uuid import UUID
 
 import asyncpg
@@ -92,7 +93,7 @@ def _table(r: asyncpg.Record) -> TableOut:
                     position=r["position"], active=r["active"])
 
 
-async def _floor(conn: asyncpg.Connection, floor_id) -> FloorOut:
+async def _floor(conn: asyncpg.Connection, floor_id: Any) -> FloorOut:
     r = await conn.fetchrow("select * from restaurant_floors where id = $1", floor_id)
     if r is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Floor not found")
@@ -102,7 +103,7 @@ async def _floor(conn: asyncpg.Connection, floor_id) -> FloorOut:
                     active=r["active"], tables=[_table(t) for t in tables])
 
 
-async def _station(conn: asyncpg.Connection, station_id) -> StationOut:
+async def _station(conn: asyncpg.Connection, station_id: Any) -> StationOut:
     r = await conn.fetchrow("select * from restaurant_stations where id = $1", station_id)
     if r is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Station not found")
@@ -113,7 +114,7 @@ async def _station(conn: asyncpg.Connection, station_id) -> StationOut:
                       categories=[StationCategory(id=str(c["id"]), name=c["name"]) for c in cats])
 
 
-async def _set_categories(conn: asyncpg.Connection, tenant_id: str, station_id, category_ids: list[UUID]) -> None:
+async def _set_categories(conn: asyncpg.Connection, tenant_id: str, station_id: Any, category_ids: list[UUID]) -> None:
     ids = list(dict.fromkeys(category_ids))
     found = await conn.fetchval("select count(*) from pos_categories where id = any($1::uuid[])", ids)
     if found != len(ids):           # RLS hides another company's categories, so they count as missing
@@ -132,7 +133,7 @@ async def _branch(conn: asyncpg.Connection, branch_id: UUID | None) -> UUID | No
     return branch_id
 
 
-def _sets(fields: dict) -> str:
+def _sets(fields: dict[str, Any]) -> str:
     return ", ".join(f"{k} = ${i}" for i, k in enumerate(fields, 2))
 
 
