@@ -3105,7 +3105,7 @@ SettlementStatus = Literal["draft", "approved", "paid", "cancelled"]
 SETTLEMENT_STATUSES = list(get_args(SettlementStatus))
 SettlementKind = Literal["payable", "receivable"]
 SETTLEMENT_KINDS = list(get_args(SettlementKind))
-SettlementCode = Literal["GRATUITY", "LEAVE_ENCASH", "NOTICE_PAY", "BONUS", "OTHER",
+SettlementCode = Literal["GRATUITY", "LEAVE_ENCASH", "NOTICE_PAY", "BONUS", "OTHER", "PF_PAYOUT",
                          "ADVANCE_SETTLE", "ASSET_RECOVERY", "NOTICE_SHORTFALL", "OTHER_RECOVERY"]
 SETTLEMENT_CODES = list(get_args(SettlementCode))
 # What HR may add by hand, per side (the rest are worked out).

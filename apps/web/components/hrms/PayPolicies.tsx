@@ -48,6 +48,8 @@ export function PayPolicies() {
       encash_basis: p!.encash_basis, gratuity_tax: p!.gratuity_tax,
       gratuity_exempt_minor: p!.gratuity_tax === "exempt_up_to" ? Math.round(Number(limit) * 100) : null,
       paid_on_leaving_ids: p!.leave_types.filter((t) => t.paid_on_leaving).map((t) => t.id),
+      pf_enabled: p!.pf_enabled, pf_employee_rate: p!.pf_employee_rate, pf_employer_rate: p!.pf_employer_rate,
+      pf_base: p!.pf_base, pf_vesting_months: p!.pf_vesting_months,
     }) });
   }, { success: "Pay policies saved", failure: "Couldn't save the pay policies" });
 
@@ -106,6 +108,24 @@ export function PayPolicies() {
               <Field label="Tax-free limit (PKR)"><Input type="number" min={1} required disabled={!edit} value={limit} onChange={(e) => setLimit(e.target.value)} /></Field>
             )}
           </div>
+        </Card>
+
+        <Card className="space-y-3">
+          <h2 className="text-sm font-semibold">Provident fund</h2>
+          <Switch checked={p.pf_enabled ?? false} onChange={(v) => setP({ ...p, pf_enabled: v })} label="This company runs a provident fund" disabled={!edit} />
+          {p.pf_enabled && (
+            <div className="grid gap-3 sm:grid-cols-4">
+              <Field label="Employee pays (%)"><Input type="number" min={0} max={30} step="0.01" disabled={!edit} value={p.pf_employee_rate ?? 0} onChange={(e) => setP({ ...p, pf_employee_rate: num(e.target.value) })} /></Field>
+              <Field label="Company pays (%)"><Input type="number" min={0} max={30} step="0.01" disabled={!edit} value={p.pf_employer_rate ?? 0} onChange={(e) => setP({ ...p, pf_employer_rate: num(e.target.value) })} /></Field>
+              <Field label="Of">
+                <Select value={p.pf_base ?? "basic"} disabled={!edit} onChange={(e) => setP({ ...p, pf_base: e.target.value as Policies["pf_base"] })}>
+                  <option value="basic">Basic pay</option><option value="gross">Gross pay</option>
+                </Select>
+              </Field>
+              <Field label="Company share theirs after (months)"><Input type="number" min={0} max={240} disabled={!edit} value={p.pf_vesting_months ?? 0} onChange={(e) => setP({ ...p, pf_vesting_months: num(e.target.value) })} /></Field>
+            </div>
+          )}
+          {p.pf_enabled && <p className="text-xs text-fg-muted">Payroll takes the employee's share and records the company's for each member. A leaver's fund is paid out in their final settlement.</p>}
         </Card>
 
         <Card className="space-y-3">

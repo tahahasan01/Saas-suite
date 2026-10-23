@@ -4372,6 +4372,63 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/payroll/pf/{employee_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Fund */
+        get: operations["get_fund_payroll_pf__employee_id__get"];
+        /** Set Membership */
+        put: operations["set_membership_payroll_pf__employee_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payroll/pf/{employee_id}/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Entry
+         * @description An opening balance (money brought in), a withdrawal (paid out to the
+         *     member while they stay) or an adjustment. A withdrawal is entered as
+         *     amounts taken out and can't take more than is there.
+         */
+        post: operations["add_entry_payroll_pf__employee_id__entries_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/pf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My Fund */
+        get: operations["my_fund_me_pf_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/payroll/policies": {
         parameters: {
             query?: never;
@@ -13434,6 +13491,67 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** PfBalance */
+        PfBalance: {
+            /** Employee Id */
+            employee_id: string;
+            /** Member */
+            member: boolean;
+            /** Joined On */
+            joined_on: string | null;
+            /** Employee Minor */
+            employee_minor: number;
+            /** Employer Minor */
+            employer_minor: number;
+            /** Vested Employer Minor */
+            vested_employer_minor: number;
+            /** History */
+            history?: components["schemas"]["PfHistoryRow"][];
+        };
+        /** PfEntryIn */
+        PfEntryIn: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "opening" | "withdrawal" | "adjustment";
+            /**
+             * Employee Minor
+             * @default 0
+             */
+            employee_minor: number;
+            /**
+             * Employer Minor
+             * @default 0
+             */
+            employer_minor: number;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /** PfHistoryRow */
+        PfHistoryRow: {
+            /**
+             * On
+             * Format: date
+             */
+            on: string;
+            /** What */
+            what: string;
+            /** Employee Minor */
+            employee_minor: number;
+            /** Employer Minor */
+            employer_minor: number;
+        };
+        /** PfMembershipIn */
+        PfMembershipIn: {
+            /** Member */
+            member: boolean;
+            /** Joined On */
+            joined_on?: string | null;
+        };
         /** PinIn */
         PinIn: {
             /** Pin */
@@ -13568,6 +13686,16 @@ export interface components {
             gratuity_exempt_minor?: number | null;
             /** Paid On Leaving Ids */
             paid_on_leaving_ids?: string[] | null;
+            /** Pf Enabled */
+            pf_enabled?: boolean | null;
+            /** Pf Employee Rate */
+            pf_employee_rate?: number | null;
+            /** Pf Employer Rate */
+            pf_employer_rate?: number | null;
+            /** Pf Base */
+            pf_base?: ("basic" | "gross") | null;
+            /** Pf Vesting Months */
+            pf_vesting_months?: number | null;
         };
         /** PoliciesOut */
         PoliciesOut: {
@@ -13587,6 +13715,32 @@ export interface components {
             preset: ("standing_orders" | "provident_fund" | "small_business") | null;
             /** Leave Types */
             leave_types: components["schemas"]["PolicyLeaveType"][];
+            /**
+             * Pf Enabled
+             * @default false
+             */
+            pf_enabled: boolean;
+            /**
+             * Pf Employee Rate
+             * @default 0
+             */
+            pf_employee_rate: number;
+            /**
+             * Pf Employer Rate
+             * @default 0
+             */
+            pf_employer_rate: number;
+            /**
+             * Pf Base
+             * @default basic
+             * @enum {string}
+             */
+            pf_base: "basic" | "gross";
+            /**
+             * Pf Vesting Months
+             * @default 0
+             */
+            pf_vesting_months: number;
         };
         /** PolicyLeaveType */
         PolicyLeaveType: {
@@ -15310,7 +15464,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "GRATUITY" | "LEAVE_ENCASH" | "NOTICE_PAY" | "BONUS" | "OTHER" | "ADVANCE_SETTLE" | "ASSET_RECOVERY" | "NOTICE_SHORTFALL" | "OTHER_RECOVERY";
+            code: "GRATUITY" | "LEAVE_ENCASH" | "NOTICE_PAY" | "BONUS" | "OTHER" | "PF_PAYOUT" | "ADVANCE_SETTLE" | "ASSET_RECOVERY" | "NOTICE_SHORTFALL" | "OTHER_RECOVERY";
             /** Name */
             name: string;
             /** Amount Minor */
@@ -15331,7 +15485,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "GRATUITY" | "LEAVE_ENCASH" | "NOTICE_PAY" | "BONUS" | "OTHER" | "ADVANCE_SETTLE" | "ASSET_RECOVERY" | "NOTICE_SHORTFALL" | "OTHER_RECOVERY";
+            code: "GRATUITY" | "LEAVE_ENCASH" | "NOTICE_PAY" | "BONUS" | "OTHER" | "PF_PAYOUT" | "ADVANCE_SETTLE" | "ASSET_RECOVERY" | "NOTICE_SHORTFALL" | "OTHER_RECOVERY";
             /** Name */
             name: string;
             /** Amount Minor */
@@ -26764,6 +26918,144 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AssetOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_fund_payroll_pf__employee_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employee_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PfBalance"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_membership_payroll_pf__employee_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employee_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PfMembershipIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PfBalance"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_entry_payroll_pf__employee_id__entries_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employee_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PfEntryIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PfBalance"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_fund_me_pf_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PfBalance"];
                 };
             };
             /** @description Validation Error */

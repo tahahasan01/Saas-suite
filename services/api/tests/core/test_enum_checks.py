@@ -89,6 +89,8 @@ ENUM_COLUMNS = {
     ("payroll_policies", "encash_basis"): payroll_models.ENCASH_BASES,
     ("payroll_policies", "gratuity_tax"): payroll_models.GRATUITY_TAXES,
     ("payroll_policies", "preset"): payroll_models.POLICY_PRESETS,
+    ("payroll_policies", "pf_base"): payroll_models.PF_BASES,
+    ("pay_pf_entries", "kind"): payroll_models.PF_ENTRY_KINDS,
     ("hrms_job_changes", "kind"): models.JOB_CHANGE_KINDS,
     ("hrms_job_changes", "status"): models.JOB_CHANGE_STATUSES,
     ("hrms_letter_templates", "kind"): models.LETTER_KINDS,

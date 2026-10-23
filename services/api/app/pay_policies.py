@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
+from decimal import Decimal
 from typing import Any
 
 import asyncpg
@@ -33,6 +34,7 @@ class Preset:
     overtime: tuple[float, float, float]           # ordinary day, day off, holiday
     policies: Policies
     paid_on_leaving: frozenset[str]                 # leave type codes
+    fund: tuple[bool, float, float, str, int] = (False, 0.0, 0.0, "basic", 0)   # provident fund (0113)
 
 
 PRESETS: dict[str, Preset] = {
@@ -43,9 +45,10 @@ PRESETS: dict[str, Preset] = {
         (2.0, 2.0, 2.0), Policies("days_30", "taxed"), frozenset({"annual"})),
     "provident_fund": Preset(
         "Office with a provident fund",
-        "No gratuity (a provident fund instead), overtime at double, unused annual leave paid out on leaving.",
+        "A provident fund of 8.33% from each side instead of gratuity, overtime at double, unused annual leave "
+        "paid out on leaving.",
         {"enabled": False, "days_per_year": 30, "min_service_months": 12, "part_year_months": 6},
-        (2.0, 2.0, 2.0), Policies("days_30", "taxed"), frozenset({"annual"})),
+        (2.0, 2.0, 2.0), Policies("days_30", "taxed"), frozenset({"annual"}), (True, 8.33, 8.33, "basic", 0)),
     "small_business": Preset(
         "Small business (the basics)",
         "No gratuity, overtime at double, nothing paid out for unused leave on leaving.",
@@ -108,6 +111,10 @@ async def apply_preset(conn: asyncpg.Connection, tenant_id: str, user_id: str, k
               gratuity_tax = excluded.gratuity_tax, gratuity_exempt_minor = excluded.gratuity_exempt_minor,
               preset = excluded.preset, updated_by = excluded.updated_by, updated_at = now()""",
         tenant_id, p.encash_basis, p.gratuity_tax, p.gratuity_exempt_minor, key, user_id)
+    on, ee, er, base, vest = pre.fund
+    await conn.execute(
+        """update payroll_policies set pf_enabled = $1, pf_employee_rate = $2, pf_employer_rate = $3, pf_base = $4,
+                  pf_vesting_months = $5""", on, Decimal(str(ee)), Decimal(str(er)), base, vest)
     await leave.ensure_types(conn, tenant_id)
     await conn.execute("update hrms_leave_types set paid_on_leaving = (code = any($1::text[]))",
                        list(pre.paid_on_leaving))

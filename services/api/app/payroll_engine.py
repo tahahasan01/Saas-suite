@@ -153,6 +153,14 @@ class StatutoryRule:
 
 
 @dataclass(frozen=True)
+class ProvidentFund:
+    """The company's fund rule for a member (0113): rates as fractions."""
+    employee_rate: Decimal
+    employer_rate: Decimal
+    base: Literal["basic", "gross"] = "basic"
+
+
+@dataclass(frozen=True)
 class TaxHistory:
     """This tax year before the period: finalised payslips, and months the
     employee was employed for that have none (paid outside the system)."""
@@ -182,6 +190,7 @@ class EmployeeInput:
     # The exit date when they leave in this period (wave C, 0100): no months
     # follow, so the year's tax is settled on what it actually paid.
     leaves_on: date | None = None
+    provident_fund: ProvidentFund | None = None   # a fund member (0113)
 
 
 # ── Output ──────────────────────────────────────────────────────────────────
@@ -358,6 +367,20 @@ def _calculate(inp: EmployeeInput, res: PayslipResult, ty: payroll.TaxYear) -> N
     # 5. Statutory contributions.
     for rule in inp.statutory:
         _statutory(inp, res, rule, gross, gross_full, share, prorated)
+    # 5b. Provident fund (0113): the member's share is a deduction (no tax
+    # relief here); the employer's is a cost, like EOBI's employer share.
+    if inp.provident_fund is not None:
+        pf = inp.provident_fund
+        pf_base = built["BASIC"].amount_minor if pf.base == "basic" and "BASIC" in built else recurring_paid
+        explain_pf = {"base": pf.base, "base_minor": pf_base, "verified": False}
+        if pf.employee_rate:
+            res.lines.append(Line("PF_EE", "Provident fund (employee)", "deduction",
+                                  _round(Decimal(pf_base) * pf.employee_rate),
+                                  explain={**explain_pf, "rate": str(pf.employee_rate)}))
+        if pf.employer_rate:
+            res.lines.append(Line("PF_ER", "Provident fund (employer)", "employer_contribution",
+                                  _round(Decimal(pf_base) * pf.employer_rate),
+                                  explain={**explain_pf, "rate": str(pf.employer_rate)}))
     if inp.min_wage_minor is not None and gross_full < inp.min_wage_minor:
         res.warnings.append(f"Pay is below the minimum wage for {inp.province or 'this province'} "
                             f"(Rs {_rs(inp.min_wage_minor)} a month)")

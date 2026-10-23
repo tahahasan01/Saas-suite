@@ -125,6 +125,8 @@ module = [
     "app.routers.hrms_notices",
     "app.routers.hrms_overtime",
     "app.routers.hrms_assets",
+    "app.routers.payroll_pf",
+    "app.provident_fund",
     "app.routers.payroll_policies",
     "app.pay_policies",
     "app.routers.hrms_analytics",

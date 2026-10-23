@@ -4,6 +4,8 @@ Anyone who reads payroll sees them; payroll.settings.manage changes them.
 """
 from __future__ import annotations
 
+from decimal import Decimal
+
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -24,6 +26,9 @@ async def _out(conn: asyncpg.Connection, tenant_id: str) -> PoliciesOut:
     return PoliciesOut(
         encash_basis=r["encash_basis"] if r else "days_30", gratuity_tax=r["gratuity_tax"] if r else "taxed",
         gratuity_exempt_minor=r["gratuity_exempt_minor"] if r else None, preset=r["preset"] if r else None,
+        pf_enabled=r["pf_enabled"] if r else False, pf_employee_rate=float(r["pf_employee_rate"]) if r else 0,
+        pf_employer_rate=float(r["pf_employer_rate"]) if r else 0, pf_base=r["pf_base"] if r else "basic",
+        pf_vesting_months=r["pf_vesting_months"] if r else 0,
         leave_types=[PolicyLeaveType(id=str(t["id"]), code=t["code"], name=t["name"],
                                      paid_on_leaving=t["paid_on_leaving"]) for t in types])
 
@@ -47,6 +52,14 @@ async def put_policies(body: PoliciesIn, auth: AuthContext = Depends(perm("payro
                   gratuity_tax = excluded.gratuity_tax, gratuity_exempt_minor = excluded.gratuity_exempt_minor,
                   updated_by = excluded.updated_by, updated_at = now()""",
             auth.tenant_id, body.encash_basis, body.gratuity_tax, body.gratuity_exempt_minor, auth.user_id)
+        # The fund rule (0113): only the fields sent change.
+        await conn.execute(
+            """update payroll_policies set pf_enabled = coalesce($1, pf_enabled),
+                      pf_employee_rate = coalesce($2, pf_employee_rate), pf_employer_rate = coalesce($3, pf_employer_rate),
+                      pf_base = coalesce($4, pf_base), pf_vesting_months = coalesce($5, pf_vesting_months)""",
+            body.pf_enabled, Decimal(str(body.pf_employee_rate)) if body.pf_employee_rate is not None else None,
+            Decimal(str(body.pf_employer_rate)) if body.pf_employer_rate is not None else None,
+            body.pf_base, body.pf_vesting_months)
         if body.paid_on_leaving_ids is not None:
             await leave.ensure_types(conn, auth.tenant_id)
             known = {str(r["id"]) for r in await conn.fetch("select id from hrms_leave_types")}

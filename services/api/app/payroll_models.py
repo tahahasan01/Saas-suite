@@ -391,11 +391,23 @@ PolicyPreset = Literal["standing_orders", "provident_fund", "small_business"]
 POLICY_PRESETS = list(get_args(PolicyPreset))
 
 
+PfBase = Literal["basic", "gross"]
+PF_BASES = list(get_args(PfBase))
+PfEntryKind = Literal["opening", "withdrawal", "payout", "forfeit", "adjustment"]
+PF_ENTRY_KINDS = list(get_args(PfEntryKind))
+
+
 class PoliciesIn(BaseModel):
     encash_basis: EncashBasis
     gratuity_tax: GratuityTax
     gratuity_exempt_minor: int | None = Field(default=None, gt=0, le=10**12)
     paid_on_leaving_ids: list[UUID] | None = Field(default=None, max_length=100)   # leave types; unchanged if left out
+    # The provident fund rule (0113); each left out stays as it is.
+    pf_enabled: bool | None = None
+    pf_employee_rate: float | None = Field(default=None, ge=0, le=30)      # percent
+    pf_employer_rate: float | None = Field(default=None, ge=0, le=30)
+    pf_base: PfBase | None = None
+    pf_vesting_months: int | None = Field(default=None, ge=0, le=240)
 
 
 class PolicyLeaveType(BaseModel):
@@ -411,6 +423,11 @@ class PoliciesOut(BaseModel):
     gratuity_exempt_minor: int | None
     preset: PolicyPreset | None
     leave_types: list[PolicyLeaveType]
+    pf_enabled: bool = False
+    pf_employee_rate: float = 0
+    pf_employer_rate: float = 0
+    pf_base: PfBase = "basic"
+    pf_vesting_months: int = 0
 
 
 class PresetIn(BaseModel):
@@ -421,3 +438,32 @@ class PresetOut(BaseModel):
     key: PolicyPreset
     name: str
     summary: str
+
+
+class PfMembershipIn(BaseModel):
+    member: bool
+    joined_on: date | None = None          # today when joining and left out
+
+
+class PfEntryIn(BaseModel):
+    kind: Literal["opening", "withdrawal", "adjustment"]
+    employee_minor: int = Field(default=0, ge=-10**12, le=10**12)
+    employer_minor: int = Field(default=0, ge=-10**12, le=10**12)
+    note: str = Field(default="", max_length=500)
+
+
+class PfHistoryRow(BaseModel):
+    on: date
+    what: str
+    employee_minor: int
+    employer_minor: int
+
+
+class PfBalance(BaseModel):
+    employee_id: str
+    member: bool
+    joined_on: date | None
+    employee_minor: int
+    employer_minor: int
+    vested_employer_minor: int
+    history: list[PfHistoryRow] = Field(default_factory=list)
