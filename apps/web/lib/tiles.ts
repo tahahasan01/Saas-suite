@@ -26,3 +26,14 @@ export function tileColor(p: { color?: string | null; category_id?: string | nul
 export function tileStyle(color: TileColor | null): CSSProperties | undefined {
   return color ? { background: `var(--tile-${color}-bg)`, borderTopColor: `var(--tile-${color}-edge)` } : undefined;
 }
+
+/** What a tile says about stock. A product that doesn't track stock (a
+ *  dish, a haircut, a delivery charge) is never "out of stock": its stock
+ *  figure is just 0, and treating that as empty locked it on the till. */
+export function stockState(p: { stock_qty: number; low_stock_at: number; unit: string; track_stock?: boolean }):
+  { out: boolean; low: boolean; text: string } {
+  if (p.track_stock === false) return { out: false, low: false, text: "" };
+  if (p.stock_qty <= 0) return { out: true, low: false, text: "Out of stock" };
+  if (p.low_stock_at > 0 && p.stock_qty <= p.low_stock_at) return { out: false, low: true, text: `Low stock · ${p.stock_qty} ${p.unit} left` };
+  return { out: false, low: false, text: `${p.stock_qty} ${p.unit} in stock` };
+}

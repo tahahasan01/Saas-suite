@@ -54,7 +54,7 @@ test("a table is opened, items go to the kitchen in rounds, and a sent item is v
   await expect(page.getByLabel(`Seekh kebab ${tag} quantity`)).toHaveText("2");
 
   // The floor shows the table occupied with its running bill.
-  await page.getByRole("link", { name: "Floor" }).click();
+  await page.getByRole("link", { name: "Back to floor" }).click();
   await page.getByRole("tab", { name: `Lawn ${tag}` }).click();
   await expect(page.getByRole("link", { name: "Table 7, occupied" })).toContainText(/2,400/);
 });

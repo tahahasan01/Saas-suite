@@ -3,7 +3,7 @@
 import { memo, useEffect, useRef, useState } from "react";
 import type { Product } from "@business-os/types";
 import { money } from "@/lib/format";
-import { tileColor, tileStyle } from "@/lib/tiles";
+import { stockState, tileColor, tileStyle } from "@/lib/tiles";
 import { cx } from "@/components/ui";
 
 /** Keeps the scan field focused: a tapped tile that took focus was "clicked"
@@ -65,8 +65,7 @@ export const ProductGrid = memo(function ProductGrid({ products, locked, onAdd, 
 function Tile({ p, locked, onAdd, big, color }: {
   p: Product; locked: boolean; onAdd: (p: Product) => void; big: boolean; color: ReturnType<typeof tileColor>;
 }) {
-  const out = p.stock_qty <= 0;
-  const low = !out && p.low_stock_at > 0 && p.stock_qty <= p.low_stock_at;
+  const { out, low, text } = stockState(p);
   return (
     <button
       type="button"
@@ -87,7 +86,7 @@ function Tile({ p, locked, onAdd, big, color }: {
       <span className={cx("font-medium leading-tight break-words", big ? "text-base" : "text-sm")}>{p.name}</span>
       <span className={cx("mt-1 tabular-nums text-brand", big ? "text-base font-semibold" : "text-sm")}>{money(p.price_minor)}</span>
       <span className={cx("mt-auto pt-1 text-[11px]", out ? "font-medium text-danger" : low ? "font-medium text-warning" : "text-fg-subtle")}>
-        {out ? "Out of stock" : low ? `Low stock · ${p.stock_qty} ${p.unit} left` : `${p.stock_qty} ${p.unit} in stock`}
+        {text}
       </span>
     </button>
   );

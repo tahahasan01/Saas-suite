@@ -102,7 +102,7 @@ export default function OrderPage() {
             <h2 className="font-display text-xl font-semibold">{title}</h2>
             {order.guests && <span className="text-sm text-fg-muted">{order.guests} guests</span>}
             {!open && <Badge>{order.status === "cancelled" ? "Cancelled" : "Paid"}</Badge>}
-            <Link href="/restaurant" className="ms-auto text-sm text-brand hover:underline">Floor</Link>
+            <Link href="/restaurant" className="ms-auto text-sm text-brand hover:underline">Back to floor</Link>
           </div>
           {order.lines.length === 0 ? <p className="text-sm text-fg-muted">Tap items on the menu to add them.</p> : (
             <ul aria-label="Order lines" className="divide-y divide-line text-sm">
