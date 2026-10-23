@@ -27,7 +27,7 @@ test("a warehouse is added, stock is sent and received short, and a count is app
   await page.getByRole("option", { name: new RegExp(`Basmati ${tag}`) }).first().click();
   await dlg.getByLabel("Quantity").fill("5");
   await dlg.getByRole("button", { name: "Save draft" }).click();
-  const item = page.getByRole("list", { name: "Transfers" }).getByRole("listitem").filter({ hasText: `Basmati ${tag}` });
+  const item = page.getByRole("list", { name: "Transfers" }).getByRole("listitem").filter({ hasText: `Basmati ${tag}` }).first();   // the card, not its line
   await expect(item).toContainText("Draft");
   await item.getByRole("button", { name: /^Dispatch / }).click();
   await expect(item).toContainText("On the way");
