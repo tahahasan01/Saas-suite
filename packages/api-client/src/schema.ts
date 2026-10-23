@@ -6009,6 +6009,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/payroll/runs/{run_id}/payslips/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Payslips
+         * @description Email each payslip of a final run to the employee's email on file
+         *     (0111), through the outbox. Sent once unless `again`; no email, skipped.
+         */
+        post: operations["send_payslips_payroll_runs__run_id__payslips_send_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/payroll/runs/{run_id}/mark-paid": {
         parameters: {
             query?: never;
@@ -13295,6 +13316,34 @@ export interface components {
              * Format: date-time
              */
             expires_at: string;
+        };
+        /** PayslipSendIn */
+        PayslipSendIn: {
+            /** Employee Ids */
+            employee_ids?: string[] | null;
+            /**
+             * Again
+             * @default false
+             */
+            again: boolean;
+        };
+        /** PayslipSendOut */
+        PayslipSendOut: {
+            /**
+             * Queued
+             * @default 0
+             */
+            queued: number;
+            /**
+             * No Email
+             * @default 0
+             */
+            no_email: number;
+            /**
+             * Already Sent
+             * @default 0
+             */
+            already_sent: number;
         };
         /** PayslipSummary */
         PayslipSummary: {
@@ -30413,6 +30462,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_payslips_payroll_runs__run_id__payslips_send_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PayslipSendIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayslipSendOut"];
                 };
             };
             /** @description Validation Error */

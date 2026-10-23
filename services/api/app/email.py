@@ -133,6 +133,12 @@ async def queue_invoice(conn, tenant_id: str, to: str, invoice_id: str) -> int:
     return await _enqueue(conn, tenant_id, "invoice", to, invoice_id=str(invoice_id))
 
 
+async def queue_payslip(conn, tenant_id: str, to: str, payslip_id: str) -> int:
+    """A final payslip with its PDF (0111). Only the id is queued: the PDF is
+    built at delivery from the frozen payslip."""
+    return await _enqueue(conn, tenant_id, "payslip", to, payslip_id=str(payslip_id))
+
+
 async def queue_campaign(conn, tenant_id: str, to: str, *, subject: str, body: str, business: str,
                          unsubscribe_token: str, run_after=None) -> int:
     """A marketing email (wave D campaigns), already merged; `run_after`
@@ -249,10 +255,32 @@ async def _invoice_mail(row) -> tuple[str, str, list[Attachment]]:
     return f"Invoice {ref} from {company}", body, [(f"{ref}.pdf", pdf, "application/pdf")]
 
 
+async def _payslip_mail(row) -> tuple[str, str, list[Attachment]]:
+    from .routers import payroll_runs as runs_router   # keeps the mailer importable without payroll
+
+    async with db.tenant_conn(str(row["tenant_id"])) as conn:
+        p = await conn.fetchrow("select * from payslips where id = $1::uuid", row["payload"]["payslip_id"])
+        if p is None:
+            raise LookupError("payslip gone")
+        run = await conn.fetchrow("select * from payroll_runs where id = $1", p["run_id"])
+        company = await conn.fetchval("select name from tenants where id = $1", p["tenant_id"])
+        # A mailbox copy: bank and identity numbers stay masked; the pay is theirs to see.
+        pdf = await runs_router.pdf_bytes(conn, p, run, reveal=False)
+    month = f"{run['period_start']:%B %Y}"
+    name = (p["snapshot"] or {}).get("name") or "there"
+    body = (f"Dear {name},\n\nYour payslip for {month} is attached.\n\n"
+            f"Regards,\n{company or 'Payroll'}")
+    return f"Payslip for {month} · {company or ''}".strip(" ·"), body, [
+        (f"payslip-{run['period_start']:%Y-%m}.pdf", pdf, "application/pdf")]
+
+
 async def _deliver(row) -> str | None:
     try:
         if row["payload"]["template"] == "invoice":
             subject, body, files = await _invoice_mail(row)
+            await _send_attached(row["payload"]["to"], subject, body, files)
+        elif row["payload"]["template"] == "payslip":
+            subject, body, files = await _payslip_mail(row)
             await _send_attached(row["payload"]["to"], subject, body, files)
         else:
             subject, body = await _render(row)

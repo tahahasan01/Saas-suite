@@ -25256,6 +25256,75 @@
         }
       }
     },
+    "/payroll/runs/{run_id}/payslips/send": {
+      "post": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Send Payslips",
+        "description": "Email each payslip of a final run to the employee's email on file\n(0111), through the outbox. Sent once unless `again`; no email, skipped.",
+        "operationId": "send_payslips_payroll_runs__run_id__payslips_send_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PayslipSendIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayslipSendOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/payroll/runs/{run_id}/mark-paid": {
       "post": {
         "tags": [
@@ -47836,6 +47905,54 @@
           "expires_at"
         ],
         "title": "PayslipLink"
+      },
+      "PayslipSendIn": {
+        "properties": {
+          "employee_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "type": "array",
+                "maxItems": 5000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employee Ids"
+          },
+          "again": {
+            "type": "boolean",
+            "title": "Again",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "PayslipSendIn"
+      },
+      "PayslipSendOut": {
+        "properties": {
+          "queued": {
+            "type": "integer",
+            "title": "Queued",
+            "default": 0
+          },
+          "no_email": {
+            "type": "integer",
+            "title": "No Email",
+            "default": 0
+          },
+          "already_sent": {
+            "type": "integer",
+            "title": "Already Sent",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "PayslipSendOut"
       },
       "PayslipSummary": {
         "properties": {

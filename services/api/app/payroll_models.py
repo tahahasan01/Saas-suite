@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from typing import Any, Literal, get_args
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -301,6 +302,17 @@ class AdvanceIn(BaseModel):
 
 AdvanceRepayMethod = Literal["cash", "payroll"]
 ADVANCE_REPAY_METHODS = list(get_args(AdvanceRepayMethod))
+
+
+class PayslipSendIn(BaseModel):
+    employee_ids: list[UUID] | None = Field(default=None, max_length=5000)   # everyone when left out
+    again: bool = False                    # resend payslips already emailed
+
+
+class PayslipSendOut(BaseModel):
+    queued: int = 0
+    no_email: int = 0
+    already_sent: int = 0
 
 
 class AdvanceRepay(BaseModel):

@@ -53,6 +53,19 @@ export function PayrollRuns({ month }: { month: string }) {
   async function act(path: string, body?: object) {
     if ((await step.run(path, body)) !== undefined) await load();
   }
+  // Payslips go by email once a run is final (0111); each one only once.
+  const send = useAction(
+    (runId: string) => api<{ queued: number; no_email: number; already_sent: number }>(
+      `/payroll/runs/${runId}/payslips/send`, { method: "POST", body: JSON.stringify({}) }),
+    {
+      success: (r) => {
+        const s = r as { queued: number; no_email: number; already_sent: number };
+        return `Emailing ${s.queued} payslip(s)` + (s.already_sent ? `; ${s.already_sent} already sent` : "")
+          + (s.no_email ? `; ${s.no_email} have no email` : "");
+      },
+      failure: "Couldn't send the payslips",
+    },
+  );
   async function start() {
     const created = await step.run("/payroll/runs", { month });
     if (created !== undefined) await act(`/payroll/runs/${created.id}/calculate`);
@@ -111,6 +124,11 @@ export function PayrollRuns({ month }: { month: string }) {
             {run.status === "review" && (
               <Can perm="payroll.run.approve">
                 <Button disabled={step.busy} onClick={() => void act(`/payroll/runs/${run.id}/approve`)}>Approve</Button>
+              </Can>
+            )}
+            {(run.status === "approved" || run.status === "paid" || run.status === "locked") && (
+              <Can perm="payroll.run.pay">
+                <Button variant="subtle" disabled={send.busy} onClick={() => void send.run(run.id)}>Email payslips</Button>
               </Can>
             )}
             {run.status === "approved" && (
