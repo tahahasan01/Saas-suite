@@ -9565,6 +9565,121 @@
         }
       }
     },
+    "/crm/assignment/rules": {
+      "get": {
+        "tags": [
+          "crm-web-forms"
+        ],
+        "summary": "Get Rules",
+        "operationId": "get_rules_crm_assignment_rules_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AssignmentRuleOut"
+                  },
+                  "title": "Response Get Rules Crm Assignment Rules Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "crm-web-forms"
+        ],
+        "summary": "Put Rules",
+        "description": "Replace the rules, in order. Their people must be this business's\nusers and already in the lead pool (so caps, pausing and leave apply).",
+        "operationId": "put_rules_crm_assignment_rules_put",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignmentRulesPut"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AssignmentRuleOut"
+                  },
+                  "title": "Response Put Rules Crm Assignment Rules Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/public/forms/{public_id}": {
       "get": {
         "tags": [
@@ -10374,6 +10489,89 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/UnsubscribePage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/consent/{token}": {
+      "get": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Consent Page",
+        "description": "Shows who is asking; changes nothing (mail scanners open links).",
+        "operationId": "consent_page_public_consent__token__get",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentConfirmPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Consent Confirm",
+        "operationId": "consent_confirm_public_consent__token__post",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentConfirmPage"
                 }
               }
             }
@@ -35412,6 +35610,131 @@
         "type": "object",
         "title": "AssetUpdate"
       },
+      "AssignmentRuleIn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 60
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "user_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "User Ids"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "user_ids"
+        ],
+        "title": "AssignmentRuleIn",
+        "description": "Leads whose source and/or city match go, in turn, to these pool members."
+      },
+      "AssignmentRuleOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "position": {
+            "type": "integer",
+            "title": "Position"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "user_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "User Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "position",
+          "name",
+          "source",
+          "city",
+          "user_ids"
+        ],
+        "title": "AssignmentRuleOut"
+      },
+      "AssignmentRulesPut": {
+        "properties": {
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/AssignmentRuleIn"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "title": "Rules"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rules"
+        ],
+        "title": "AssignmentRulesPut"
+      },
       "AttendanceOut": {
         "properties": {
           "id": {
@@ -38217,6 +38540,25 @@
         "type": "object",
         "title": "ComponentUpdate"
       },
+      "ConsentConfirmPage": {
+        "properties": {
+          "business_name": {
+            "type": "string",
+            "title": "Business Name"
+          },
+          "done": {
+            "type": "boolean",
+            "title": "Done"
+          }
+        },
+        "type": "object",
+        "required": [
+          "business_name",
+          "done"
+        ],
+        "title": "ConsentConfirmPage",
+        "description": "What the confirmation page shows: who is asking, and whether it's done."
+      },
       "ConsentIn": {
         "properties": {
           "channel": {
@@ -39627,6 +39969,17 @@
               }
             ],
             "title": "Campaign Daily Cap"
+          },
+          "quote_require_signature": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quote Require Signature"
           }
         },
         "additionalProperties": false,
@@ -39651,6 +40004,11 @@
             "type": "integer",
             "title": "Campaign Daily Cap",
             "default": 500
+          },
+          "quote_require_signature": {
+            "type": "boolean",
+            "title": "Quote Require Signature",
+            "default": false
           }
         },
         "type": "object",
@@ -53355,6 +53713,18 @@
             "type": "string",
             "pattern": "^[0-9a-f]{64}$",
             "title": "Content Hash"
+          },
+          "signature": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 270000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signature"
           }
         },
         "additionalProperties": false,
@@ -53579,6 +53949,11 @@
             ],
             "title": "Accepted At"
           },
+          "signed": {
+            "type": "boolean",
+            "title": "Signed",
+            "default": false
+          },
           "id": {
             "type": "string",
             "title": "Id"
@@ -53799,6 +54174,11 @@
             ],
             "title": "Accepted At"
           },
+          "signed": {
+            "type": "boolean",
+            "title": "Signed",
+            "default": false
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -53815,6 +54195,11 @@
             },
             "type": "object",
             "title": "Business"
+          },
+          "signature_required": {
+            "type": "boolean",
+            "title": "Signature Required",
+            "default": false
           }
         },
         "type": "object",
@@ -56296,6 +56681,12 @@
               }
             ],
             "title": "Has Email"
+          },
+          "custom": {
+            "additionalProperties": true,
+            "type": "object",
+            "maxProperties": 10,
+            "title": "Custom"
           }
         },
         "additionalProperties": false,

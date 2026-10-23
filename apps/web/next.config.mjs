@@ -12,8 +12,6 @@ const SECURITY_HEADERS = [
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  // frame-ancestors 'none' in the CSP is the modern form; this covers old browsers.
-  { key: "X-Frame-Options", value: "DENY" },
   // camera=(self): the till's camera scan fallback (F19). usb=(self): the WebUSB receipt printer
   // (lib/printer.ts); usb=() had blocked it. Both still ask the user. The rest stay off.
   // geolocation=(self): the staff punch reads the browser's location for the server-side geofence (D-43).
@@ -55,8 +53,17 @@ export default function nextConfig(phase) {
       // CSP is per request (it carries a nonce), so middleware.ts sets it.
       return [
         { source: "/:path*", headers: SECURITY_HEADERS },
+        // frame-ancestors 'none' in the CSP is the modern form; this covers old
+        // browsers. Not on web forms (/f/…), which businesses embed in an iframe.
+        { source: "/((?!f/).*)", headers: [{ key: "X-Frame-Options", value: "DENY" }] },
         // The customer's quote page (wave D): the link's token is in the path, so
         // it must not leak through a Referer header, a cache or a search engine.
+        // The marketing confirmation link (/c/{token}) carries its signature in the path too.
+        { source: "/c/:path*", headers: [
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+          { key: "Cache-Control", value: "no-store" },
+        ] },
         { source: "/q/:path*", headers: [
           { key: "Referrer-Policy", value: "no-referrer" },
           { key: "X-Robots-Tag", value: "noindex, nofollow" },

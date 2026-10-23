@@ -178,3 +178,25 @@ export function CustomFieldsEditor() {
     </Card>
   );
 }
+
+
+/** Filter choices from choice and yes/no fields: "Area: DHA", "Donor: Yes".
+ *  The value is "key=<json>", so a choice and a yes/no can't be confused. */
+export function customFilterOptions(fields: FieldDef[]): { value: string; label: string }[] {
+  const out: { value: string; label: string }[] = [];
+  for (const f of fields) {
+    if (f.kind === "select") {
+      for (const o of f.options) out.push({ value: `${f.key}=${JSON.stringify(o)}`, label: `${f.label}: ${o}` });
+    } else if (f.kind === "checkbox") {
+      out.push({ value: `${f.key}=true`, label: `${f.label}: Yes` }, { value: `${f.key}=false`, label: `${f.label}: No` });
+    }
+  }
+  return out;
+}
+
+/** "key=<json>" back to [key, value]. */
+export function parseCustomFilter(v: string): [string, unknown] | null {
+  const i = v.indexOf("=");
+  if (i < 1) return null;
+  try { return [v.slice(0, i), JSON.parse(v.slice(i + 1))]; } catch { return null; }
+}

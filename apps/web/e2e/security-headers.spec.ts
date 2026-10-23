@@ -29,6 +29,17 @@ for (const path of ["/login", "/"]) {
   });
 }
 
+test("a web form page may be framed by https sites (embedding); nothing else may", async ({ request }) => {
+  const form = (await request.get("/f/any-public-id")).headers();
+  expect(form["x-frame-options"]).toBeUndefined();
+  expect(directive(form["content-security-policy"] ?? "", "frame-ancestors")).toBe("frame-ancestors https:");
+  for (const path of ["/login", "/q/any-token", "/c/any-token"]) {
+    const h = (await request.get(path)).headers();
+    expect(h["x-frame-options"]).toBe("DENY");
+    expect(directive(h["content-security-policy"] ?? "", "frame-ancestors")).toBe("frame-ancestors 'none'");
+  }
+});
+
 test("each response gets its own nonce, and the page's inline scripts carry it", async ({ request, page }) => {
   const nonceOf = (csp: string) => /'nonce-([^']+)'/.exec(csp)?.[1];
   const a = nonceOf((await request.get("/login")).headers()["content-security-policy"] ?? "");

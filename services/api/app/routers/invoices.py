@@ -8,7 +8,7 @@ import io
 from datetime import date
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
 from fastapi.responses import StreamingResponse
 
 from .. import audit, csv_io, db, email, invoices_pdf, invoicing, notifications, ratelimit, sequences
@@ -181,7 +181,7 @@ async def invoice_pdf(invoice_id: str, auth: AuthContext = Depends(perm("invoici
 
 
 @router.post("/{invoice_id}/send", response_model=InvoiceSent, status_code=status.HTTP_202_ACCEPTED)
-async def send_invoice(invoice_id: str, body: InvoiceSend,
+async def send_invoice(invoice_id: str, body: InvoiceSend, background: BackgroundTasks,
                        auth: AuthContext = Depends(perm("invoicing.invoice.create"))) -> InvoiceSent:
     """Email the issued invoice with its PDF, through the outbox: SMTP being
     down never fails this, and the PDF is built when the email goes."""
@@ -205,7 +205,8 @@ async def send_invoice(invoice_id: str, body: InvoiceSend,
             retry = await ratelimit.hit(bucket, limit, window)
             if retry:
                 raise ratelimit.too_many(retry)
-        await email.queue_invoice(conn, auth.tenant_id, to, invoice_id)
+        mail = await email.queue_invoice(conn, auth.tenant_id, to, invoice_id)
         await conn.execute("update invoices set last_sent_at = now(), updated_at = now() where id = $1", invoice_id)
         await audit.event(conn, "invoicing.invoice.send", "invoices", invoice_id, data={"to": to})
+    background.add_task(email.deliver_now, mail)    # after commit; the worker retries if this fails
     return InvoiceSent(to=to)

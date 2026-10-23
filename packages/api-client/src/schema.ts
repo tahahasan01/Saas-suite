@@ -2412,6 +2412,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/crm/assignment/rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Rules */
+        get: operations["get_rules_crm_assignment_rules_get"];
+        /**
+         * Put Rules
+         * @description Replace the rules, in order. Their people must be this business's
+         *     users and already in the lead pool (so caps, pausing and leave apply).
+         */
+        put: operations["put_rules_crm_assignment_rules_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/public/forms/{public_id}": {
         parameters: {
             query?: never;
@@ -2568,6 +2590,27 @@ export interface paths {
         put?: never;
         /** Unsubscribe */
         post: operations["unsubscribe_public_unsubscribe__token__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/consent/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Consent Page
+         * @description Shows who is asking; changes nothing (mail scanners open links).
+         */
+        get: operations["consent_page_public_consent__token__get"];
+        put?: never;
+        /** Consent Confirm */
+        post: operations["consent_confirm_public_consent__token__post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8712,6 +8755,40 @@ export interface components {
             /** Note */
             note?: string | null;
         };
+        /**
+         * AssignmentRuleIn
+         * @description Leads whose source and/or city match go, in turn, to these pool members.
+         */
+        AssignmentRuleIn: {
+            /** Name */
+            name: string;
+            /** Source */
+            source?: string | null;
+            /** City */
+            city?: string | null;
+            /** User Ids */
+            user_ids: string[];
+        };
+        /** AssignmentRuleOut */
+        AssignmentRuleOut: {
+            /** Id */
+            id: string;
+            /** Position */
+            position: number;
+            /** Name */
+            name: string;
+            /** Source */
+            source: string | null;
+            /** City */
+            city: string | null;
+            /** User Ids */
+            user_ids: string[];
+        };
+        /** AssignmentRulesPut */
+        AssignmentRulesPut: {
+            /** Rules */
+            rules: components["schemas"]["AssignmentRuleIn"][];
+        };
         /** AttendanceOut */
         AttendanceOut: {
             /** Id */
@@ -9689,6 +9766,16 @@ export interface components {
             /** Active */
             active?: boolean | null;
         };
+        /**
+         * ConsentConfirmPage
+         * @description What the confirmation page shows: who is asking, and whether it's done.
+         */
+        ConsentConfirmPage: {
+            /** Business Name */
+            business_name: string;
+            /** Done */
+            done: boolean;
+        };
         /** ConsentIn */
         ConsentIn: {
             /**
@@ -10179,6 +10266,8 @@ export interface components {
             max_discount_pct?: number | string | null;
             /** Campaign Daily Cap */
             campaign_daily_cap?: number | null;
+            /** Quote Require Signature */
+            quote_require_signature?: boolean | null;
         };
         /** CrmSettingsOut */
         CrmSettingsOut: {
@@ -10189,6 +10278,11 @@ export interface components {
              * @default 500
              */
             campaign_daily_cap: number;
+            /**
+             * Quote Require Signature
+             * @default false
+             */
+            quote_require_signature: boolean;
         };
         /** CrmSummary */
         CrmSummary: {
@@ -15076,6 +15170,8 @@ export interface components {
             name: string;
             /** Content Hash */
             content_hash: string;
+            /** Signature */
+            signature?: string | null;
         };
         /** QuoteCreate */
         QuoteCreate: {
@@ -15170,6 +15266,11 @@ export interface components {
             accepted_name?: string | null;
             /** Accepted At */
             accepted_at?: string | null;
+            /**
+             * Signed
+             * @default false
+             */
+            signed: boolean;
             /** Id */
             id: string;
             /** Lead Id */
@@ -15241,6 +15342,11 @@ export interface components {
             /** Accepted At */
             accepted_at?: string | null;
             /**
+             * Signed
+             * @default false
+             */
+            signed: boolean;
+            /**
              * Status
              * @enum {string}
              */
@@ -15249,6 +15355,11 @@ export interface components {
             business: {
                 [key: string]: string;
             };
+            /**
+             * Signature Required
+             * @default false
+             */
+            signature_required: boolean;
         };
         /** RatingIn */
         RatingIn: {
@@ -16156,6 +16267,10 @@ export interface components {
             city?: string | null;
             /** Has Email */
             has_email?: boolean | null;
+            /** Custom */
+            custom?: {
+                [key: string]: unknown;
+            };
         };
         /** SegmentIn */
         SegmentIn: {
@@ -23121,6 +23236,72 @@ export interface operations {
             };
         };
     };
+    get_rules_crm_assignment_rules_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssignmentRuleOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_rules_crm_assignment_rules_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignmentRulesPut"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssignmentRuleOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     describe_public_forms__public_id__get: {
         parameters: {
             query?: never;
@@ -23605,6 +23786,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UnsubscribePage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    consent_page_public_consent__token__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsentConfirmPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    consent_confirm_public_consent__token__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsentConfirmPage"];
                 };
             };
             /** @description Validation Error */

@@ -62,7 +62,7 @@ async def accept(token: str, body: QuoteAccept, request: Request) -> QuotePublic
     tenant_id, qid = await _open(token)
     async with db.tenant_conn(tenant_id) as conn:
         return await quotes.accept(conn, qid, body.name, body.content_hash, ratelimit.client_ip(request),
-                                   request.headers.get("user-agent", ""))
+                                   request.headers.get("user-agent", ""), body.signature)
 
 
 @router.post("/{token}/decline", response_model=QuotePublic, dependencies=[Depends(_guard)])
@@ -79,7 +79,9 @@ async def pdf(token: str) -> Response:
     async with db.tenant_conn(tenant_id) as conn:
         page = await quotes.public_view(conn, qid)
         seller = await invoicing.seller(conn, tenant_id)
-    return Response(quotes_pdf.build_quote_pdf(page, seller), media_type="application/pdf",
+        sig = await conn.fetchval("select accepted_signature from crm_quotes where id = $1", qid)
+    return Response(quotes_pdf.build_quote_pdf(page, seller, bytes(sig) if sig is not None else None),
+                    media_type="application/pdf",
                     headers={"Content-Disposition": f'inline; filename="{page.number}.pdf"',
                              "Cache-Control": "no-store", "Referrer-Policy": "no-referrer",
                              "X-Robots-Tag": "noindex, nofollow"})

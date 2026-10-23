@@ -51,8 +51,7 @@ async def test_sending_queues_the_invoice_to_the_customer_and_attaches_the_pdf(c
     # Only a pointer is queued: the PDF is built when the email goes.
     assert row["payload"] == {"template": "invoice", "to": "accounts@bilal.example", "invoice_id": inv["id"]}
 
-    await q("update outbox set run_after = now() where id = $1", row["id"])
-    assert await email.process_outbox() >= 1
+    # Delivered at once (the post-commit fast path), not left for the worker.
     [(to, subject, body, files)] = attached
     assert to == "accounts@bilal.example" and inv["number"] in subject
     assert inv["number"] in body and "50,000" in body
@@ -105,3 +104,9 @@ async def test_a_tenant_has_a_daily_sending_cap(client, crm_tenant, monkeypatch)
     sent = [await issued(client) for _ in range(3)]
     codes = [(await client.post(f"/invoices/{i['id']}/send", json={})).status_code for i in sent]
     assert codes == [202, 202, 429]
+
+
+async def test_the_email_goes_out_at_once_without_waiting_for_the_worker(client, crm_tenant, attached):
+    inv = await issued(client)
+    assert (await client.post(f"/invoices/{inv['id']}/send", json={})).status_code == 202
+    assert len(attached) == 1          # the post-commit fast path, like password resets

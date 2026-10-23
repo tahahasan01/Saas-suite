@@ -6,7 +6,7 @@ ceiling needs crm.deal.discount_override."""
 from __future__ import annotations
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
 
 from .. import audit, db, deal_lines, email, invoicing, leads, quotes, quotes_pdf, ratelimit, rbac, sequences, targets
 from ..crm_selling_models import (
@@ -91,8 +91,9 @@ async def put_settings(body: CrmSettingsIn,
                        auth: AuthContext = Depends(perm("crm.settings.manage"))) -> CrmSettingsOut:
     async with db.tenant_conn(auth.tenant_id) as conn:
         fields = body.model_dump(exclude_unset=True)
-        if fields.get("campaign_daily_cap", 0) is None:
-            fields.pop("campaign_daily_cap")      # not nullable: absent means unchanged
+        for col in ("campaign_daily_cap", "quote_require_signature"):
+            if col in fields and fields[col] is None:
+                fields.pop(col)                   # not nullable: null means unchanged
         await conn.execute("insert into crm_settings (tenant_id) values ($1) on conflict do nothing", auth.tenant_id)
         if fields:
             cols = ", ".join(f"{k} = ${i + 1}" for i, k in enumerate(fields))
@@ -133,9 +134,11 @@ async def get_quote(quote_id: str, auth: AuthContext = Depends(perm("crm.lead.re
 @router.get("/quotes/{quote_id}/pdf")
 async def quote_pdf(quote_id: str, auth: AuthContext = Depends(perm("crm.lead.read"))) -> Response:
     async with db.tenant_conn(auth.tenant_id) as conn:
-        q = await quotes.out(conn, await _quote_in_scope(conn, auth, "crm.lead.read", quote_id))
+        row = await _quote_in_scope(conn, auth, "crm.lead.read", quote_id)
+        q = await quotes.out(conn, row)
         seller = await invoicing.seller(conn, auth.tenant_id)
-    return Response(quotes_pdf.build_quote_pdf(q, seller), media_type="application/pdf",
+    sig = bytes(row["accepted_signature"]) if row["accepted_signature"] is not None else None
+    return Response(quotes_pdf.build_quote_pdf(q, seller, sig), media_type="application/pdf",
                     headers={"Content-Disposition": f'inline; filename="{q.number}.pdf"'})
 
 
@@ -144,7 +147,7 @@ SENDS_PER_DAY = 200
 
 
 @router.post("/quotes/{quote_id}/send", response_model=QuoteEmailed, status_code=status.HTTP_202_ACCEPTED)
-async def email_quote(quote_id: str, body: QuoteEmail,
+async def email_quote(quote_id: str, body: QuoteEmail, background: BackgroundTasks,
                       auth: AuthContext = Depends(perm("crm.quote.send"))) -> QuoteEmailed:
     """Email the customer the link and the PDF, through the outbox. Only an
     open quote; one plain address; a few times an hour per quote and a daily
@@ -169,9 +172,10 @@ async def email_quote(quote_id: str, body: QuoteEmail,
             retry = await ratelimit.hit(bucket, limit, window)
             if retry:
                 raise ratelimit.too_many(retry)
-        await email.queue_quote(conn, auth.tenant_id, to, quote_id)
+        mail = await email.queue_quote(conn, auth.tenant_id, to, quote_id)
         await conn.execute("update crm_quotes set last_emailed_at = now(), updated_at = now() where id = $1", quote_id)
         await audit.event(conn, "crm.quote.email", "crm_quotes", quote_id, data={"to": to})
+    background.add_task(email.deliver_now, mail)    # after commit; the worker retries if this fails
     return QuoteEmailed(to=to)
 
 

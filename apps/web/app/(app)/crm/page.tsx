@@ -9,6 +9,7 @@ import { useCan } from "@/lib/can";
 import { errorText, useAction } from "@/lib/useAction";
 import { useToast } from "@/components/Toast";
 import { Badge, Button, EmptyState, ErrorState, Input, LoadingRows, Select } from "@/components/ui";
+import { customFilterOptions, parseCustomFilter, useCustomFields } from "@/components/CustomFields";
 import { DataTable, type Column } from "@/components/DataTable";
 import { AddLeadForm } from "@/components/crm/AddLeadForm";
 import { ImportCsv } from "@/components/ImportCsv";
@@ -51,6 +52,9 @@ export default function CrmBoard() {
   const [q, setQ] = useState("");
   const [source, setSource] = useState("");
   const [tag, setTag] = useState("");
+  const [customFilter, setCustomFilter] = useState("");
+  const leadFields = useCustomFields("lead");
+  const customOptions = useMemo(() => customFilterOptions(leadFields), [leadFields]);
   const [sort, setSort] = useState<Sort>("newest");
 
   const pipeline = pipelines?.find((p) => p.id === pipelineId) ?? null;
@@ -108,6 +112,7 @@ export default function CrmBoard() {
 
   const shown = useMemo(() => {
     const needle = q.trim().toLowerCase();
+    const cf = customFilter ? parseCustomFilter(customFilter) : null;
     let out = leads ?? [];
     if (needle) {
       out = out.filter((l) =>
@@ -115,12 +120,17 @@ export default function CrmBoard() {
     }
     if (source) out = out.filter((l) => l.source === source);
     if (tag) out = out.filter((l) => l.tags.some((x) => x.id === tag));
+    if (cf) {
+      const [key, want] = cf;
+      // A yes/no field that was never set counts as "no".
+      out = out.filter((l) => (typeof want === "boolean" ? (l.custom?.[key] ?? false) : l.custom?.[key]) === want);
+    }
     return [...out].sort((a, b) =>
       sort === "value" ? b.value_minor - a.value_minor
       : sort === "score" ? (b.score ?? 0) - (a.score ?? 0)
       : sort === "priority" ? b.priority - a.priority || +new Date(b.created_at) - +new Date(a.created_at)
       : +new Date(b.created_at) - +new Date(a.created_at));
-  }, [leads, q, source, tag, sort]);
+  }, [leads, q, source, tag, sort, customFilter]);
 
   if (pipelineError) return <ErrorState message={pipelineError} onRetry={loadPipelines} />;
   if (pipelines === undefined) return <LoadingRows label="Loading pipeline" />;
@@ -187,6 +197,14 @@ export default function CrmBoard() {
             <Select value={tag} onChange={(e) => setTag(e.target.value)} aria-label="Tag">
               <option value="">All tags</option>
               {tags.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+            </Select>
+          </div>
+        )}
+        {customOptions.length > 0 && (
+          <div className="w-44">
+            <Select value={customFilter} onChange={(e) => setCustomFilter(e.target.value)} aria-label="Custom field">
+              <option value="">Any custom field</option>
+              {customOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </Select>
           </div>
         )}

@@ -10,10 +10,11 @@ from typing import Any
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 
-from .. import campaigns, context, db, ratelimit
+from .. import campaigns, context, custom_fields, db, ratelimit
 from ..crm_selling_models import (
     CampaignIn,
     CampaignOut,
+    ConsentConfirmPage,
     ConsentIn,
     ConsentOut,
     RecipientOut,
@@ -31,6 +32,7 @@ from ..rbac import perm
 
 router = APIRouter(tags=["crm-campaigns"])
 public = APIRouter(prefix="/public/unsubscribe", tags=["public"])
+confirm_public = APIRouter(prefix="/public/consent", tags=["public"])
 
 
 # ── Consent ─────────────────────────────────────────────────────────────────
@@ -79,6 +81,8 @@ async def list_segments(auth: AuthContext = Depends(perm("crm.campaign.manage"))
 async def create_segment(body: SegmentIn, auth: AuthContext = Depends(perm("crm.campaign.manage"))) -> SegmentOut:
     async with db.tenant_conn(auth.tenant_id) as conn:
         await campaigns.check_tags(conn, body.filter)
+        # The same checks as a write: known, active contact fields; values of their kind.
+        body.filter.custom = await custom_fields.clean(conn, "contact", body.filter.custom)
         row = await conn.fetchrow(
             """insert into crm_segments (tenant_id, name, filter, created_by) values ($1, btrim($2), $3, $4)
                returning *""", auth.tenant_id, body.name, body.filter.model_dump(mode="json"), auth.user_id)
@@ -207,3 +211,32 @@ async def unsubscribe(token: str) -> UnsubscribePage:
         await campaigns.opt_out(conn, row["tenant_id"], row["contact_id"], row["channel"],
                                 "Unsubscribed from an email link")
     return await _page(row)
+
+
+
+# ── Marketing confirmation (double opt-in, public) ──────────────────────────
+async def _confirm_page(row: asyncpg.Record) -> ConsentConfirmPage:
+    async with db.tenant_conn(str(row["tenant_id"])) as conn:
+        business: Any = await conn.fetchval(
+            """select coalesce(nullif(c.legal_name, ''), t.name) from tenants t
+                 left join tenant_company c on c.tenant_id = t.id where t.id = $1""", row["tenant_id"])
+        done = await conn.fetchval(
+            "select status = 'opted_in' from contact_consents where contact_id = $1 and channel = 'email'", row["id"])
+    return ConsentConfirmPage(business_name=business or "", done=bool(done))
+
+
+@confirm_public.get("/{token}", response_model=ConsentConfirmPage, dependencies=[Depends(_no_store)])
+async def consent_page(token: str) -> ConsentConfirmPage:
+    """Shows who is asking; changes nothing (mail scanners open links)."""
+    return await _confirm_page(await campaigns.resolve_consent(token))
+
+
+@confirm_public.post("/{token}", response_model=ConsentConfirmPage, dependencies=[Depends(_no_store)])
+async def consent_confirm(token: str) -> ConsentConfirmPage:
+    row = await campaigns.resolve_consent(token)
+    context.set_actor("", "public")
+    async with db.tenant_conn(str(row["tenant_id"])) as conn:
+        if not await campaigns.confirm(conn, row["tenant_id"], row["id"]):
+            raise HTTPException(status.HTTP_409_CONFLICT,
+                                "You asked not to hear from this business. Contact them to change that.")
+    return await _confirm_page(row)

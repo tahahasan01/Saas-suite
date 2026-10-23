@@ -13,9 +13,9 @@ from typing import Any
 from uuid import UUID
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
 
-from .. import audit, campaigns, contact_merge, contacts, contacts_backfill, custom_fields, db, leads, rbac, refs
+from .. import audit, campaigns, contact_merge, contacts, contacts_backfill, custom_fields, db, email, leads, rbac, refs
 from ..deps import AuthContext, current_auth
 from ..models import (
     AddressCreate,
@@ -646,7 +646,7 @@ async def _find_or_create_company(conn: asyncpg.Connection, tenant_id: str, name
 
 
 @router.post("/crm/leads/{lead_id}/qualify", response_model=LeadContact)
-async def qualify_lead(lead_id: str, body: QualifyRequest,
+async def qualify_lead(lead_id: str, body: QualifyRequest, background: BackgroundTasks,
                        auth: AuthContext = Depends(all_keys("crm.lead.update", "contacts.contact.create"))
                        ) -> LeadContact:
     """Link the lead to a contact, or create the contact from the lead. A
@@ -685,13 +685,15 @@ async def qualify_lead(lead_id: str, body: QualifyRequest,
             contact_id = row["id"]
             note = "Qualified: contact created"
         await contacts_backfill.link_lead(conn, lead_id, contact_id, body=note)
-        await campaigns.carry_lead_consent(conn, auth.tenant_id, lead, contact_id)
+        confirm_mail = await campaigns.ask_to_confirm(conn, auth.tenant_id, lead, contact_id)
         await conn.execute(
             """update contact_review_items set status = 'resolved', resolved_contact_id = $2,
                       resolved_by = $3, resolved_at = now()
                 where lead_id = $1 and status = 'open'""", lead_id, contact_id, auth.user_id)
         contact = await contacts.fetch_out(conn, contact_id)
     assert contact is not None
+    if confirm_mail is not None:
+        background.add_task(email.deliver_now, confirm_mail)   # after commit; the worker retries if this fails
     return LeadContact(lead_id=lead_id, contact=contact)
 
 

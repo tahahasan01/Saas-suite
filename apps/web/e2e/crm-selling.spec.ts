@@ -47,6 +47,7 @@ test.describe("products on a deal", () => {
 
 test.describe("quotes the customer accepts online", () => {
   test("a rep sends a quote, the customer accepts it from the link, and the deal is won", async ({ page, request, browser }) => {
+    test.slow();   // two browser sessions (rep and customer)
     const lead = await freshLead(request);
     const lines = await request.put(`${API}/crm/leads/${lead.id}/lines`, {
       data: { lines: [{ description: "Rooftop solar, 5 kW", qty: 1, unit_price_minor: 850_000_00 }] },
@@ -230,6 +231,7 @@ test.describe("custom fields", () => {
 
 test.describe("quote email and PDF", () => {
   test("a rep emails an open quote and both sides can get its PDF", async ({ page, request, browser }) => {
+    test.slow();   // two browser sessions (rep and customer)
     const lead = await freshLead(request);
     await request.put(`${API}/crm/leads/${lead.id}/lines`, {
       data: { lines: [{ description: "Inverter 5 kW", qty: 1, unit_price_minor: 300_000_00 }] },
@@ -254,5 +256,138 @@ test.describe("quote email and PDF", () => {
     const res = await cp.request.get(new URL(await pdf.getAttribute("href") ?? "", cp.url()).toString());
     expect(res.headers()["content-type"]).toBe("application/pdf");
     await customer.close();
+  });
+});
+
+test.describe("assignment rules and marketing confirmation", () => {
+  test("an admin adds a rule that sends a source's leads to chosen pool members", async ({ page, request }) => {
+    const roles = await (await request.get(`${API}/team/roles`)).json();
+    const role = roles.find((r: { name: string }) => r.name !== "Owner") ?? roles[0];
+    const name = `Rep ${uid()}`;
+    const user = await (await request.post(`${API}/team/users`, { data: {
+      name, email: `rep.${uid()}@example.com`, password: "Sup3rSecret!23", role_id: role.id } })).json();
+    const pool = await (await request.get(`${API}/crm/assignment/pool`)).json();
+    await request.put(`${API}/crm/assignment/pool`, { data: { members: [
+      ...pool.map((m: { user_id: string; active: boolean; daily_cap: number | null }) =>
+        ({ user_id: m.user_id, active: m.active, daily_cap: m.daily_cap })),
+      { user_id: user.id }] } });
+
+    await page.goto("/crm/settings");
+    const rules = page.getByRole("heading", { name: "Assignment rules" }).locator("..");
+    const ruleName = `Facebook ${uid()}`;
+    await rules.getByLabel("Rule name").fill(ruleName);
+    await rules.getByLabel("When the source is").fill("facebook page");
+    await rules.getByLabel(name).check();
+    await rules.getByRole("button", { name: "Add rule" }).click();
+    await expect(rules.getByRole("button", { name: `Remove rule ${ruleName}` })).toBeVisible();
+    await expect(rules.getByText(new RegExp(`source “facebook page” → .*${name}`))).toBeVisible();
+  });
+
+  test("a form tick becomes an opt-in only when the inbox owner confirms", async ({ request, browser }) => {
+    test.slow();   // two browser sessions (rep and customer)
+    const MAILPIT = process.env.MAILPIT_URL ?? "http://localhost:8025";
+    test.skip(!(await request.get(`${MAILPIT}/api/v1/messages`).catch(() => null))?.ok(), "needs Mailpit");
+    const form = await (await request.post(`${API}/crm/web-forms`, { data: {
+      name: `Offers ${uid()}`, fields: ["email"], consent_label: "Send me offers" } })).json();
+    const address = `fan.${uid()}@example.com`;
+    const visitor = await (await browser.newContext({ storageState: { cookies: [], origins: [] } })).request;
+    const ticket = (await (await visitor.get(`${API}/public/forms/${form.public_id}`)).json()).ticket;
+    await new Promise((r) => setTimeout(r, 3_500));            // the server drops forms filled in under 3 s
+    const sent = await visitor.post(`${API}/public/forms/${form.public_id}`, {
+      data: { ticket, values: { name: `Fan ${uid()}`, email: address, consent: true } } });
+    expect(sent.ok()).toBeTruthy();
+
+    const leads = await (await request.get(`${API}/crm/leads`)).json();
+    const lead = leads.find((l: { email: string }) => l.email === address);
+    const qualified = await (await request.post(`${API}/crm/leads/${lead.id}/qualify`, { data: { mode: "create" } })).json();
+    const contactId = qualified.contact.id;
+    expect(await (await request.get(`${API}/contacts/${contactId}/consents`)).json()).toEqual([]);
+
+    let link = "";
+    for (let i = 0; i < 20 && !link; i++) {
+      const found = await (await request.get(`${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:"${address}"`)}`)).json();
+      if (found.messages?.length) {
+        const msg = await (await request.get(`${MAILPIT}/api/v1/message/${found.messages[0].ID}`)).json();
+        link = /\/c\/[\w.-]+/.exec(msg.Text)?.[0] ?? "";
+      }
+      if (!link) await new Promise((r) => setTimeout(r, 500));
+    }
+    expect(link).toMatch(/^\/c\//);
+
+    const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+    const cp = await ctx.newPage();
+    await cp.goto(link);
+    await cp.getByRole("button", { name: "Yes, send me offers" }).click();
+    await expect(cp.getByText(/Thank you/)).toBeVisible();
+    await ctx.close();
+    const after = await (await request.get(`${API}/contacts/${contactId}/consents`)).json();
+    expect(after).toEqual([expect.objectContaining({ channel: "email", status: "opted_in" })]);
+  });
+});
+
+test.describe("custom field filters", () => {
+  test("the board filters on a lead's choice field", async ({ page, request }) => {
+    const label = `Area ${uid()}`;
+    const field = await (await request.post(`${API}/custom-fields`, {
+      data: { entity: "lead", label, kind: "select", options: ["DHA", "Bahria"] } })).json();
+    const dha = await (await request.post(`${API}/crm/leads`, {
+      data: { name: `DHA lead ${uid()}`, force: true, custom: { [field.key]: "DHA" } } })).json();
+    const bahria = await (await request.post(`${API}/crm/leads`, {
+      data: { name: `Bahria lead ${uid()}`, force: true, custom: { [field.key]: "Bahria" } } })).json();
+
+    await page.goto("/crm");
+    const main = page.getByRole("main");
+    await expect(main.getByRole("button", { name: `Open ${bahria.name}` })).toBeVisible();
+    await page.getByLabel("Custom field").selectOption({ label: `${label}: DHA` });
+    await expect(main.getByRole("button", { name: `Open ${dha.name}` })).toBeVisible();
+    await expect(main.getByRole("button", { name: `Open ${bahria.name}` })).toHaveCount(0);
+  });
+});
+
+test.describe("forecast", () => {
+  test("a deal is moved to next month from the forecast", async ({ page, request }) => {
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Karachi" });
+    const name = `Mover ${uid()}`;
+    const lead = await (await request.post(`${API}/crm/leads`, {
+      data: { name, value_minor: 100_000_00, force: true, expected_close_date: today } })).json();
+    await page.goto("/crm/reports");
+    const forecast = page.getByRole("heading", { name: "Forecast" }).locator("..");
+    await forecast.getByRole("row").nth(1).getByRole("button").click();       // this month's deals
+    const move = forecast.getByLabel(`Move ${name} to month`);
+    const next = await move.locator("option").nth(2).getAttribute("value");   // [date, this month, next month, …]
+    await move.selectOption(next!);
+    await expect(page.getByText("Close date moved")).toBeVisible();
+    const after = await (await request.get(`${API}/crm/leads/${lead.id}`)).json();
+    expect(after.lead.expected_close_date.slice(0, 7)).toBe(next);
+  });
+});
+
+test.describe("quote signature", () => {
+  test("the customer signs in the box and the quote records it", async ({ request, browser }) => {
+    test.slow();   // two browser sessions (rep and customer)
+    const lead = await freshLead(request);
+    await request.put(`${API}/crm/leads/${lead.id}/lines`, {
+      data: { lines: [{ description: "Battery bank", qty: 1, unit_price_minor: 200_000_00 }] } });
+    const quote = await (await request.post(`${API}/crm/leads/${lead.id}/quotes`, { data: {} })).json();
+
+    const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+    const cp = await ctx.newPage();
+    await cp.goto(quote.link);
+    await cp.getByLabel("Your full name").fill("Sana Iqbal");
+    await cp.getByRole("checkbox").check();
+    const box = await cp.getByRole("img", { name: "Signature box" }).boundingBox();
+    await cp.mouse.move(box!.x + 20, box!.y + 60);
+    await cp.mouse.down();
+    await cp.mouse.move(box!.x + 120, box!.y + 30, { steps: 8 });
+    await cp.mouse.move(box!.x + 220, box!.y + 80, { steps: 8 });
+    await cp.mouse.up();
+    await expect(cp.getByText("Signed", { exact: true })).toBeVisible();
+    await cp.getByRole("button", { name: "Accept quote" }).click();
+    await expect(cp.getByText(/by Sana Iqbal/)).toBeVisible();
+    await ctx.close();
+
+    const after = await (await request.get(`${API}/crm/quotes/${quote.id}`)).json();
+    expect(after.status).toBe("accepted");
+    expect(after.signed).toBe(true);
   });
 });

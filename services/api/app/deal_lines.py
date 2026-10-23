@@ -50,10 +50,11 @@ async def read(conn: asyncpg.Connection, lead_id: str) -> DealLines:
 
 
 async def settings(conn: asyncpg.Connection) -> CrmSettingsOut:
-    row = await conn.fetchrow("select max_discount_pct, campaign_daily_cap from crm_settings")
+    row = await conn.fetchrow("select max_discount_pct, campaign_daily_cap, quote_require_signature from crm_settings")
     pct = row["max_discount_pct"] if row else None
     return CrmSettingsOut(max_discount_pct=float(pct) if pct is not None else None,
-                          campaign_daily_cap=row["campaign_daily_cap"] if row else 500)
+                          campaign_daily_cap=row["campaign_daily_cap"] if row else 500,
+                          quote_require_signature=bool(row["quote_require_signature"]) if row else False)
 
 
 async def _products(conn: asyncpg.Connection, lines: list[DealLineIn]) -> dict[Any, asyncpg.Record]:

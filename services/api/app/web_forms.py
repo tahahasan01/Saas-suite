@@ -184,21 +184,22 @@ async def submit(conn: asyncpg.Connection, tenant_id: str, form_id: Any, v: WebF
         """select id, is_won, default_probability from crm_stages
             where ($2::uuid is null and pipeline_id = $1) or id = $2 order by position limit 1""",
         pid, form["stage_id"])
-    owner, why = await _owner(conn, form)
+    owner, why = await _owner(conn, form, values["city"])
     row = await conn.fetchrow(
         """insert into crm_leads (tenant_id, pipeline_id, stage_id, owner_id, name, company, phone, email, source,
                                   value_minor, score, status, won_at, probability, stage_entered_at, web_form_id,
-                                  utm_source, utm_medium, utm_campaign, message, consent_at, consent_ip, consent_text)
+                                  utm_source, utm_medium, utm_campaign, message, consent_at, consent_ip, consent_text,
+                                  city)
            values ($1,$2,$3,$4,$5,$6,$7,$8,$9,0,$10,$11, case when $11 = 'won' then now() end, $12, now(), $13,
                    $14, $15, $16, $17, case when $18 then now() end, case when $18 then $19 end,
-                   case when $18 then $20 end)
+                   case when $18 then $20 end, $21)
            returning *""",
         tenant_id, pid, stage["id"], owner, values["name"], values["company"], values["phone"], values["email"],
         form["source"], scoring.score_lead(source=form["source"], company=values["company"], phone=values["phone"],
                                            email=values["email"], value_minor=0),
         "won" if stage["is_won"] else "open", 100 if stage["is_won"] else stage["default_probability"], form_id,
         utm["utm_source"], utm["utm_medium"], utm["utm_campaign"], values["message"] or None,
-        ticked, ip[:64], form["consent_label"])
+        ticked, ip[:64], form["consent_label"], values["city"] or None)
     lead_id = str(row["id"])
     await timeline.record(conn, entity_type="lead", entity_id=lead_id, kind="system",
                           body=f"From the web form “{form['name']}”. {why}",
@@ -231,10 +232,24 @@ async def _repeat(conn: asyncpg.Connection, lead: asyncpg.Record, form: asyncpg.
 
 
 # ── Assignment (C13) ────────────────────────────────────────────────────────
-async def _owner(conn: asyncpg.Connection, form: asyncpg.Record) -> tuple[str | None, str]:
-    """Who takes the lead, and why (for the timeline)."""
+def _same(a: str | None, b: str | None) -> bool:
+    return (a or "").strip().lower() == (b or "").strip().lower()
+
+
+async def _owner(conn: asyncpg.Connection, form: asyncpg.Record, city: str) -> tuple[str | None, str]:
+    """Who takes the lead, and why (for the timeline): the form's own owner,
+    else the first rule matching its source and/or city that has someone
+    free, else the whole pool, else the business owner."""
     if form["owner_id"]:
         return str(form["owner_id"]), "Owner set on the form."
+    for rule in await conn.fetch("select * from crm_assignment_rules order by position, id"):
+        if rule["source"] is not None and not _same(rule["source"], form["source"]):
+            continue
+        if rule["city"] is not None and not _same(rule["city"], city):
+            continue
+        picked = await take_turn(conn, only=list(rule["user_ids"]))
+        if picked:
+            return picked, f"Assigned in turn by the rule “{rule['name']}”."
     picked = await take_turn(conn)
     if picked:
         return picked, "Assigned in turn from the lead pool."
@@ -244,23 +259,23 @@ async def _owner(conn: asyncpg.Connection, form: asyncpg.Record) -> tuple[str | 
     return (str(fallback) if fallback else None), "Nobody in the lead pool: assigned to the owner."
 
 
-async def take_turn(conn: asyncpg.Connection) -> str | None:
-    """The next pool member in turn, or None. The rows are locked, so two
-    leads arriving together go to two people."""
+async def take_turn(conn: asyncpg.Connection, only: list[Any] | None = None) -> str | None:
+    """The next pool member in turn (among `only`, when given), or None. The
+    rows are locked, so two leads arriving together go to two people."""
     today: dt.date = await sequences.local_date(conn, None)
     rows = await conn.fetch(
         """select p.user_id, p.daily_cap,
                   case when p.assigned_day = $1 then p.assigned_today else 0 end as taken
              from crm_assignment_pool p
              join users u on u.id = p.user_id and u.status = 'active'
-            where p.active
+            where p.active and ($2::uuid[] is null or p.user_id = any($2::uuid[]))
               and not exists (
                   select 1 from hrms_employees e
                     join hrms_leave_requests lr on lr.employee_id = e.id
                    where e.user_id = p.user_id and lr.status = 'approved'
                      and $1 between lr.from_date and lr.to_date)
             order by p.last_assigned_at nulls first, p.user_id
-            for update of p""", today)
+            for update of p""", today, only)
     for r in rows:
         if r["daily_cap"] is None or r["taken"] < r["daily_cap"]:
             await conn.execute(

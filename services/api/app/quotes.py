@@ -17,9 +17,12 @@ user agent and the content hash the page showed, which must match.
 """
 from __future__ import annotations
 
+import base64
+import binascii
 import hashlib
 import json
 import secrets
+import struct
 from datetime import date, timedelta
 from typing import Any
 
@@ -76,7 +79,8 @@ def _doc(r: asyncpg.Record, lines: list[asyncpg.Record]) -> dict[str, Any]:
                 tax_inclusive=r["tax_inclusive"], lines=[_line(x) for x in lines],
                 subtotal_minor=r["subtotal_minor"], line_discount_minor=r["line_discount_minor"],
                 net_minor=r["net_minor"], tax_minor=r["tax_minor"], total_minor=r["total_minor"],
-                content_hash=r["content_hash"], accepted_name=r["accepted_name"], accepted_at=r["accepted_at"])
+                content_hash=r["content_hash"], accepted_name=r["accepted_name"], accepted_at=r["accepted_at"],
+                signed=r["accepted_signature"] is not None)
 
 
 async def _lines(conn: asyncpg.Connection, quote_id: Any) -> list[asyncpg.Record]:
@@ -219,7 +223,9 @@ async def public_view(conn: asyncpg.Connection, quote_id: Any) -> QuotePublic:
     business = {"name": name or ""}
     if company:
         business.update({k: company[k] or "" for k in ("ntn", "address", "city", "phone", "email")})
-    return QuotePublic(**_doc(r, await _lines(conn, r["id"])), status=shown, business=business)
+    required = bool(await conn.fetchval("select quote_require_signature from crm_settings"))
+    return QuotePublic(**_doc(r, await _lines(conn, r["id"])), status=shown, business=business,
+                       signature_required=required)
 
 
 async def record_view(conn: asyncpg.Connection, quote_id: Any) -> None:
@@ -245,8 +251,35 @@ async def _tell_owner(conn: asyncpg.Connection, row: asyncpg.Record, lead: async
     return str(owner) if owner else None
 
 
+SIGNATURE_MAX_BYTES = 150_000
+SIGNATURE_MAX_SIDE = 2000
+
+
+def signature_png(data_url: str | None) -> bytes | None:
+    """The PNG behind a canvas data URL, or 422: only a small, real PNG of
+    sane dimensions is kept (it ends up in a PDF)."""
+    if data_url is None:
+        return None
+    prefix = "data:image/png;base64,"
+    if not data_url.startswith(prefix):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "The signature must be a PNG image")
+    try:
+        raw = base64.b64decode(data_url[len(prefix):], validate=True)
+    except (binascii.Error, ValueError):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "The signature couldn't be read") from None
+    if len(raw) > SIGNATURE_MAX_BYTES:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "The signature image is too large")
+    if raw[:8] != b"\x89PNG\r\n\x1a\n" or raw[12:16] != b"IHDR" or len(raw) < 24:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "The signature must be a PNG image")
+    width, height = struct.unpack(">II", raw[16:24])
+    if not (0 < width <= SIGNATURE_MAX_SIDE and 0 < height <= SIGNATURE_MAX_SIDE):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "The signature image is the wrong size")
+    return raw
+
+
 async def accept(conn: asyncpg.Connection, quote_id: Any, name: str, shown_hash: str, ip: str,
-                 user_agent: str) -> QuotePublic:
+                 user_agent: str, signature: str | None = None) -> QuotePublic:
+    drawn = signature_png(signature)
     row = await _answerable(conn, quote_id)
     if row["status"] == "accepted":
         return await public_view(conn, quote_id)     # idempotent: the first acceptance stands
@@ -254,10 +287,13 @@ async def accept(conn: asyncpg.Connection, quote_id: Any, name: str, shown_hash:
         raise HTTPException(status.HTTP_409_CONFLICT, "This quote has already been answered.")
     if shown_hash != row["content_hash"]:
         raise HTTPException(status.HTTP_409_CONFLICT, "This quote has changed. Reload the page to see it.")
+    if drawn is None and await conn.fetchval("select quote_require_signature from crm_settings"):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Please sign in the box to accept")
     await conn.execute(
         """update crm_quotes set status = 'accepted', accepted_at = now(), accepted_name = $2, accepted_ip = $3,
-                                 accepted_user_agent = $4, accepted_hash = $5, updated_at = now()
-            where id = $1""", quote_id, name, ip, user_agent[:400], shown_hash)
+                                 accepted_user_agent = $4, accepted_hash = $5, accepted_signature = $6,
+                                 updated_at = now()
+            where id = $1""", quote_id, name, ip, user_agent[:400], shown_hash, drawn)
     await audit.event(conn, "crm.quote.accept", "crm_quotes", str(quote_id),
                       data={"number": row["number"], "name": name, "ip": ip, "content_hash": shown_hash})
     lead = await conn.fetchrow("select * from crm_leads where id = $1", row["lead_id"])

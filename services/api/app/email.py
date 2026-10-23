@@ -145,6 +145,11 @@ async def queue_quote(conn, tenant_id: str, to: str, quote_id: str) -> int:
     return await _enqueue(conn, tenant_id, "quote", to, quote_id=str(quote_id))
 
 
+async def queue_consent_confirm(conn, tenant_id: str, to: str, contact_id: str) -> int:
+    """A double opt-in link. The link is signed at delivery, bound to `to`."""
+    return await _enqueue(conn, tenant_id, "consent_confirm", to, contact_id=str(contact_id))
+
+
 async def queue_campaign(conn, tenant_id: str, to: str, *, subject: str, body: str, business: str,
                          unsubscribe_token: str, run_after=None) -> int:
     """A marketing email (wave D campaigns), already merged; `run_after`
@@ -178,6 +183,17 @@ async def _render(row) -> tuple[str, str]:
         return (f"Payment reminder: invoice {p['number']} from {p['company']}",
                 f"Dear {p['customer']},\n\nInvoice {p['number']} was due on {p['due']} and {amount} is still "
                 f"outstanding. If you've already paid, please ignore this reminder.\n\nThank you,\n{p['company']}")
+    if template == "consent_confirm":
+        from . import campaigns
+        async with db.tenant_conn(str(row["tenant_id"])) as conn:
+            business = await conn.fetchval(
+                """select coalesce(nullif(c.legal_name, ''), t.name) from tenants t
+                     left join tenant_company c on c.tenant_id = t.id
+                    where t.id = current_setting('app.tenant_id')::uuid""")
+        link = f"{WEB}/c/{campaigns.consent_token(p['contact_id'], to)}"
+        return (f"Please confirm: offers from {business}",
+                f"You asked {business} to send you offers. Please confirm by opening this link:\n{link}\n\n"
+                "If you didn't ask, ignore this email and you won't hear from us.")
     if template == "campaign":
         return (p["subject"] or p["business"],
                 f"{p['body']}\n\n--\n{p['business']}\nTo stop these emails: {p['unsubscribe_url']}")

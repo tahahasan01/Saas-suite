@@ -128,6 +128,8 @@ def _value(typ: str) -> str:
         return "false"
     if typ in ("jsonb", "json"):
         return "{}"
+    if typ == "uuid[]":
+        return "{" + str(uuid.uuid4()) + "}"
     if typ == "bytea":
         return r"\x00"   # Postgres hex input for one zero byte
     if typ.startswith(("text", "character")):
@@ -162,6 +164,7 @@ _SHAPED = {
     "invoice_plans": {"tag_id": lambda: str(uuid.uuid4()), "lines": lambda: "[{}]"},   # one audience, a line
     "pay_pf_entries": {"employee_minor": lambda: "100"},   # an entry moves some money (0113)
     "custom_fields": {"key": lambda: "rls_" + uuid.uuid4().hex[:8]},   # a lower-case key (0127)
+    "crm_assignment_rules": {"user_ids": lambda: "{" + str(uuid.uuid4()) + "}", "source": lambda: "rls"},   # (0130)
 }
 
 
