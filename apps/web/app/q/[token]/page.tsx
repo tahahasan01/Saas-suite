@@ -121,8 +121,11 @@ function QuoteDocument({ quote: q, base, onAnswered }: { quote: Quote; base: str
 
         <Answer quote={q} base={base} onAnswered={onAnswered} />
 
-        <p className="print:hidden">
-          <Button size="sm" variant="ghost" onClick={() => window.print()}>Print or save as PDF</Button>
+        <p className="flex flex-wrap gap-2 print:hidden">
+          <a href={apiUrl(`${base}/pdf`)} className="inline-flex items-center rounded-md px-2 text-sm font-medium text-brand hover:underline">
+            Download PDF
+          </a>
+          <Button size="sm" variant="ghost" onClick={() => window.print()}>Print</Button>
         </p>
       </article>
     </Card>

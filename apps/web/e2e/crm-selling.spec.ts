@@ -223,3 +223,32 @@ test.describe("custom fields", () => {
     await expect(drawer.getByText(label, { exact: true }).locator("..")).toContainText("12");
   });
 });
+
+test.describe("quote email and PDF", () => {
+  test("a rep emails an open quote and both sides can get its PDF", async ({ page, request, browser }) => {
+    const lead = await freshLead(request);
+    await request.put(`${API}/crm/leads/${lead.id}/lines`, {
+      data: { lines: [{ description: "Inverter 5 kW", qty: 1, unit_price_minor: 300_000_00 }] },
+    });
+    const quote = await (await request.post(`${API}/crm/leads/${lead.id}/quotes`, { data: {} })).json();
+
+    await page.goto("/crm");
+    await page.getByRole("main").getByRole("button", { name: `Open ${lead.name}` }).click();
+    const quotes = page.getByRole("dialog", { name: lead.name }).getByRole("region", { name: "Quotes" });
+    await expect(quotes.getByRole("link", { name: `PDF of quote ${quote.number}` })).toHaveAttribute("href", /\/pdf$/);
+    await quotes.getByRole("button", { name: "Email" }).click();
+    await quotes.getByLabel(/Send to/).fill(`buyer.${uid()}@example.com`);
+    await quotes.getByRole("button", { name: "Send", exact: true }).click();
+    await expect(page.getByText(/Quote on its way to buyer\./)).toBeVisible();
+    await expect(quotes.getByText(/^Last emailed/)).toBeVisible();
+
+    const customer = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+    const cp = await customer.newPage();
+    await cp.goto(quote.link);
+    const pdf = cp.getByRole("link", { name: "Download PDF" });
+    await expect(pdf).toBeVisible();
+    const res = await cp.request.get(new URL(await pdf.getAttribute("href") ?? "", cp.url()).toString());
+    expect(res.headers()["content-type"]).toBe("application/pdf");
+    await customer.close();
+  });
+});
