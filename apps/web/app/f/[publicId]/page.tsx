@@ -29,8 +29,12 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 
-export default function WebFormPage({ params }: { params: Promise<{ publicId: string }> }) {
+export default function WebFormPage({ params, searchParams }: {
+  params: Promise<{ publicId: string }>; searchParams: Promise<{ embed?: string }>;
+}) {
   const { publicId } = use(params);
+  // ?embed=1: inside an iframe on the business's site, so no full-screen frame around it.
+  const embedded = use(searchParams).embed === "1";
   const path = `/public/forms/${encodeURIComponent(publicId)}`;
   const [form, setForm] = useState<Form | null>(null);
   const [fatal, setFatal] = useState<string | null>(null);
@@ -65,7 +69,7 @@ export default function WebFormPage({ params }: { params: Promise<{ publicId: st
     setValues({ ...values, [k]: e.target.value });
 
   return (
-    <main className="grid min-h-dvh place-items-center bg-canvas px-4 py-8 text-fg">
+    <main className={embedded ? "p-2 text-fg" : "grid min-h-dvh place-items-center bg-canvas px-4 py-8 text-fg"}>
       <div className="w-full max-w-md">
         <Card>
           <div className="space-y-4 p-6">

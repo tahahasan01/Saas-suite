@@ -37,6 +37,11 @@ describe("CSP", () => {
     expect(directive(buildCsp("n", { dev: false }), "manifest-src")).toBe("manifest-src 'self'");
   });
 
+  it("lets only an embeddable page (a web form) be framed, and only by https sites", () => {
+    expect(directive(buildCsp("n", { dev: false }), "frame-ancestors")).toBe("frame-ancestors 'none'");
+    expect(directive(buildCsp("n", { dev: false, embeddable: true }), "frame-ancestors")).toBe("frame-ancestors https:");
+  });
+
   it("makes a fresh 128-bit nonce each time", () => {
     const a = newNonce();
     expect(atob(a)).toHaveLength(16);

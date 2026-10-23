@@ -16,9 +16,12 @@ export type CspOptions = {
   dev: boolean;
   /** Extra connect-src origins, e.g. a Sentry ingest host (CSP_CONNECT_SRC, space-separated). */
   connectSrc?: string[];
+  /** A page a business may put on its own website in an iframe (a web form,
+   *  /f/…): framed by https sites only. Every other page is never framed. */
+  embeddable?: boolean;
 };
 
-export function buildCsp(nonce: string, { dev, connectSrc = [] }: CspOptions): string {
+export function buildCsp(nonce: string, { dev, connectSrc = [], embeddable = false }: CspOptions): string {
   const directives: Record<string, string[]> = {
     "default-src": ["'self'"],
     "script-src": ["'self'", `'nonce-${nonce}'`, "'strict-dynamic'", ...(dev ? ["'unsafe-eval'"] : [])],
@@ -33,7 +36,7 @@ export function buildCsp(nonce: string, { dev, connectSrc = [] }: CspOptions): s
     "object-src": ["'none'"],
     "base-uri": ["'self'"],
     "form-action": ["'self'"],
-    "frame-ancestors": ["'none'"],
+    "frame-ancestors": embeddable ? ["https:"] : ["'none'"],
     // No upgrade-insecure-requests: HSTS already pins production to https, and
     // the directive breaks a production build served over plain http (CI, a LAN till).
   };

@@ -24,6 +24,8 @@ export function middleware(req: NextRequest) {
   const csp = buildCsp(nonce, {
     dev: process.env.NODE_ENV !== "production",
     connectSrc: (process.env.CSP_CONNECT_SRC ?? "").split(" ").filter(Boolean),
+    // Web forms (/f/…) may sit in an iframe on the business's own https site.
+    embeddable: pathname.startsWith("/f/"),
   });
   // Next reads the nonce from the *request* CSP header and stamps it on its own
   // scripts; x-nonce is for the root layout's theme script.

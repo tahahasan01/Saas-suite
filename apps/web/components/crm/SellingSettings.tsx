@@ -121,10 +121,13 @@ function FormRow({ form: f, onEdit, onChanged }: { form: WebForm; onEdit: () => 
     { failure: "Couldn't change the form" },
   );
   const link = typeof window === "undefined" ? f.link : `${window.location.origin}${f.link}`;
-  async function copy() {
-    try { await navigator.clipboard.writeText(link); toast.success("Link copied"); }
+  async function copy(text: string, what: string) {
+    try { await navigator.clipboard.writeText(text); toast.success(`${what} copied`); }
     catch { toast.error("Couldn't copy. Open the form and copy its address instead."); }
   }
+  // For the business's own website: the form in an iframe (only https sites may frame it).
+  const embed = `<iframe src="${link}?embed=1" title="${f.title || f.name}" loading="lazy" ` +
+    `style="width:100%;max-width:480px;height:640px;border:0"></iframe>`;
   return (
     <li className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
       <span className="min-w-0">
@@ -135,7 +138,8 @@ function FormRow({ form: f, onEdit, onChanged }: { form: WebForm; onEdit: () => 
         <span className="block text-xs text-fg-subtle">{f.leads_today} today · source “{f.source}”</span>
       </span>
       <span className="flex flex-wrap items-center gap-1">
-        <Button size="sm" variant="ghost" onClick={copy}>Copy link</Button>
+        <Button size="sm" variant="ghost" onClick={() => copy(link, "Link")}>Copy link</Button>
+        <Button size="sm" variant="ghost" onClick={() => copy(embed, "Embed code")}>Copy embed code</Button>
         <a href={f.link} target="_blank" rel="noreferrer" className="px-2 text-xs font-medium text-brand hover:underline">Open</a>
         <Button size="sm" variant="ghost" onClick={onEdit}>Edit</Button>
         <Switch checked={f.active} label={`${f.name} is on`} disabled={toggle.busy}
