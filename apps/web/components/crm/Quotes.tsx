@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { Schema } from "@business-os/api-client";
-import { api } from "@/lib/api";
+import { api, apiUrl } from "@/lib/api";
 import { formatDay, money } from "@/lib/format";
 import { useCan } from "@/lib/can";
 import { useConfirm } from "@/components/Confirm";
@@ -114,6 +114,7 @@ function QuoteRow({ quote: q, leadName, onChanged }: { quote: Quote; leadName: s
     { success: "Quote cancelled: its link no longer works", failure: "Couldn't cancel the quote" });
   const invoice = useAction(() => api(`/crm/quotes/${q.id}/invoice`, { method: "POST" }),
     { success: "Draft invoice made from the quote", failure: "Couldn't make the invoice" });
+  const [emailing, setEmailing] = useState(false);
 
   async function copy() {
     if (!q.link) return;
@@ -154,8 +155,15 @@ function QuoteRow({ quote: q, leadName, onChanged }: { quote: Quote; leadName: s
                className="inline-flex items-center rounded-md px-2 text-xs font-medium text-brand hover:underline">
               Open
             </a>
+            {q.status === "sent" && !q.expired && can("crm.quote.send") && !emailing && (
+              <Button size="sm" variant="ghost" onClick={() => setEmailing(true)}>Email</Button>
+            )}
           </>
         )}
+        <a href={apiUrl(`/crm/quotes/${q.id}/pdf`)} target="_blank" rel="noreferrer"
+           className="inline-flex items-center rounded-md px-2 text-xs font-medium text-brand hover:underline">
+          PDF<span className="sr-only"> of quote {q.number}</span>
+        </a>
         {q.status === "sent" && can("crm.quote.send") && (
           <Button size="sm" variant="ghost" disabled={cancel.busy} onClick={async () => {
             if (!(await confirm({ title: `Cancel quote ${q.number}?`, body: "The customer's link stops working.",
@@ -171,6 +179,30 @@ function QuoteRow({ quote: q, leadName, onChanged }: { quote: Quote; leadName: s
           </Button>
         )}
       </div>
+      {q.last_emailed_at && <p className="text-xs text-fg-subtle">Last emailed {formatDay(q.last_emailed_at.slice(0, 10))}</p>}
+      {emailing && <EmailQuote quoteId={q.id} onDone={() => { setEmailing(false); onChanged(); }} onCancel={() => setEmailing(false)} />}
     </li>
+  );
+}
+
+/** Email the link and the PDF; empty address = the deal's contact's email. */
+function EmailQuote({ quoteId, onDone, onCancel }: { quoteId: string; onDone: () => void; onCancel: () => void }) {
+  const [to, setTo] = useState("");
+  const send = useAction(
+    () => api<{ to: string }>(`/crm/quotes/${quoteId}/send`, { method: "POST", body: JSON.stringify({ to: to.trim() || null }) }),
+    { success: (r) => `Quote on its way to ${(r as { to: string }).to}`, failure: "Couldn't email the quote" },
+  );
+  return (
+    <form className="space-y-2 rounded-md border border-line p-2"
+          onSubmit={async (e) => { e.preventDefault(); if (await send.run()) onDone(); }}>
+      <Field label="Send to (leave empty for the customer's email)">
+        <Input type="email" autoComplete="email" maxLength={200} value={to} onChange={(e) => setTo(e.target.value)} />
+      </Field>
+      {send.error && <p className="text-xs text-danger" role="alert">{send.error}</p>}
+      <div className="flex gap-2">
+        <Button size="sm" type="submit" disabled={send.busy}>{send.busy ? "Sending…" : "Send"}</Button>
+        <Button size="sm" variant="ghost" type="button" onClick={onCancel}>Cancel</Button>
+      </div>
+    </form>
   );
 }

@@ -202,6 +202,7 @@ APP_USER: dict[str, set[str]] = {
     # fee vouchers (0126)
     "invoice_plans":        {S, I, U},          # switched off, never deleted
     "invoice_runs":         {S, I, U},          # draft -> issued; never deleted
+    "custom_fields":        {S, I, U},          # retired, never deleted (0127)
     # catalog v2 and stock (0075)
     "pos_categories":       {S, I, U},          # retired, never deleted
     "pos_product_barcodes": {S, I, D},

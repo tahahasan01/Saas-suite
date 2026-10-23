@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { errorText, useAction } from "@/lib/useAction";
 import { useToast } from "@/components/Toast";
 import { Badge, Button, Card, ErrorState, Field, Input, LoadingRows, Select, Switch, Textarea } from "@/components/ui";
+import { CustomFieldsEditor } from "@/components/CustomFields";
 
 type WebForm = Schema<"WebFormOut">;
 type Member = Schema<"PoolMemberOut">;
@@ -21,6 +22,7 @@ const FIELD_LABELS: Record<WebForm["fields"][number], string> = {
 export function SellingSettings() {
   return (
     <div className="space-y-6">
+      <CustomFieldsEditor />
       <WebFormsEditor />
       <div className="grid gap-6 lg:grid-cols-2">
         <LeadPoolEditor />
@@ -144,12 +146,14 @@ function FormEditor({ form, pipelines, people, onCancel, onSaved }: {
   const [v, setV] = useState({
     name: form?.name ?? "Website enquiries", title: form?.title ?? "", intro: form?.intro ?? "",
     thank_you: form?.thank_you ?? "", source: form?.source ?? "web form", fields: form?.fields ?? ["phone", "email", "message"],
+    consent_label: form?.consent_label ?? "",
     stage_id: form?.stage_id ?? "", owner_id: form?.owner_id ?? "", daily_cap: String(form?.daily_cap ?? 200),
   });
   const save = useAction(() => {
     const stage = pipelines.flatMap((p) => p.stages.map((s) => ({ p, s }))).find((x) => x.s.id === v.stage_id);
     const body = {
       name: v.name, title: v.title, intro: v.intro, thank_you: v.thank_you, source: v.source, fields: v.fields,
+      consent_label: v.consent_label,
       stage_id: v.stage_id || null, pipeline_id: stage?.p.id ?? null, owner_id: v.owner_id || null,
       daily_cap: Number(v.daily_cap || 200),
     };
@@ -199,6 +203,10 @@ function FormEditor({ form, pipelines, people, onCancel, onSaved }: {
         <Field label="Source on the lead"><Input required maxLength={60} value={v.source} onChange={(e) => setV({ ...v, source: e.target.value })} /></Field>
         <Field label="Most leads a day"><Input type="number" inputMode="numeric" min={1} max={10000} value={v.daily_cap} onChange={(e) => setV({ ...v, daily_cap: e.target.value })} /></Field>
       </div>
+      <Field label="Marketing tick (leave empty to not ask)">
+        <Input maxLength={200} value={v.consent_label} placeholder="Send me offers by email and WhatsApp"
+               onChange={(e) => setV({ ...v, consent_label: e.target.value })} />
+      </Field>
       <Field label="Thank-you message"><Input maxLength={500} value={v.thank_you} placeholder="Thank you. We'll be in touch soon." onChange={(e) => setV({ ...v, thank_you: e.target.value })} /></Field>
       {save.error && <p className="text-xs text-danger" role="alert">{save.error}</p>}
       <div className="flex gap-2">

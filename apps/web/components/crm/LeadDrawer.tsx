@@ -9,6 +9,7 @@ import { errorText, useAction } from "@/lib/useAction";
 import { useCan } from "@/lib/can";
 import { Sheet } from "@/components/Dialog";
 import { Badge, Button, ErrorState, Field, Input, LoadingRows, Select } from "@/components/ui";
+import { CustomFieldInputs, CustomFieldValues, customPatch, useCustomFields, type CustomValues } from "@/components/CustomFields";
 import { ActivityActions, LostDialog, PriorityPicker, ScheduleActivity, TypeIcon } from "./bits";
 import { TimelineList } from "./Timeline";
 import { DealLinesPanel } from "./DealLines";
@@ -42,6 +43,7 @@ export function LeadDrawer({ leadId, name, stages, onMove, onClose, onChanged }:
   const [losing, setLosing] = useState(false);
   const can = useCan();
   const mayEdit = can("crm.lead.update");
+  const leadFields = useCustomFields("lead");
 
   const load = useCallback(() => {
     setLoadError(null);
@@ -110,6 +112,7 @@ export function LeadDrawer({ leadId, name, stages, onMove, onClose, onChanged }:
             {editing ? (
               <EditLead
                 lead={lead}
+                fields={leadFields}
                 onCancel={() => setEditing(false)}
                 onSaved={() => { setEditing(false); refresh(); }}
               />
@@ -120,6 +123,10 @@ export function LeadDrawer({ leadId, name, stages, onMove, onClose, onChanged }:
                   <Info label="Email" value={lead.email || "—"} />
                   <Info label="Value" value={money(lead.value_minor, lead.currency)} />
                   <Info label="Source" value={lead.source} />
+                  {lead.consent_at && (
+                    <Info label="Marketing" value={`Ticked yes on the web form, ${formatDay(lead.consent_at.slice(0, 10))}`} />
+                  )}
+                  <CustomFieldValues fields={leadFields} values={lead.custom ?? {}} />
                 </dl>
                 {mayEdit && (
                   <div className="mb-4">
@@ -461,7 +468,10 @@ function Invoices({ leadId, onChanged }: { leadId: string; onChanged: () => void
 
 /** PATCH /crm/leads/{id} already accepted these; nothing ever called it, so a
  *  typo in a phone number was permanent. */
-function EditLead({ lead, onCancel, onSaved }: { lead: Lead; onCancel: () => void; onSaved: () => void }) {
+function EditLead({ lead, fields, onCancel, onSaved }: {
+  lead: Lead; fields: ReturnType<typeof useCustomFields>; onCancel: () => void; onSaved: () => void;
+}) {
+  const [custom, setCustom] = useState<CustomValues>(lead.custom ?? {});
   const [f, setF] = useState({
     name: lead.name,
     company: lead.company,
@@ -479,6 +489,7 @@ function EditLead({ lead, onCancel, onSaved }: { lead: Lead; onCancel: () => voi
         email: f.email,
         // With products on the deal its value is their total, not typed.
         ...(lead.line_count ? {} : { value_minor: Math.round(Number(f.value || 0) * 100) }),
+        custom: customPatch(lead.custom ?? {}, custom),
       }),
     }),
     { success: "Changes saved", failure: "Couldn't save those changes" },
@@ -510,6 +521,7 @@ function EditLead({ lead, onCancel, onSaved }: { lead: Lead; onCancel: () => voi
       <Field label="Email">
         <Input type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
       </Field>
+      <CustomFieldInputs fields={fields} values={custom} onChange={setCustom} />
       {save.error && <p className="text-xs text-danger" role="alert">{save.error}</p>}
       <div className="flex gap-2">
         <Button size="sm" type="submit" disabled={save.busy}>{save.busy ? "Saving…" : "Save"}</Button>

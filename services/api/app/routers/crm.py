@@ -10,7 +10,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 
-from .. import activities, audit, contacts, csv_io, db, fulfillment, leads, pipelines, refs, scoring, timeline
+from .. import activities, audit, contacts, csv_io, custom_fields, db, fulfillment, leads, pipelines, refs, scoring, timeline
 from ..deps import AuthContext
 from ..models import (
     LEAD_STATUSES,
@@ -210,19 +210,21 @@ async def create_lead(body: LeadCreate, auth: AuthContext = Depends(require("crm
                 order by position limit 1""", pid, body.stage_id)
         if not stage:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Pipeline has no stages")
+        custom = await custom_fields.clean(conn, "lead", body.custom)
         lead_status = "won" if stage["is_won"] else "open"
         lead_score = scoring.score_lead(source=body.source, company=body.company, phone=body.phone,
                                         email=body.email, value_minor=body.value_minor)
         row = await conn.fetchrow(
             """insert into crm_leads (tenant_id, pipeline_id, stage_id, owner_id, name, company, phone, email,
                                       source, value_minor, score, status, won_at, probability, priority,
-                                      expected_close_date, stage_entered_at)
+                                      expected_close_date, stage_entered_at, custom)
                values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,
-                       case when $12 = 'won' then now() end, $13, $14, $15, now())
+                       case when $12 = 'won' then now() end, $13, $14, $15, now(), $16)
                returning *""",
             auth.tenant_id, pid, stage["id"], auth.user_id, body.name, body.company, body.phone,
             body.email, body.source, body.value_minor, lead_score, lead_status,
-            100 if stage["is_won"] else stage["default_probability"], body.priority, body.expected_close_date)
+            100 if stage["is_won"] else stage["default_probability"], body.priority, body.expected_close_date,
+            custom)
         if body.tag_ids:
             await contacts.set_tags(conn, auth.tenant_id, "lead", row["id"], body.tag_ids)
         await timeline.record(conn, entity_type="lead", entity_id=str(row["id"]), kind="system",
@@ -254,6 +256,8 @@ async def update_lead(lead_id: str, body: LeadUpdate, auth: AuthContext = Depend
     async with db.tenant_conn(auth.tenant_id) as conn:
         await leads.ensure_in_scope(conn, auth, "crm.lead.update", lead_id)
         before = await leads.lock(conn, lead_id)
+        if "custom" in fields:
+            fields["custom"] = await custom_fields.clean(conn, "lead", fields["custom"], before["custom"])
         if "value_minor" in fields and before["line_count"]:
             raise HTTPException(status.HTTP_409_CONFLICT, "This deal's value comes from its products")
         await refs.ensure_visible(conn, "users", fields.get("owner_id"))

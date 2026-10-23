@@ -9,6 +9,7 @@ import { formatDateTime, formatDay, money, relativeDate } from "@/lib/format";
 import { errorText, useAction } from "@/lib/useAction";
 import { Badge, Button, EmptyState, ErrorState, Field, Input, LoadingRows, Select } from "@/components/ui";
 import { AgingReport } from "@/components/invoices/AgingReport";
+import { BillingPlans } from "@/components/invoices/BillingPlans";
 import { DataTable, type Column } from "@/components/DataTable";
 import { Sheet } from "@/components/Dialog";
 import { useConfirm } from "@/components/Confirm";
@@ -33,6 +34,7 @@ const FILTERS = [
   { key: "draft", label: "Drafts" },
   { key: "paid", label: "Paid" },
   { key: "aging", label: "Who owes what" },
+  { key: "plans", label: "Fee vouchers" },
 ];
 const METHODS = [
   ["bank", "Bank transfer"], ["cash", "Cash"], ["cheque", "Cheque"], ["card", "Card"], ["jazzcash", "JazzCash"],
@@ -55,8 +57,10 @@ export default function InvoicesPage() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
+  // A new tab starts from "loading": the last tab's rows must not show under its name.
+  useEffect(() => setItems(null), [filter]);
   const load = useCallback(() => {
-    if (filter === "aging") return;     // its own report below
+    if (filter === "aging" || filter === "plans") return;     // their own views below
     setLoadError(null);
     const q = filter === "overdue" ? "?overdue=true" : filter ? `?status=${filter}` : "";
     api<Summary[]>(`/invoices${q}`)
@@ -88,13 +92,13 @@ export default function InvoicesPage() {
         {FILTERS.map((f) => (
           <button key={f.key} type="button" role="tab" aria-selected={filter === f.key}
                   onClick={() => setFilter(f.key)}
-                  className={`rounded-full px-3 py-1 text-xs pointer-coarse:min-h-11 ${filter === f.key ? "bg-brand text-on-brand" : "bg-elevated text-fg-muted hover:text-fg"}`}>
+                  className={`rounded-full px-3 py-1 text-xs pointer-coarse:min-h-11 ${filter === f.key ? "bg-brand text-brand-fg" : "bg-elevated text-fg-muted hover:text-fg"}`}>
             {f.label}
           </button>
         ))}
       </div>
 
-      {filter === "aging" ? <AgingReport /> : loadError ? (
+      {filter === "aging" ? <AgingReport /> : filter === "plans" ? <BillingPlans /> : loadError ? (
         <ErrorState message={loadError} onRetry={load} />
       ) : (
         <DataTable

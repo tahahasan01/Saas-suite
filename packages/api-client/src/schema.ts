@@ -2102,6 +2102,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/crm/quotes/{quote_id}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Quote Pdf */
+        get: operations["quote_pdf_crm_quotes__quote_id__pdf_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/quotes/{quote_id}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Email Quote
+         * @description Email the customer the link and the PDF, through the outbox. Only an
+         *     open quote; one plain address; a few times an hour per quote and a daily
+         *     cap per business, like invoices.
+         */
+        post: operations["email_quote_crm_quotes__quote_id__send_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/crm/quotes/{quote_id}/cancel": {
         parameters: {
             query?: never;
@@ -2270,6 +2309,26 @@ export interface paths {
         put?: never;
         /** Decline */
         post: operations["decline_public_quotes__token__decline_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/quotes/{token}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Pdf
+         * @description The quote as a PDF; like the page, reading it changes nothing.
+         */
+        get: operations["pdf_public_quotes__token__pdf_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2513,6 +2572,41 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/custom-fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Fields */
+        get: operations["list_fields_custom_fields_get"];
+        put?: never;
+        /** Create Field */
+        post: operations["create_field_custom_fields_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/custom-fields/{field_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Field */
+        patch: operations["update_field_custom_fields__field_id__patch"];
         trace?: never;
     };
     "/activities": {
@@ -9521,6 +9615,10 @@ export interface components {
             owner_id?: string | null;
             /** Tag Ids */
             tag_ids?: string[];
+            /** Custom */
+            custom?: {
+                [key: string]: unknown;
+            };
             /**
              * Force
              * @default false
@@ -9670,6 +9768,10 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            /** Custom */
+            custom?: {
+                [key: string]: unknown;
+            };
         };
         /** ContactSale */
         ContactSale: {
@@ -9734,6 +9836,10 @@ export interface components {
             owner_id?: string | null;
             /** Tag Ids */
             tag_ids?: string[] | null;
+            /** Custom */
+            custom?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** Copied */
         Copied: {
@@ -9900,6 +10006,62 @@ export interface components {
             won_value_minor: number;
             /** Added This Week */
             added_this_week: number;
+        };
+        /** CustomFieldIn */
+        CustomFieldIn: {
+            /**
+             * Entity
+             * @enum {string}
+             */
+            entity: "lead" | "contact";
+            /** Label */
+            label: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "text" | "number" | "date" | "select" | "checkbox";
+            /** Options */
+            options?: string[];
+        };
+        /** CustomFieldOut */
+        CustomFieldOut: {
+            /** Id */
+            id: string;
+            /**
+             * Entity
+             * @enum {string}
+             */
+            entity: "lead" | "contact";
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "text" | "number" | "date" | "select" | "checkbox";
+            /** Options */
+            options: string[];
+            /** Position */
+            position: number;
+            /** Archived */
+            archived: boolean;
+        };
+        /**
+         * CustomFieldPatch
+         * @description The kind can't change under existing values: retire the field and add another.
+         */
+        CustomFieldPatch: {
+            /** Label */
+            label?: string | null;
+            /** Options */
+            options?: string[] | null;
+            /** Position */
+            position?: number | null;
+            /** Archived */
+            archived?: boolean | null;
         };
         /** DashboardOverview */
         DashboardOverview: {
@@ -11928,6 +12090,10 @@ export interface components {
             expected_close_date?: string | null;
             /** Tag Ids */
             tag_ids?: string[];
+            /** Custom */
+            custom?: {
+                [key: string]: unknown;
+            };
             /**
              * Force
              * @default false
@@ -12033,6 +12199,17 @@ export interface components {
              * @default 0
              */
             line_count: number;
+            /**
+             * Custom
+             * @default {}
+             */
+            custom: {
+                [key: string]: unknown;
+            };
+            /** Consent At */
+            consent_at?: string | null;
+            /** Consent Text */
+            consent_text?: string | null;
         };
         /** LeadUpdate */
         LeadUpdate: {
@@ -12060,6 +12237,10 @@ export interface components {
             expected_close_date?: string | null;
             /** Tag Ids */
             tag_ids?: string[] | null;
+            /** Custom */
+            custom?: {
+                [key: string]: unknown;
+            } | null;
         };
         /**
          * LeaveBalance
@@ -14555,6 +14736,19 @@ export interface components {
              */
             reason: string;
         };
+        /**
+         * QuoteEmail
+         * @description No address: the deal's contact's email.
+         */
+        QuoteEmail: {
+            /** To */
+            to?: string | null;
+        };
+        /** QuoteEmailed */
+        QuoteEmailed: {
+            /** To */
+            to: string;
+        };
         /** QuoteInvoiced */
         QuoteInvoiced: {
             /** Invoice Id */
@@ -14647,6 +14841,8 @@ export interface components {
             decline_reason: string | null;
             /** Invoice Id */
             invoice_id: string | null;
+            /** Last Emailed At */
+            last_emailed_at?: string | null;
         };
         /**
          * QuotePublic
@@ -16950,6 +17146,11 @@ export interface components {
              * @default 200
              */
             daily_cap: number;
+            /**
+             * Consent Label
+             * @default
+             */
+            consent_label: string;
         };
         /** WebFormOut */
         WebFormOut: {
@@ -16988,6 +17189,11 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /**
+             * Consent Label
+             * @default
+             */
+            consent_label: string;
         };
         /** WebFormPatch */
         WebFormPatch: {
@@ -17011,6 +17217,8 @@ export interface components {
             owner_id?: string | null;
             /** Daily Cap */
             daily_cap?: number | null;
+            /** Consent Label */
+            consent_label?: string | null;
             /** Active */
             active?: boolean | null;
         };
@@ -17029,6 +17237,8 @@ export interface components {
             business_name: string;
             /** Ticket */
             ticket: string;
+            /** Consent Label */
+            consent_label?: string | null;
         };
         /** WebFormSubmit */
         WebFormSubmit: {
@@ -17089,6 +17299,11 @@ export interface components {
              * @default
              */
             utm_campaign: string;
+            /**
+             * Consent
+             * @default false
+             */
+            consent: boolean;
         };
         /** WeekOut */
         WeekOut: {
@@ -21868,6 +22083,76 @@ export interface operations {
             };
         };
     };
+    quote_pdf_crm_quotes__quote_id__pdf_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quote_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    email_quote_crm_quotes__quote_id__send_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quote_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuoteEmail"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteEmailed"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     cancel_quote_crm_quotes__quote_id__cancel_post: {
         parameters: {
             query?: never;
@@ -22218,6 +22503,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QuotePublic"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pdf_public_quotes__token__pdf_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -22915,6 +23231,112 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UnsubscribePage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_fields_custom_fields_get: {
+        parameters: {
+            query: {
+                entity: "lead" | "contact";
+                include_archived?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomFieldOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_field_custom_fields_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomFieldIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomFieldOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_field_custom_fields__field_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                field_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomFieldPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomFieldOut"];
                 };
             };
             /** @description Validation Error */

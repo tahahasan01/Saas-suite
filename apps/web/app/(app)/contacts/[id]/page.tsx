@@ -10,6 +10,7 @@ import { formatDate, money, relativeDate } from "@/lib/format";
 import { errorText, useAction } from "@/lib/useAction";
 import { useConfirm } from "@/components/Confirm";
 import { Badge, Button, Card, cx, EmptyState, ErrorState, Field, Input, LoadingRows, Select, Textarea } from "@/components/ui";
+import { CustomFieldValues, useCustomFields } from "@/components/CustomFields";
 import { ConsentCard } from "@/components/contacts/ConsentCard";
 import { ContactForm, TagChip } from "@/components/contacts/ContactForm";
 import { MergeDialog } from "@/components/contacts/MergeDialog";
@@ -276,6 +277,7 @@ function Timeline({ contactId, refreshKey, onNoted }: { contactId: string; refre
 
 function Details({ data, onChanged }: { data: ContactDetail; onChanged: () => void }) {
   const c = data.contact;
+  const contactFields = useCustomFields("contact");
   const [addr, setAddr] = useState({ kind: "billing", line1: "", line2: "", city: "", province: "" });
   const add = useAction(
     () => api(`/contacts/${c.id}/addresses`, { method: "POST", body: JSON.stringify({ ...addr, is_default: data.addresses.length === 0 }) }),
@@ -294,6 +296,7 @@ function Details({ data, onChanged }: { data: ContactDetail; onChanged: () => vo
           <Info label="City" value={c.city || "—"} />
           <Info label="Source" value={c.source || "—"} />
           <Info label="Added" value={formatDate(c.created_at)} />
+          <CustomFieldValues fields={contactFields} values={c.custom ?? {}} />
         </dl>
         {c.notes && <p className="mt-3 whitespace-pre-wrap text-sm text-fg-muted">{c.notes}</p>}
         {c.kind === "company" && (

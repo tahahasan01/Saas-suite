@@ -8,7 +8,7 @@ from __future__ import annotations
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
-from .. import db, deal_lines, leads, quotes, rbac, targets
+from .. import audit, db, deal_lines, email, invoicing, leads, quotes, quotes_pdf, ratelimit, rbac, sequences, targets
 from ..crm_selling_models import (
     MONTH,
     Copied,
@@ -23,10 +23,13 @@ from ..crm_selling_models import (
     DealLinesPut,
     DealProductOut,
     QuoteCreate,
+    QuoteEmail,
+    QuoteEmailed,
     QuoteInvoiced,
     QuoteOut,
 )
 from ..deps import AuthContext
+from ..phone import normalize_email
 from ..rbac import perm
 
 router = APIRouter(prefix="/crm", tags=["crm-selling"])
@@ -125,6 +128,51 @@ async def _quote_in_scope(conn: asyncpg.Connection, auth: AuthContext, key: str,
 async def get_quote(quote_id: str, auth: AuthContext = Depends(perm("crm.lead.read"))) -> QuoteOut:
     async with db.tenant_conn(auth.tenant_id) as conn:
         return await quotes.out(conn, await _quote_in_scope(conn, auth, "crm.lead.read", quote_id))
+
+
+@router.get("/quotes/{quote_id}/pdf")
+async def quote_pdf(quote_id: str, auth: AuthContext = Depends(perm("crm.lead.read"))) -> Response:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        q = await quotes.out(conn, await _quote_in_scope(conn, auth, "crm.lead.read", quote_id))
+        seller = await invoicing.seller(conn, auth.tenant_id)
+    return Response(quotes_pdf.build_quote_pdf(q, seller), media_type="application/pdf",
+                    headers={"Content-Disposition": f'inline; filename="{q.number}.pdf"'})
+
+
+SENDS_PER_QUOTE_HOUR = 3
+SENDS_PER_DAY = 200
+
+
+@router.post("/quotes/{quote_id}/send", response_model=QuoteEmailed, status_code=status.HTTP_202_ACCEPTED)
+async def email_quote(quote_id: str, body: QuoteEmail,
+                      auth: AuthContext = Depends(perm("crm.quote.send"))) -> QuoteEmailed:
+    """Email the customer the link and the PDF, through the outbox. Only an
+    open quote; one plain address; a few times an hour per quote and a daily
+    cap per business, like invoices."""
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        row = await _quote_in_scope(conn, auth, "crm.lead.update", quote_id)
+        if not quotes.is_open(row, await sequences.local_date(conn, None)):
+            raise HTTPException(status.HTTP_409_CONFLICT, "Only an open quote can be emailed")
+        if body.to:
+            to = normalize_email(body.to)
+            if not to:
+                raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Please check the email address")
+        else:
+            to = await conn.fetchval(
+                "select c.email_normalized from crm_leads l join contacts c on c.id = l.contact_id where l.id = $1",
+                row["lead_id"])
+            if not to:
+                raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+                                    "Give an email address: this customer has none")
+        for bucket, limit, window in ((f"quote-send:{quote_id}", SENDS_PER_QUOTE_HOUR, 3600),
+                                      (f"tenant:{auth.tenant_id}:quote-send", SENDS_PER_DAY, 86400)):
+            retry = await ratelimit.hit(bucket, limit, window)
+            if retry:
+                raise ratelimit.too_many(retry)
+        await email.queue_quote(conn, auth.tenant_id, to, quote_id)
+        await conn.execute("update crm_quotes set last_emailed_at = now(), updated_at = now() where id = $1", quote_id)
+        await audit.event(conn, "crm.quote.email", "crm_quotes", quote_id, data={"to": to})
+    return QuoteEmailed(to=to)
 
 
 @router.post("/quotes/{quote_id}/cancel", response_model=QuoteOut)

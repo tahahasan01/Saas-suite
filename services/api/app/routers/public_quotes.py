@@ -17,7 +17,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Request, Response, status
 
-from .. import context, db, quotes, ratelimit
+from .. import context, db, invoicing, quotes, quotes_pdf, ratelimit
 from ..crm_selling_models import QuoteAccept, QuoteDecline, QuotePublic
 
 LOOKUPS_PER_MINUTE = 60
@@ -70,3 +70,16 @@ async def decline(token: str, body: QuoteDecline) -> QuotePublic:
     tenant_id, qid = await _open(token)
     async with db.tenant_conn(tenant_id) as conn:
         return await quotes.decline(conn, qid, body.reason)
+
+
+@router.get("/{token}/pdf", dependencies=[Depends(_guard)])
+async def pdf(token: str) -> Response:
+    """The quote as a PDF; like the page, reading it changes nothing."""
+    tenant_id, qid = await _open(token)
+    async with db.tenant_conn(tenant_id) as conn:
+        page = await quotes.public_view(conn, qid)
+        seller = await invoicing.seller(conn, tenant_id)
+    return Response(quotes_pdf.build_quote_pdf(page, seller), media_type="application/pdf",
+                    headers={"Content-Disposition": f'inline; filename="{page.number}.pdf"',
+                             "Cache-Control": "no-store", "Referrer-Policy": "no-referrer",
+                             "X-Robots-Tag": "noindex, nofollow"})

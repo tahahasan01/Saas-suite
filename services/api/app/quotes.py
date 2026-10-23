@@ -92,7 +92,8 @@ async def out(conn: asyncpg.Connection, r: asyncpg.Record, today: date | None = 
         **_doc(r, await _lines(conn, r["id"])), id=str(r["id"]), lead_id=str(r["lead_id"]), status=r["status"],
         expired=_expired(r, today), link=link, created_at=r["created_at"], first_viewed_at=r["first_viewed_at"],
         view_count=r["view_count"], accepted_ip=r["accepted_ip"], declined_at=r["declined_at"],
-        decline_reason=r["decline_reason"], invoice_id=str(r["invoice_id"]) if r["invoice_id"] else None)
+        decline_reason=r["decline_reason"], invoice_id=str(r["invoice_id"]) if r["invoice_id"] else None,
+        last_emailed_at=r["last_emailed_at"])
 
 
 async def get(conn: asyncpg.Connection, quote_id: str) -> asyncpg.Record:
@@ -295,3 +296,13 @@ async def decline(conn: asyncpg.Connection, quote_id: Any, reason: str) -> Quote
                                 assigned_to=owner, summary=f"Quote {row['number']} declined: follow up",
                                 note=reason, automated=True)
     return await public_view(conn, quote_id)
+
+
+def is_open(r: asyncpg.Record, today: date) -> bool:
+    """Sent and still answerable: the only state worth emailing a link for."""
+    return bool(r["status"] == OPEN and not _expired(r, today))
+
+
+def plain_link(r: asyncpg.Record) -> str:
+    """The page path, decrypted from the stored copy (never logged or queued)."""
+    return link_of(crypto.decrypt(bytes(r["token_enc"]), _aad(r["tenant_id"])))

@@ -139,6 +139,12 @@ async def queue_payslip(conn, tenant_id: str, to: str, payslip_id: str) -> int:
     return await _enqueue(conn, tenant_id, "payslip", to, payslip_id=str(payslip_id))
 
 
+async def queue_quote(conn, tenant_id: str, to: str, quote_id: str) -> int:
+    """A quote's link and PDF. Only the id is queued: the link is decrypted
+    and the PDF built at delivery, and a quote closed by then isn't sent."""
+    return await _enqueue(conn, tenant_id, "quote", to, quote_id=str(quote_id))
+
+
 async def queue_campaign(conn, tenant_id: str, to: str, *, subject: str, body: str, business: str,
                          unsubscribe_token: str, run_after=None) -> int:
     """A marketing email (wave D campaigns), already merged; `run_after`
@@ -274,6 +280,27 @@ async def _payslip_mail(row) -> tuple[str, str, list[Attachment]]:
         (f"payslip-{run['period_start']:%Y-%m}.pdf", pdf, "application/pdf")]
 
 
+async def _quote_mail(row) -> tuple[str, str, list[Attachment]] | None:
+    """None when the quote is no longer open: a dead link isn't worth sending."""
+    from . import invoicing, quotes, quotes_pdf, sequences
+
+    async with db.tenant_conn(str(row["tenant_id"])) as conn:
+        r = await quotes.get(conn, row["payload"]["quote_id"])
+        if not quotes.is_open(r, await sequences.local_date(conn, None)):
+            return None
+        q = await quotes.out(conn, r)
+        seller = await invoicing.seller(conn, row["tenant_id"])
+        link = f"{WEB}{quotes.plain_link(r)}"
+    company = seller.get("name") or "us"
+    rupees, paisa = divmod(q.total_minor, 100)
+    amount = f"Rs {rupees:,}" + (f".{paisa:02d}" if paisa else "")
+    body = (f"Dear {q.customer_name or 'customer'},\n\nPlease find quote {q.number} for {amount}, valid until "
+            f"{q.valid_until.strftime('%d %b %Y')}. You can view and accept it here:\n{link}\n\n"
+            f"The quote is also attached as a PDF.\n\nThank you,\n{company}")
+    return (f"Quote {q.number} from {company}", body,
+            [(f"{q.number}.pdf", quotes_pdf.build_quote_pdf(q, seller), "application/pdf")])
+
+
 async def _deliver(row) -> str | None:
     try:
         if row["payload"]["template"] == "invoice":
@@ -282,6 +309,10 @@ async def _deliver(row) -> str | None:
         elif row["payload"]["template"] == "payslip":
             subject, body, files = await _payslip_mail(row)
             await _send_attached(row["payload"]["to"], subject, body, files)
+        elif row["payload"]["template"] == "quote":
+            mail = await _quote_mail(row)
+            if mail is not None:
+                await _send_attached(row["payload"]["to"], *mail)
         else:
             subject, body = await _render(row)
             await _send(row["payload"]["to"], subject, body)

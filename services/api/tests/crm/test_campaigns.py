@@ -249,3 +249,22 @@ async def test_the_outbox_renders_a_campaign_email_with_its_unsubscribe_line():
         "business": "Raza Mart", "unsubscribe_url": "https://app.example/u/abc"}})
     assert subject == "Eid Mubarak"
     assert body.startswith("Dear Sara,") and body.endswith("To stop these emails: https://app.example/u/abc")
+
+
+async def test_another_companys_tags_and_lists_cant_be_used(client, shop):
+    """A segment can't filter on another company's tag, and a campaign can't
+    use its list or template (the id walk covers single ids; these are lists)."""
+    their_tag = (await client.post("/tags", json={"name": "Theirs"})).json()["id"]
+    their_seg = await segment(client, tag_ids=[their_tag])
+    their_tpl = await template(client)
+    await _signup(client, ["crm"])
+    try:
+        r = await client.post("/crm/segments", json={"name": "Mine", "filter": {"tag_ids": [their_tag]}})
+        assert r.status_code == 404, r.text
+        r = await client.post("/crm/campaigns", json={"name": "X", "segment_id": their_seg["id"],
+                                                      "template_id": their_tpl["id"]})
+        assert r.status_code == 404, r.text
+        assert (await client.get(f"/crm/segments/{their_seg['id']}/preview")).status_code == 404
+    finally:
+        me = (await client.get("/auth/me")).json()
+        await _drop(me["tenant"]["id"])

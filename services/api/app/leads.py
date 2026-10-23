@@ -86,7 +86,8 @@ def lead_out(row: asyncpg.Record) -> LeadOut:
         stage_entered_at=d.get("stage_entered_at"), activity_state=d.get("activity_state"),
         next_activity_date=d.get("next_activity_date"),
         tags=[TagOut(id=str(t["id"]), name=t["name"], color=t["color"]) for t in d.get("tags") or []],
-        line_count=d.get("line_count") or 0,
+        line_count=d.get("line_count") or 0, custom=d.get("custom") or {},
+        consent_at=d.get("consent_at"), consent_text=d.get("consent_text"),
     )
 
 

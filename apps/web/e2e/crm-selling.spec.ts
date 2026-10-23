@@ -104,6 +104,7 @@ test.describe("web forms", () => {
     await forms.getByLabel("Form name (for you)").fill(formName);
     await forms.getByLabel("Heading customers see").fill("Get a free survey");
     await forms.getByLabel("Source on the lead").fill("website");
+    await forms.getByLabel("Marketing tick (leave empty to not ask)").fill("Send me offers by email");
     await forms.getByRole("button", { name: "Save form" }).click();
     await expect(page.getByText("Form saved")).toBeVisible();
     await expect(forms.getByText(formName)).toBeVisible();
@@ -118,6 +119,7 @@ test.describe("web forms", () => {
     await vp.getByLabel("Your name").fill(visitor);
     await vp.getByLabel("Phone").fill(phone);
     await vp.getByLabel("Message").fill("Please call after 5pm");
+    await vp.getByRole("checkbox", { name: "Send me offers by email" }).check();
     // The server drops forms sent faster than a person could fill them (3 s).
     await vp.waitForTimeout(3_500);
     await vp.getByRole("button", { name: "Send" }).click();
@@ -129,6 +131,8 @@ test.describe("web forms", () => {
     expect(lead).toBeTruthy();
     expect(lead.source).toBe("website");
     expect(lead.phone).toBe(`+92${phone.slice(1)}`);
+    expect(lead.consent_at).toBeTruthy();
+    expect(lead.consent_text).toBe("Send me offers by email");
   });
 });
 
@@ -198,5 +202,57 @@ test.describe("campaigns", () => {
     await expect(dialog).toContainText("1 haven't agreed to marketing");
     await dialog.getByRole("button", { name: "Send now" }).click();
     await expect(camps.getByRole("listitem").filter({ hasText: `Eid ${id}` })).toContainText("1 sent, 1 left out");
+  });
+});
+
+test.describe("custom fields", () => {
+  test("an admin adds a lead field, a rep fills it in, and the lead shows it", async ({ page, request }) => {
+    const label = `Plot size ${uid()}`;
+    await page.goto("/crm/settings");
+    const card = page.getByRole("heading", { name: "Custom fields" }).locator("../..");
+    await card.getByLabel("Field name").fill(label);
+    await card.getByLabel("Kind").selectOption("number");
+    await card.getByRole("button", { name: "Add field" }).click();
+    await expect(page.getByText("Field added")).toBeVisible();
+    await expect(card.getByRole("button", { name: `Retire ${label}` })).toBeVisible();
+
+    const lead = await freshLead(request);
+    await page.goto("/crm");
+    await page.getByRole("main").getByRole("button", { name: `Open ${lead.name}` }).click();
+    const drawer = page.getByRole("dialog", { name: lead.name });
+    await drawer.getByRole("button", { name: "Edit details" }).click();
+    await drawer.getByLabel(label).fill("12");
+    await drawer.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(page.getByText("Changes saved")).toBeVisible();
+    await expect(drawer.getByText(label, { exact: true }).locator("..")).toContainText("12");
+  });
+});
+
+test.describe("quote email and PDF", () => {
+  test("a rep emails an open quote and both sides can get its PDF", async ({ page, request, browser }) => {
+    const lead = await freshLead(request);
+    await request.put(`${API}/crm/leads/${lead.id}/lines`, {
+      data: { lines: [{ description: "Inverter 5 kW", qty: 1, unit_price_minor: 300_000_00 }] },
+    });
+    const quote = await (await request.post(`${API}/crm/leads/${lead.id}/quotes`, { data: {} })).json();
+
+    await page.goto("/crm");
+    await page.getByRole("main").getByRole("button", { name: `Open ${lead.name}` }).click();
+    const quotes = page.getByRole("dialog", { name: lead.name }).getByRole("region", { name: "Quotes" });
+    await expect(quotes.getByRole("link", { name: `PDF of quote ${quote.number}` })).toHaveAttribute("href", /\/pdf$/);
+    await quotes.getByRole("button", { name: "Email" }).click();
+    await quotes.getByLabel(/Send to/).fill(`buyer.${uid()}@example.com`);
+    await quotes.getByRole("button", { name: "Send", exact: true }).click();
+    await expect(page.getByText(/Quote on its way to buyer\./)).toBeVisible();
+    await expect(quotes.getByText(/^Last emailed/)).toBeVisible();
+
+    const customer = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+    const cp = await customer.newPage();
+    await cp.goto(quote.link);
+    const pdf = cp.getByRole("link", { name: "Download PDF" });
+    await expect(pdf).toBeVisible();
+    const res = await cp.request.get(new URL(await pdf.getAttribute("href") ?? "", cp.url()).toString());
+    expect(res.headers()["content-type"]).toBe("application/pdf");
+    await customer.close();
   });
 });

@@ -12,6 +12,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .models import (
     CampaignStatus,
+    CustomFieldEntity,
+    CustomFieldKind,
     ContactKind,
     ContactRole,
     ConsentStatus,
@@ -143,6 +145,7 @@ class QuoteOut(QuoteTotals):
     declined_at: datetime | None
     decline_reason: str | None
     invoice_id: str | None
+    last_emailed_at: datetime | None = None
 
 
 QuotePublicStatus = Literal["open", "accepted", "declined", "expired"]
@@ -193,6 +196,7 @@ class WebFormIn(BaseModel):
     source: str = Field(default="web form", min_length=1, max_length=60)
     owner_id: UUID | None = None
     daily_cap: int = Field(default=200, ge=1, le=10000)
+    consent_label: str = Field(default="", max_length=200)   # the marketing tick's wording; empty: not asked
 
 
 class WebFormPatch(BaseModel):
@@ -207,6 +211,7 @@ class WebFormPatch(BaseModel):
     source: str | None = Field(default=None, min_length=1, max_length=60)
     owner_id: UUID | None = None
     daily_cap: int | None = Field(default=None, ge=1, le=10000)
+    consent_label: str | None = Field(default=None, max_length=200)
     active: bool | None = None
 
 
@@ -227,6 +232,7 @@ class WebFormOut(BaseModel):
     active: bool
     leads_today: int
     created_at: datetime
+    consent_label: str = ""
 
 
 class WebFormPublic(BaseModel):
@@ -236,6 +242,7 @@ class WebFormPublic(BaseModel):
     fields: list[WebFormField]
     business_name: str
     ticket: str
+    consent_label: str | None = None    # shown beside the marketing tick, when the form asks
 
 
 class WebFormValues(BaseModel):
@@ -252,6 +259,7 @@ class WebFormValues(BaseModel):
     utm_source: str = Field(default="", max_length=100)
     utm_medium: str = Field(default="", max_length=100)
     utm_campaign: str = Field(default="", max_length=100)
+    consent: bool = False              # the marketing tick (ignored when the form doesn't ask)
 
 
 class WebFormSubmit(BaseModel):
@@ -449,3 +457,50 @@ class UnsubscribePage(BaseModel):
     business_name: str
     channel: MessageChannel
     done: bool
+
+
+# ── Custom fields (0127) ────────────────────────────────────────────────────
+class CustomFieldIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    entity: CustomFieldEntity
+    label: str = Field(min_length=1, max_length=80)
+    kind: CustomFieldKind
+    options: list[str] = Field(default_factory=list, max_length=50)
+
+    @field_validator("options")
+    @classmethod
+    def _choices(cls, v: list[str]) -> list[str]:
+        out = list(dict.fromkeys(o.strip() for o in v if o.strip()))
+        if any(len(o) > 80 for o in out):
+            raise ValueError("A choice can be at most 80 characters")
+        return out
+
+
+class CustomFieldPatch(BaseModel):
+    """The kind can't change under existing values: retire the field and add another."""
+    model_config = ConfigDict(extra="forbid")
+    label: str | None = Field(default=None, min_length=1, max_length=80)
+    options: list[str] | None = Field(default=None, max_length=50)
+    position: int | None = Field(default=None, ge=0, le=1000)
+    archived: bool | None = None
+
+
+class CustomFieldOut(BaseModel):
+    id: str
+    entity: CustomFieldEntity
+    key: str
+    label: str
+    kind: CustomFieldKind
+    options: list[str]
+    position: int
+    archived: bool
+
+
+class QuoteEmail(BaseModel):
+    """No address: the deal's contact's email."""
+    model_config = ConfigDict(extra="forbid")
+    to: str | None = Field(default=None, max_length=200)
+
+
+class QuoteEmailed(BaseModel):
+    to: str
