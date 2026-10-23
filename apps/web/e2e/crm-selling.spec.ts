@@ -256,3 +256,68 @@ test.describe("quote email and PDF", () => {
     await customer.close();
   });
 });
+
+test.describe("assignment rules and marketing confirmation", () => {
+  test("an admin adds a rule that sends a source's leads to chosen pool members", async ({ page, request }) => {
+    const roles = await (await request.get(`${API}/team/roles`)).json();
+    const role = roles.find((r: { name: string }) => r.name !== "Owner") ?? roles[0];
+    const name = `Rep ${uid()}`;
+    const user = await (await request.post(`${API}/team/users`, { data: {
+      name, email: `rep.${uid()}@example.com`, password: "Sup3rSecret!23", role_id: role.id } })).json();
+    const pool = await (await request.get(`${API}/crm/assignment/pool`)).json();
+    await request.put(`${API}/crm/assignment/pool`, { data: { members: [
+      ...pool.map((m: { user_id: string; active: boolean; daily_cap: number | null }) =>
+        ({ user_id: m.user_id, active: m.active, daily_cap: m.daily_cap })),
+      { user_id: user.id }] } });
+
+    await page.goto("/crm/settings");
+    const rules = page.getByRole("heading", { name: "Assignment rules" }).locator("..");
+    const ruleName = `Facebook ${uid()}`;
+    await rules.getByLabel("Rule name").fill(ruleName);
+    await rules.getByLabel("When the source is").fill("facebook page");
+    await rules.getByLabel(name).check();
+    await rules.getByRole("button", { name: "Add rule" }).click();
+    await expect(rules.getByRole("button", { name: `Remove rule ${ruleName}` })).toBeVisible();
+    await expect(rules.getByText(new RegExp(`source “facebook page” → .*${name}`))).toBeVisible();
+  });
+
+  test("a form tick becomes an opt-in only when the inbox owner confirms", async ({ request, browser }) => {
+    const MAILPIT = process.env.MAILPIT_URL ?? "http://localhost:8025";
+    test.skip(!(await request.get(`${MAILPIT}/api/v1/messages`).catch(() => null))?.ok(), "needs Mailpit");
+    const form = await (await request.post(`${API}/crm/web-forms`, { data: {
+      name: `Offers ${uid()}`, fields: ["email"], consent_label: "Send me offers" } })).json();
+    const address = `fan.${uid()}@example.com`;
+    const visitor = await (await browser.newContext({ storageState: { cookies: [], origins: [] } })).request;
+    const ticket = (await (await visitor.get(`${API}/public/forms/${form.public_id}`)).json()).ticket;
+    await new Promise((r) => setTimeout(r, 3_500));            // the server drops forms filled in under 3 s
+    const sent = await visitor.post(`${API}/public/forms/${form.public_id}`, {
+      data: { ticket, values: { name: `Fan ${uid()}`, email: address, consent: true } } });
+    expect(sent.ok()).toBeTruthy();
+
+    const leads = await (await request.get(`${API}/crm/leads`)).json();
+    const lead = leads.find((l: { email: string }) => l.email === address);
+    const qualified = await (await request.post(`${API}/crm/leads/${lead.id}/qualify`, { data: { mode: "create" } })).json();
+    const contactId = qualified.contact.id;
+    expect(await (await request.get(`${API}/contacts/${contactId}/consents`)).json()).toEqual([]);
+
+    let link = "";
+    for (let i = 0; i < 20 && !link; i++) {
+      const found = await (await request.get(`${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:"${address}"`)}`)).json();
+      if (found.messages?.length) {
+        const msg = await (await request.get(`${MAILPIT}/api/v1/message/${found.messages[0].ID}`)).json();
+        link = /\/c\/[\w.-]+/.exec(msg.Text)?.[0] ?? "";
+      }
+      if (!link) await new Promise((r) => setTimeout(r, 500));
+    }
+    expect(link).toMatch(/^\/c\//);
+
+    const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+    const cp = await ctx.newPage();
+    await cp.goto(link);
+    await cp.getByRole("button", { name: "Yes, send me offers" }).click();
+    await expect(cp.getByText(/Thank you/)).toBeVisible();
+    await ctx.close();
+    const after = await (await request.get(`${API}/contacts/${contactId}/consents`)).json();
+    expect(after).toEqual([expect.objectContaining({ channel: "email", status: "opted_in" })]);
+  });
+});
