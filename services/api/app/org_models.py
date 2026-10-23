@@ -132,6 +132,15 @@ class BranchOut(BaseModel):
     active: bool
 
 
+class BranchCreate(BaseModel):
+    """A new branch or warehouse (stock per branch, 0091)."""
+    code: str = Field(pattern=r"^[A-Z0-9]{2,8}$")
+    name: str = Field(min_length=1, max_length=120)
+    address: str = Field(default="", max_length=500)
+    phone: str = Field(default="", max_length=40)
+    region_code: RegionCode | None = None
+
+
 class BranchUpdate(BaseModel):
     code: str | None = Field(default=None, pattern=r"^[A-Z0-9]{2,8}$")
     name: str | None = Field(default=None, min_length=1, max_length=120)

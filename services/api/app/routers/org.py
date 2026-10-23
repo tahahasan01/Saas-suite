@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from .. import audit, branches, branding, db
 from ..deps import AuthContext, current_auth
 from ..org_models import (
+    BranchCreate,
     BranchOut,
     BranchUpdate,
     BrandingOut,
@@ -112,6 +113,24 @@ async def update_company(body: CompanyUpdate,
 async def list_branches(auth: AuthContext = Depends(perm("settings.branches.read"))) -> list[BranchOut]:
     async with db.tenant_conn(auth.tenant_id) as conn:
         return [BranchOut(**b) for b in await branches.visible(conn)]
+
+
+@router.post("/branches", response_model=BranchOut, status_code=status.HTTP_201_CREATED)
+async def create_branch(body: BranchCreate, auth: AuthContext = Depends(perm("settings.branches.manage"))) -> BranchOut:
+    """A new branch or warehouse (a warehouse is a branch without tills).
+    No limit per plan yet: that is the founder's pricing call."""
+    try:
+        async with db.tenant_conn(auth.tenant_id) as conn:
+            bid = await conn.fetchval(
+                """insert into branches (tenant_id, code, name, address, phone, region_code)
+                   values ($1, $2, $3, $4, $5, $6) returning id""",
+                auth.tenant_id, body.code, body.name.strip(), body.address, body.phone, body.region_code)
+            got = [b for b in await branches.all_branches(conn) if b["id"] == str(bid)]
+    except asyncpg.UniqueViolationError:
+        raise HTTPException(status.HTTP_409_CONFLICT, f"Another branch already uses the code {body.code}")
+    except (asyncpg.CheckViolationError, asyncpg.ForeignKeyViolationError) as e:
+        raise invalid(e)
+    return BranchOut(**got[0])
 
 
 @router.patch("/branches/{branch_id}", response_model=BranchOut)
