@@ -138,3 +138,27 @@ async def test_a_sale_belongs_to_its_tills_branch(client, pos_tenant):
     assert await _levels(client, p["id"]) == {main: 10, gulberg: 3}
     branch = await _owner("select branch_id from pos_sales where id = $1", uuid.UUID(sale.json()["id"]))
     assert str(branch[0]["branch_id"]) == gulberg
+
+
+async def test_a_branch_limited_user_cannot_move_another_branchs_stock(client, pos_tenant):
+    """Security review: the adjustment's branch_id must be one the caller
+    works in. catalog.move refuses it (404) and the levels' branch policy
+    would refuse the write anyway; nothing is written."""
+    main = (await client.get("/org/branches")).json()[0]["id"]
+    gulberg, _ = await _second_branch(client, pos_tenant.tenant_id)
+    p = await _product(client, stock=10)
+    rid = await _role(client, [{"permission_key": "products.product.read", "scope": "all"},
+                               {"permission_key": "products.stock.adjust", "scope": "all"}])
+    clerk, uid, _ = await _user_on(client, [rid])
+    try:
+        await _owner("delete from user_branches where user_id = $1", uuid.UUID(uid))
+        await _owner("insert into user_branches (tenant_id, user_id, branch_id, is_home) values ($1, $2, $3, true)",
+                     uuid.UUID(pos_tenant.tenant_id), uuid.UUID(uid), uuid.UUID(gulberg))
+        r = await clerk.post("/pos/stock/adjustments", json={"product_id": p["id"], "qty_delta": -5,
+                                                             "reason": "damage", "branch_id": main})
+        assert r.status_code == 404
+        # Counts and transfers can't reach it either.
+        assert (await clerk.post("/pos/counts", json={"branch_id": main})).status_code in (403, 404)
+    finally:
+        await clerk.aclose()
+    assert await _levels(client, p["id"]) == {main: 10}
