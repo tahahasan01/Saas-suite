@@ -47,6 +47,7 @@ test.describe("products on a deal", () => {
 
 test.describe("quotes the customer accepts online", () => {
   test("a rep sends a quote, the customer accepts it from the link, and the deal is won", async ({ page, request, browser }) => {
+    test.slow();   // two browser sessions (rep and customer)
     const lead = await freshLead(request);
     const lines = await request.put(`${API}/crm/leads/${lead.id}/lines`, {
       data: { lines: [{ description: "Rooftop solar, 5 kW", qty: 1, unit_price_minor: 850_000_00 }] },
@@ -230,6 +231,7 @@ test.describe("custom fields", () => {
 
 test.describe("quote email and PDF", () => {
   test("a rep emails an open quote and both sides can get its PDF", async ({ page, request, browser }) => {
+    test.slow();   // two browser sessions (rep and customer)
     const lead = await freshLead(request);
     await request.put(`${API}/crm/leads/${lead.id}/lines`, {
       data: { lines: [{ description: "Inverter 5 kW", qty: 1, unit_price_minor: 300_000_00 }] },
@@ -282,6 +284,7 @@ test.describe("assignment rules and marketing confirmation", () => {
   });
 
   test("a form tick becomes an opt-in only when the inbox owner confirms", async ({ request, browser }) => {
+    test.slow();   // two browser sessions (rep and customer)
     const MAILPIT = process.env.MAILPIT_URL ?? "http://localhost:8025";
     test.skip(!(await request.get(`${MAILPIT}/api/v1/messages`).catch(() => null))?.ok(), "needs Mailpit");
     const form = await (await request.post(`${API}/crm/web-forms`, { data: {
@@ -356,5 +359,35 @@ test.describe("forecast", () => {
     await expect(page.getByText("Close date moved")).toBeVisible();
     const after = await (await request.get(`${API}/crm/leads/${lead.id}`)).json();
     expect(after.lead.expected_close_date.slice(0, 7)).toBe(next);
+  });
+});
+
+test.describe("quote signature", () => {
+  test("the customer signs in the box and the quote records it", async ({ request, browser }) => {
+    test.slow();   // two browser sessions (rep and customer)
+    const lead = await freshLead(request);
+    await request.put(`${API}/crm/leads/${lead.id}/lines`, {
+      data: { lines: [{ description: "Battery bank", qty: 1, unit_price_minor: 200_000_00 }] } });
+    const quote = await (await request.post(`${API}/crm/leads/${lead.id}/quotes`, { data: {} })).json();
+
+    const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+    const cp = await ctx.newPage();
+    await cp.goto(quote.link);
+    await cp.getByLabel("Your full name").fill("Sana Iqbal");
+    await cp.getByRole("checkbox").check();
+    const box = await cp.getByRole("img", { name: "Signature box" }).boundingBox();
+    await cp.mouse.move(box!.x + 20, box!.y + 60);
+    await cp.mouse.down();
+    await cp.mouse.move(box!.x + 120, box!.y + 30, { steps: 8 });
+    await cp.mouse.move(box!.x + 220, box!.y + 80, { steps: 8 });
+    await cp.mouse.up();
+    await expect(cp.getByText("Signed", { exact: true })).toBeVisible();
+    await cp.getByRole("button", { name: "Accept quote" }).click();
+    await expect(cp.getByText(/by Sana Iqbal/)).toBeVisible();
+    await ctx.close();
+
+    const after = await (await request.get(`${API}/crm/quotes/${quote.id}`)).json();
+    expect(after.status).toBe("accepted");
+    expect(after.signed).toBe(true);
   });
 });
