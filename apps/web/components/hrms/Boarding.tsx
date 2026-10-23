@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { Schema } from "@business-os/api-client";
 import { api } from "@/lib/api";
@@ -28,9 +28,16 @@ export function BoardingDialog({ id, onClose }: { id: string; onClose: () => voi
   const [b, setB] = useState<Boarding | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [skipping, setSkipping] = useState<Task | null>(null);
+  // Ticks in flight, and which load is newest: a reload that started before
+  // the next tick must not land after it and untick that box.
+  const pending = useRef(0);
+  const loadSeq = useRef(0);
   const load = useCallback(() => {
     setError(null);
-    api<Boarding>(`/hrms/boardings/${id}`).then(setB).catch((e) => setError(errorText(e)));
+    const seq = ++loadSeq.current;
+    api<Boarding>(`/hrms/boardings/${id}`)
+      .then((next) => { if (seq === loadSeq.current && pending.current === 0) setB(next); })
+      .catch((e) => setError(errorText(e)));
   }, [id]);
   useEffect(load, [load]);
 
@@ -48,8 +55,9 @@ export function BoardingDialog({ id, onClose }: { id: string; onClose: () => voi
     const status = checked ? "done" : "open";
     setB((cur) => cur && { ...cur, done: cur.done + (checked ? 1 : -1),
                            tasks: (cur.tasks ?? []).map((x) => (x.id === t.id ? { ...x, status } : x)) });
-    await tick.run(t, status);
-    load();
+    pending.current += 1;
+    try { await tick.run(t, status); } finally { pending.current -= 1; }
+    if (pending.current === 0) load();     // the last tick's reload brings the server's truth
   }
   const title = b ? `${b.kind === "onboarding" ? "Joining" : "Leaving"}: ${b.employee_name}` : "Checklist";
   const open = b?.status === "open";
