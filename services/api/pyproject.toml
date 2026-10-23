@@ -153,6 +153,8 @@ module = [
     "app.routers.campaigns",
     "app.invoice_runs",
     "app.routers.invoice_runs",
+    "app.custom_fields",
+    "app.routers.custom_fields",
 ]
 # `strict` itself is global-only in mypy, so its per-module parts are spelled out.
 disallow_untyped_defs = true

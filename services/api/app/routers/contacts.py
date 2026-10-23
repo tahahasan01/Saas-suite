@@ -15,7 +15,7 @@ from uuid import UUID
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
-from .. import audit, contact_merge, contacts, contacts_backfill, db, leads, rbac, refs
+from .. import audit, contact_merge, contacts, contacts_backfill, custom_fields, db, leads, rbac, refs
 from ..deps import AuthContext, current_auth
 from ..models import (
     AddressCreate,
@@ -224,11 +224,12 @@ async def create_contact(body: ContactCreate, auth: AuthContext = Depends(CREATE
                     raise HTTPException(status.HTTP_409_CONFLICT, detail={
                         "message": "Possible duplicate", "duplicates": [d.model_dump() for d in dups],
                         "shared_keys": shared})
+        custom = await custom_fields.clean(conn, "contact", body.custom)
         row = await contacts.insert(
             conn, auth.tenant_id, name=body.name, kind=body.kind, company_id=body.company_id,
             company_name=body.company_name, job_title=body.job_title, phone=body.phone, email=body.email,
             ntn=body.ntn, strn=body.strn, city=body.city, roles=list(body.roles), source=body.source,
-            notes=body.notes, owner_id=body.owner_id or auth.user_id)
+            notes=body.notes, owner_id=body.owner_id or auth.user_id, custom=custom)
         if body.tag_ids:
             await _set_tags(conn, auth.tenant_id, row["id"], body.tag_ids)
         created = await contacts.fetch_out(conn, row["id"])
@@ -427,6 +428,8 @@ async def update_contact(contact_id: str, body: ContactUpdate, auth: AuthContext
             sets = ", ".join(f"{k} = ${i}" for i, k in enumerate(cols, start=2))
             await conn.execute(f"update contacts set {sets}, updated_at = now() where id = $1",
                                contact_id, *cols.values())
+        if body.custom is not None:
+            cols["custom"] = await custom_fields.clean(conn, "contact", body.custom, cur["custom"])
         if body.tag_ids is not None:
             await _set_tags(conn, auth.tenant_id, contact_id, body.tag_ids)
         updated = await contacts.fetch_out(conn, contact_id)

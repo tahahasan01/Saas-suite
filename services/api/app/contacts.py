@@ -47,7 +47,7 @@ def out(row: asyncpg.Record, tags: list[TagOut] | None = None) -> ContactOut:
         owner_id=str(row["owner_id"]) if row["owner_id"] else None, tags=tags or [],
         archived_at=row["archived_at"],
         merged_into_id=str(row["merged_into_id"]) if row["merged_into_id"] else None,
-        created_at=row["created_at"], updated_at=row["updated_at"])
+        created_at=row["created_at"], updated_at=row["updated_at"], custom=dict(row).get("custom") or {})
 
 
 def brief(row: asyncpg.Record) -> ContactBrief:
@@ -129,18 +129,18 @@ async def insert(conn: asyncpg.Connection, tenant_id: str, *, name: str, kind: s
                  company_id: Any = None, company_name: str = "", job_title: str = "", phone: str = "",
                  email: str = "", ntn: str = "", strn: str = "", city: str = "", roles: list[str] | None = None,
                  source: str = "", notes: str = "", owner_id: Any = None,
-                 created_by_migration: bool = False) -> asyncpg.Record:
+                 created_by_migration: bool = False, custom: dict[str, Any] | None = None) -> asyncpg.Record:
     """Insert one contact with its match keys computed, and note it on its
     timeline. Callers check references and duplicates first."""
     phone_e164, email_normalized = keys_for(phone, email)
     row = await conn.fetchrow(
         """insert into contacts (tenant_id, kind, company_id, name, company_name, job_title, phone_raw,
                                  phone_e164, email, email_normalized, ntn, strn, city, roles, source, notes,
-                                 owner_id, created_by_migration)
-           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) returning id""",
+                                 owner_id, created_by_migration, custom)
+           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) returning id""",
         tenant_id, kind, company_id, name.strip(), company_name.strip(), job_title.strip(), phone.strip(),
         phone_e164, email.strip(), email_normalized, ntn.strip(), strn.strip(), city.strip(),
-        sorted(set(roles or [])), source, notes, owner_id, created_by_migration)
+        sorted(set(roles or [])), source, notes, owner_id, created_by_migration, custom or {})
     await audit.track(conn, entity_type="contact", entity_id=str(row["id"]), contact_id=str(row["id"]),
                       kind="system", body="Contact created" + (" from a lead" if created_by_migration else ""))
     return row

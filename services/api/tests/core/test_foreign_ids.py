@@ -82,6 +82,8 @@ KIND_OF = {
     "segment_id": "segment", "template_id": "template", "campaign_id": "campaign",
     # fee vouchers (0126)
     "plan_id": "invoice_plan", "invoice_run_id": "invoice_run",
+    # custom fields (wave D, 0127)
+    "field_id": "custom_field",
 }
 
 # Ids whose name means different records on different routes: the first
@@ -244,7 +246,9 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
     vplan = (await c.post("/invoices/plans", json={"name": "Probe fees", "tag_id": vtag["id"], "lines": [
         {"description": "Fee", "qty": 1, "unit_price_minor": 100}]})).json()
     vrun = (await c.post(f"/invoices/plans/{vplan['id']}/runs", json={"period": "2027-04"})).json()
+    cfield = (await c.post("/custom-fields", json={"entity": "lead", "label": "Probe", "kind": "text"})).json()
     return {
+        "custom_field": cfield["id"],
         "invoice_plan": vplan["id"], "invoice_run": vrun["id"],
         "segment": segment["id"], "template": template["id"], "campaign": campaign["id"],
         "target": target["id"],

@@ -12,6 +12,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .models import (
     CampaignStatus,
+    CustomFieldEntity,
+    CustomFieldKind,
     ContactKind,
     ContactRole,
     ConsentStatus,
@@ -449,3 +451,40 @@ class UnsubscribePage(BaseModel):
     business_name: str
     channel: MessageChannel
     done: bool
+
+
+# ── Custom fields (0127) ────────────────────────────────────────────────────
+class CustomFieldIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    entity: CustomFieldEntity
+    label: str = Field(min_length=1, max_length=80)
+    kind: CustomFieldKind
+    options: list[str] = Field(default_factory=list, max_length=50)
+
+    @field_validator("options")
+    @classmethod
+    def _choices(cls, v: list[str]) -> list[str]:
+        out = list(dict.fromkeys(o.strip() for o in v if o.strip()))
+        if any(len(o) > 80 for o in out):
+            raise ValueError("A choice can be at most 80 characters")
+        return out
+
+
+class CustomFieldPatch(BaseModel):
+    """The kind can't change under existing values: retire the field and add another."""
+    model_config = ConfigDict(extra="forbid")
+    label: str | None = Field(default=None, min_length=1, max_length=80)
+    options: list[str] | None = Field(default=None, max_length=50)
+    position: int | None = Field(default=None, ge=0, le=1000)
+    archived: bool | None = None
+
+
+class CustomFieldOut(BaseModel):
+    id: str
+    entity: CustomFieldEntity
+    key: str
+    label: str
+    kind: CustomFieldKind
+    options: list[str]
+    position: int
+    archived: bool

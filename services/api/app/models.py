@@ -247,6 +247,9 @@ RecipientStatus = Literal["queued", "skipped"]
 SkipReason = Literal["no_address", "no_consent", "opted_out", "daily_cap"]
 # Fee vouchers (0126).
 InvoiceRunStatus = Literal["draft", "issued"]
+# Custom fields (0127).
+CustomFieldEntity = Literal["lead", "contact"]
+CustomFieldKind = Literal["text", "number", "date", "select", "checkbox"]
 LEAD_STATUSES = list(get_args(LeadStatus))
 # Activities (D-32, 0063). Polymorphic: 'contact' arrives with the contacts module.
 ActivityEntity = Literal["lead", "contact"]
@@ -357,6 +360,7 @@ class LeadOut(BaseModel):
     tags: list[TagOut] = []
     # Products on the deal (0120): with lines, value_minor is their pre-tax total.
     line_count: int = 0
+    custom: dict[str, Any] = {}          # custom field values by key (0127)
 
 
 class LeadCreate(BaseModel):
@@ -371,6 +375,7 @@ class LeadCreate(BaseModel):
     priority: int = Field(default=0, ge=0, le=3)
     expected_close_date: date | None = None
     tag_ids: list[UUID] = Field(default_factory=list, max_length=20)   # the shared contacts tags
+    custom: dict[str, Any] = Field(default_factory=dict, max_length=50)  # custom field values (0127)
     force: bool = False  # create even if a possible duplicate is detected
 
 
@@ -389,6 +394,7 @@ class LeadUpdate(BaseModel):
     priority: int | None = Field(default=None, ge=0, le=3)
     expected_close_date: date | None = None
     tag_ids: list[UUID] | None = Field(default=None, max_length=20)   # replaces the lead's tags
+    custom: dict[str, Any] | None = Field(default=None, max_length=50)  # merged; null values clear (0127)
 
 
 class LeadLost(BaseModel):
@@ -1532,6 +1538,7 @@ class ContactCreate(BaseModel):
     notes: str = Field(default="", max_length=4000)
     owner_id: UUID | None = None
     tag_ids: list[UUID] = Field(default_factory=list, max_length=20)
+    custom: dict[str, Any] = Field(default_factory=dict, max_length=50)  # custom field values (0127)
     force: bool = False  # create even when a likely duplicate exists
 
 
@@ -1554,6 +1561,7 @@ class ContactUpdate(BaseModel):
     notes: str | None = Field(default=None, max_length=4000)
     owner_id: UUID | None = None
     tag_ids: list[UUID] | None = Field(default=None, max_length=20)
+    custom: dict[str, Any] | None = Field(default=None, max_length=50)  # merged; null values clear (0127)
 
 
 class ContactOut(BaseModel):
@@ -1579,6 +1587,7 @@ class ContactOut(BaseModel):
     merged_into_id: str | None
     created_at: datetime
     updated_at: datetime
+    custom: dict[str, Any] = Field(default_factory=dict)    # custom field values (0127)
 
 
 class ContactBrief(BaseModel):

@@ -10225,6 +10225,207 @@
         }
       }
     },
+    "/custom-fields": {
+      "get": {
+        "tags": [
+          "custom-fields"
+        ],
+        "summary": "List Fields",
+        "operationId": "list_fields_custom_fields_get",
+        "parameters": [
+          {
+            "name": "entity",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "enum": [
+                "lead",
+                "contact"
+              ],
+              "type": "string",
+              "title": "Entity"
+            }
+          },
+          {
+            "name": "include_archived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Archived"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CustomFieldOut"
+                  },
+                  "title": "Response List Fields Custom Fields Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "custom-fields"
+        ],
+        "summary": "Create Field",
+        "operationId": "create_field_custom_fields_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomFieldIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomFieldOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/custom-fields/{field_id}": {
+      "patch": {
+        "tags": [
+          "custom-fields"
+        ],
+        "summary": "Update Field",
+        "operationId": "update_field_custom_fields__field_id__patch",
+        "parameters": [
+          {
+            "name": "field_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Field Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomFieldPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomFieldOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/activities": {
       "get": {
         "tags": [
@@ -35839,6 +36040,12 @@
             "maxItems": 20,
             "title": "Tag Ids"
           },
+          "custom": {
+            "additionalProperties": true,
+            "type": "object",
+            "maxProperties": 50,
+            "title": "Custom"
+          },
           "force": {
             "type": "boolean",
             "title": "Force",
@@ -36250,6 +36457,11 @@
             "type": "string",
             "format": "date-time",
             "title": "Updated At"
+          },
+          "custom": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Custom"
           }
         },
         "type": "object",
@@ -36557,6 +36769,19 @@
               }
             ],
             "title": "Tag Ids"
+          },
+          "custom": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object",
+                "maxProperties": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom"
           }
         },
         "additionalProperties": false,
@@ -36837,6 +37062,173 @@
           "added_this_week"
         ],
         "title": "CrmSummary"
+      },
+      "CustomFieldIn": {
+        "properties": {
+          "entity": {
+            "type": "string",
+            "enum": [
+              "lead",
+              "contact"
+            ],
+            "title": "Entity"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Label"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "text",
+              "number",
+              "date",
+              "select",
+              "checkbox"
+            ],
+            "title": "Kind"
+          },
+          "options": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "title": "Options"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "entity",
+          "label",
+          "kind"
+        ],
+        "title": "CustomFieldIn"
+      },
+      "CustomFieldOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "entity": {
+            "type": "string",
+            "enum": [
+              "lead",
+              "contact"
+            ],
+            "title": "Entity"
+          },
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "text",
+              "number",
+              "date",
+              "select",
+              "checkbox"
+            ],
+            "title": "Kind"
+          },
+          "options": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Options"
+          },
+          "position": {
+            "type": "integer",
+            "title": "Position"
+          },
+          "archived": {
+            "type": "boolean",
+            "title": "Archived"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "entity",
+          "key",
+          "label",
+          "kind",
+          "options",
+          "position",
+          "archived"
+        ],
+        "title": "CustomFieldOut"
+      },
+      "CustomFieldPatch": {
+        "properties": {
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "options": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array",
+                "maxItems": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Options"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          },
+          "archived": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "CustomFieldPatch",
+        "description": "The kind can't change under existing values: retire the field and add another."
       },
       "DashboardOverview": {
         "properties": {
@@ -42735,6 +43127,12 @@
             "maxItems": 20,
             "title": "Tag Ids"
           },
+          "custom": {
+            "additionalProperties": true,
+            "type": "object",
+            "maxProperties": 50,
+            "title": "Custom"
+          },
           "force": {
             "type": "boolean",
             "title": "Force",
@@ -43041,6 +43439,12 @@
             "type": "integer",
             "title": "Line Count",
             "default": 0
+          },
+          "custom": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Custom",
+            "default": {}
           }
         },
         "type": "object",
@@ -43204,6 +43608,19 @@
               }
             ],
             "title": "Tag Ids"
+          },
+          "custom": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object",
+                "maxProperties": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom"
           }
         },
         "type": "object",
