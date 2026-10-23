@@ -5,25 +5,34 @@ voiding and taking payments are accounts keys, never a role name (P1-13)."""
 from __future__ import annotations
 
 import io
+from datetime import date
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.responses import StreamingResponse
 
-from .. import db, invoices_pdf, invoicing, notifications, sequences
+from .. import audit, csv_io, db, email, invoices_pdf, invoicing, notifications, ratelimit, sequences
 from ..deps import AuthContext
 from ..invoice_models import (
+    AgingReport,
     CreditNoteIn,
     InvoiceCreate,
     InvoiceDetail,
+    InvoiceSend,
+    InvoiceSent,
     InvoiceSummary,
     InvoiceUpdate,
     PaymentIn,
     Reason,
 )
 from ..models import InvoiceStatus
+from ..phone import normalize_email
 from ..rbac import perm
 
 router = APIRouter(prefix="/invoices", tags=["invoices"])
+
+SENDS_PER_INVOICE_HOUR = 3
+SENDS_PER_DAY = 200
 
 
 @router.get("", response_model=list[InvoiceSummary])
@@ -42,6 +51,25 @@ async def list_invoices(status_filter: InvoiceStatus | None = Query(None, alias=
              order by i.created_at desc limit $6""",
             status_filter, contact_id, lead_id, overdue, today, limit)
     return [invoicing.summary_out(r, today) for r in rows]
+
+
+@router.get("/aging", response_model=AgingReport)
+async def receivables_aging(as_of: date | None = None, format: str = Query("json", pattern="^(json|csv)$"),
+                            auth: AuthContext = Depends(perm("invoicing.invoice.read"))) -> Any:
+    """What each customer owes, by how late: not yet due, 1-30, 31-60, 61-90, 90+ days."""
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        day = as_of or await sequences.local_date(conn, None)
+        rep = await invoicing.aging(conn, day)
+    if format == "json":
+        return rep
+    rupees = lambda m: f"{m / 100:.2f}"  # noqa: E731
+    cols = ["customer", "not_yet_due", "1_30", "31_60", "61_90", "over_90", "total", "invoices"]
+    body = csv_io.to_csv(cols, [
+        {"customer": x.contact_name, "not_yet_due": rupees(x.current_minor), "1_30": rupees(x.d1_30_minor),
+         "31_60": rupees(x.d31_60_minor), "61_90": rupees(x.d61_90_minor), "over_90": rupees(x.d90_plus_minor),
+         "total": rupees(x.total_minor), "invoices": x.invoices} for x in rep.rows])
+    return Response(body, media_type="text/csv",
+                    headers={"Content-Disposition": f'attachment; filename="aging-{day.isoformat()}.csv"'})
 
 
 @router.get("/{invoice_id}", response_model=InvoiceDetail)
@@ -145,15 +173,39 @@ async def invoice_pdf(invoice_id: str, auth: AuthContext = Depends(perm("invoici
         inv = await invoicing.detail(conn, invoice_id)
         if inv.status in invoicing.EDITABLE:
             raise HTTPException(status.HTTP_409_CONFLICT, "Only an issued invoice has a PDF")
-        seller = await conn.fetchrow(
-            """select coalesce(nullif(c.legal_name, ''), t.name) as name, coalesce(c.ntn, '') as ntn, coalesce(c.strn, '') as strn,
-                      coalesce(c.address, '') as address, coalesce(c.phone, '') as phone,
-                      coalesce(b.invoice_header, '') as header, coalesce(b.invoice_footer, '') as footer
-                 from tenants t
-                 left join tenant_company c on c.tenant_id = t.id
-                 left join tenant_branding b on b.tenant_id = t.id
-                where t.id = $1""", auth.tenant_id)
-    pdf = invoices_pdf.build_invoice_pdf(inv, dict(seller) if seller else {})
+        seller = await invoicing.seller(conn, auth.tenant_id)
+    pdf = invoices_pdf.build_invoice_pdf(inv, seller)
     ref = inv.number or inv.legacy_ref or inv.id[:8]
     return StreamingResponse(io.BytesIO(pdf), media_type="application/pdf",
                              headers={"Content-Disposition": f'inline; filename="{ref}.pdf"'})
+
+
+@router.post("/{invoice_id}/send", response_model=InvoiceSent, status_code=status.HTTP_202_ACCEPTED)
+async def send_invoice(invoice_id: str, body: InvoiceSend,
+                       auth: AuthContext = Depends(perm("invoicing.invoice.create"))) -> InvoiceSent:
+    """Email the issued invoice with its PDF, through the outbox: SMTP being
+    down never fails this, and the PDF is built when the email goes."""
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        inv = await conn.fetchrow(
+            """select i.status, c.email_normalized from invoices i left join contacts c on c.id = i.contact_id
+                where i.id = $1 for update of i""", invoice_id)
+        if inv is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Invoice not found")
+        if inv["status"] in invoicing.EDITABLE or inv["status"] == "void":
+            raise HTTPException(status.HTTP_409_CONFLICT, "Only an issued invoice can be sent")
+        to = normalize_email(body.to) if body.to else inv["email_normalized"]
+        if not to:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+                                "Please check the email address" if body.to
+                                else "Give an email address: this customer has none")
+        # Not a mail relay: the same invoice a few times an hour, and a daily
+        # cap per business (counted only for sends that pass every check).
+        for bucket, limit, window in ((f"invoice-send:{invoice_id}", SENDS_PER_INVOICE_HOUR, 3600),
+                                      (f"tenant:{auth.tenant_id}:invoice-send", SENDS_PER_DAY, 86400)):
+            retry = await ratelimit.hit(bucket, limit, window)
+            if retry:
+                raise ratelimit.too_many(retry)
+        await email.queue_invoice(conn, auth.tenant_id, to, invoice_id)
+        await conn.execute("update invoices set last_sent_at = now(), updated_at = now() where id = $1", invoice_id)
+        await audit.event(conn, "invoicing.invoice.send", "invoices", invoice_id, data={"to": to})
+    return InvoiceSent(to=to)

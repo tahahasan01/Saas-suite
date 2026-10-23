@@ -61,6 +61,7 @@ _MANIFESTS = [
                     children=(
                         NavChild("/crm", "nav.crm.pipeline", "crm.lead.read"),
                         NavChild("/crm/reports", "nav.crm.reports", "crm.report.read"),
+                        NavChild("/crm/campaigns", "nav.crm.campaigns", "crm.campaign.manage"),
                         NavChild("/crm/settings", "nav.crm.settings", "crm.settings.manage"),
                     )),
             NavItem("my-day", "/my-day", "nav.my_day", "calendar-check", "overview", perm="crm.lead.read"),

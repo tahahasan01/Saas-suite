@@ -65,7 +65,9 @@ async def test_every_column_referencing_contacts_is_registered_with_the_merge_re
 
 
 def test_registry_strategies_are_known():
-    assert set(contact_merge.REGISTRY.values()) <= {"repoint", "follow"}
+    assert set(contact_merge.REGISTRY.values()) <= {"repoint", "follow", "consent"}
+    # Consent rows merge by channel, an opt-out winning (0124; test_campaigns.py).
+    assert contact_merge.REGISTRY[("contact_consents", "contact_id")] == "consent"
     assert contact_merge.REGISTRY[("timeline_events", "contact_id")] == "follow"  # append-only
 
 

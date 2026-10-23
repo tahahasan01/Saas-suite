@@ -11,6 +11,7 @@ import { errorText, useAction } from "@/lib/useAction";
 import { Dialog } from "@/components/Dialog";
 import { useConfirm } from "@/components/Confirm";
 import { Button, Card, EmptyState, ErrorState, Field, Input, LoadingRows, Select, Textarea } from "@/components/ui";
+import { SellingSettings } from "@/components/crm/SellingSettings";
 
 /** Settings → CRM (St02 §6.11 #7): pipelines and stages, lost reasons and
  *  activity types. Admin only (`crm.pipeline.manage`). */
@@ -26,6 +27,7 @@ export default function CrmSettingsPage() {
         <LostReasonsEditor />
         <ActivityTypesEditor />
       </div>
+      {can("crm.settings.manage") && <SellingSettings />}
     </div>
   );
 }

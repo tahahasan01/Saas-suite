@@ -11,6 +11,8 @@ import { Sheet } from "@/components/Dialog";
 import { Badge, Button, ErrorState, Field, Input, LoadingRows, Select } from "@/components/ui";
 import { ActivityActions, LostDialog, PriorityPicker, ScheduleActivity, TypeIcon } from "./bits";
 import { TimelineList } from "./Timeline";
+import { DealLinesPanel } from "./DealLines";
+import { QuotesPanel } from "./Quotes";
 import { LeadContactCard } from "@/components/contacts/LeadContactCard";
 import { TagChip } from "@/components/contacts/ContactForm";
 
@@ -130,6 +132,11 @@ export function LeadDrawer({ leadId, name, stages, onMove, onClose, onChanged }:
             <LeadContactCard lead={lead} onChanged={refresh} />
 
             <DealFields lead={lead} disabled={!mayEdit} onSaved={refresh} />
+
+            <DealLinesPanel leadId={leadId} open={lead.status === "open"} mayEdit={mayEdit} onChanged={refresh} />
+
+            <QuotesPanel leadId={leadId} leadName={lead.name} open={lead.status === "open"}
+                         hasLines={lead.line_count > 0} onChanged={refresh} />
 
             {lead.status === "won" && <Fulfillment leadId={leadId} />}
 
@@ -470,7 +477,8 @@ function EditLead({ lead, onCancel, onSaved }: { lead: Lead; onCancel: () => voi
         company: f.company,
         phone: f.phone,
         email: f.email,
-        value_minor: Math.round(Number(f.value || 0) * 100),
+        // With products on the deal its value is their total, not typed.
+        ...(lead.line_count ? {} : { value_minor: Math.round(Number(f.value || 0) * 100) }),
       }),
     }),
     { success: "Changes saved", failure: "Couldn't save those changes" },
@@ -494,7 +502,9 @@ function EditLead({ lead, onCancel, onSaved }: { lead: Lead; onCancel: () => voi
           <Input type="tel" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />
         </Field>
         <Field label="Value (PKR)">
-          <Input type="number" inputMode="decimal" min={0} step="0.01" value={f.value} onChange={(e) => setF({ ...f, value: e.target.value })} />
+          <Input type="number" inputMode="decimal" min={0} step="0.01" value={f.value} disabled={!!lead.line_count}
+                 onChange={(e) => setF({ ...f, value: e.target.value })} />
+          {!!lead.line_count && <span className="mt-1 block text-xs text-fg-subtle">Worked out from the products</span>}
         </Field>
       </div>
       <Field label="Email">

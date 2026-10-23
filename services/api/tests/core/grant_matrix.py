@@ -177,6 +177,22 @@ APP_USER: dict[str, set[str]] = {
     "invoices":             {S, I, U},
     "invoice_lines":        {S, I, D},          # replaced wholesale while editable
     "invoice_payments":     {S, I},             # append-only
+    # CRM selling (wave D, 0120+)
+    "crm_deal_lines":       {S, I, D},          # replaced wholesale
+    "crm_settings":         {S, I, U},          # upsert from CRM settings
+    "crm_quotes":           {S, I, U},          # status changes only; never deleted
+    "crm_quote_lines":      {S, I},             # written once, with the quote
+    "crm_web_forms":        {S, I, U},          # switched off, never deleted
+    "crm_assignment_pool":  {S, I, U, D},       # members added and removed
+    "crm_targets":          {S, I, U, D},       # set, replaced and removed by managers
+    "contact_consents":     {S, I, U},          # per channel; history in the audit/timeline
+    "crm_segments":         {S, I, U},          # archived, never deleted
+    "crm_templates":        {S, I, U},          # archived, never deleted
+    "crm_campaigns":        {S, I, U},          # draft -> sent; never deleted
+    "crm_campaign_recipients": {S, I},          # written once, when sent
+    # fee vouchers (0126)
+    "invoice_plans":        {S, I, U},          # switched off, never deleted
+    "invoice_runs":         {S, I, U},          # draft -> issued; never deleted
     # catalog v2 and stock (0075)
     "pos_categories":       {S, I, U},          # retired, never deleted
     "pos_product_barcodes": {S, I, D},

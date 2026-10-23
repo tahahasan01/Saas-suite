@@ -32,7 +32,7 @@ from fastapi import HTTPException, status
 
 from . import audit
 
-Strategy = Literal["repoint", "follow"]
+Strategy = Literal["repoint", "follow", "consent"]
 
 REGISTRY: dict[tuple[str, str], Strategy] = {
     ("contacts", "company_id"): "repoint",            # people of a merged company
@@ -45,6 +45,8 @@ REGISTRY: dict[tuple[str, str], Strategy] = {
     ("customer_ledger", "contact_id"): "repoint",     # khata balances follow the person (0079)
     ("pos_sales", "contact_id"): "repoint",
     ("timeline_events", "contact_id"): "follow",      # append-only
+    ("contact_consents", "contact_id"): "consent",    # per channel, an opt-out anywhere wins (0124)
+    ("crm_campaign_recipients", "contact_id"): "follow",   # who a campaign went to: history
 }
 
 MAX_RECORDS = 5  # winner plus at most four losers (D-33)
@@ -172,6 +174,18 @@ async def merge(conn: asyncpg.Connection, tenant_id: str, winner_id: UUID, loser
         "update activities set entity_id = $1 where entity_type = 'contact' and entity_id = any($2::uuid[])",
         winner_id, losers_ids)
     moved["activities.contact"] = int(done.split()[-1])
+    # Consent: per channel, an opt-out on any merged contact wins (a person who
+    # said stop must not start getting mail because a duplicate said yes).
+    done = await conn.execute(
+        """insert into contact_consents (tenant_id, contact_id, channel, status, source, updated_at)
+           select $1::uuid, $2::uuid, channel,
+                  case when bool_or(status = 'opted_out') then 'opted_out' else 'opted_in' end,
+                  'merged contacts', now()
+             from contact_consents where contact_id = any($3::uuid[]) group by channel
+           on conflict (contact_id, channel) do update set status = excluded.status, updated_at = now()
+             where contact_consents.status <> excluded.status""",
+        tenant_id, winner_id, [winner_id, *losers_ids])
+    moved["contact_consents.contact_id"] = int(done.split()[-1])
 
     cols["roles"] = roles
     sets = ", ".join(f"{k} = ${i}" for i, k in enumerate(cols, start=2))

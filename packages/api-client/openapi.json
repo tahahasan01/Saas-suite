@@ -2492,6 +2492,417 @@
         }
       }
     },
+    "/invoices/plans": {
+      "get": {
+        "tags": [
+          "invoices"
+        ],
+        "summary": "List Plans",
+        "operationId": "list_plans_invoices_plans_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InvoicePlanOut"
+                  },
+                  "title": "Response List Plans Invoices Plans Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "invoices"
+        ],
+        "summary": "Create Plan",
+        "operationId": "create_plan_invoices_plans_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvoicePlanIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoicePlanOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/invoices/plans/{plan_id}/runs": {
+      "get": {
+        "tags": [
+          "invoices"
+        ],
+        "summary": "List Runs",
+        "operationId": "list_runs_invoices_plans__plan_id__runs_get",
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Plan Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InvoiceRunOut"
+                  },
+                  "title": "Response List Runs Invoices Plans  Plan Id  Runs Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "invoices"
+        ],
+        "summary": "Make Run",
+        "description": "One draft invoice per contact for the month, for review.",
+        "operationId": "make_run_invoices_plans__plan_id__runs_post",
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Plan Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvoiceRunCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceRunOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/invoices/runs/{invoice_run_id}": {
+      "get": {
+        "tags": [
+          "invoices"
+        ],
+        "summary": "Get Run",
+        "operationId": "get_run_invoices_runs__invoice_run_id__get",
+        "parameters": [
+          {
+            "name": "invoice_run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Invoice Run Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceRunDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/invoices/runs/{invoice_run_id}/issue": {
+      "post": {
+        "tags": [
+          "invoices"
+        ],
+        "summary": "Issue Run",
+        "operationId": "issue_run_invoices_runs__invoice_run_id__issue_post",
+        "parameters": [
+          {
+            "name": "invoice_run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Invoice Run Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceRunOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/invoices/runs/{invoice_run_id}/pdfs": {
+      "get": {
+        "tags": [
+          "invoices"
+        ],
+        "summary": "Run Pdfs",
+        "operationId": "run_pdfs_invoices_runs__invoice_run_id__pdfs_get",
+        "parameters": [
+          {
+            "name": "invoice_run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Invoice Run Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/invoices": {
       "get": {
         "tags": [
@@ -2663,6 +3074,84 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InvoiceDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/invoices/aging": {
+      "get": {
+        "tags": [
+          "invoices"
+        ],
+        "summary": "Receivables Aging",
+        "description": "What each customer owes, by how late: not yet due, 1-30, 31-60, 61-90, 90+ days.",
+        "operationId": "receivables_aging_invoices_aging_get",
+        "parameters": [
+          {
+            "name": "as_of",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "As Of"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(json|csv)$",
+              "default": "json",
+              "title": "Format"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgingReport"
                 }
               }
             }
@@ -3232,6 +3721,75 @@
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/invoices/{invoice_id}/send": {
+      "post": {
+        "tags": [
+          "invoices"
+        ],
+        "summary": "Send Invoice",
+        "description": "Email the issued invoice with its PDF, through the outbox: SMTP being\ndown never fails this, and the PDF is built when the email goes.",
+        "operationId": "send_invoice_invoices__invoice_id__send_post",
+        "parameters": [
+          {
+            "name": "invoice_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Invoice Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvoiceSend"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceSent"
+                }
               }
             }
           },
@@ -7350,6 +7908,2306 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SourcesReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/leads/{lead_id}/lines": {
+      "get": {
+        "tags": [
+          "crm-selling"
+        ],
+        "summary": "Get Lines",
+        "operationId": "get_lines_crm_leads__lead_id__lines_get",
+        "parameters": [
+          {
+            "name": "lead_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Lead Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealLines"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "crm-selling"
+        ],
+        "summary": "Put Lines",
+        "description": "Replace the deal's lines (an empty list clears them).",
+        "operationId": "put_lines_crm_leads__lead_id__lines_put",
+        "parameters": [
+          {
+            "name": "lead_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Lead Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DealLinesPut"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealLines"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/leads/{lead_id}/lines/update-prices": {
+      "post": {
+        "tags": [
+          "crm-selling"
+        ],
+        "summary": "Update Prices",
+        "operationId": "update_prices_crm_leads__lead_id__lines_update_prices_post",
+        "parameters": [
+          {
+            "name": "lead_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Lead Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealLines"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/products": {
+      "get": {
+        "tags": [
+          "crm-selling"
+        ],
+        "summary": "Find Products",
+        "description": "Active catalog products for the line editor. A rep putting products on a\ndeal needn't hold POS rights, so this is the narrow read they get: name,\nunit and price, never cost or stock.",
+        "operationId": "find_products_crm_products_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 80,
+              "default": "",
+              "title": "Q"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DealProductOut"
+                  },
+                  "title": "Response Find Products Crm Products Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/settings": {
+      "get": {
+        "tags": [
+          "crm-selling"
+        ],
+        "summary": "Get Settings",
+        "description": "Reps read the settings too: the line editor shows the discount ceiling.",
+        "operationId": "get_settings_crm_settings_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CrmSettingsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "crm-selling"
+        ],
+        "summary": "Put Settings",
+        "operationId": "put_settings_crm_settings_put",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrmSettingsIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CrmSettingsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/leads/{lead_id}/quotes": {
+      "get": {
+        "tags": [
+          "crm-selling"
+        ],
+        "summary": "List Quotes",
+        "operationId": "list_quotes_crm_leads__lead_id__quotes_get",
+        "parameters": [
+          {
+            "name": "lead_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Lead Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/QuoteOut"
+                  },
+                  "title": "Response List Quotes Crm Leads  Lead Id  Quotes Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crm-selling"
+        ],
+        "summary": "Create Quote",
+        "description": "Freeze the deal's products into a numbered quote with its link; an\nopen quote for the deal is superseded.",
+        "operationId": "create_quote_crm_leads__lead_id__quotes_post",
+        "parameters": [
+          {
+            "name": "lead_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Lead Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuoteCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuoteOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/quotes/{quote_id}": {
+      "get": {
+        "tags": [
+          "crm-selling"
+        ],
+        "summary": "Get Quote",
+        "operationId": "get_quote_crm_quotes__quote_id__get",
+        "parameters": [
+          {
+            "name": "quote_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Quote Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuoteOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/quotes/{quote_id}/cancel": {
+      "post": {
+        "tags": [
+          "crm-selling"
+        ],
+        "summary": "Cancel Quote",
+        "operationId": "cancel_quote_crm_quotes__quote_id__cancel_post",
+        "parameters": [
+          {
+            "name": "quote_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Quote Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuoteOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/quotes/{quote_id}/invoice": {
+      "post": {
+        "tags": [
+          "crm-selling"
+        ],
+        "summary": "Invoice Quote",
+        "description": "A draft invoice from the accepted quote's frozen lines (invoices v2).",
+        "operationId": "invoice_quote_crm_quotes__quote_id__invoice_post",
+        "parameters": [
+          {
+            "name": "quote_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Quote Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuoteInvoiced"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/targets": {
+      "get": {
+        "tags": [
+          "crm-selling"
+        ],
+        "summary": "List Targets",
+        "operationId": "list_targets_crm_targets_get",
+        "parameters": [
+          {
+            "name": "month",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+              "title": "Month"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TargetsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "crm-selling"
+        ],
+        "summary": "Set Target",
+        "operationId": "set_target_crm_targets_put",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TargetIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TargetOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/targets/{target_id}": {
+      "delete": {
+        "tags": [
+          "crm-selling"
+        ],
+        "summary": "Delete Target",
+        "operationId": "delete_target_crm_targets__target_id__delete",
+        "parameters": [
+          {
+            "name": "target_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Target Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/targets/copy": {
+      "post": {
+        "tags": [
+          "crm-selling"
+        ],
+        "summary": "Copy Targets",
+        "operationId": "copy_targets_crm_targets_copy_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TargetCopy"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Copied"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/forecast": {
+      "get": {
+        "tags": [
+          "crm-selling"
+        ],
+        "summary": "Forecast",
+        "operationId": "forecast_crm_forecast_get",
+        "parameters": [
+          {
+            "name": "months",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 12,
+              "minimum": 1,
+              "default": 6,
+              "title": "Months"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesForecastOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/quotes/{token}": {
+      "get": {
+        "tags": [
+          "public"
+        ],
+        "summary": "View",
+        "operationId": "view_public_quotes__token__get",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotePublic"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/quotes/{token}/view": {
+      "post": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Beacon",
+        "operationId": "beacon_public_quotes__token__view_post",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/quotes/{token}/accept": {
+      "post": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Accept",
+        "operationId": "accept_public_quotes__token__accept_post",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuoteAccept"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotePublic"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/quotes/{token}/decline": {
+      "post": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Decline",
+        "operationId": "decline_public_quotes__token__decline_post",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuoteDecline"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotePublic"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/web-forms": {
+      "get": {
+        "tags": [
+          "crm-web-forms"
+        ],
+        "summary": "List Forms",
+        "operationId": "list_forms_crm_web_forms_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WebFormOut"
+                  },
+                  "title": "Response List Forms Crm Web Forms Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crm-web-forms"
+        ],
+        "summary": "Create Form",
+        "operationId": "create_form_crm_web_forms_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebFormIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebFormOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/web-forms/{form_id}": {
+      "patch": {
+        "tags": [
+          "crm-web-forms"
+        ],
+        "summary": "Update Form",
+        "operationId": "update_form_crm_web_forms__form_id__patch",
+        "parameters": [
+          {
+            "name": "form_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Form Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebFormPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebFormOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/assignment/pool": {
+      "get": {
+        "tags": [
+          "crm-web-forms"
+        ],
+        "summary": "Get Pool",
+        "operationId": "get_pool_crm_assignment_pool_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PoolMemberOut"
+                  },
+                  "title": "Response Get Pool Crm Assignment Pool Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "crm-web-forms"
+        ],
+        "summary": "Put Pool",
+        "description": "Replace the pool. Members keep their place in the turn and today's count.",
+        "operationId": "put_pool_crm_assignment_pool_put",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PoolPut"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PoolMemberOut"
+                  },
+                  "title": "Response Put Pool Crm Assignment Pool Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/assignment/people": {
+      "get": {
+        "tags": [
+          "crm-web-forms"
+        ],
+        "summary": "Pool Candidates",
+        "description": "Active teammates, by name only: a CRM admin picks the pool without\nneeding the team screen's rights (emails and roles stay there).",
+        "operationId": "pool_candidates_crm_assignment_people_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PersonOut"
+                  },
+                  "title": "Response Pool Candidates Crm Assignment People Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/forms/{public_id}": {
+      "get": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Describe",
+        "operationId": "describe_public_forms__public_id__get",
+        "parameters": [
+          {
+            "name": "public_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Public Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebFormPublic"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Submit",
+        "operationId": "submit_public_forms__public_id__post",
+        "parameters": [
+          {
+            "name": "public_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Public Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebFormSubmit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebFormAnswer"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/contacts/{contact_id}/consents": {
+      "get": {
+        "tags": [
+          "crm-campaigns"
+        ],
+        "summary": "List Consents",
+        "operationId": "list_consents_contacts__contact_id__consents_get",
+        "parameters": [
+          {
+            "name": "contact_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Contact Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConsentOut"
+                  },
+                  "title": "Response List Consents Contacts  Contact Id  Consents Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "crm-campaigns"
+        ],
+        "summary": "Set Consent",
+        "operationId": "set_consent_contacts__contact_id__consents_put",
+        "parameters": [
+          {
+            "name": "contact_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Contact Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsentIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/segments": {
+      "get": {
+        "tags": [
+          "crm-campaigns"
+        ],
+        "summary": "List Segments",
+        "operationId": "list_segments_crm_segments_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SegmentOut"
+                  },
+                  "title": "Response List Segments Crm Segments Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crm-campaigns"
+        ],
+        "summary": "Create Segment",
+        "operationId": "create_segment_crm_segments_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SegmentIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SegmentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/segments/{segment_id}/preview": {
+      "get": {
+        "tags": [
+          "crm-campaigns"
+        ],
+        "summary": "Preview Segment",
+        "operationId": "preview_segment_crm_segments__segment_id__preview_get",
+        "parameters": [
+          {
+            "name": "segment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Segment Id"
+            }
+          },
+          {
+            "name": "channel",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "email",
+                "sms",
+                "whatsapp"
+              ],
+              "type": "string",
+              "default": "email",
+              "title": "Channel"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SegmentPreview"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/templates": {
+      "get": {
+        "tags": [
+          "crm-campaigns"
+        ],
+        "summary": "List Templates",
+        "operationId": "list_templates_crm_templates_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TemplateOut"
+                  },
+                  "title": "Response List Templates Crm Templates Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crm-campaigns"
+        ],
+        "summary": "Create Template",
+        "operationId": "create_template_crm_templates_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TemplateIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/campaigns": {
+      "get": {
+        "tags": [
+          "crm-campaigns"
+        ],
+        "summary": "List Campaigns",
+        "operationId": "list_campaigns_crm_campaigns_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CampaignOut"
+                  },
+                  "title": "Response List Campaigns Crm Campaigns Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crm-campaigns"
+        ],
+        "summary": "Create Campaign",
+        "operationId": "create_campaign_crm_campaigns_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CampaignIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/campaigns/{campaign_id}/send": {
+      "post": {
+        "tags": [
+          "crm-campaigns"
+        ],
+        "summary": "Send Campaign",
+        "operationId": "send_campaign_crm_campaigns__campaign_id__send_post",
+        "parameters": [
+          {
+            "name": "campaign_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Campaign Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/campaigns/{campaign_id}/recipients": {
+      "get": {
+        "tags": [
+          "crm-campaigns"
+        ],
+        "summary": "Recipients",
+        "operationId": "recipients_crm_campaigns__campaign_id__recipients_get",
+        "parameters": [
+          {
+            "name": "campaign_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Campaign Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RecipientOut"
+                  },
+                  "title": "Response Recipients Crm Campaigns  Campaign Id  Recipients Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/unsubscribe/{token}": {
+      "get": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Unsubscribe Page",
+        "description": "Shows who is asking; changes nothing (mail scanners open links).",
+        "operationId": "unsubscribe_page_public_unsubscribe__token__get",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnsubscribePage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Unsubscribe",
+        "operationId": "unsubscribe_public_unsubscribe__token__post",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnsubscribePage"
                 }
               }
             }
@@ -28806,6 +31664,128 @@
         "type": "object",
         "title": "AdvanceRepay"
       },
+      "AgingBuckets": {
+        "properties": {
+          "current_minor": {
+            "type": "integer",
+            "title": "Current Minor",
+            "default": 0
+          },
+          "d1_30_minor": {
+            "type": "integer",
+            "title": "D1 30 Minor",
+            "default": 0
+          },
+          "d31_60_minor": {
+            "type": "integer",
+            "title": "D31 60 Minor",
+            "default": 0
+          },
+          "d61_90_minor": {
+            "type": "integer",
+            "title": "D61 90 Minor",
+            "default": 0
+          },
+          "d90_plus_minor": {
+            "type": "integer",
+            "title": "D90 Plus Minor",
+            "default": 0
+          },
+          "total_minor": {
+            "type": "integer",
+            "title": "Total Minor",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "AgingBuckets"
+      },
+      "AgingReport": {
+        "properties": {
+          "as_of": {
+            "type": "string",
+            "format": "date",
+            "title": "As Of"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/AgingRow"
+            },
+            "type": "array",
+            "title": "Rows"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/AgingBuckets"
+          }
+        },
+        "type": "object",
+        "required": [
+          "as_of",
+          "rows",
+          "totals"
+        ],
+        "title": "AgingReport"
+      },
+      "AgingRow": {
+        "properties": {
+          "current_minor": {
+            "type": "integer",
+            "title": "Current Minor",
+            "default": 0
+          },
+          "d1_30_minor": {
+            "type": "integer",
+            "title": "D1 30 Minor",
+            "default": 0
+          },
+          "d31_60_minor": {
+            "type": "integer",
+            "title": "D31 60 Minor",
+            "default": 0
+          },
+          "d61_90_minor": {
+            "type": "integer",
+            "title": "D61 90 Minor",
+            "default": 0
+          },
+          "d90_plus_minor": {
+            "type": "integer",
+            "title": "D90 Plus Minor",
+            "default": 0
+          },
+          "total_minor": {
+            "type": "integer",
+            "title": "Total Minor",
+            "default": 0
+          },
+          "contact_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Id"
+          },
+          "contact_name": {
+            "type": "string",
+            "title": "Contact Name"
+          },
+          "invoices": {
+            "type": "integer",
+            "title": "Invoices"
+          }
+        },
+        "type": "object",
+        "required": [
+          "contact_id",
+          "contact_name",
+          "invoices"
+        ],
+        "title": "AgingRow"
+      },
       "Alert": {
         "properties": {
           "text": {
@@ -31325,6 +34305,121 @@
         "type": "object",
         "title": "BrandingUpdate"
       },
+      "CampaignIn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "email",
+              "sms",
+              "whatsapp"
+            ],
+            "title": "Channel",
+            "default": "email"
+          },
+          "segment_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Segment Id"
+          },
+          "template_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Template Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "segment_id",
+          "template_id"
+        ],
+        "title": "CampaignIn"
+      },
+      "CampaignOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "email",
+              "sms",
+              "whatsapp"
+            ],
+            "title": "Channel"
+          },
+          "segment_id": {
+            "type": "string",
+            "title": "Segment Id"
+          },
+          "template_id": {
+            "type": "string",
+            "title": "Template Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "sent",
+              "cancelled"
+            ],
+            "title": "Status"
+          },
+          "queued_count": {
+            "type": "integer",
+            "title": "Queued Count"
+          },
+          "skipped_count": {
+            "type": "integer",
+            "title": "Skipped Count"
+          },
+          "sent_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sent At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "channel",
+          "segment_id",
+          "template_id",
+          "status",
+          "queued_count",
+          "skipped_count",
+          "sent_at",
+          "created_at"
+        ],
+        "title": "CampaignOut"
+      },
       "CashMoveIn": {
         "properties": {
           "kind": {
@@ -32498,6 +35593,78 @@
         "type": "object",
         "title": "ComponentUpdate"
       },
+      "ConsentIn": {
+        "properties": {
+          "channel": {
+            "type": "string",
+            "enum": [
+              "email",
+              "sms",
+              "whatsapp"
+            ],
+            "title": "Channel"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "opted_in",
+              "opted_out"
+            ],
+            "title": "Status"
+          },
+          "source": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Source",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "channel",
+          "status"
+        ],
+        "title": "ConsentIn"
+      },
+      "ConsentOut": {
+        "properties": {
+          "channel": {
+            "type": "string",
+            "enum": [
+              "email",
+              "sms",
+              "whatsapp"
+            ],
+            "title": "Channel"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "opted_in",
+              "opted_out"
+            ],
+            "title": "Status"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "channel",
+          "status",
+          "source",
+          "updated_at"
+        ],
+        "title": "ConsentOut"
+      },
       "ContactBrief": {
         "properties": {
           "id": {
@@ -33396,6 +36563,19 @@
         "type": "object",
         "title": "ContactUpdate"
       },
+      "Copied": {
+        "properties": {
+          "copied": {
+            "type": "integer",
+            "title": "Copied"
+          }
+        },
+        "type": "object",
+        "required": [
+          "copied"
+        ],
+        "title": "Copied"
+      },
       "CorrectionCreate": {
         "properties": {
           "work_date": {
@@ -33571,6 +36751,65 @@
         "title": "CreditNoteIn",
         "description": "No amount = credit the whole invoice, line by line (tax included)."
       },
+      "CrmSettingsIn": {
+        "properties": {
+          "max_discount_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Discount Pct"
+          },
+          "campaign_daily_cap": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campaign Daily Cap"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "CrmSettingsIn",
+        "description": "Only the fields sent change."
+      },
+      "CrmSettingsOut": {
+        "properties": {
+          "max_discount_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Discount Pct"
+          },
+          "campaign_daily_cap": {
+            "type": "integer",
+            "title": "Campaign Daily Cap",
+            "default": 500
+          }
+        },
+        "type": "object",
+        "title": "CrmSettingsOut"
+      },
       "CrmSummary": {
         "properties": {
           "total_leads": {
@@ -33662,6 +36901,287 @@
           "activity"
         ],
         "title": "DashboardOverview"
+      },
+      "DealLineIn": {
+        "properties": {
+          "description": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Description"
+          },
+          "qty": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 999999999.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Qty"
+          },
+          "unit_price_minor": {
+            "type": "integer",
+            "maximum": 10000000000000.0,
+            "minimum": 0.0,
+            "title": "Unit Price Minor"
+          },
+          "line_discount_minor": {
+            "type": "integer",
+            "maximum": 10000000000000.0,
+            "minimum": 0.0,
+            "title": "Line Discount Minor",
+            "default": 0
+          },
+          "tax_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tax Code"
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "description",
+          "qty",
+          "unit_price_minor"
+        ],
+        "title": "DealLineIn",
+        "description": "The shape of an invoice line, so a deal's lines carry over unchanged.\nWith a product, the server snapshots its unit and catalog price and marks\na different price as typed by hand."
+      },
+      "DealLineOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "position": {
+            "type": "integer",
+            "title": "Position"
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "qty": {
+            "type": "number",
+            "title": "Qty"
+          },
+          "unit_price_minor": {
+            "type": "integer",
+            "title": "Unit Price Minor"
+          },
+          "list_price_minor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "List Price Minor"
+          },
+          "price_overridden": {
+            "type": "boolean",
+            "title": "Price Overridden"
+          },
+          "line_discount_minor": {
+            "type": "integer",
+            "title": "Line Discount Minor"
+          },
+          "tax_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tax Code"
+          },
+          "tax_rate_pct": {
+            "type": "number",
+            "title": "Tax Rate Pct"
+          },
+          "gross_minor": {
+            "type": "integer",
+            "title": "Gross Minor"
+          },
+          "net_excl_minor": {
+            "type": "integer",
+            "title": "Net Excl Minor"
+          },
+          "tax_minor": {
+            "type": "integer",
+            "title": "Tax Minor"
+          },
+          "total_minor": {
+            "type": "integer",
+            "title": "Total Minor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "position",
+          "product_id",
+          "description",
+          "unit",
+          "qty",
+          "unit_price_minor",
+          "list_price_minor",
+          "price_overridden",
+          "line_discount_minor",
+          "tax_code",
+          "tax_rate_pct",
+          "gross_minor",
+          "net_excl_minor",
+          "tax_minor",
+          "total_minor"
+        ],
+        "title": "DealLineOut"
+      },
+      "DealLines": {
+        "properties": {
+          "lead_id": {
+            "type": "string",
+            "title": "Lead Id"
+          },
+          "tax_inclusive": {
+            "type": "boolean",
+            "title": "Tax Inclusive"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/DealLineOut"
+            },
+            "type": "array",
+            "title": "Lines"
+          },
+          "subtotal_minor": {
+            "type": "integer",
+            "title": "Subtotal Minor"
+          },
+          "line_discount_minor": {
+            "type": "integer",
+            "title": "Line Discount Minor"
+          },
+          "net_minor": {
+            "type": "integer",
+            "title": "Net Minor"
+          },
+          "tax_minor": {
+            "type": "integer",
+            "title": "Tax Minor"
+          },
+          "total_minor": {
+            "type": "integer",
+            "title": "Total Minor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lead_id",
+          "tax_inclusive",
+          "lines",
+          "subtotal_minor",
+          "line_discount_minor",
+          "net_minor",
+          "tax_minor",
+          "total_minor"
+        ],
+        "title": "DealLines"
+      },
+      "DealLinesPut": {
+        "properties": {
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/DealLineIn"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "title": "Lines"
+          },
+          "tax_inclusive": {
+            "type": "boolean",
+            "title": "Tax Inclusive",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "lines"
+        ],
+        "title": "DealLinesPut"
+      },
+      "DealProductOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "price_minor": {
+            "type": "integer",
+            "title": "Price Minor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "unit",
+          "price_minor"
+        ],
+        "title": "DealProductOut",
+        "description": "What the line editor's picker needs from the catalog."
       },
       "Decision": {
         "properties": {
@@ -36216,6 +39736,115 @@
         "type": "object",
         "title": "FloorUpdate"
       },
+      "ForecastBucket": {
+        "properties": {
+          "month": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Month"
+          },
+          "won_minor": {
+            "type": "integer",
+            "title": "Won Minor",
+            "default": 0
+          },
+          "weighted_minor": {
+            "type": "integer",
+            "title": "Weighted Minor",
+            "default": 0
+          },
+          "best_case_minor": {
+            "type": "integer",
+            "title": "Best Case Minor",
+            "default": 0
+          },
+          "open_count": {
+            "type": "integer",
+            "title": "Open Count",
+            "default": 0
+          },
+          "deals": {
+            "items": {
+              "$ref": "#/components/schemas/ForecastDeal"
+            },
+            "type": "array",
+            "title": "Deals"
+          }
+        },
+        "type": "object",
+        "title": "ForecastBucket"
+      },
+      "ForecastDeal": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "owner_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Id"
+          },
+          "value_minor": {
+            "type": "integer",
+            "title": "Value Minor"
+          },
+          "probability": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Probability"
+          },
+          "weighted_minor": {
+            "type": "integer",
+            "title": "Weighted Minor"
+          },
+          "expected_close_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Close Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "owner_id",
+          "value_minor",
+          "probability",
+          "weighted_minor",
+          "expected_close_date"
+        ],
+        "title": "ForecastDeal"
+      },
       "ForecastItem": {
         "properties": {
           "product_id": {
@@ -37228,7 +40857,7 @@
           },
           "lines": {
             "items": {
-              "$ref": "#/components/schemas/InvoiceLineIn"
+              "$ref": "#/components/schemas/InvoiceLineIn-Input"
             },
             "type": "array",
             "maxItems": 200,
@@ -37447,6 +41076,18 @@
           "unverified_rates": {
             "type": "boolean",
             "title": "Unverified Rates"
+          },
+          "last_sent_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Sent At"
           }
         },
         "type": "object",
@@ -37484,7 +41125,7 @@
         ],
         "title": "InvoiceDetail"
       },
-      "InvoiceLineIn": {
+      "InvoiceLineIn-Input": {
         "properties": {
           "description": {
             "type": "string",
@@ -37503,6 +41144,64 @@
                 "type": "string"
               }
             ],
+            "title": "Qty"
+          },
+          "unit_price_minor": {
+            "type": "integer",
+            "maximum": 10000000000000.0,
+            "minimum": 0.0,
+            "title": "Unit Price Minor"
+          },
+          "line_discount_minor": {
+            "type": "integer",
+            "maximum": 10000000000000.0,
+            "minimum": 0.0,
+            "title": "Line Discount Minor",
+            "default": 0
+          },
+          "tax_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tax Code"
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "description",
+          "qty",
+          "unit_price_minor"
+        ],
+        "title": "InvoiceLineIn"
+      },
+      "InvoiceLineIn-Output": {
+        "properties": {
+          "description": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Description"
+          },
+          "qty": {
+            "type": "string",
             "title": "Qty"
           },
           "unit_price_minor": {
@@ -37637,6 +41336,356 @@
           "product_id"
         ],
         "title": "InvoiceLineOut"
+      },
+      "InvoicePlanIn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/InvoiceLineIn-Input"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Lines"
+          },
+          "tag_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag Id"
+          },
+          "segment_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Segment Id"
+          },
+          "due_day": {
+            "type": "integer",
+            "maximum": 28.0,
+            "minimum": 1.0,
+            "title": "Due Day",
+            "default": 10
+          },
+          "run_day": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 28.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Day"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 4000,
+            "title": "Notes",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "lines"
+        ],
+        "title": "InvoicePlanIn",
+        "description": "What to bill, to whom (a tag or a saved list, not both) and when it's due."
+      },
+      "InvoicePlanOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/InvoiceLineIn-Output"
+            },
+            "type": "array",
+            "title": "Lines"
+          },
+          "tag_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag Id"
+          },
+          "segment_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Segment Id"
+          },
+          "due_day": {
+            "type": "integer",
+            "title": "Due Day"
+          },
+          "run_day": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Day"
+          },
+          "notes": {
+            "type": "string",
+            "title": "Notes"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "lines",
+          "tag_id",
+          "segment_id",
+          "due_day",
+          "run_day",
+          "notes",
+          "active",
+          "created_at"
+        ],
+        "title": "InvoicePlanOut"
+      },
+      "InvoiceRunCreate": {
+        "properties": {
+          "period": {
+            "type": "string",
+            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+            "title": "Period"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "period"
+        ],
+        "title": "InvoiceRunCreate"
+      },
+      "InvoiceRunDetail": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "plan_id": {
+            "type": "string",
+            "title": "Plan Id"
+          },
+          "plan_name": {
+            "type": "string",
+            "title": "Plan Name"
+          },
+          "period": {
+            "type": "string",
+            "format": "date",
+            "title": "Period"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "issued"
+            ],
+            "title": "Status"
+          },
+          "invoice_count": {
+            "type": "integer",
+            "title": "Invoice Count"
+          },
+          "total_minor": {
+            "type": "integer",
+            "title": "Total Minor"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "issued_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issued At"
+          },
+          "invoices": {
+            "items": {
+              "$ref": "#/components/schemas/InvoiceSummary"
+            },
+            "type": "array",
+            "title": "Invoices"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "plan_id",
+          "plan_name",
+          "period",
+          "status",
+          "invoice_count",
+          "total_minor",
+          "created_at",
+          "issued_at",
+          "invoices"
+        ],
+        "title": "InvoiceRunDetail"
+      },
+      "InvoiceRunOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "plan_id": {
+            "type": "string",
+            "title": "Plan Id"
+          },
+          "plan_name": {
+            "type": "string",
+            "title": "Plan Name"
+          },
+          "period": {
+            "type": "string",
+            "format": "date",
+            "title": "Period"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "issued"
+            ],
+            "title": "Status"
+          },
+          "invoice_count": {
+            "type": "integer",
+            "title": "Invoice Count"
+          },
+          "total_minor": {
+            "type": "integer",
+            "title": "Total Minor"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "issued_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issued At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "plan_id",
+          "plan_name",
+          "period",
+          "status",
+          "invoice_count",
+          "total_minor",
+          "created_at",
+          "issued_at"
+        ],
+        "title": "InvoiceRunOut"
+      },
+      "InvoiceSend": {
+        "properties": {
+          "to": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "InvoiceSend",
+        "description": "No address: the billed contact's email."
+      },
+      "InvoiceSent": {
+        "properties": {
+          "to": {
+            "type": "string",
+            "title": "To"
+          }
+        },
+        "type": "object",
+        "required": [
+          "to"
+        ],
+        "title": "InvoiceSent"
       },
       "InvoiceSummary": {
         "properties": {
@@ -37856,7 +41905,7 @@
             "anyOf": [
               {
                 "items": {
-                  "$ref": "#/components/schemas/InvoiceLineIn"
+                  "$ref": "#/components/schemas/InvoiceLineIn-Input"
                 },
                 "type": "array",
                 "maxItems": 200,
@@ -38987,6 +43036,11 @@
             "type": "array",
             "title": "Tags",
             "default": []
+          },
+          "line_count": {
+            "type": "integer",
+            "title": "Line Count",
+            "default": 0
           }
         },
         "type": "object",
@@ -43585,6 +47639,24 @@
         ],
         "title": "PayslipSummary"
       },
+      "PersonOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "PersonOut"
+      },
       "PinIn": {
         "properties": {
           "pin": {
@@ -43929,6 +48001,97 @@
           "qty"
         ],
         "title": "PoReceiveLine"
+      },
+      "PoolMemberIn": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active",
+            "default": true
+          },
+          "daily_cap": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Cap"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "user_id"
+        ],
+        "title": "PoolMemberIn"
+      },
+      "PoolMemberOut": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          },
+          "daily_cap": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Cap"
+          },
+          "assigned_today": {
+            "type": "integer",
+            "title": "Assigned Today"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "name",
+          "active",
+          "daily_cap",
+          "assigned_today"
+        ],
+        "title": "PoolMemberOut"
+      },
+      "PoolPut": {
+        "properties": {
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/PoolMemberIn"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "title": "Members"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "members"
+        ],
+        "title": "PoolPut"
       },
       "PosSummary": {
         "properties": {
@@ -45081,6 +49244,455 @@
         "title": "QualifyRequest",
         "description": "Link the lead to an existing contact, or create one from the lead."
       },
+      "QuoteAccept": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "content_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Content Hash"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "content_hash"
+        ],
+        "title": "QuoteAccept"
+      },
+      "QuoteCreate": {
+        "properties": {
+          "valid_until": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Until"
+          },
+          "terms": {
+            "type": "string",
+            "maxLength": 4000,
+            "title": "Terms",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "QuoteCreate"
+      },
+      "QuoteDecline": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Reason",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "QuoteDecline"
+      },
+      "QuoteInvoiced": {
+        "properties": {
+          "invoice_id": {
+            "type": "string",
+            "title": "Invoice Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "invoice_id"
+        ],
+        "title": "QuoteInvoiced"
+      },
+      "QuoteLineOut": {
+        "properties": {
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "qty": {
+            "type": "number",
+            "title": "Qty"
+          },
+          "unit_price_minor": {
+            "type": "integer",
+            "title": "Unit Price Minor"
+          },
+          "line_discount_minor": {
+            "type": "integer",
+            "title": "Line Discount Minor"
+          },
+          "tax_rate_pct": {
+            "type": "number",
+            "title": "Tax Rate Pct"
+          },
+          "net_excl_minor": {
+            "type": "integer",
+            "title": "Net Excl Minor"
+          },
+          "tax_minor": {
+            "type": "integer",
+            "title": "Tax Minor"
+          },
+          "total_minor": {
+            "type": "integer",
+            "title": "Total Minor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "description",
+          "unit",
+          "qty",
+          "unit_price_minor",
+          "line_discount_minor",
+          "tax_rate_pct",
+          "net_excl_minor",
+          "tax_minor",
+          "total_minor"
+        ],
+        "title": "QuoteLineOut"
+      },
+      "QuoteOut": {
+        "properties": {
+          "number": {
+            "type": "string",
+            "title": "Number"
+          },
+          "valid_until": {
+            "type": "string",
+            "format": "date",
+            "title": "Valid Until"
+          },
+          "terms": {
+            "type": "string",
+            "title": "Terms"
+          },
+          "customer_name": {
+            "type": "string",
+            "title": "Customer Name"
+          },
+          "tax_inclusive": {
+            "type": "boolean",
+            "title": "Tax Inclusive"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/QuoteLineOut"
+            },
+            "type": "array",
+            "title": "Lines"
+          },
+          "subtotal_minor": {
+            "type": "integer",
+            "title": "Subtotal Minor"
+          },
+          "line_discount_minor": {
+            "type": "integer",
+            "title": "Line Discount Minor"
+          },
+          "net_minor": {
+            "type": "integer",
+            "title": "Net Minor"
+          },
+          "tax_minor": {
+            "type": "integer",
+            "title": "Tax Minor"
+          },
+          "total_minor": {
+            "type": "integer",
+            "title": "Total Minor"
+          },
+          "content_hash": {
+            "type": "string",
+            "title": "Content Hash"
+          },
+          "accepted_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted Name"
+          },
+          "accepted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted At"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "lead_id": {
+            "type": "string",
+            "title": "Lead Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "sent",
+              "accepted",
+              "declined",
+              "superseded",
+              "cancelled"
+            ],
+            "title": "Status"
+          },
+          "expired": {
+            "type": "boolean",
+            "title": "Expired"
+          },
+          "link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Link"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "first_viewed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Viewed At"
+          },
+          "view_count": {
+            "type": "integer",
+            "title": "View Count"
+          },
+          "accepted_ip": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted Ip"
+          },
+          "declined_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declined At"
+          },
+          "decline_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decline Reason"
+          },
+          "invoice_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "number",
+          "valid_until",
+          "terms",
+          "customer_name",
+          "tax_inclusive",
+          "lines",
+          "subtotal_minor",
+          "line_discount_minor",
+          "net_minor",
+          "tax_minor",
+          "total_minor",
+          "content_hash",
+          "id",
+          "lead_id",
+          "status",
+          "expired",
+          "link",
+          "created_at",
+          "first_viewed_at",
+          "view_count",
+          "accepted_ip",
+          "declined_at",
+          "decline_reason",
+          "invoice_id"
+        ],
+        "title": "QuoteOut",
+        "description": "What staff see. `link` is the page path while the quote is open."
+      },
+      "QuotePublic": {
+        "properties": {
+          "number": {
+            "type": "string",
+            "title": "Number"
+          },
+          "valid_until": {
+            "type": "string",
+            "format": "date",
+            "title": "Valid Until"
+          },
+          "terms": {
+            "type": "string",
+            "title": "Terms"
+          },
+          "customer_name": {
+            "type": "string",
+            "title": "Customer Name"
+          },
+          "tax_inclusive": {
+            "type": "boolean",
+            "title": "Tax Inclusive"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/QuoteLineOut"
+            },
+            "type": "array",
+            "title": "Lines"
+          },
+          "subtotal_minor": {
+            "type": "integer",
+            "title": "Subtotal Minor"
+          },
+          "line_discount_minor": {
+            "type": "integer",
+            "title": "Line Discount Minor"
+          },
+          "net_minor": {
+            "type": "integer",
+            "title": "Net Minor"
+          },
+          "tax_minor": {
+            "type": "integer",
+            "title": "Tax Minor"
+          },
+          "total_minor": {
+            "type": "integer",
+            "title": "Total Minor"
+          },
+          "content_hash": {
+            "type": "string",
+            "title": "Content Hash"
+          },
+          "accepted_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted Name"
+          },
+          "accepted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted At"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "accepted",
+              "declined",
+              "expired"
+            ],
+            "title": "Status"
+          },
+          "business": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Business"
+          }
+        },
+        "type": "object",
+        "required": [
+          "number",
+          "valid_until",
+          "terms",
+          "customer_name",
+          "tax_inclusive",
+          "lines",
+          "subtotal_minor",
+          "line_discount_minor",
+          "net_minor",
+          "tax_minor",
+          "total_minor",
+          "content_hash",
+          "status",
+          "business"
+        ],
+        "title": "QuotePublic",
+        "description": "What the customer sees: the document and the business's own details,\nnothing else (no ids, no notes, no list prices)."
+      },
       "RatingIn": {
         "properties": {
           "id": {
@@ -45125,6 +49737,56 @@
         },
         "type": "object",
         "title": "Reason"
+      },
+      "RecipientOut": {
+        "properties": {
+          "contact_id": {
+            "type": "string",
+            "title": "Contact Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "address": {
+            "type": "string",
+            "title": "Address"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "skipped"
+            ],
+            "title": "Status"
+          },
+          "skip_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "no_address",
+                  "no_consent",
+                  "opted_out",
+                  "daily_cap"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skip Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "contact_id",
+          "name",
+          "address",
+          "status",
+          "skip_reason"
+        ],
+        "title": "RecipientOut"
       },
       "RecomputeCreate": {
         "properties": {
@@ -47367,6 +52029,182 @@
         ],
         "title": "SaleRow"
       },
+      "SalesForecastOut": {
+        "properties": {
+          "months": {
+            "items": {
+              "$ref": "#/components/schemas/ForecastBucket"
+            },
+            "type": "array",
+            "title": "Months"
+          },
+          "overdue": {
+            "$ref": "#/components/schemas/ForecastBucket"
+          },
+          "no_date": {
+            "$ref": "#/components/schemas/ForecastBucket"
+          }
+        },
+        "type": "object",
+        "required": [
+          "months",
+          "overdue",
+          "no_date"
+        ],
+        "title": "SalesForecastOut"
+      },
+      "SegmentFilter": {
+        "properties": {
+          "tag_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Tag Ids"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "person",
+                  "company"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "roles": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "customer",
+                "supplier",
+                "patient",
+                "student",
+                "parent",
+                "partner"
+              ]
+            },
+            "type": "array",
+            "maxItems": 6,
+            "title": "Roles"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "has_email": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Has Email"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SegmentFilter",
+        "description": "The only things a segment can filter on (compiled to parameterised SQL)."
+      },
+      "SegmentIn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "filter": {
+            "$ref": "#/components/schemas/SegmentFilter"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "SegmentIn"
+      },
+      "SegmentOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "filter": {
+            "$ref": "#/components/schemas/SegmentFilter"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "filter",
+          "created_at"
+        ],
+        "title": "SegmentOut"
+      },
+      "SegmentPreview": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "reachable": {
+            "type": "integer",
+            "title": "Reachable"
+          },
+          "skipped": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Skipped"
+          },
+          "sample": {
+            "items": {
+              "$ref": "#/components/schemas/PersonOut"
+            },
+            "type": "array",
+            "title": "Sample"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "reachable",
+          "skipped",
+          "sample"
+        ],
+        "title": "SegmentPreview"
+      },
       "SequenceOut": {
         "properties": {
           "id": {
@@ -49450,6 +54288,165 @@
         "type": "object",
         "title": "TagUpdate"
       },
+      "TargetCopy": {
+        "properties": {
+          "from_month": {
+            "type": "string",
+            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+            "title": "From Month"
+          },
+          "to_month": {
+            "type": "string",
+            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+            "title": "To Month"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "from_month",
+          "to_month"
+        ],
+        "title": "TargetCopy"
+      },
+      "TargetIn": {
+        "properties": {
+          "month": {
+            "type": "string",
+            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+            "title": "Month"
+          },
+          "metric": {
+            "type": "string",
+            "enum": [
+              "won_value",
+              "invoiced",
+              "collected"
+            ],
+            "title": "Metric"
+          },
+          "amount_minor": {
+            "type": "integer",
+            "maximum": 10000000000000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Amount Minor"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "month",
+          "metric",
+          "amount_minor"
+        ],
+        "title": "TargetIn",
+        "description": "Set (or replace) the target for a month, person (none: the company) and measure."
+      },
+      "TargetOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "month": {
+            "type": "string",
+            "title": "Month"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "user_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Name"
+          },
+          "metric": {
+            "type": "string",
+            "enum": [
+              "won_value",
+              "invoiced",
+              "collected"
+            ],
+            "title": "Metric"
+          },
+          "amount_minor": {
+            "type": "integer",
+            "title": "Amount Minor"
+          },
+          "achieved_minor": {
+            "type": "integer",
+            "title": "Achieved Minor"
+          },
+          "percent": {
+            "type": "integer",
+            "title": "Percent"
+          },
+          "pace_minor": {
+            "type": "integer",
+            "title": "Pace Minor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "month",
+          "user_id",
+          "user_name",
+          "metric",
+          "amount_minor",
+          "achieved_minor",
+          "percent",
+          "pace_minor"
+        ],
+        "title": "TargetOut"
+      },
+      "TargetsOut": {
+        "properties": {
+          "month": {
+            "type": "string",
+            "title": "Month"
+          },
+          "targets": {
+            "items": {
+              "$ref": "#/components/schemas/TargetOut"
+            },
+            "type": "array",
+            "title": "Targets"
+          }
+        },
+        "type": "object",
+        "required": [
+          "month",
+          "targets"
+        ],
+        "title": "TargetsOut"
+      },
       "TaxCategoryOut": {
         "properties": {
           "code": {
@@ -49748,6 +54745,89 @@
           "status"
         ],
         "title": "TeamUser"
+      },
+      "TemplateIn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "email",
+              "sms",
+              "whatsapp"
+            ],
+            "title": "Channel",
+            "default": "email"
+          },
+          "subject": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Subject",
+            "default": ""
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 10000,
+            "minLength": 1,
+            "title": "Body"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "body"
+        ],
+        "title": "TemplateIn"
+      },
+      "TemplateOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "email",
+              "sms",
+              "whatsapp"
+            ],
+            "title": "Channel"
+          },
+          "subject": {
+            "type": "string",
+            "title": "Subject"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "channel",
+          "subject",
+          "body",
+          "created_at"
+        ],
+        "title": "TemplateOut"
       },
       "TenantOut": {
         "properties": {
@@ -50137,6 +55217,34 @@
         ],
         "title": "TrendPoint"
       },
+      "UnsubscribePage": {
+        "properties": {
+          "business_name": {
+            "type": "string",
+            "title": "Business Name"
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "email",
+              "sms",
+              "whatsapp"
+            ],
+            "title": "Channel"
+          },
+          "done": {
+            "type": "boolean",
+            "title": "Done"
+          }
+        },
+        "type": "object",
+        "required": [
+          "business_name",
+          "channel",
+          "done"
+        ],
+        "title": "UnsubscribePage"
+      },
       "UpgradeRequest": {
         "properties": {
           "plan": {
@@ -50356,6 +55464,520 @@
           "refund_minor"
         ],
         "title": "VoidOut"
+      },
+      "WebFormAnswer": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "WebFormAnswer"
+      },
+      "WebFormIn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 160,
+            "title": "Title",
+            "default": ""
+          },
+          "intro": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Intro",
+            "default": ""
+          },
+          "thank_you": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Thank You",
+            "default": ""
+          },
+          "fields": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "phone",
+                "email",
+                "company",
+                "city",
+                "message"
+              ]
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Fields"
+          },
+          "pipeline_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pipeline Id"
+          },
+          "stage_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage Id"
+          },
+          "source": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Source",
+            "default": "web form"
+          },
+          "owner_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Id"
+          },
+          "daily_cap": {
+            "type": "integer",
+            "maximum": 10000.0,
+            "minimum": 1.0,
+            "title": "Daily Cap",
+            "default": 200
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "WebFormIn"
+      },
+      "WebFormOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "public_id": {
+            "type": "string",
+            "title": "Public Id"
+          },
+          "link": {
+            "type": "string",
+            "title": "Link"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "intro": {
+            "type": "string",
+            "title": "Intro"
+          },
+          "thank_you": {
+            "type": "string",
+            "title": "Thank You"
+          },
+          "fields": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "phone",
+                "email",
+                "company",
+                "city",
+                "message"
+              ]
+            },
+            "type": "array",
+            "title": "Fields"
+          },
+          "pipeline_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pipeline Id"
+          },
+          "stage_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage Id"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "owner_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Id"
+          },
+          "daily_cap": {
+            "type": "integer",
+            "title": "Daily Cap"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          },
+          "leads_today": {
+            "type": "integer",
+            "title": "Leads Today"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "public_id",
+          "link",
+          "name",
+          "title",
+          "intro",
+          "thank_you",
+          "fields",
+          "pipeline_id",
+          "stage_id",
+          "source",
+          "owner_id",
+          "daily_cap",
+          "active",
+          "leads_today",
+          "created_at"
+        ],
+        "title": "WebFormOut"
+      },
+      "WebFormPatch": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "intro": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intro"
+          },
+          "thank_you": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thank You"
+          },
+          "fields": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "phone",
+                    "email",
+                    "company",
+                    "city",
+                    "message"
+                  ]
+                },
+                "type": "array",
+                "maxItems": 5
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fields"
+          },
+          "pipeline_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pipeline Id"
+          },
+          "stage_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage Id"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 60,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "owner_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Id"
+          },
+          "daily_cap": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10000.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Cap"
+          },
+          "active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "WebFormPatch"
+      },
+      "WebFormPublic": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "intro": {
+            "type": "string",
+            "title": "Intro"
+          },
+          "fields": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "phone",
+                "email",
+                "company",
+                "city",
+                "message"
+              ]
+            },
+            "type": "array",
+            "title": "Fields"
+          },
+          "business_name": {
+            "type": "string",
+            "title": "Business Name"
+          },
+          "ticket": {
+            "type": "string",
+            "title": "Ticket"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "intro",
+          "fields",
+          "business_name",
+          "ticket"
+        ],
+        "title": "WebFormPublic",
+        "description": "What a visitor's browser gets: the form, never its routing."
+      },
+      "WebFormSubmit": {
+        "properties": {
+          "ticket": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Ticket"
+          },
+          "values": {
+            "$ref": "#/components/schemas/WebFormValues"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticket",
+          "values"
+        ],
+        "title": "WebFormSubmit"
+      },
+      "WebFormValues": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Name"
+          },
+          "phone": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Phone",
+            "default": ""
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Email",
+            "default": ""
+          },
+          "company": {
+            "type": "string",
+            "maxLength": 160,
+            "title": "Company",
+            "default": ""
+          },
+          "city": {
+            "type": "string",
+            "maxLength": 80,
+            "title": "City",
+            "default": ""
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Message",
+            "default": ""
+          },
+          "website": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Website",
+            "default": ""
+          },
+          "utm_source": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Utm Source",
+            "default": ""
+          },
+          "utm_medium": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Utm Medium",
+            "default": ""
+          },
+          "utm_campaign": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Utm Campaign",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "WebFormValues",
+        "description": "What a visitor may send. Unknown keys are dropped, not refused: a page\ncan't learn anything from the answer. `website` is the honeypot."
       },
       "WeekOut": {
         "properties": {

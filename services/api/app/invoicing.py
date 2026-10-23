@@ -22,6 +22,9 @@ from fastapi import HTTPException, status
 
 from . import audit, sequences, tax
 from .invoice_models import (
+    AgingBuckets,
+    AgingReport,
+    AgingRow,
     InvoiceCreate,
     InvoiceDetail,
     InvoiceLineIn,
@@ -65,7 +68,7 @@ def summary_out(r: asyncpg.Record, today: date) -> InvoiceSummary:
 
 # ── Pricing ─────────────────────────────────────────────────────────────────
 @dataclass
-class _Rate:
+class Rate:
     code: str | None
     rate_id: Any
     pct: Decimal
@@ -79,18 +82,20 @@ async def _region(conn: asyncpg.Connection) -> str | None:
     return region
 
 
-async def _rates(conn: asyncpg.Connection, lines: list[InvoiceLineIn], on: date) -> list[_Rate]:
+async def rates_for(conn: asyncpg.Connection, codes: list[str | None], on: date) -> list[Rate]:
+    """The rate in force on `on` for each tax code (none: no tax). Deal lines
+    and quotes price with it too."""
     region = await _region(conn)
-    out: list[_Rate] = []
-    for line in lines:
-        if not line.tax_code:
-            out.append(_Rate(None, None, Decimal(0), True))
+    out: list[Rate] = []
+    for code in codes:
+        if not code:
+            out.append(Rate(None, None, Decimal(0), True))
             continue
-        r = await tax.rate_for(conn, line.tax_code, on, region)
+        r = await tax.rate_for(conn, code, on, region)
         if r is None:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
-                                f"No tax rate '{line.tax_code}' is in force on {on.isoformat()}")
-        out.append(_Rate(line.tax_code, r["id"], Decimal(r["rate_pct"]), bool(r["verified"])))
+                                f"No tax rate '{code}' is in force on {on.isoformat()}")
+        out.append(Rate(code, r["id"], Decimal(r["rate_pct"]), bool(r["verified"])))
     return out
 
 
@@ -104,7 +109,7 @@ async def _write_lines(conn: asyncpg.Connection, tenant_id: str, invoice_id: Any
                                                   list(wanted))}
         if wanted - seen:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Product not found")
-    rates = await _rates(conn, lines, on)
+    rates = await rates_for(conn, [ln.tax_code for ln in lines], on)
     priced = price_sale([(ln.unit_price_minor, ln.qty, r.pct) for ln, r in zip(lines, rates)], discount_minor,
                         tax_on=True, inclusive=inclusive, line_discounts=[ln.line_discount_minor for ln in lines])
     await conn.execute("delete from invoice_lines where invoice_id = $1", invoice_id)
@@ -167,7 +172,20 @@ async def detail(conn: asyncpg.Connection, invoice_id: Any) -> InvoiceDetail:
                              paid_on=p["paid_on"], reference=p["reference"], created_at=p["created_at"])
                   for p in pays],
         credit_notes=[summary_out(c, today) for c in cns],
-        unverified_rates=any(not x["verified"] for x in lines))
+        unverified_rates=any(not x["verified"] for x in lines), last_sent_at=r["last_sent_at"])
+
+
+async def seller(conn: asyncpg.Connection, tenant_id: Any) -> dict[str, Any]:
+    """Who the invoice is from, as printed on the PDF."""
+    row = await conn.fetchrow(
+        """select coalesce(nullif(c.legal_name, ''), t.name) as name, coalesce(c.ntn, '') as ntn,
+                  coalesce(c.strn, '') as strn, coalesce(c.address, '') as address, coalesce(c.phone, '') as phone,
+                  coalesce(b.invoice_header, '') as header, coalesce(b.invoice_footer, '') as footer
+             from tenants t
+             left join tenant_company c on c.tenant_id = t.id
+             left join tenant_branding b on b.tenant_id = t.id
+            where t.id = $1""", tenant_id)
+    return dict(row) if row else {}
 
 
 # ── Writing ─────────────────────────────────────────────────────────────────
@@ -362,3 +380,46 @@ async def void(conn: asyncpg.Connection, user_id: str, invoice_id: str, reason: 
     await conn.execute(
         """update invoices set status = 'void', reason = $2, voided_by = $3, voided_at = now(), updated_at = now()
             where id = $1""", invoice_id, reason, user_id)
+
+
+# ── Receivables aging (PRD INV-10) ──────────────────────────────────────────
+_BUCKETS = ("current_minor", "d1_30_minor", "d31_60_minor", "d61_90_minor", "d90_plus_minor")
+
+
+def bucket_of(days_late: int) -> str:
+    """Not yet due (or due today), then 1-30, 31-60, 61-90, over 90 days late."""
+    if days_late <= 0:
+        return "current_minor"
+    if days_late <= 30:
+        return "d1_30_minor"
+    if days_late <= 60:
+        return "d31_60_minor"
+    if days_late <= 90:
+        return "d61_90_minor"
+    return "d90_plus_minor"
+
+
+async def aging(conn: asyncpg.Connection, as_of: date) -> AgingReport:
+    """What each customer still owes on invoices issued by `as_of`, by how
+    late it is on that day. Balances are today's (payments and credit notes
+    so far); an invoice with no due date counts as not yet due."""
+    rows = await conn.fetch(
+        """select i.contact_id, coalesce(c.name, i.bill_to->>'name', l.name, '') as name, i.due_date,
+                  i.total_minor - i.paid_minor - i.credited_minor as owed
+             from invoices i
+             left join contacts c on c.id = i.contact_id
+             left join crm_leads l on l.id = i.lead_id
+            where i.kind = 'invoice' and i.status in ('issued', 'partially_paid')
+              and i.issue_date <= $1 and i.total_minor - i.paid_minor - i.credited_minor > 0""", as_of)
+    per: dict[Any, AgingRow] = {}
+    totals = AgingBuckets()
+    for r in rows:
+        row = per.setdefault(r["contact_id"], AgingRow(
+            contact_id=str(r["contact_id"]) if r["contact_id"] else None, contact_name=r["name"], invoices=0))
+        b = bucket_of((as_of - r["due_date"]).days if r["due_date"] else 0)
+        for target in (row, totals):
+            setattr(target, b, getattr(target, b) + r["owed"])
+            target.total_minor += r["owed"]
+        row.invoices += 1
+    ordered = sorted(per.values(), key=lambda x: (-x.total_minor, x.contact_name.lower()))
+    return AgingReport(as_of=as_of, rows=ordered, totals=totals)

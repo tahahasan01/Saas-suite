@@ -71,7 +71,15 @@ describe("requests", () => {
     await api("/auth/login", { method: "POST", body: "{}" }).catch(() => undefined);
     ui.path = "/pricing";
     await api("/billing/plans").catch(() => undefined);
+    ui.path = "/q/some-quote-token";     // the customer's quote page (wave D)
+    await api("/notifications").catch(() => undefined);
     expect(ui.toLogin).not.toHaveBeenCalled();
+    ui.path = "/f/some-form-id";          // a web form
+    await api("/notifications").catch(() => undefined);
+    expect(ui.toLogin).not.toHaveBeenCalled();
+    ui.path = "/quotes";                 // only the /q page itself, not a lookalike
+    await api("/notifications").catch(() => undefined);
+    expect(ui.toLogin).toHaveBeenCalledTimes(1);
   });
 
   it("toasts a refused or broken write once, and leaves reads to the page", async () => {

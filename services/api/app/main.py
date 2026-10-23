@@ -14,6 +14,9 @@ from .bodylimit import BodyLimitMiddleware
 from .config import settings
 from .context import REQUEST_ID_HEADER, RequestContextMiddleware
 from .routers import activities as activities_router  # crm v2 (3B)
+from .routers import campaigns as campaigns_router  # CRM campaigns (wave D)
+from .routers import invoice_runs as invoice_runs_router  # fee vouchers (INV-08)
+from .routers import crm_selling, public_quotes, web_forms  # CRM selling (wave D)
 from .routers import (  # org data (3A, p3-orgdata)
     ai,
     auth,
@@ -127,6 +130,7 @@ app.include_router(crm.router)
 app.include_router(ai.router)
 app.include_router(notifications.router)
 app.include_router(workflows.router)
+app.include_router(invoice_runs_router.router)   # before invoices: /invoices/plans isn't an invoice id
 app.include_router(invoices.router)
 app.include_router(pos.router)
 app.include_router(fbr.router)
@@ -135,6 +139,12 @@ app.include_router(hrms.portal)
 app.include_router(billing.router)
 app.include_router(crm_pipelines.router)
 app.include_router(crm_reports.router)
+app.include_router(crm_selling.router)
+app.include_router(public_quotes.router)
+app.include_router(web_forms.router)
+app.include_router(web_forms.public)
+app.include_router(campaigns_router.router)
+app.include_router(campaigns_router.public)
 app.include_router(activities_router.router)
 app.include_router(contacts_router.router)
 # Org data (3A, p3-orgdata)

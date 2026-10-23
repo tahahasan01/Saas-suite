@@ -140,6 +140,19 @@ module = [
     "app.routers.hrms_people",
     "app.routers.hrms_biometric",
     "app.routers.restaurant_setup",
+    # CRM selling (wave D)
+    "app.crm_selling_models",
+    "app.deal_lines",
+    "app.routers.crm_selling",
+    "app.quotes",
+    "app.routers.public_quotes",
+    "app.web_forms",
+    "app.routers.web_forms",
+    "app.targets",
+    "app.campaigns",
+    "app.routers.campaigns",
+    "app.invoice_runs",
+    "app.routers.invoice_runs",
 ]
 # `strict` itself is global-only in mypy, so its per-module parts are spelled out.
 disallow_untyped_defs = true

@@ -719,6 +719,96 @@ export interface paths {
         patch: operations["update_workflow_workflows__workflow_id__patch"];
         trace?: never;
     };
+    "/invoices/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Plans */
+        get: operations["list_plans_invoices_plans_get"];
+        put?: never;
+        /** Create Plan */
+        post: operations["create_plan_invoices_plans_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/invoices/plans/{plan_id}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Runs */
+        get: operations["list_runs_invoices_plans__plan_id__runs_get"];
+        put?: never;
+        /**
+         * Make Run
+         * @description One draft invoice per contact for the month, for review.
+         */
+        post: operations["make_run_invoices_plans__plan_id__runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/invoices/runs/{invoice_run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Run */
+        get: operations["get_run_invoices_runs__invoice_run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/invoices/runs/{invoice_run_id}/issue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Issue Run */
+        post: operations["issue_run_invoices_runs__invoice_run_id__issue_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/invoices/runs/{invoice_run_id}/pdfs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Run Pdfs */
+        get: operations["run_pdfs_invoices_runs__invoice_run_id__pdfs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/invoices": {
         parameters: {
             query?: never;
@@ -731,6 +821,26 @@ export interface paths {
         put?: never;
         /** Create Invoice */
         post: operations["create_invoice_invoices_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/invoices/aging": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Receivables Aging
+         * @description What each customer owes, by how late: not yet due, 1-30, 31-60, 61-90, 90+ days.
+         */
+        get: operations["receivables_aging_invoices_aging_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -868,6 +978,27 @@ export interface paths {
         get: operations["invoice_pdf_invoices__invoice_id__pdf_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/invoices/{invoice_id}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Invoice
+         * @description Email the issued invoice with its PDF, through the outbox: SMTP being
+         *     down never fails this, and the PDF is built when the email goes.
+         */
+        post: operations["send_invoice_invoices__invoice_id__send_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1845,6 +1976,539 @@ export interface paths {
         get: operations["sources_crm_reports_sources_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/leads/{lead_id}/lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Lines */
+        get: operations["get_lines_crm_leads__lead_id__lines_get"];
+        /**
+         * Put Lines
+         * @description Replace the deal's lines (an empty list clears them).
+         */
+        put: operations["put_lines_crm_leads__lead_id__lines_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/leads/{lead_id}/lines/update-prices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Update Prices */
+        post: operations["update_prices_crm_leads__lead_id__lines_update_prices_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Find Products
+         * @description Active catalog products for the line editor. A rep putting products on a
+         *     deal needn't hold POS rights, so this is the narrow read they get: name,
+         *     unit and price, never cost or stock.
+         */
+        get: operations["find_products_crm_products_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Settings
+         * @description Reps read the settings too: the line editor shows the discount ceiling.
+         */
+        get: operations["get_settings_crm_settings_get"];
+        /** Put Settings */
+        put: operations["put_settings_crm_settings_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/leads/{lead_id}/quotes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Quotes */
+        get: operations["list_quotes_crm_leads__lead_id__quotes_get"];
+        put?: never;
+        /**
+         * Create Quote
+         * @description Freeze the deal's products into a numbered quote with its link; an
+         *     open quote for the deal is superseded.
+         */
+        post: operations["create_quote_crm_leads__lead_id__quotes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/quotes/{quote_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Quote */
+        get: operations["get_quote_crm_quotes__quote_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/quotes/{quote_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Quote */
+        post: operations["cancel_quote_crm_quotes__quote_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/quotes/{quote_id}/invoice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Invoice Quote
+         * @description A draft invoice from the accepted quote's frozen lines (invoices v2).
+         */
+        post: operations["invoice_quote_crm_quotes__quote_id__invoice_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/targets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Targets */
+        get: operations["list_targets_crm_targets_get"];
+        /** Set Target */
+        put: operations["set_target_crm_targets_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/targets/{target_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Target */
+        delete: operations["delete_target_crm_targets__target_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/targets/copy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Copy Targets */
+        post: operations["copy_targets_crm_targets_copy_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/forecast": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Forecast */
+        get: operations["forecast_crm_forecast_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/quotes/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** View */
+        get: operations["view_public_quotes__token__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/quotes/{token}/view": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Beacon */
+        post: operations["beacon_public_quotes__token__view_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/quotes/{token}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept */
+        post: operations["accept_public_quotes__token__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/quotes/{token}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decline */
+        post: operations["decline_public_quotes__token__decline_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/web-forms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Forms */
+        get: operations["list_forms_crm_web_forms_get"];
+        put?: never;
+        /** Create Form */
+        post: operations["create_form_crm_web_forms_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/web-forms/{form_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Form */
+        patch: operations["update_form_crm_web_forms__form_id__patch"];
+        trace?: never;
+    };
+    "/crm/assignment/pool": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Pool */
+        get: operations["get_pool_crm_assignment_pool_get"];
+        /**
+         * Put Pool
+         * @description Replace the pool. Members keep their place in the turn and today's count.
+         */
+        put: operations["put_pool_crm_assignment_pool_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/assignment/people": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Pool Candidates
+         * @description Active teammates, by name only: a CRM admin picks the pool without
+         *     needing the team screen's rights (emails and roles stay there).
+         */
+        get: operations["pool_candidates_crm_assignment_people_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/forms/{public_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Describe */
+        get: operations["describe_public_forms__public_id__get"];
+        put?: never;
+        /** Submit */
+        post: operations["submit_public_forms__public_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/contacts/{contact_id}/consents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Consents */
+        get: operations["list_consents_contacts__contact_id__consents_get"];
+        /** Set Consent */
+        put: operations["set_consent_contacts__contact_id__consents_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/segments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Segments */
+        get: operations["list_segments_crm_segments_get"];
+        put?: never;
+        /** Create Segment */
+        post: operations["create_segment_crm_segments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/segments/{segment_id}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preview Segment */
+        get: operations["preview_segment_crm_segments__segment_id__preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Templates */
+        get: operations["list_templates_crm_templates_get"];
+        put?: never;
+        /** Create Template */
+        post: operations["create_template_crm_templates_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/campaigns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Campaigns */
+        get: operations["list_campaigns_crm_campaigns_get"];
+        put?: never;
+        /** Create Campaign */
+        post: operations["create_campaign_crm_campaigns_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/campaigns/{campaign_id}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send Campaign */
+        post: operations["send_campaign_crm_campaigns__campaign_id__send_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/campaigns/{campaign_id}/recipients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Recipients */
+        get: operations["recipients_crm_campaigns__campaign_id__recipients_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/unsubscribe/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Unsubscribe Page
+         * @description Shows who is asking; changes nothing (mail scanners open links).
+         */
+        get: operations["unsubscribe_page_public_unsubscribe__token__get"];
+        put?: never;
+        /** Unsubscribe */
+        post: operations["unsubscribe_public_unsubscribe__token__post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6982,6 +7646,89 @@ export interface components {
              */
             note: string;
         };
+        /** AgingBuckets */
+        AgingBuckets: {
+            /**
+             * Current Minor
+             * @default 0
+             */
+            current_minor: number;
+            /**
+             * D1 30 Minor
+             * @default 0
+             */
+            d1_30_minor: number;
+            /**
+             * D31 60 Minor
+             * @default 0
+             */
+            d31_60_minor: number;
+            /**
+             * D61 90 Minor
+             * @default 0
+             */
+            d61_90_minor: number;
+            /**
+             * D90 Plus Minor
+             * @default 0
+             */
+            d90_plus_minor: number;
+            /**
+             * Total Minor
+             * @default 0
+             */
+            total_minor: number;
+        };
+        /** AgingReport */
+        AgingReport: {
+            /**
+             * As Of
+             * Format: date
+             */
+            as_of: string;
+            /** Rows */
+            rows: components["schemas"]["AgingRow"][];
+            totals: components["schemas"]["AgingBuckets"];
+        };
+        /** AgingRow */
+        AgingRow: {
+            /**
+             * Current Minor
+             * @default 0
+             */
+            current_minor: number;
+            /**
+             * D1 30 Minor
+             * @default 0
+             */
+            d1_30_minor: number;
+            /**
+             * D31 60 Minor
+             * @default 0
+             */
+            d31_60_minor: number;
+            /**
+             * D61 90 Minor
+             * @default 0
+             */
+            d61_90_minor: number;
+            /**
+             * D90 Plus Minor
+             * @default 0
+             */
+            d90_plus_minor: number;
+            /**
+             * Total Minor
+             * @default 0
+             */
+            total_minor: number;
+            /** Contact Id */
+            contact_id: string | null;
+            /** Contact Name */
+            contact_name: string;
+            /** Invoices */
+            invoices: number;
+        };
         /** Alert */
         Alert: {
             /** Text */
@@ -7818,6 +8565,59 @@ export interface components {
             /** Layout */
             layout?: ("classic" | "compact" | "bold") | null;
         };
+        /** CampaignIn */
+        CampaignIn: {
+            /** Name */
+            name: string;
+            /**
+             * Channel
+             * @default email
+             * @enum {string}
+             */
+            channel: "email" | "sms" | "whatsapp";
+            /**
+             * Segment Id
+             * Format: uuid
+             */
+            segment_id: string;
+            /**
+             * Template Id
+             * Format: uuid
+             */
+            template_id: string;
+        };
+        /** CampaignOut */
+        CampaignOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Channel
+             * @enum {string}
+             */
+            channel: "email" | "sms" | "whatsapp";
+            /** Segment Id */
+            segment_id: string;
+            /** Template Id */
+            template_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "sent" | "cancelled";
+            /** Queued Count */
+            queued_count: number;
+            /** Skipped Count */
+            skipped_count: number;
+            /** Sent At */
+            sent_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** CashMoveIn */
         CashMoveIn: {
             /**
@@ -8238,6 +9038,44 @@ export interface components {
             /** Active */
             active?: boolean | null;
         };
+        /** ConsentIn */
+        ConsentIn: {
+            /**
+             * Channel
+             * @enum {string}
+             */
+            channel: "email" | "sms" | "whatsapp";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "opted_in" | "opted_out";
+            /**
+             * Source
+             * @default
+             */
+            source: string;
+        };
+        /** ConsentOut */
+        ConsentOut: {
+            /**
+             * Channel
+             * @enum {string}
+             */
+            channel: "email" | "sms" | "whatsapp";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "opted_in" | "opted_out";
+            /** Source */
+            source: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /** ContactBrief */
         ContactBrief: {
             /** Id */
@@ -8534,6 +9372,11 @@ export interface components {
             /** Tag Ids */
             tag_ids?: string[] | null;
         };
+        /** Copied */
+        Copied: {
+            /** Copied */
+            copied: number;
+        };
         /** CorrectionCreate */
         CorrectionCreate: {
             /**
@@ -8591,6 +9434,26 @@ export interface components {
             /** Amount Minor */
             amount_minor?: number | null;
         };
+        /**
+         * CrmSettingsIn
+         * @description Only the fields sent change.
+         */
+        CrmSettingsIn: {
+            /** Max Discount Pct */
+            max_discount_pct?: number | string | null;
+            /** Campaign Daily Cap */
+            campaign_daily_cap?: number | null;
+        };
+        /** CrmSettingsOut */
+        CrmSettingsOut: {
+            /** Max Discount Pct */
+            max_discount_pct?: number | null;
+            /**
+             * Campaign Daily Cap
+             * @default 500
+             */
+            campaign_daily_cap: number;
+        };
         /** CrmSummary */
         CrmSummary: {
             /** Total Leads */
@@ -8618,6 +9481,107 @@ export interface components {
             alerts: components["schemas"]["Alert"][];
             /** Activity */
             activity: components["schemas"]["ActivityItem"][];
+        };
+        /**
+         * DealLineIn
+         * @description The shape of an invoice line, so a deal's lines carry over unchanged.
+         *     With a product, the server snapshots its unit and catalog price and marks
+         *     a different price as typed by hand.
+         */
+        DealLineIn: {
+            /** Description */
+            description: string;
+            /** Qty */
+            qty: number | string;
+            /** Unit Price Minor */
+            unit_price_minor: number;
+            /**
+             * Line Discount Minor
+             * @default 0
+             */
+            line_discount_minor: number;
+            /** Tax Code */
+            tax_code?: string | null;
+            /** Product Id */
+            product_id?: string | null;
+        };
+        /** DealLineOut */
+        DealLineOut: {
+            /** Id */
+            id: string;
+            /** Position */
+            position: number;
+            /** Product Id */
+            product_id: string | null;
+            /** Description */
+            description: string;
+            /** Unit */
+            unit: string;
+            /** Qty */
+            qty: number;
+            /** Unit Price Minor */
+            unit_price_minor: number;
+            /** List Price Minor */
+            list_price_minor: number | null;
+            /** Price Overridden */
+            price_overridden: boolean;
+            /** Line Discount Minor */
+            line_discount_minor: number;
+            /** Tax Code */
+            tax_code: string | null;
+            /** Tax Rate Pct */
+            tax_rate_pct: number;
+            /** Gross Minor */
+            gross_minor: number;
+            /** Net Excl Minor */
+            net_excl_minor: number;
+            /** Tax Minor */
+            tax_minor: number;
+            /** Total Minor */
+            total_minor: number;
+        };
+        /** DealLines */
+        DealLines: {
+            /** Lead Id */
+            lead_id: string;
+            /** Tax Inclusive */
+            tax_inclusive: boolean;
+            /** Lines */
+            lines: components["schemas"]["DealLineOut"][];
+            /** Subtotal Minor */
+            subtotal_minor: number;
+            /** Line Discount Minor */
+            line_discount_minor: number;
+            /** Net Minor */
+            net_minor: number;
+            /** Tax Minor */
+            tax_minor: number;
+            /** Total Minor */
+            total_minor: number;
+        };
+        /** DealLinesPut */
+        DealLinesPut: {
+            /** Lines */
+            lines: components["schemas"]["DealLineIn"][];
+            /**
+             * Tax Inclusive
+             * @default false
+             */
+            tax_inclusive: boolean;
+        };
+        /**
+         * DealProductOut
+         * @description What the line editor's picker needs from the catalog.
+         */
+        DealProductOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Unit */
+            unit: string;
+            /** Price Minor */
+            price_minor: number;
         };
         /** Decision */
         Decision: {
@@ -9451,6 +10415,50 @@ export interface components {
             /** Active */
             active?: boolean | null;
         };
+        /** ForecastBucket */
+        ForecastBucket: {
+            /** Month */
+            month?: string | null;
+            /**
+             * Won Minor
+             * @default 0
+             */
+            won_minor: number;
+            /**
+             * Weighted Minor
+             * @default 0
+             */
+            weighted_minor: number;
+            /**
+             * Best Case Minor
+             * @default 0
+             */
+            best_case_minor: number;
+            /**
+             * Open Count
+             * @default 0
+             */
+            open_count: number;
+            /** Deals */
+            deals?: components["schemas"]["ForecastDeal"][];
+        };
+        /** ForecastDeal */
+        ForecastDeal: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Owner Id */
+            owner_id: string | null;
+            /** Value Minor */
+            value_minor: number;
+            /** Probability */
+            probability: number | null;
+            /** Weighted Minor */
+            weighted_minor: number;
+            /** Expected Close Date */
+            expected_close_date: string | null;
+        };
         /** ForecastItem */
         ForecastItem: {
             /** Product Id */
@@ -9871,7 +10879,7 @@ export interface components {
              */
             notes: string;
             /** Lines */
-            lines: components["schemas"]["InvoiceLineIn"][];
+            lines: components["schemas"]["InvoiceLineIn-Input"][];
             /**
              * Submit
              * @default false
@@ -9945,13 +10953,33 @@ export interface components {
             credit_notes: components["schemas"]["InvoiceSummary"][];
             /** Unverified Rates */
             unverified_rates: boolean;
+            /** Last Sent At */
+            last_sent_at?: string | null;
         };
         /** InvoiceLineIn */
-        InvoiceLineIn: {
+        "InvoiceLineIn-Input": {
             /** Description */
             description: string;
             /** Qty */
             qty: number | string;
+            /** Unit Price Minor */
+            unit_price_minor: number;
+            /**
+             * Line Discount Minor
+             * @default 0
+             */
+            line_discount_minor: number;
+            /** Tax Code */
+            tax_code?: string | null;
+            /** Product Id */
+            product_id?: string | null;
+        };
+        /** InvoiceLineIn */
+        "InvoiceLineIn-Output": {
+            /** Description */
+            description: string;
+            /** Qty */
+            qty: string;
             /** Unit Price Minor */
             unit_price_minor: number;
             /**
@@ -9992,6 +11020,138 @@ export interface components {
             total_minor: number;
             /** Product Id */
             product_id: string | null;
+        };
+        /**
+         * InvoicePlanIn
+         * @description What to bill, to whom (a tag or a saved list, not both) and when it's due.
+         */
+        InvoicePlanIn: {
+            /** Name */
+            name: string;
+            /** Lines */
+            lines: components["schemas"]["InvoiceLineIn-Input"][];
+            /** Tag Id */
+            tag_id?: string | null;
+            /** Segment Id */
+            segment_id?: string | null;
+            /**
+             * Due Day
+             * @default 10
+             */
+            due_day: number;
+            /** Run Day */
+            run_day?: number | null;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+        };
+        /** InvoicePlanOut */
+        InvoicePlanOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Lines */
+            lines: components["schemas"]["InvoiceLineIn-Output"][];
+            /** Tag Id */
+            tag_id: string | null;
+            /** Segment Id */
+            segment_id: string | null;
+            /** Due Day */
+            due_day: number;
+            /** Run Day */
+            run_day: number | null;
+            /** Notes */
+            notes: string;
+            /** Active */
+            active: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** InvoiceRunCreate */
+        InvoiceRunCreate: {
+            /** Period */
+            period: string;
+        };
+        /** InvoiceRunDetail */
+        InvoiceRunDetail: {
+            /** Id */
+            id: string;
+            /** Plan Id */
+            plan_id: string;
+            /** Plan Name */
+            plan_name: string;
+            /**
+             * Period
+             * Format: date
+             */
+            period: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "issued";
+            /** Invoice Count */
+            invoice_count: number;
+            /** Total Minor */
+            total_minor: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Issued At */
+            issued_at: string | null;
+            /** Invoices */
+            invoices: components["schemas"]["InvoiceSummary"][];
+        };
+        /** InvoiceRunOut */
+        InvoiceRunOut: {
+            /** Id */
+            id: string;
+            /** Plan Id */
+            plan_id: string;
+            /** Plan Name */
+            plan_name: string;
+            /**
+             * Period
+             * Format: date
+             */
+            period: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "issued";
+            /** Invoice Count */
+            invoice_count: number;
+            /** Total Minor */
+            total_minor: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Issued At */
+            issued_at: string | null;
+        };
+        /**
+         * InvoiceSend
+         * @description No address: the billed contact's email.
+         */
+        InvoiceSend: {
+            /** To */
+            to?: string | null;
+        };
+        /** InvoiceSent */
+        InvoiceSent: {
+            /** To */
+            to: string;
         };
         /** InvoiceSummary */
         InvoiceSummary: {
@@ -10049,7 +11209,7 @@ export interface components {
             /** Notes */
             notes?: string | null;
             /** Lines */
-            lines?: components["schemas"]["InvoiceLineIn"][] | null;
+            lines?: components["schemas"]["InvoiceLineIn-Input"][] | null;
         };
         /** JobChangeIn */
         JobChangeIn: {
@@ -10432,6 +11592,11 @@ export interface components {
              * @default []
              */
             tags: components["schemas"]["TagOut"][];
+            /**
+             * Line Count
+             * @default 0
+             */
+            line_count: number;
         };
         /** LeadUpdate */
         LeadUpdate: {
@@ -12088,6 +13253,13 @@ export interface components {
              */
             error: string;
         };
+        /** PersonOut */
+        PersonOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+        };
         /** PinIn */
         PinIn: {
             /** Pin */
@@ -12205,6 +13377,39 @@ export interface components {
             po_item_id: string;
             /** Qty */
             qty: number;
+        };
+        /** PoolMemberIn */
+        PoolMemberIn: {
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /** Daily Cap */
+            daily_cap?: number | null;
+        };
+        /** PoolMemberOut */
+        PoolMemberOut: {
+            /** User Id */
+            user_id: string;
+            /** Name */
+            name: string;
+            /** Active */
+            active: boolean;
+            /** Daily Cap */
+            daily_cap: number | null;
+            /** Assigned Today */
+            assigned_today: number;
+        };
+        /** PoolPut */
+        PoolPut: {
+            /** Members */
+            members: components["schemas"]["PoolMemberIn"][];
         };
         /** PosSummary */
         PosSummary: {
@@ -12659,6 +13864,171 @@ export interface components {
              */
             force: boolean;
         };
+        /** QuoteAccept */
+        QuoteAccept: {
+            /** Name */
+            name: string;
+            /** Content Hash */
+            content_hash: string;
+        };
+        /** QuoteCreate */
+        QuoteCreate: {
+            /** Valid Until */
+            valid_until?: string | null;
+            /**
+             * Terms
+             * @default
+             */
+            terms: string;
+        };
+        /** QuoteDecline */
+        QuoteDecline: {
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+        };
+        /** QuoteInvoiced */
+        QuoteInvoiced: {
+            /** Invoice Id */
+            invoice_id: string;
+        };
+        /** QuoteLineOut */
+        QuoteLineOut: {
+            /** Description */
+            description: string;
+            /** Unit */
+            unit: string;
+            /** Qty */
+            qty: number;
+            /** Unit Price Minor */
+            unit_price_minor: number;
+            /** Line Discount Minor */
+            line_discount_minor: number;
+            /** Tax Rate Pct */
+            tax_rate_pct: number;
+            /** Net Excl Minor */
+            net_excl_minor: number;
+            /** Tax Minor */
+            tax_minor: number;
+            /** Total Minor */
+            total_minor: number;
+        };
+        /**
+         * QuoteOut
+         * @description What staff see. `link` is the page path while the quote is open.
+         */
+        QuoteOut: {
+            /** Number */
+            number: string;
+            /**
+             * Valid Until
+             * Format: date
+             */
+            valid_until: string;
+            /** Terms */
+            terms: string;
+            /** Customer Name */
+            customer_name: string;
+            /** Tax Inclusive */
+            tax_inclusive: boolean;
+            /** Lines */
+            lines: components["schemas"]["QuoteLineOut"][];
+            /** Subtotal Minor */
+            subtotal_minor: number;
+            /** Line Discount Minor */
+            line_discount_minor: number;
+            /** Net Minor */
+            net_minor: number;
+            /** Tax Minor */
+            tax_minor: number;
+            /** Total Minor */
+            total_minor: number;
+            /** Content Hash */
+            content_hash: string;
+            /** Accepted Name */
+            accepted_name?: string | null;
+            /** Accepted At */
+            accepted_at?: string | null;
+            /** Id */
+            id: string;
+            /** Lead Id */
+            lead_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "sent" | "accepted" | "declined" | "superseded" | "cancelled";
+            /** Expired */
+            expired: boolean;
+            /** Link */
+            link: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** First Viewed At */
+            first_viewed_at: string | null;
+            /** View Count */
+            view_count: number;
+            /** Accepted Ip */
+            accepted_ip: string | null;
+            /** Declined At */
+            declined_at: string | null;
+            /** Decline Reason */
+            decline_reason: string | null;
+            /** Invoice Id */
+            invoice_id: string | null;
+        };
+        /**
+         * QuotePublic
+         * @description What the customer sees: the document and the business's own details,
+         *     nothing else (no ids, no notes, no list prices).
+         */
+        QuotePublic: {
+            /** Number */
+            number: string;
+            /**
+             * Valid Until
+             * Format: date
+             */
+            valid_until: string;
+            /** Terms */
+            terms: string;
+            /** Customer Name */
+            customer_name: string;
+            /** Tax Inclusive */
+            tax_inclusive: boolean;
+            /** Lines */
+            lines: components["schemas"]["QuoteLineOut"][];
+            /** Subtotal Minor */
+            subtotal_minor: number;
+            /** Line Discount Minor */
+            line_discount_minor: number;
+            /** Net Minor */
+            net_minor: number;
+            /** Tax Minor */
+            tax_minor: number;
+            /** Total Minor */
+            total_minor: number;
+            /** Content Hash */
+            content_hash: string;
+            /** Accepted Name */
+            accepted_name?: string | null;
+            /** Accepted At */
+            accepted_at?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "accepted" | "declined" | "expired";
+            /** Business */
+            business: {
+                [key: string]: string;
+            };
+        };
         /** RatingIn */
         RatingIn: {
             /**
@@ -12681,6 +14051,22 @@ export interface components {
              * @default
              */
             reason: string;
+        };
+        /** RecipientOut */
+        RecipientOut: {
+            /** Contact Id */
+            contact_id: string;
+            /** Name */
+            name: string;
+            /** Address */
+            address: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "skipped";
+            /** Skip Reason */
+            skip_reason: ("no_address" | "no_consent" | "opted_out" | "daily_cap") | null;
         };
         /**
          * RecomputeCreate
@@ -13512,6 +14898,61 @@ export interface components {
             /** Register Code */
             register_code: string | null;
         };
+        /** SalesForecastOut */
+        SalesForecastOut: {
+            /** Months */
+            months: components["schemas"]["ForecastBucket"][];
+            overdue: components["schemas"]["ForecastBucket"];
+            no_date: components["schemas"]["ForecastBucket"];
+        };
+        /**
+         * SegmentFilter
+         * @description The only things a segment can filter on (compiled to parameterised SQL).
+         */
+        SegmentFilter: {
+            /** Tag Ids */
+            tag_ids?: string[];
+            /** Kind */
+            kind?: ("person" | "company") | null;
+            /** Roles */
+            roles?: ("customer" | "supplier" | "patient" | "student" | "parent" | "partner")[];
+            /** City */
+            city?: string | null;
+            /** Has Email */
+            has_email?: boolean | null;
+        };
+        /** SegmentIn */
+        SegmentIn: {
+            /** Name */
+            name: string;
+            filter?: components["schemas"]["SegmentFilter"];
+        };
+        /** SegmentOut */
+        SegmentOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            filter: components["schemas"]["SegmentFilter"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** SegmentPreview */
+        SegmentPreview: {
+            /** Total */
+            total: number;
+            /** Reachable */
+            reachable: number;
+            /** Skipped */
+            skipped: {
+                [key: string]: number;
+            };
+            /** Sample */
+            sample: components["schemas"]["PersonOut"][];
+        };
         /** SequenceOut */
         SequenceOut: {
             /** Id */
@@ -14268,6 +15709,61 @@ export interface components {
             /** Color */
             color?: ("slate" | "teal" | "amber" | "rose" | "violet" | "sky" | "lime") | null;
         };
+        /** TargetCopy */
+        TargetCopy: {
+            /** From Month */
+            from_month: string;
+            /** To Month */
+            to_month: string;
+        };
+        /**
+         * TargetIn
+         * @description Set (or replace) the target for a month, person (none: the company) and measure.
+         */
+        TargetIn: {
+            /** Month */
+            month: string;
+            /**
+             * Metric
+             * @enum {string}
+             */
+            metric: "won_value" | "invoiced" | "collected";
+            /** Amount Minor */
+            amount_minor: number;
+            /** User Id */
+            user_id?: string | null;
+        };
+        /** TargetOut */
+        TargetOut: {
+            /** Id */
+            id: string;
+            /** Month */
+            month: string;
+            /** User Id */
+            user_id: string | null;
+            /** User Name */
+            user_name: string | null;
+            /**
+             * Metric
+             * @enum {string}
+             */
+            metric: "won_value" | "invoiced" | "collected";
+            /** Amount Minor */
+            amount_minor: number;
+            /** Achieved Minor */
+            achieved_minor: number;
+            /** Percent */
+            percent: number;
+            /** Pace Minor */
+            pace_minor: number;
+        };
+        /** TargetsOut */
+        TargetsOut: {
+            /** Month */
+            month: string;
+            /** Targets */
+            targets: components["schemas"]["TargetOut"][];
+        };
         /** TaxCategoryOut */
         TaxCategoryOut: {
             /** Code */
@@ -14364,6 +15860,45 @@ export interface components {
             status: string;
             /** Roles */
             roles?: components["schemas"]["RoleRef"][];
+        };
+        /** TemplateIn */
+        TemplateIn: {
+            /** Name */
+            name: string;
+            /**
+             * Channel
+             * @default email
+             * @enum {string}
+             */
+            channel: "email" | "sms" | "whatsapp";
+            /**
+             * Subject
+             * @default
+             */
+            subject: string;
+            /** Body */
+            body: string;
+        };
+        /** TemplateOut */
+        TemplateOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Channel
+             * @enum {string}
+             */
+            channel: "email" | "sms" | "whatsapp";
+            /** Subject */
+            subject: string;
+            /** Body */
+            body: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** TenantOut */
         TenantOut: {
@@ -14509,6 +16044,18 @@ export interface components {
             /** Value */
             value: number;
         };
+        /** UnsubscribePage */
+        UnsubscribePage: {
+            /** Business Name */
+            business_name: string;
+            /**
+             * Channel
+             * @enum {string}
+             */
+            channel: "email" | "sms" | "whatsapp";
+            /** Done */
+            done: boolean;
+        };
         /** UpgradeRequest */
         UpgradeRequest: {
             /** Plan */
@@ -14581,6 +16128,188 @@ export interface components {
             void_reason: string;
             /** Refund Minor */
             refund_minor: number;
+        };
+        /** WebFormAnswer */
+        WebFormAnswer: {
+            /** Message */
+            message: string;
+        };
+        /** WebFormIn */
+        WebFormIn: {
+            /** Name */
+            name: string;
+            /**
+             * Title
+             * @default
+             */
+            title: string;
+            /**
+             * Intro
+             * @default
+             */
+            intro: string;
+            /**
+             * Thank You
+             * @default
+             */
+            thank_you: string;
+            /** Fields */
+            fields?: ("phone" | "email" | "company" | "city" | "message")[];
+            /** Pipeline Id */
+            pipeline_id?: string | null;
+            /** Stage Id */
+            stage_id?: string | null;
+            /**
+             * Source
+             * @default web form
+             */
+            source: string;
+            /** Owner Id */
+            owner_id?: string | null;
+            /**
+             * Daily Cap
+             * @default 200
+             */
+            daily_cap: number;
+        };
+        /** WebFormOut */
+        WebFormOut: {
+            /** Id */
+            id: string;
+            /** Public Id */
+            public_id: string;
+            /** Link */
+            link: string;
+            /** Name */
+            name: string;
+            /** Title */
+            title: string;
+            /** Intro */
+            intro: string;
+            /** Thank You */
+            thank_you: string;
+            /** Fields */
+            fields: ("phone" | "email" | "company" | "city" | "message")[];
+            /** Pipeline Id */
+            pipeline_id: string | null;
+            /** Stage Id */
+            stage_id: string | null;
+            /** Source */
+            source: string;
+            /** Owner Id */
+            owner_id: string | null;
+            /** Daily Cap */
+            daily_cap: number;
+            /** Active */
+            active: boolean;
+            /** Leads Today */
+            leads_today: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** WebFormPatch */
+        WebFormPatch: {
+            /** Name */
+            name?: string | null;
+            /** Title */
+            title?: string | null;
+            /** Intro */
+            intro?: string | null;
+            /** Thank You */
+            thank_you?: string | null;
+            /** Fields */
+            fields?: ("phone" | "email" | "company" | "city" | "message")[] | null;
+            /** Pipeline Id */
+            pipeline_id?: string | null;
+            /** Stage Id */
+            stage_id?: string | null;
+            /** Source */
+            source?: string | null;
+            /** Owner Id */
+            owner_id?: string | null;
+            /** Daily Cap */
+            daily_cap?: number | null;
+            /** Active */
+            active?: boolean | null;
+        };
+        /**
+         * WebFormPublic
+         * @description What a visitor's browser gets: the form, never its routing.
+         */
+        WebFormPublic: {
+            /** Title */
+            title: string;
+            /** Intro */
+            intro: string;
+            /** Fields */
+            fields: ("phone" | "email" | "company" | "city" | "message")[];
+            /** Business Name */
+            business_name: string;
+            /** Ticket */
+            ticket: string;
+        };
+        /** WebFormSubmit */
+        WebFormSubmit: {
+            /** Ticket */
+            ticket: string;
+            values: components["schemas"]["WebFormValues"];
+        };
+        /**
+         * WebFormValues
+         * @description What a visitor may send. Unknown keys are dropped, not refused: a page
+         *     can't learn anything from the answer. `website` is the honeypot.
+         */
+        WebFormValues: {
+            /** Name */
+            name: string;
+            /**
+             * Phone
+             * @default
+             */
+            phone: string;
+            /**
+             * Email
+             * @default
+             */
+            email: string;
+            /**
+             * Company
+             * @default
+             */
+            company: string;
+            /**
+             * City
+             * @default
+             */
+            city: string;
+            /**
+             * Message
+             * @default
+             */
+            message: string;
+            /**
+             * Website
+             * @default
+             */
+            website: string;
+            /**
+             * Utm Source
+             * @default
+             */
+            utm_source: string;
+            /**
+             * Utm Medium
+             * @default
+             */
+            utm_medium: string;
+            /**
+             * Utm Campaign
+             * @default
+             */
+            utm_campaign: string;
         };
         /** WeekOut */
         WeekOut: {
@@ -16201,6 +17930,241 @@ export interface operations {
             };
         };
     };
+    list_plans_invoices_plans_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoicePlanOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_plan_invoices_plans_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvoicePlanIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoicePlanOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_runs_invoices_plans__plan_id__runs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceRunOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    make_run_invoices_plans__plan_id__runs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvoiceRunCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceRunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_invoices_runs__invoice_run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_run_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceRunDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    issue_run_invoices_runs__invoice_run_id__issue_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_run_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceRunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_pdfs_invoices_runs__invoice_run_id__pdfs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_run_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_invoices_invoices_get: {
         parameters: {
             query?: {
@@ -16260,6 +18224,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InvoiceDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    receivables_aging_invoices_aging_get: {
+        parameters: {
+            query?: {
+                as_of?: string | null;
+                format?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgingReport"];
                 };
             };
             /** @description Validation Error */
@@ -16577,6 +18575,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_invoice_invoices__invoice_id__send_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvoiceSend"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceSent"];
                 };
             };
             /** @description Validation Error */
@@ -18736,6 +20771,1371 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SourcesReport"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_lines_crm_leads__lead_id__lines_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lead_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealLines"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_lines_crm_leads__lead_id__lines_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lead_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DealLinesPut"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealLines"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_prices_crm_leads__lead_id__lines_update_prices_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lead_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealLines"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    find_products_crm_products_get: {
+        parameters: {
+            query?: {
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealProductOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_settings_crm_settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CrmSettingsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_settings_crm_settings_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CrmSettingsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CrmSettingsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_quotes_crm_leads__lead_id__quotes_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lead_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_quote_crm_leads__lead_id__quotes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lead_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuoteCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_quote_crm_quotes__quote_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quote_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_quote_crm_quotes__quote_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quote_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    invoice_quote_crm_quotes__quote_id__invoice_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quote_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteInvoiced"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_targets_crm_targets_get: {
+        parameters: {
+            query: {
+                month: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TargetsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_target_crm_targets_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TargetIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TargetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_target_crm_targets__target_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                target_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    copy_targets_crm_targets_copy_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TargetCopy"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Copied"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    forecast_crm_forecast_get: {
+        parameters: {
+            query?: {
+                months?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SalesForecastOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    view_public_quotes__token__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotePublic"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    beacon_public_quotes__token__view_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    accept_public_quotes__token__accept_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuoteAccept"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotePublic"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decline_public_quotes__token__decline_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuoteDecline"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotePublic"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_forms_crm_web_forms_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebFormOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_form_crm_web_forms_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebFormIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebFormOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_form_crm_web_forms__form_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                form_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebFormPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebFormOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_pool_crm_assignment_pool_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PoolMemberOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_pool_crm_assignment_pool_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PoolPut"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PoolMemberOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pool_candidates_crm_assignment_people_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    describe_public_forms__public_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebFormPublic"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_public_forms__public_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebFormSubmit"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebFormAnswer"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_consents_contacts__contact_id__consents_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contact_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsentOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_consent_contacts__contact_id__consents_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contact_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsentIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_segments_crm_segments_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SegmentOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_segment_crm_segments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SegmentIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SegmentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_segment_crm_segments__segment_id__preview_get: {
+        parameters: {
+            query?: {
+                channel?: "email" | "sms" | "whatsapp";
+            };
+            header?: never;
+            path: {
+                segment_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SegmentPreview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_templates_crm_templates_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_template_crm_templates_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_campaigns_crm_campaigns_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_campaign_crm_campaigns_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CampaignIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_campaign_crm_campaigns__campaign_id__send_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    recipients_crm_campaigns__campaign_id__recipients_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipientOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unsubscribe_page_public_unsubscribe__token__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnsubscribePage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unsubscribe_public_unsubscribe__token__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnsubscribePage"];
                 };
             };
             /** @description Validation Error */

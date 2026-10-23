@@ -184,7 +184,7 @@ UserStatus = Literal["active", "disabled"]
 USER_STATUSES = list(get_args(UserStatus))
 
 # Audit trail and record timeline (D-07, migration 0044).
-ActorKind = Literal["user", "job", "ai", "import", "system", "platform_admin", "webhook", "device"]
+ActorKind = Literal["user", "job", "ai", "import", "system", "platform_admin", "webhook", "device", "public"]
 ACTOR_KINDS = list(get_args(ActorKind))
 TimelineKind = Literal["note", "field_change", "stage_change", "won", "lost", "restored",
                        "activity_done", "call", "merge", "system", "attachment",
@@ -233,6 +233,20 @@ STAGE_KINDS = ["active", "won", "lost"]   # legacy column, kept one release (006
 InvoiceRequestStatus = Literal["pending", "approved", "rejected"]
 INVOICE_REQUEST_STATUSES = list(get_args(InvoiceRequestStatus))
 LeadStatus = Literal["open", "won", "lost"]
+# Quotes (wave D, 0121): "expired" is worked out from valid_until, never stored.
+QuoteStatus = Literal["sent", "accepted", "declined", "superseded", "cancelled"]
+# What a web form may ask besides the name (0122).
+WebFormField = Literal["phone", "email", "company", "city", "message"]
+# Sales targets (0123).
+TargetMetric = Literal["won_value", "invoiced", "collected"]
+# Consent and campaigns (0124).
+MessageChannel = Literal["email", "sms", "whatsapp"]
+ConsentStatus = Literal["opted_in", "opted_out"]
+CampaignStatus = Literal["draft", "sent", "cancelled"]
+RecipientStatus = Literal["queued", "skipped"]
+SkipReason = Literal["no_address", "no_consent", "opted_out", "daily_cap"]
+# Fee vouchers (0126).
+InvoiceRunStatus = Literal["draft", "issued"]
 LEAD_STATUSES = list(get_args(LeadStatus))
 # Activities (D-32, 0063). Polymorphic: 'contact' arrives with the contacts module.
 ActivityEntity = Literal["lead", "contact"]
@@ -341,6 +355,8 @@ class LeadOut(BaseModel):
     activity_state: Literal["overdue", "today", "planned"] | None = None
     next_activity_date: date | None = None
     tags: list[TagOut] = []
+    # Products on the deal (0120): with lines, value_minor is their pre-tax total.
+    line_count: int = 0
 
 
 class LeadCreate(BaseModel):

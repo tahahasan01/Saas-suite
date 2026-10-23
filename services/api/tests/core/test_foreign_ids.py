@@ -69,9 +69,20 @@ KIND_OF = {
     "receipt_file_id": "file",
     "cycle_id": "appraisal_cycle",
     "appraisal_id": "appraisal",
-    "template_id": "boarding_template",
+    # template_id names four kinds (boarding, appraisal, letter and CRM message templates); one global
+    # mapping can only serve one of them (CRM below). TODO: per-route kinds for the walk.
     "boarding_id": "boarding",
     "task_id": "boarding_task",
+    # quotes (wave D, 0121)
+    "quote_id": "quote",
+    # web forms (wave D, 0122)
+    "form_id": "web_form",
+    # targets (wave D, 0123)
+    "target_id": "target",
+    # campaigns (wave D, 0124)
+    "segment_id": "segment", "template_id": "template", "campaign_id": "campaign",
+    # fee vouchers (0126)
+    "plan_id": "invoice_plan", "invoice_run_id": "invoice_run",
 }
 
 # Path parameters that are not ids: a fixed, valid value. (scheme_code names
@@ -80,7 +91,8 @@ PLAIN_PARAMS = {"section": "crm", "decision": "approve", "key": "crm", "scheme_c
 
 # The /me/* portal never takes an id from the caller — it acts on the logged-in
 # employee only (tests/hrms/test_employee_portal.py proves the forcing).
-SKIP_PREFIXES = ("/me/", "/kiosk/")   # /kiosk/{token}: the token is the credential (3F), no tenant ids
+# /public/quotes/{token}: the link's token is the credential (wave D); test_quote_link_security.py.
+SKIP_PREFIXES = ("/me/", "/kiosk/", "/public/")   # /kiosk/{token}: the token is the credential (3F), no tenant ids
 # The device token is the credential (0077): a foreign device id fails it with 401 (test_sessions.py).
 # Device-token routes: the token gate answers before any id is read. Their
 # foreign-id cases are tested in tests/pos/test_offline_sync.py.
@@ -192,7 +204,26 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
     letter = (await c.post(f"/hrms/employees/{employee['id']}/letters", json={"template_id": ltemplate["id"]})).json()
     job_change = (await c.post(f"/hrms/employees/{employee['id']}/job-changes", json={
         "kind": "promotion", "effective_on": "2099-01-01", "job_title_id": title["id"]})).json()
+    quoted = (await c.post("/crm/leads", json={"name": "Probe quote", "force": True})).json()
+    await c.put(f"/crm/leads/{quoted['id']}/lines",
+                json={"lines": [{"description": "Probe", "qty": 1, "unit_price_minor": 1000}]})
+    quote = (await c.post(f"/crm/leads/{quoted['id']}/quotes", json={})).json()
+    web_form = (await c.post("/crm/web-forms", json={"name": "Probe form"})).json()
+    target = (await c.put("/crm/targets", json={"month": "2027-04", "metric": "won_value",
+                                                "amount_minor": 100})).json()
+    segment = (await c.post("/crm/segments", json={"name": "Probe segment"})).json()
+    template = (await c.post("/crm/templates", json={"name": "Probe", "body": "Hi"})).json()
+    campaign = (await c.post("/crm/campaigns", json={"name": "Probe", "segment_id": segment["id"],
+                                                     "template_id": template["id"]})).json()
+    vtag = (await c.post("/tags", json={"name": "Probe vouchers"})).json()
+    vplan = (await c.post("/invoices/plans", json={"name": "Probe fees", "tag_id": vtag["id"], "lines": [
+        {"description": "Fee", "qty": 1, "unit_price_minor": 100}]})).json()
+    vrun = (await c.post(f"/invoices/plans/{vplan['id']}/runs", json={"period": "2027-04"})).json()
     return {
+        "invoice_plan": vplan["id"], "invoice_run": vrun["id"],
+        "segment": segment["id"], "template": template["id"], "campaign": campaign["id"],
+        "target": target["id"],
+        "quote": quote["id"], "web_form": web_form["id"],
         "activity_type": activity_type["id"], "activity": activity["id"],
         "lost_reason": (await c.get("/crm/lost-reasons")).json()[0]["id"],
         "contact": contact["id"], "company": company["id"], "address": address["id"], "tag": tag["id"],
@@ -301,7 +332,7 @@ def _value(name: str, schema: dict, own: dict):
         return "4826"
     if schema.get("format") == "date":
         return "2027-04-05"
-    if name.endswith("month"):  # payroll months are 'YYYY-MM'
+    if name.endswith("month") or name == "period":  # payroll months and billing periods are 'YYYY-MM'
         return "2027-04"
     if name in ("code", "device_code"):  # register and device codes: A-Z0-9, unique
         return "P" + uuid.uuid4().hex[:4].upper()

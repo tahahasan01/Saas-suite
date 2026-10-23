@@ -10,6 +10,7 @@ import { formatDate, money, relativeDate } from "@/lib/format";
 import { errorText, useAction } from "@/lib/useAction";
 import { useConfirm } from "@/components/Confirm";
 import { Badge, Button, Card, cx, EmptyState, ErrorState, Field, Input, LoadingRows, Select, Textarea } from "@/components/ui";
+import { ConsentCard } from "@/components/contacts/ConsentCard";
 import { ContactForm, TagChip } from "@/components/contacts/ContactForm";
 import { MergeDialog } from "@/components/contacts/MergeDialog";
 import { RecordActivities } from "@/components/crm/bits";
@@ -348,6 +349,7 @@ function Details({ data, onChanged }: { data: ContactDetail; onChanged: () => vo
           </form>
         </Can>
       </Card>
+      <ConsentCard contactId={c.id} />
     </div>
   );
 }
