@@ -2102,6 +2102,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/crm/quotes/{quote_id}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Quote Pdf */
+        get: operations["quote_pdf_crm_quotes__quote_id__pdf_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/quotes/{quote_id}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Email Quote
+         * @description Email the customer the link and the PDF, through the outbox. Only an
+         *     open quote; one plain address; a few times an hour per quote and a daily
+         *     cap per business, like invoices.
+         */
+        post: operations["email_quote_crm_quotes__quote_id__send_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/crm/quotes/{quote_id}/cancel": {
         parameters: {
             query?: never;
@@ -2270,6 +2309,26 @@ export interface paths {
         put?: never;
         /** Decline */
         post: operations["decline_public_quotes__token__decline_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/quotes/{token}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Pdf
+         * @description The quote as a PDF; like the page, reading it changes nothing.
+         */
+        get: operations["pdf_public_quotes__token__pdf_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -14007,6 +14066,19 @@ export interface components {
              */
             reason: string;
         };
+        /**
+         * QuoteEmail
+         * @description No address: the deal's contact's email.
+         */
+        QuoteEmail: {
+            /** To */
+            to?: string | null;
+        };
+        /** QuoteEmailed */
+        QuoteEmailed: {
+            /** To */
+            to: string;
+        };
         /** QuoteInvoiced */
         QuoteInvoiced: {
             /** Invoice Id */
@@ -14099,6 +14171,8 @@ export interface components {
             decline_reason: string | null;
             /** Invoice Id */
             invoice_id: string | null;
+            /** Last Emailed At */
+            last_emailed_at?: string | null;
         };
         /**
          * QuotePublic
@@ -21207,6 +21281,76 @@ export interface operations {
             };
         };
     };
+    quote_pdf_crm_quotes__quote_id__pdf_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quote_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    email_quote_crm_quotes__quote_id__send_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quote_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuoteEmail"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteEmailed"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     cancel_quote_crm_quotes__quote_id__cancel_post: {
         parameters: {
             query?: never;
@@ -21557,6 +21701,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QuotePublic"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pdf_public_quotes__token__pdf_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

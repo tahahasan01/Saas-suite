@@ -145,6 +145,7 @@ class QuoteOut(QuoteTotals):
     declined_at: datetime | None
     decline_reason: str | None
     invoice_id: str | None
+    last_emailed_at: datetime | None = None
 
 
 QuotePublicStatus = Literal["open", "accepted", "declined", "expired"]
@@ -488,3 +489,13 @@ class CustomFieldOut(BaseModel):
     options: list[str]
     position: int
     archived: bool
+
+
+class QuoteEmail(BaseModel):
+    """No address: the deal's contact's email."""
+    model_config = ConfigDict(extra="forbid")
+    to: str | None = Field(default=None, max_length=200)
+
+
+class QuoteEmailed(BaseModel):
+    to: str

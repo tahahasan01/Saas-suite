@@ -46,7 +46,8 @@ WIRED: dict[str, tuple[str, ...]] = {
     "crm.lead.read": ("GET /crm/leads", "GET /crm/leads/{lead_id}", "GET /crm/leads/{lead_id}/timeline",
                       "GET /crm/leads/{lead_id}/contact", "GET /activities",
                       # wave D: deal lines and quotes check the lead (leads.ensure_in_scope)
-                      "GET /crm/leads/{lead_id}/lines", "GET /crm/leads/{lead_id}/quotes", "GET /crm/quotes/{quote_id}"),
+                      "GET /crm/leads/{lead_id}/lines", "GET /crm/leads/{lead_id}/quotes", "GET /crm/quotes/{quote_id}",
+                      "GET /crm/quotes/{quote_id}/pdf"),
     "crm.lead.update": ("PATCH /crm/leads/{lead_id}", "POST /crm/leads/{lead_id}/won",
                         "POST /crm/leads/{lead_id}/lost", "POST /crm/leads/{lead_id}/restore",
                         "POST /crm/leads/{lead_id}/notes", "POST /contacts/review/{item_id}/dismiss",
