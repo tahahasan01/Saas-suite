@@ -29,10 +29,10 @@ from zoneinfo import ZoneInfo
 import asyncpg
 from fastapi import HTTPException, status
 
-from . import db, email
+from . import audit, db, email
 from .config import settings
 from .crm_selling_models import SegmentFilter, SegmentPreview, PersonOut
-from .phone import normalize_email, normalize_phone
+from .phone import normalize_email
 
 PKT = ZoneInfo("Asia/Karachi")
 QUIET_FROM = time(21, 0)
@@ -234,26 +234,84 @@ async def send(conn: asyncpg.Connection, tenant_id: str, user_id: str, campaign_
 
 
 
-# ── A web form's tick, when staff qualify the lead (0129) ───────────────────
-async def carry_lead_consent(conn: asyncpg.Connection, tenant_id: Any, lead: asyncpg.Record,
-                             contact_id: Any) -> None:
-    """Turn a lead's marketing tick into the contact's opt-ins: email when
-    the visitor gave an email, SMS and WhatsApp for a phone, and only where
-    that address is the contact's own (anyone can type anyone's address into
-    a form). An existing choice, above all an opt-out, is never overridden."""
-    if lead["consent_at"] is None:
-        return
-    c = await conn.fetchrow("select email_normalized, phone_e164 from contacts where id = $1", contact_id)
-    if c is None:
-        return
-    channels: list[str] = []
-    if lead["email"] and normalize_email(lead["email"]) == c["email_normalized"]:
-        channels.append("email")
-    if lead["phone"] and normalize_phone(lead["phone"]) == c["phone_e164"]:
-        channels += ["sms", "whatsapp"]
-    source = f"Web form tick on {lead['consent_at']:%d %b %Y}: {lead['consent_text'] or ''}"[:120]
-    for channel in channels:
-        await conn.execute(
-            """insert into contact_consents (tenant_id, contact_id, channel, status, source)
-               values ($1, $2, $3, 'opted_in', $4) on conflict (contact_id, channel) do nothing""",
-            tenant_id, contact_id, channel, source)
+# ── A web form's tick: confirmed by the address owner (double opt-in) ──────
+# Security review of c6b3ca3: anyone can type a stranger's email or phone into
+# a public form, so a tick never opts anyone in by itself. When staff qualify
+# the lead, the contact is emailed a confirmation link at their own address;
+# only clicking it records the opt-in. Phone channels wait for a phone
+# confirmation (Phase 4 senders).
+CONSENT_TTL_SECONDS = 14 * 24 * 3600
+
+
+def _now_s() -> int:
+    return int(datetime.now(timezone.utc).timestamp())
+
+
+def _consent_key() -> bytes:
+    seed = settings.bos_data_keys + settings.database_url
+    return hashlib.sha256(b"bos-consent-confirm:" + seed.encode()).digest()
+
+
+def _consent_sig(contact_id: str, exp: int, address: str) -> str:
+    msg = f"{contact_id}.{exp}.{address.lower()}".encode()
+    return hmac.new(_consent_key(), msg, hashlib.sha256).hexdigest()[:32]
+
+
+def consent_token(contact_id: Any, address: str) -> str:
+    """'<contact>.<expiry>.<signature>', the signature bound to the address
+    as it is now, so a link stops working if the contact's email changes."""
+    exp = _now_s() + CONSENT_TTL_SECONDS
+    return f"{contact_id}.{exp}.{_consent_sig(str(contact_id), exp, address)}"
+
+
+async def resolve_consent(token: str) -> asyncpg.Record:
+    """The contact (and its business) a confirmation link is for, or 404:
+    forged, expired, or for an address the contact no longer has."""
+    parts = token.split(".")
+    if len(parts) != 3 or not parts[1].isdigit():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "This link isn't valid.")
+    try:
+        contact_id = UUID(parts[0])
+    except ValueError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "This link isn't valid.") from None
+    if int(parts[1]) < _now_s():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "This link has expired.")
+    async with db.owner_conn() as oc:
+        row: asyncpg.Record | None = await oc.fetchrow(
+            """select id, tenant_id, email_normalized from contacts
+                where id = $1 and archived_at is null and merged_into_id is null""", contact_id)
+    if row is None or not row["email_normalized"] or not hmac.compare_digest(
+            parts[2], _consent_sig(str(contact_id), int(parts[1]), row["email_normalized"])):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "This link isn't valid.")
+    return row
+
+
+async def ask_to_confirm(conn: asyncpg.Connection, tenant_id: Any, lead: asyncpg.Record, contact_id: Any) -> bool:
+    """After qualifying a lead that ticked the form's box: email the contact
+    a confirmation link, if the email the visitor typed is the contact's own
+    and they haven't opted out. Opts nobody in. True when one was queued."""
+    if lead["consent_at"] is None or not lead["email"]:
+        return False
+    c = await conn.fetchrow("select email_normalized from contacts where id = $1", contact_id)
+    if c is None or not c["email_normalized"] or normalize_email(lead["email"]) != c["email_normalized"]:
+        return False
+    if await conn.fetchval(
+            "select 1 from contact_consents where contact_id = $1 and channel = 'email'", contact_id):
+        return False      # already decided, either way: an opt-out stays, an opt-in needs nothing
+    await email.queue_consent_confirm(conn, str(tenant_id), c["email_normalized"], str(contact_id))
+    await audit.track(conn, entity_type="contact", entity_id=str(contact_id), contact_id=str(contact_id),
+                      kind="system", body="Asked to confirm marketing by email (they ticked it on a web form)")
+    return True
+
+
+async def confirm(conn: asyncpg.Connection, tenant_id: Any, contact_id: Any) -> bool:
+    """The address owner clicked yes. An opt-out on record stays (returns False)."""
+    cur = await conn.fetchval(
+        "select status from contact_consents where contact_id = $1 and channel = 'email'", contact_id)
+    if cur == "opted_out":
+        return False
+    await conn.execute(
+        """insert into contact_consents (tenant_id, contact_id, channel, status, source)
+           values ($1, $2, 'email', 'opted_in', 'Confirmed by the email link (double opt-in)')
+           on conflict (contact_id, channel) do nothing""", tenant_id, contact_id)
+    return True

@@ -685,7 +685,7 @@ async def qualify_lead(lead_id: str, body: QualifyRequest,
             contact_id = row["id"]
             note = "Qualified: contact created"
         await contacts_backfill.link_lead(conn, lead_id, contact_id, body=note)
-        await campaigns.carry_lead_consent(conn, auth.tenant_id, lead, contact_id)
+        await campaigns.ask_to_confirm(conn, auth.tenant_id, lead, contact_id)
         await conn.execute(
             """update contact_review_items set status = 'resolved', resolved_contact_id = $2,
                       resolved_by = $3, resolved_at = now()

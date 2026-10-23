@@ -10506,6 +10506,89 @@
         }
       }
     },
+    "/public/consent/{token}": {
+      "get": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Consent Page",
+        "description": "Shows who is asking; changes nothing (mail scanners open links).",
+        "operationId": "consent_page_public_consent__token__get",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentConfirmPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Consent Confirm",
+        "operationId": "consent_confirm_public_consent__token__post",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentConfirmPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/custom-fields": {
       "get": {
         "tags": [
@@ -37819,6 +37902,25 @@
         },
         "type": "object",
         "title": "ComponentUpdate"
+      },
+      "ConsentConfirmPage": {
+        "properties": {
+          "business_name": {
+            "type": "string",
+            "title": "Business Name"
+          },
+          "done": {
+            "type": "boolean",
+            "title": "Done"
+          }
+        },
+        "type": "object",
+        "required": [
+          "business_name",
+          "done"
+        ],
+        "title": "ConsentConfirmPage",
+        "description": "What the confirmation page shows: who is asking, and whether it's done."
       },
       "ConsentIn": {
         "properties": {

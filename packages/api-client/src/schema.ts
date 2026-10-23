@@ -2596,6 +2596,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/public/consent/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Consent Page
+         * @description Shows who is asking; changes nothing (mail scanners open links).
+         */
+        get: operations["consent_page_public_consent__token__get"];
+        put?: never;
+        /** Consent Confirm */
+        post: operations["consent_confirm_public_consent__token__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/custom-fields": {
         parameters: {
             query?: never;
@@ -9577,6 +9598,16 @@ export interface components {
             sort?: number | null;
             /** Active */
             active?: boolean | null;
+        };
+        /**
+         * ConsentConfirmPage
+         * @description What the confirmation page shows: who is asking, and whether it's done.
+         */
+        ConsentConfirmPage: {
+            /** Business Name */
+            business_name: string;
+            /** Done */
+            done: boolean;
         };
         /** ConsentIn */
         ConsentIn: {
@@ -23380,6 +23411,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UnsubscribePage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    consent_page_public_consent__token__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsentConfirmPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    consent_confirm_public_consent__token__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsentConfirmPage"];
                 };
             };
             /** @description Validation Error */

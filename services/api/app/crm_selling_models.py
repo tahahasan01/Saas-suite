@@ -535,3 +535,10 @@ class AssignmentRuleOut(BaseModel):
     source: str | None
     city: str | None
     user_ids: list[str]
+
+
+
+class ConsentConfirmPage(BaseModel):
+    """What the confirmation page shows: who is asking, and whether it's done."""
+    business_name: str
+    done: bool
