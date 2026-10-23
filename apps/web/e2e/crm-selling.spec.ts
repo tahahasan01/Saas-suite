@@ -200,3 +200,26 @@ test.describe("campaigns", () => {
     await expect(camps.getByRole("listitem").filter({ hasText: `Eid ${id}` })).toContainText("1 sent, 1 left out");
   });
 });
+
+test.describe("custom fields", () => {
+  test("an admin adds a lead field, a rep fills it in, and the lead shows it", async ({ page, request }) => {
+    const label = `Plot size ${uid()}`;
+    await page.goto("/crm/settings");
+    const card = page.getByRole("heading", { name: "Custom fields" }).locator("../..");
+    await card.getByLabel("Field name").fill(label);
+    await card.getByLabel("Kind").selectOption("number");
+    await card.getByRole("button", { name: "Add field" }).click();
+    await expect(page.getByText("Field added")).toBeVisible();
+    await expect(card.getByRole("button", { name: `Retire ${label}` })).toBeVisible();
+
+    const lead = await freshLead(request);
+    await page.goto("/crm");
+    await page.getByRole("main").getByRole("button", { name: `Open ${lead.name}` }).click();
+    const drawer = page.getByRole("dialog", { name: lead.name });
+    await drawer.getByRole("button", { name: "Edit details" }).click();
+    await drawer.getByLabel(label).fill("12");
+    await drawer.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(page.getByText("Changes saved")).toBeVisible();
+    await expect(drawer.getByText(label, { exact: true }).locator("..")).toContainText("12");
+  });
+});

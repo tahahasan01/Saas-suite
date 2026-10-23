@@ -515,6 +515,8 @@ export interface Lead {
   tags: Tag[];
   /** Products on the deal (wave D): with lines, value_minor is their pre-tax total. */
   line_count: number;
+  /** Custom field values by key (wave D, C26). */
+  custom?: Record<string, unknown>;
 }
 
 export interface FulfillmentField {
@@ -1077,6 +1079,8 @@ export interface Contact {
   merged_into_id: string | null;
   created_at: string;
   updated_at: string;
+  /** Custom field values by key (wave D, C26). */
+  custom?: Record<string, unknown>;
 }
 
 export interface ContactBrief {

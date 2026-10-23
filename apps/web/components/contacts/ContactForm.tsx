@@ -7,6 +7,7 @@ import { api, ApiError } from "@/lib/api";
 import { useAction } from "@/lib/useAction";
 import { Dialog } from "@/components/Dialog";
 import { Button, cx, Field, Input, Select, Textarea } from "@/components/ui";
+import { CustomFieldInputs, customPatch, useCustomFields, type CustomValues } from "@/components/CustomFields";
 import { ROLE_LABELS, TAG_DOT, useContactLabels } from "./labels";
 
 export function TagChip({ tag }: { tag: Pick<Tag, "name" | "color"> }) {
@@ -66,10 +67,13 @@ export function ContactForm({ open, contact, onClose, onSaved }: {
   const [companies, setCompanies] = useState<Contact[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [dups, setDups] = useState<ContactDuplicate[] | null>(null);
+  const fields = useCustomFields("contact");
+  const [custom, setCustom] = useState<CustomValues>(contact?.custom ?? {});
 
   useEffect(() => {
     if (!open) return;
     setF(initial(contact));
+    setCustom(contact?.custom ?? {});
     setDups(null);
     // Pickers are conveniences: if they fail the form still works with free text.
     api<Contact[]>("/contacts?kind=company&limit=200").then(setCompanies).catch(() => setCompanies([]));
@@ -82,6 +86,7 @@ export function ContactForm({ open, contact, onClose, onSaved }: {
       ntn: f.ntn, strn: f.strn, roles: f.roles, tag_ids: f.tag_ids, notes: f.notes,
       company_id: f.kind === "person" && f.company_id ? f.company_id : null,
       company_name: f.kind === "person" && !f.company_id ? f.company_name : "",
+      custom: customPatch(contact?.custom ?? {}, custom),
     };
     try {
       return contact
@@ -202,6 +207,7 @@ export function ContactForm({ open, contact, onClose, onSaved }: {
             </div>
           </fieldset>
         )}
+        <CustomFieldInputs fields={fields} values={custom} onChange={setCustom} />
         <Field label="Notes">
           <Textarea rows={2} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} />
         </Field>

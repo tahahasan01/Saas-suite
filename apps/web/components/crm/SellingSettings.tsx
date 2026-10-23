@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { errorText, useAction } from "@/lib/useAction";
 import { useToast } from "@/components/Toast";
 import { Badge, Button, Card, ErrorState, Field, Input, LoadingRows, Select, Switch, Textarea } from "@/components/ui";
+import { CustomFieldsEditor } from "@/components/CustomFields";
 
 type WebForm = Schema<"WebFormOut">;
 type Member = Schema<"PoolMemberOut">;
@@ -21,6 +22,7 @@ const FIELD_LABELS: Record<WebForm["fields"][number], string> = {
 export function SellingSettings() {
   return (
     <div className="space-y-6">
+      <CustomFieldsEditor />
       <WebFormsEditor />
       <div className="grid gap-6 lg:grid-cols-2">
         <LeadPoolEditor />
