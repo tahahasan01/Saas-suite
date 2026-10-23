@@ -14,7 +14,7 @@ from uuid import UUID
 import asyncpg
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
 
-from .. import (audit, cashiers, catalog, csv_io, db, fbr, fbr_submit, field_guards, khata, pins, pos_sessions, pricing, rbac,
+from .. import (approvals, audit, cashiers, catalog, csv_io, db, fbr, fbr_submit, field_guards, khata, pos_sessions, pricing, rbac,
                refs, sequences)
 from ..deps import AuthContext
 from ..models import (
@@ -328,22 +328,8 @@ async def _approve_lines(conn, auth: AuthContext, body: SaleCreate, lines) -> st
             needs.add("pos.price.override")
     if not needs:
         return None
-    held = await rbac.effective_permissions(conn, auth.tenant_id, auth.role_id, auth.user_id)
-    if needs <= set(held):
-        return auth.user_id
-    if body.approver_id is None or not body.approver_pin:
-        raise HTTPException(status.HTTP_403_FORBIDDEN,
-                            "A discount or price change needs a manager to approve with their PIN")
-    mgr = await conn.fetchrow("select id, role_id, pos_pin_hash from users where id = $1 and status = 'active'",
-                              body.approver_id)
-    mgr_held = await rbac.effective_permissions(conn, auth.tenant_id, mgr["role_id"], str(mgr["id"])) if mgr else {}
-    if mgr is None or not needs <= set(mgr_held):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "That person can't approve this")
-    key = f"user:{mgr['id']}"
-    if await pins.daily_off(key) or await pins.check_approval(key, f"user:{auth.user_id}", mgr["pos_pin_hash"],
-                                                              body.approver_pin):
-        raise pins.switched_off()
-    return str(mgr["id"])
+    return await approvals.approve(conn, auth, needs, body.approver_id, body.approver_pin,
+                                   ask="A discount or price change needs a manager to approve with their PIN")
 
 
 async def _amount_due(conn, total_minor: int, payment_method: str, register_id=None) -> tuple[int, int]:
