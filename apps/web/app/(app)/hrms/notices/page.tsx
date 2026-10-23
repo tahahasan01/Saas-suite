@@ -35,6 +35,10 @@ export default function NoticesPage() {
   async function change(n: Notice, body: object) {
     if ((await patch.run(n, body)) !== undefined) load();
   }
+  const remind = useAction(
+    (n: Notice) => api<{ reminded: number }>(`/hrms/notices/${n.id}/remind`, { method: "POST" }),
+    { success: (r) => `Reminded ${(r as { reminded: number }).reminded} person(s)`, failure: "Couldn't send reminders" },
+  );
 
   return (
     <div className="space-y-4">
@@ -69,8 +73,15 @@ export default function NoticesPage() {
                 </div>
                 {n.body && <p className="whitespace-pre-line text-sm">{n.body}</p>}
                 {n.file_id && <a href={fileUrl(n.file_id)} className="text-sm text-brand hover:underline">Open the attachment</a>}
+                {n.requires_ack && (n.reminders_sent ?? 0) > 0 && (
+                  <p className="text-xs text-fg-muted">Reminded {n.reminders_sent} time(s), last {formatDateTime(n.last_reminded_at!)}. Weekly reminders stop after 4.</p>
+                )}
                 <Can perm="hrms.notice.manage">
                   <div className="flex justify-end gap-2">
+                    {n.requires_ack && !n.archived_at && n.acknowledged < n.audience_size && (
+                      <Button size="sm" variant="subtle" disabled={remind.busy} aria-label={`Remind about ${n.title}`}
+                              onClick={async () => { if ((await remind.run(n)) !== undefined) load(); }}>Remind</Button>
+                    )}
                     <Button size="sm" variant="ghost" disabled={patch.busy} onClick={() => void change(n, { pinned: !n.pinned })}>
                       {n.pinned ? "Unpin" : "Pin"}
                     </Button>

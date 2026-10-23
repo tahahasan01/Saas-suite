@@ -17,10 +17,10 @@ from uuid import UUID
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from .. import attendance, db, payroll_data, rbac
+from .. import attendance, db, holidays, payroll_data, rbac
 from .. import payroll_engine as eng
 from ..deps import AuthContext, current_auth, current_employee
-from ..models import OvertimeClaimIn, OvertimeDecision, OvertimeOut, OvertimeStatus
+from ..models import OvertimeClaimIn, OvertimeDecision, OvertimeOut, OvertimeRates, OvertimeRatesOut, OvertimeStatus
 from ..rbac import perm
 
 router = APIRouter(prefix="/hrms", tags=["hrms"])
@@ -37,6 +37,7 @@ def _out(r: asyncpg.Record, *, show_pay: bool) -> OvertimeOut:
     return OvertimeOut(
         id=str(r["id"]), employee_id=str(r["employee_id"]), employee_name=r["employee_name"], work_date=r["work_date"],
         minutes=r["minutes"], reason=r["reason"], status=r["status"], rate_multiplier=float(r["rate_multiplier"]),
+        day_type=r["day_type"],
         amount_minor=r["amount_minor"] if show_pay else None, decided_at=r["decided_at"],
         decision_note=r["decision_note"], created_at=r["created_at"])
 
@@ -76,6 +77,42 @@ async def _pay_month(conn: asyncpg.Connection, work_date: date) -> date:
         return first
     today: date = await conn.fetchval("select current_date")
     return today.replace(day=1)
+
+
+# ── Rates by kind of day (0109) ─────────────────────────────────────────────
+async def _rates(conn: asyncpg.Connection) -> OvertimeRatesOut:
+    r = await conn.fetchrow("select * from hrms_overtime_rates")
+    if r is None:
+        return OvertimeRatesOut(normal=2.0, rest_day=2.0, holiday=2.0, verified=False)
+    return OvertimeRatesOut(normal=float(r["normal"]), rest_day=float(r["rest_day"]), holiday=float(r["holiday"]),
+                            verified=r["verified"])
+
+
+async def _day_type(conn: asyncpg.Connection, employee_id: str, day: date) -> str:
+    """Their holiday (federal, company, their province) beats the weekly day off."""
+    if day in await holidays.for_employee(conn, employee_id, day, day):
+        return "holiday"
+    off = await conn.fetchval("select weekly_off_days from tenants where id = current_setting('app.tenant_id')::uuid")
+    return "rest_day" if day.isoweekday() % 7 in set(off or [0]) else "normal"
+
+
+@router.get("/overtime-rates", response_model=OvertimeRatesOut)
+async def get_rates(auth: AuthContext = Depends(perm("hrms.attendance.read"))) -> OvertimeRatesOut:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        return await _rates(conn)
+
+
+@router.put("/overtime-rates", response_model=OvertimeRatesOut)
+async def put_rates(body: OvertimeRates, auth: AuthContext = Depends(perm("payroll.settings.manage"))) -> OvertimeRatesOut:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        await conn.execute(
+            """insert into hrms_overtime_rates (tenant_id, normal, rest_day, holiday, updated_by)
+               values ($1, $2, $3, $4, $5)
+               on conflict (tenant_id) do update set normal = excluded.normal, rest_day = excluded.rest_day,
+                  holiday = excluded.holiday, updated_by = excluded.updated_by, updated_at = now()""",
+            auth.tenant_id, Decimal(str(body.normal)), Decimal(str(body.rest_day)), Decimal(str(body.holiday)),
+            auth.user_id)
+        return await _rates(conn)
 
 
 # ── Manager side ────────────────────────────────────────────────────────────
@@ -166,11 +203,14 @@ async def claim(body: OvertimeClaimIn, auth: AuthContext = Depends(current_auth)
         if minutes > worked:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
                                 f"Attendance shows {worked} minutes of overtime that day")
+        day_type = await _day_type(conn, employee_id, body.work_date)
+        rate = getattr(await _rates(conn), day_type)
         try:
             cid = await conn.fetchval(
-                """insert into hrms_overtime_claims (tenant_id, employee_id, work_date, minutes, reason)
-                   values ($1, $2, $3, $4, $5) returning id""",
-                auth.tenant_id, employee_id, body.work_date, minutes, body.reason)
+                """insert into hrms_overtime_claims (tenant_id, employee_id, work_date, minutes, reason, day_type,
+                                                     rate_multiplier)
+                   values ($1, $2, $3, $4, $5, $6, $7) returning id""",
+                auth.tenant_id, employee_id, body.work_date, minutes, body.reason, day_type, Decimal(str(rate)))
         except asyncpg.UniqueViolationError:
             raise HTTPException(status.HTTP_409_CONFLICT, "You've already claimed overtime for that day")
         return _out(await conn.fetchrow(_SELECT + " where c.id = $1", cid), show_pay=True)

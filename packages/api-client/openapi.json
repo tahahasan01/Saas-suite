@@ -17082,6 +17082,65 @@
         }
       }
     },
+    "/hrms/notices/{notice_id}/remind": {
+      "post": {
+        "tags": [
+          "hrms"
+        ],
+        "summary": "Remind Now",
+        "operationId": "remind_now_hrms_notices__notice_id__remind_post",
+        "parameters": [
+          {
+            "name": "notice_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Notice Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoticeRemindOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/hrms/notices/{notice_id}/acknowledgements": {
       "get": {
         "tags": [
@@ -17242,6 +17301,112 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/NoticeOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hrms/overtime-rates": {
+      "get": {
+        "tags": [
+          "hrms"
+        ],
+        "summary": "Get Rates",
+        "operationId": "get_rates_hrms_overtime_rates_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OvertimeRatesOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "hrms"
+        ],
+        "summary": "Put Rates",
+        "operationId": "put_rates_hrms_overtime_rates_put",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OvertimeRates"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OvertimeRatesOut"
                 }
               }
             }
@@ -46272,6 +46437,23 @@
               }
             ],
             "title": "Acknowledged At"
+          },
+          "last_reminded_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Reminded At"
+          },
+          "reminders_sent": {
+            "type": "integer",
+            "title": "Reminders Sent",
+            "default": 0
           }
         },
         "type": "object",
@@ -46292,6 +46474,19 @@
           "acknowledged"
         ],
         "title": "NoticeOut"
+      },
+      "NoticeRemindOut": {
+        "properties": {
+          "reminded": {
+            "type": "integer",
+            "title": "Reminded"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reminded"
+        ],
+        "title": "NoticeRemindOut"
       },
       "NoticeUpdate": {
         "properties": {
@@ -46931,6 +47126,16 @@
             "type": "number",
             "title": "Rate Multiplier"
           },
+          "day_type": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "rest_day",
+              "holiday"
+            ],
+            "title": "Day Type",
+            "default": "normal"
+          },
           "amount_minor": {
             "anyOf": [
               {
@@ -46980,6 +47185,69 @@
           "created_at"
         ],
         "title": "OvertimeOut"
+      },
+      "OvertimeRates": {
+        "properties": {
+          "normal": {
+            "type": "number",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Normal"
+          },
+          "rest_day": {
+            "type": "number",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Rest Day"
+          },
+          "holiday": {
+            "type": "number",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Holiday"
+          }
+        },
+        "type": "object",
+        "required": [
+          "normal",
+          "rest_day",
+          "holiday"
+        ],
+        "title": "OvertimeRates"
+      },
+      "OvertimeRatesOut": {
+        "properties": {
+          "normal": {
+            "type": "number",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Normal"
+          },
+          "rest_day": {
+            "type": "number",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Rest Day"
+          },
+          "holiday": {
+            "type": "number",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Holiday"
+          },
+          "verified": {
+            "type": "boolean",
+            "title": "Verified"
+          }
+        },
+        "type": "object",
+        "required": [
+          "normal",
+          "rest_day",
+          "holiday",
+          "verified"
+        ],
+        "title": "OvertimeRatesOut"
       },
       "PasswordChange": {
         "properties": {

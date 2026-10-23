@@ -4088,6 +4088,23 @@ export interface paths {
         patch: operations["update_notice_hrms_notices__notice_id__patch"];
         trace?: never;
     };
+    "/hrms/notices/{notice_id}/remind": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Remind Now */
+        post: operations["remind_now_hrms_notices__notice_id__remind_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/hrms/notices/{notice_id}/acknowledgements": {
         parameters: {
             query?: never;
@@ -4139,6 +4156,24 @@ export interface paths {
          * @description Once: a second call returns the first acknowledgement unchanged.
          */
         post: operations["acknowledge_me_notices__notice_id__acknowledge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hrms/overtime-rates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Rates */
+        get: operations["get_rates_hrms_overtime_rates_get"];
+        /** Put Rates */
+        put: operations["put_rates_hrms_overtime_rates_put"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -12734,6 +12769,18 @@ export interface components {
             acknowledged: number;
             /** Acknowledged At */
             acknowledged_at?: string | null;
+            /** Last Reminded At */
+            last_reminded_at?: string | null;
+            /**
+             * Reminders Sent
+             * @default 0
+             */
+            reminders_sent: number;
+        };
+        /** NoticeRemindOut */
+        NoticeRemindOut: {
+            /** Reminded */
+            reminded: number;
         };
         /** NoticeUpdate */
         NoticeUpdate: {
@@ -12984,6 +13031,12 @@ export interface components {
             status: "pending" | "approved" | "rejected";
             /** Rate Multiplier */
             rate_multiplier: number;
+            /**
+             * Day Type
+             * @default normal
+             * @enum {string}
+             */
+            day_type: "normal" | "rest_day" | "holiday";
             /** Amount Minor */
             amount_minor: number | null;
             /** Decided At */
@@ -12995,6 +13048,26 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** OvertimeRates */
+        OvertimeRates: {
+            /** Normal */
+            normal: number;
+            /** Rest Day */
+            rest_day: number;
+            /** Holiday */
+            holiday: number;
+        };
+        /** OvertimeRatesOut */
+        OvertimeRatesOut: {
+            /** Normal */
+            normal: number;
+            /** Rest Day */
+            rest_day: number;
+            /** Holiday */
+            holiday: number;
+            /** Verified */
+            verified: boolean;
         };
         /** PasswordChange */
         PasswordChange: {
@@ -25893,6 +25966,39 @@ export interface operations {
             };
         };
     };
+    remind_now_hrms_notices__notice_id__remind_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                notice_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoticeRemindOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     acknowledgements_hrms_notices__notice_id__acknowledgements_get: {
         parameters: {
             query?: never;
@@ -25977,6 +26083,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NoticeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_rates_hrms_overtime_rates_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OvertimeRatesOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_rates_hrms_overtime_rates_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OvertimeRates"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OvertimeRatesOut"];
                 };
             };
             /** @description Validation Error */

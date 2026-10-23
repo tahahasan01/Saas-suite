@@ -81,6 +81,7 @@ ENUM_COLUMNS = {
     ("hrms_assets", "condition"): models.ASSET_CONDITIONS,
     ("hrms_assets", "status"): models.ASSET_STATUSES,
     ("hrms_asset_assignments", "return_condition"): models.ASSET_CONDITIONS,
+    ("hrms_overtime_claims", "day_type"): models.OVERTIME_DAY_TYPES,
     # the touch tile screen (wave B, 0090)
     ("pos_categories", "color"): models.TILE_COLORS,
     ("pos_products", "color"): models.TILE_COLORS,
