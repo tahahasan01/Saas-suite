@@ -7445,6 +7445,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reports/provident-fund": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Provident Fund
+         * @description What one approved run paid into each member's fund, and each fund
+         *     now. A fund is pay: masked and audited like the payroll report.
+         */
+        get: operations["provident_fund_reports_provident_fund_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/restaurant/floors": {
         parameters: {
             query?: never;
@@ -14285,6 +14306,16 @@ export interface components {
             employer_minor: number;
             /** Vested Employer Minor */
             vested_employer_minor: number;
+            /**
+             * Fund On
+             * @default false
+             */
+            fund_on: boolean;
+            /**
+             * Vesting Months
+             * @default 0
+             */
+            vesting_months: number;
             /** History */
             history?: components["schemas"]["PfHistoryRow"][];
         };
@@ -34889,6 +34920,40 @@ export interface operations {
         };
     };
     payroll_reports_payroll_get: {
+        parameters: {
+            query: {
+                run_id: string;
+                format?: "json" | "csv";
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    provident_fund_reports_provident_fund_get: {
         parameters: {
             query: {
                 run_id: string;

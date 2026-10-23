@@ -15,6 +15,7 @@ import { useConfirm } from "@/components/Confirm";
 import { ExpiryBadge } from "@/components/hrms/ExpiryBadge";
 import { PayrollDetailsCard } from "@/components/hrms/PayrollDetailsCard";
 import { SalaryCard } from "@/components/hrms/SalaryCard";
+import { ProvidentFundCard } from "@/components/hrms/ProvidentFund";
 import { HeldAssetsCard } from "@/components/hrms/HeldAssetsCard";
 import { BoardingCard } from "@/components/hrms/BoardingCard";
 import { EncashButton } from "@/components/hrms/CompOff";
@@ -66,6 +67,7 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
           <Balances employeeId={p.id} />
           <Can perm="hrms.employee.update"><KioskPin p={p} onSaved={load} /></Can>
           <Can perm="payroll.salary.read"><SalaryCard employeeId={p.id} /></Can>
+          <Can perm="payroll.salary.read"><ProvidentFundCard employeeId={p.id} /></Can>
           <Can perm="hrms.asset.read"><HeldAssetsCard employeeId={p.id} /></Can>
           <Can perm="hrms.boarding.read"><BoardingCard employeeId={p.id} exitDate={p.exit_date} onChanged={load} /></Can>
           <Can perm="hrms.letter.read"><LettersCard employeeId={p.id} /></Can>

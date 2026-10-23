@@ -466,4 +466,6 @@ class PfBalance(BaseModel):
     employee_minor: int
     employer_minor: int
     vested_employer_minor: int
+    fund_on: bool = False                  # the company runs a fund (Pay policies)
+    vesting_months: int = 0
     history: list[PfHistoryRow] = Field(default_factory=list)

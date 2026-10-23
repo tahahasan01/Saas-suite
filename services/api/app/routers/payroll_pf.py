@@ -25,9 +25,11 @@ async def _balance(conn: asyncpg.Connection, employee_id: UUID | str, *, with_hi
     e = await conn.fetchrow("select pf_member, pf_joined_on from hrms_employees where id = $1", employee_id)
     b = await provident_fund.balance(conn, employee_id)
     rows = await provident_fund.history(conn, employee_id) if with_history else []
+    on = await provident_fund.rule(conn) is not None
     return PfBalance(employee_id=str(employee_id), member=e["pf_member"], joined_on=e["pf_joined_on"],
                      employee_minor=b.employee_minor, employer_minor=b.employer_minor,
-                     vested_employer_minor=b.vested_employer_minor,
+                     vested_employer_minor=b.vested_employer_minor, fund_on=on,
+                     vesting_months=await provident_fund.vesting_months(conn),
                      history=[PfHistoryRow(on=r["on"], what=r["what"], employee_minor=int(r["employee_minor"]),
                                            employer_minor=int(r["employer_minor"])) for r in rows])
 

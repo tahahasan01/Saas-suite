@@ -129,3 +129,46 @@ async def test_the_fund_needs_payroll_rights_and_is_per_company(client, tenant):
     finally:
         await mate.aclose()
     assert (await client.get(f"/payroll/pf/{uuid.uuid4()}")).status_code == 404
+
+
+# ── The report ──────────────────────────────────────────────────────────────
+async def test_the_fund_report_lists_a_runs_contributions_with_the_fund_to_date(client, tenant):
+    e = await _member(client)
+    await client.post(f"/payroll/pf/{e['id']}/entries", json={"kind": "opening", "employee_minor": 5_000_000,
+                                                              "employer_minor": 4_000_000})
+    run = await new_run(client, "2026-09")
+    await calc(client, run["id"])
+    assert (await client.get(f"/reports/provident-fund?run_id={run['id']}")).status_code == 409   # not final yet
+    assert (await client.post(f"/payroll/runs/{run['id']}/approve")).status_code == 200
+    r = await client.get(f"/reports/provident-fund?run_id={run['id']}")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    farah = next(x for x in body["rows"] if x["employee_id"] == e["id"])
+    assert (farah["employee_minor"], farah["employer_minor"], farah["total_minor"]) == (833_000, 833_000, 1_666_000)
+    assert farah["fund_minor"] == 5_000_000 + 4_000_000 + 1_666_000
+    assert body["total"]["total_minor"] >= 1_666_000 and body["masked"] is False
+    # Only members with fund lines are listed.
+    assert all(x["total_minor"] > 0 for x in body["rows"])
+    table = (await client.get(f"/reports/provident-fund?run_id={run['id']}&format=csv")).text
+    assert "Employee share (PKR)" in table and "8330.00" in table and table.strip().splitlines()[-1].startswith("Total")
+
+    # Someone who may export reports but not see pay gets the names only.
+    rid = await _role(client, [{"permission_key": "payroll.report.export", "scope": "all"}])
+    mate, _, _ = await _user_on(client, [rid])
+    try:
+        masked = (await mate.get(f"/reports/provident-fund?run_id={run['id']}")).json()
+        row = next(x for x in masked["rows"] if x["employee_id"] == e["id"])
+        assert masked["masked"] is True and row["employee_minor"] is None and row["fund_minor"] is None
+    finally:
+        await mate.aclose()
+    assert (await client.get(f"/reports/provident-fund?run_id={uuid.uuid4()}")).status_code == 404
+
+
+async def test_the_balance_says_whether_the_company_runs_a_fund(client, tenant):
+    """The profile card and My provident fund explain an empty fund."""
+    e = await _member(client)
+    bal = (await client.get(f"/payroll/pf/{e['id']}")).json()
+    assert bal["fund_on"] is True and bal["vesting_months"] == 24
+    await client.put("/payroll/policies", json={"encash_basis": "days_30", "gratuity_tax": "taxed",
+                                                **{**FUND, "pf_enabled": False}})
+    assert (await client.get(f"/payroll/pf/{e['id']}")).json()["fund_on"] is False

@@ -32,9 +32,19 @@ const PAYROLL: ReportDef = {
     { key: "employer_cost_minor", header: "Employer cost", money: true }],
 };
 
+// What each approved run paid into members' funds, and each fund now.
+const PROVIDENT_FUND: ReportDef = {
+  id: "provident-fund", label: "Provident fund", path: "/reports/provident-fund", noRange: true,
+  needs: PAYROLL.needs,
+  cols: [
+    { key: "name", header: "Employee" }, { key: "employee_minor", header: "Employee share", money: true },
+    { key: "employer_minor", header: "Company share", money: true }, { key: "total_minor", header: "Paid in", money: true },
+    { key: "fund_minor", header: "Fund to date", money: true }],
+};
+
 export default function HrmsReportsPage() {
   const can = useCan();
-  const reports = can("payroll.report.export") ? [ATTENDANCE, PAYROLL] : [ATTENDANCE];
+  const reports = can("payroll.report.export") ? [ATTENDANCE, PAYROLL, PROVIDENT_FUND] : [ATTENDANCE];
   return (
     <>
       {can("hrms.employee.read") && <HrAnalyticsSection />}
