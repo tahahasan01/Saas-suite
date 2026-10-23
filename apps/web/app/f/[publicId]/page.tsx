@@ -35,6 +35,7 @@ export default function WebFormPage({ params }: { params: Promise<{ publicId: st
   const [form, setForm] = useState<Form | null>(null);
   const [fatal, setFatal] = useState<string | null>(null);
   const [values, setValues] = useState<Values>({ name: "", website: "" });
+  const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -50,7 +51,7 @@ export default function WebFormPage({ params }: { params: Promise<{ publicId: st
       .map((k) => [k, new URLSearchParams(window.location.search).get(k) ?? ""]));
     try {
       const r = await call<{ message: string }>(path, {
-        method: "POST", body: JSON.stringify({ ticket: form.ticket, values: { ...values, ...utm } }),
+        method: "POST", body: JSON.stringify({ ticket: form.ticket, values: { ...values, ...utm, consent } }),
       });
       setDone(r.message);
     } catch (err) {
@@ -93,6 +94,12 @@ export default function WebFormPage({ params }: { params: Promise<{ publicId: st
                     <Field label="Message">
                       <Textarea rows={4} maxLength={2000} value={values.message ?? ""} onChange={set("message")} />
                     </Field>
+                  )}
+                  {form.consent_label && (
+                    <label className="flex items-start gap-2 text-sm">
+                      <input type="checkbox" className="mt-1" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
+                      <span>{form.consent_label}</span>
+                    </label>
                   )}
                   {/* Bots fill every field; people never see this one. */}
                   <div aria-hidden className="absolute -start-[9999px] h-px w-px overflow-hidden">

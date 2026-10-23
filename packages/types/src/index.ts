@@ -517,6 +517,9 @@ export interface Lead {
   line_count: number;
   /** Custom field values by key (wave D, C26). */
   custom?: Record<string, unknown>;
+  /** A marketing tick on a web form (0129): when, and the wording shown. */
+  consent_at?: string | null;
+  consent_text?: string | null;
 }
 
 export interface FulfillmentField {

@@ -104,6 +104,7 @@ test.describe("web forms", () => {
     await forms.getByLabel("Form name (for you)").fill(formName);
     await forms.getByLabel("Heading customers see").fill("Get a free survey");
     await forms.getByLabel("Source on the lead").fill("website");
+    await forms.getByLabel("Marketing tick (leave empty to not ask)").fill("Send me offers by email");
     await forms.getByRole("button", { name: "Save form" }).click();
     await expect(page.getByText("Form saved")).toBeVisible();
     await expect(forms.getByText(formName)).toBeVisible();
@@ -118,6 +119,7 @@ test.describe("web forms", () => {
     await vp.getByLabel("Your name").fill(visitor);
     await vp.getByLabel("Phone").fill(phone);
     await vp.getByLabel("Message").fill("Please call after 5pm");
+    await vp.getByRole("checkbox", { name: "Send me offers by email" }).check();
     // The server drops forms sent faster than a person could fill them (3 s).
     await vp.waitForTimeout(3_500);
     await vp.getByRole("button", { name: "Send" }).click();
@@ -129,6 +131,8 @@ test.describe("web forms", () => {
     expect(lead).toBeTruthy();
     expect(lead.source).toBe("website");
     expect(lead.phone).toBe(`+92${phone.slice(1)}`);
+    expect(lead.consent_at).toBeTruthy();
+    expect(lead.consent_text).toBe("Send me offers by email");
   });
 });
 

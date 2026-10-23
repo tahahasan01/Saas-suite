@@ -123,6 +123,9 @@ export function LeadDrawer({ leadId, name, stages, onMove, onClose, onChanged }:
                   <Info label="Email" value={lead.email || "—"} />
                   <Info label="Value" value={money(lead.value_minor, lead.currency)} />
                   <Info label="Source" value={lead.source} />
+                  {lead.consent_at && (
+                    <Info label="Marketing" value={`Ticked yes on the web form, ${formatDay(lead.consent_at.slice(0, 10))}`} />
+                  )}
                   <CustomFieldValues fields={leadFields} values={lead.custom ?? {}} />
                 </dl>
                 {mayEdit && (
