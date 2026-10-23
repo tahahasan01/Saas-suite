@@ -106,6 +106,8 @@ APP_USER: dict[str, set[str]] = {
     "pos_stock_levels":        {S, I, U},       # moved only by catalog.move() (0091)
     "stock_transfers":         {S, I, U},       # cancelled, never deleted (0092)
     "stock_transfer_lines":    {S, I, U},
+    "stock_counts":            {S, I, U},       # cancelled, never deleted (0093)
+    "stock_count_lines":       {S, I, U},       # a recount replaces the line
     "pay_advance_repayments":  {S, I},       # append-only (0107)
     "hrms_job_changes":      {S, I, U},       # applied or cancelled, never deleted (0106)
     "hrms_letter_templates":  {S, I, U},       # (0105)

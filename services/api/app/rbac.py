@@ -133,6 +133,8 @@ register("products", {
     # receiving shop confirms what arrived.
     "products.transfer.manage": ("pos", "admin"),
     "products.transfer.receive": ("pos", "write"),
+    # Stock counts (0093): anyone counting enters numbers; applying them is the adjust key.
+    "products.stock.count": ("pos", "write"),
 })
 register("purchasing", {
     "purchasing.po.read": ("pos", "read"),

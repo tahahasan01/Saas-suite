@@ -7371,6 +7371,96 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pos/counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Counts */
+        get: operations["list_counts_pos_counts_get"];
+        put?: never;
+        /** Open Count */
+        post: operations["open_count_pos_counts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/counts/{count_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Count */
+        get: operations["get_count_pos_counts__count_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/counts/{count_id}/lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Count Line
+         * @description What was found for one product; counting it again replaces the line
+         *     and takes a fresh snapshot.
+         */
+        put: operations["count_line_pos_counts__count_id__lines_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/counts/{count_id}/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Apply Count */
+        post: operations["apply_count_pos_counts__count_id__apply_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/counts/{count_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Count */
+        post: operations["cancel_count_pos_counts__count_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -9531,6 +9621,79 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** CountIn */
+        CountIn: {
+            /** Branch Id */
+            branch_id?: string | null;
+            /** Category Id */
+            category_id?: string | null;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /** CountLineIn */
+        CountLineIn: {
+            /**
+             * Product Id
+             * Format: uuid
+             */
+            product_id: string;
+            /** Counted Qty */
+            counted_qty: number;
+        };
+        /** CountLineOut */
+        CountLineOut: {
+            /** Product Id */
+            product_id: string;
+            /** Product Name */
+            product_name: string;
+            /** Unit */
+            unit: string;
+            /** System Qty */
+            system_qty: number;
+            /** Counted Qty */
+            counted_qty: number;
+            /** Difference */
+            difference: number;
+            /**
+             * Counted At
+             * Format: date-time
+             */
+            counted_at: string;
+        };
+        /** CountOut */
+        CountOut: {
+            /** Id */
+            id: string;
+            /** Branch Id */
+            branch_id: string;
+            /** Branch Name */
+            branch_name: string;
+            /** Category Id */
+            category_id: string | null;
+            /** Category Name */
+            category_name: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "applied" | "cancelled";
+            /** Note */
+            note: string;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /** Applied At */
+            applied_at: string | null;
+            /** Lines */
+            lines: components["schemas"]["CountLineOut"][];
+            /** To Count */
+            to_count: components["schemas"]["ToCount"][];
         };
         /**
          * CreditNoteIn
@@ -16165,6 +16328,15 @@ export interface components {
             items: components["schemas"]["TimelineEventOut"][];
             /** Next Cursor */
             next_cursor: string | null;
+        };
+        /** ToCount */
+        ToCount: {
+            /** Product Id */
+            product_id: string;
+            /** Product Name */
+            product_name: string;
+            /** Unit */
+            unit: string;
         };
         /** TransferIn */
         TransferIn: {
@@ -33620,6 +33792,208 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TransferOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_counts_pos_counts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    open_count_pos_counts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CountIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_count_pos_counts__count_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                count_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    count_line_pos_counts__count_id__lines_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                count_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CountLineIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    apply_count_pos_counts__count_id__apply_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                count_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_count_pos_counts__count_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                count_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountOut"];
                 };
             };
             /** @description Validation Error */

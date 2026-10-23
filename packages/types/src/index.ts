@@ -99,6 +99,7 @@ export const PERMISSION_KEYS = [
   // stock transfers (wave B, 0092)
   "products.transfer.manage",
   "products.transfer.receive",
+  "products.stock.count",
   // table service (wave B, 0089)
   "restaurant.order.read",
   "restaurant.setup.manage",

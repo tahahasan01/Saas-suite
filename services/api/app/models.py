@@ -2638,6 +2638,8 @@ StockMoveReason = Literal["opening", "sale", "return", "purchase", "adjustment",
 STOCK_MOVE_REASONS = list(get_args(StockMoveReason))
 TransferStatus = Literal["draft", "dispatched", "received", "cancelled"]
 TRANSFER_STATUSES = list(get_args(TransferStatus))
+CountStatus = Literal["open", "applied", "cancelled"]       # stock counts (0093)
+COUNT_STATUSES = list(get_args(CountStatus))
 # What a person may record by hand; the rest are written by the documents.
 AdjustReason = Literal["adjustment", "damage", "count"]
 

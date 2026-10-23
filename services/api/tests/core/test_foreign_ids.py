@@ -39,7 +39,7 @@ KIND_OF = {
     # org data (3A, p3-orgdata)
     "branch_id": "branch", "sequence_id": "sequence", "logo_file_id": "file",
     "from_branch_id": "branch", "to_branch_id": "branch",   # transfers (0092)
-    "transfer_id": "transfer",
+    "transfer_id": "transfer", "count_id": "stock_count",   # 0092, 0093
     "team_id": "team", "lead_user_id": "user",
     # HR org, attendance v2, holidays, leave v2 (3F)
     "dept_id": "department", "department_id": "department", "parent_id": "department",
@@ -262,6 +262,7 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
     return {
         "invoice_plan": vplan["id"], "invoice_run": vrun["id"],
         "transfer": transfer["id"], "transfer_line": transfer["lines"][0]["id"],
+        "stock_count": (await c.post("/pos/counts", json={})).json()["id"],
         "segment": segment["id"], "template": template["id"], "campaign": campaign["id"],
         "target": target["id"],
         "quote": quote["id"], "web_form": web_form["id"],

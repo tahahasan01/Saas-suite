@@ -63,6 +63,7 @@ from .routers import (  # org data (3A, p3-orgdata)
     reports,
     restaurant_setup,
     stock_transfers,
+    stock_counts,
     profile,
     roles,
     sequences,
@@ -203,6 +204,7 @@ app.include_router(pos_sync.router)       # offline till sync and review (3D, 00
 app.include_router(reports.router)        # reports with CSV (3G)
 app.include_router(restaurant_setup.router)   # floors, tables, stations (wave B, 0089)
 app.include_router(stock_transfers.router)    # transfers between branches (wave B, 0092)
+app.include_router(stock_counts.router)       # stock counts (wave B, 0093)
 
 
 @app.exception_handler(asyncpg.DataError)
