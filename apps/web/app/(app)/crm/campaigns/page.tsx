@@ -9,6 +9,7 @@ import { useCan } from "@/lib/can";
 import { errorText, useAction } from "@/lib/useAction";
 import { useConfirm } from "@/components/Confirm";
 import { Badge, Button, Card, EmptyState, ErrorState, Field, Input, LoadingRows, Select, Textarea } from "@/components/ui";
+import { customFilterOptions, parseCustomFilter, useCustomFields } from "@/components/CustomFields";
 
 type Campaign = Schema<"CampaignOut">;
 type Segment = Schema<"SegmentOut">;
@@ -130,7 +131,9 @@ function CampaignsCard({ segments, templates }: { segments: Segment[]; templates
 // ── Segments ───────────────────────────────────────────────────────────────
 function SegmentsCard({ segments, onChanged }: { segments: Segment[]; onChanged: () => void }) {
   const [tags, setTags] = useState<Tag[]>([]);
-  const [v, setV] = useState({ name: "", tag_id: "", kind: "", city: "", role: "" });
+  const [v, setV] = useState({ name: "", tag_id: "", kind: "", city: "", role: "", custom: "" });
+  const contactFields = useCustomFields("contact");
+  const customOptions = customFilterOptions(contactFields);
   const [preview, setPreview] = useState<Record<string, Preview>>({});
   useEffect(() => { api<Tag[]>("/tags").then(setTags).catch(() => setTags([])); }, []);
 
@@ -139,6 +142,7 @@ function SegmentsCard({ segments, onChanged }: { segments: Segment[]; onChanged:
     filter: {
       ...(v.tag_id ? { tag_ids: [v.tag_id] } : {}), ...(v.kind ? { kind: v.kind } : {}),
       ...(v.city.trim() ? { city: v.city.trim() } : {}), ...(v.role ? { roles: [v.role] } : {}),
+      ...(() => { const cf = v.custom ? parseCustomFilter(v.custom) : null; return cf ? { custom: { [cf[0]]: cf[1] } } : {}; })(),
     },
   }) }), { success: "List saved", failure: "Couldn't save the list" });
 
@@ -168,7 +172,7 @@ function SegmentsCard({ segments, onChanged }: { segments: Segment[]; onChanged:
         ))}
       </ul>
       <form className="grid gap-2 sm:grid-cols-2"
-            onSubmit={async (e) => { e.preventDefault(); if (await create.run()) { setV({ name: "", tag_id: "", kind: "", city: "", role: "" }); onChanged(); } }}>
+            onSubmit={async (e) => { e.preventDefault(); if (await create.run()) { setV({ name: "", tag_id: "", kind: "", city: "", role: "", custom: "" }); onChanged(); } }}>
         <Field label="List name"><Input required maxLength={120} value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} /></Field>
         <Field label="With tag">
           <Select value={v.tag_id} onChange={(e) => setV({ ...v, tag_id: e.target.value })}>
@@ -188,6 +192,14 @@ function SegmentsCard({ segments, onChanged }: { segments: Segment[]; onChanged:
           </Select>
         </Field>
         <Field label="City"><Input maxLength={80} value={v.city} onChange={(e) => setV({ ...v, city: e.target.value })} /></Field>
+        {customOptions.length > 0 && (
+          <Field label="Custom field">
+            <Select value={v.custom} onChange={(e) => setV({ ...v, custom: e.target.value })}>
+              <option value="">Any</option>
+              {customOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </Select>
+          </Field>
+        )}
         <div className="flex items-end"><Button type="submit" size="sm" disabled={create.busy}>Save list</Button></div>
       </form>
     </Card>

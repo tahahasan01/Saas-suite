@@ -321,3 +321,22 @@ test.describe("assignment rules and marketing confirmation", () => {
     expect(after).toEqual([expect.objectContaining({ channel: "email", status: "opted_in" })]);
   });
 });
+
+test.describe("custom field filters", () => {
+  test("the board filters on a lead's choice field", async ({ page, request }) => {
+    const label = `Area ${uid()}`;
+    const field = await (await request.post(`${API}/custom-fields`, {
+      data: { entity: "lead", label, kind: "select", options: ["DHA", "Bahria"] } })).json();
+    const dha = await (await request.post(`${API}/crm/leads`, {
+      data: { name: `DHA lead ${uid()}`, force: true, custom: { [field.key]: "DHA" } } })).json();
+    const bahria = await (await request.post(`${API}/crm/leads`, {
+      data: { name: `Bahria lead ${uid()}`, force: true, custom: { [field.key]: "Bahria" } } })).json();
+
+    await page.goto("/crm");
+    const main = page.getByRole("main");
+    await expect(main.getByRole("button", { name: `Open ${bahria.name}` })).toBeVisible();
+    await page.getByLabel("Custom field").selectOption({ label: `${label}: DHA` });
+    await expect(main.getByRole("button", { name: `Open ${dha.name}` })).toBeVisible();
+    await expect(main.getByRole("button", { name: `Open ${bahria.name}` })).toHaveCount(0);
+  });
+});
