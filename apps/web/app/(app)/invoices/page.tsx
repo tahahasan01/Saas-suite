@@ -55,6 +55,8 @@ export default function InvoicesPage() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
+  // A new tab starts from "loading": the last tab's rows must not show under its name.
+  useEffect(() => setItems(null), [filter]);
   const load = useCallback(() => {
     if (filter === "aging") return;     // its own report below
     setLoadError(null);
@@ -88,7 +90,7 @@ export default function InvoicesPage() {
         {FILTERS.map((f) => (
           <button key={f.key} type="button" role="tab" aria-selected={filter === f.key}
                   onClick={() => setFilter(f.key)}
-                  className={`rounded-full px-3 py-1 text-xs pointer-coarse:min-h-11 ${filter === f.key ? "bg-brand text-on-brand" : "bg-elevated text-fg-muted hover:text-fg"}`}>
+                  className={`rounded-full px-3 py-1 text-xs pointer-coarse:min-h-11 ${filter === f.key ? "bg-brand text-brand-fg" : "bg-elevated text-fg-muted hover:text-fg"}`}>
             {f.label}
           </button>
         ))}
