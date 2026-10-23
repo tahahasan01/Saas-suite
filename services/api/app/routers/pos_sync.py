@@ -133,9 +133,13 @@ async def catalog_delta(since: int = Query(0, ge=0), limit: int = Query(500, ge=
         pricing = {"tax_on": tax_on, "inclusive": bool(tax_on and fbr["prices_include_tax"]),
                    "cash_rounding_minor": await pos_sessions.rounding_unit(conn, reg)}
         rows = await conn.fetch(
-            """select id, name, sku, barcode, unit, price_minor, tax_rate, hs_code, fbr_uom, category_id,
-                      track_stock, stock_qty, active, group_id, attributes, color, pinned, row_version
-                 from pos_products where row_version > $1 order by row_version limit $2""", since, limit + 1)
+            # Stock as this till's branch holds it (0091), not the company total.
+            """select p.id, p.name, p.sku, p.barcode, p.unit, p.price_minor, p.tax_rate, p.hs_code, p.fbr_uom,
+                      p.category_id, p.track_stock, coalesce(l.qty, 0) as stock_qty, p.active, p.group_id,
+                      p.attributes, p.color, p.pinned, p.row_version
+                 from pos_products p
+                 left join pos_stock_levels l on l.product_id = p.id and l.branch_id = $3
+                where p.row_version > $1 order by p.row_version limit $2""", since, limit + 1, reg["branch_id"])
         # Few and small: sent whole every time, so a renamed or recoloured
         # category reaches tills without a cursor of its own (P42).
         categories = [{"id": str(c["id"]), "name": c["name"], "color": c["color"], "position": c["position"]}

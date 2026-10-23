@@ -27551,6 +27551,70 @@
         }
       }
     },
+    "/pos/stock": {
+      "get": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Stock Levels",
+        "description": "A product's stock at each branch the caller can see (0091).",
+        "operationId": "stock_levels_pos_stock_get",
+        "parameters": [
+          {
+            "name": "product_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Product Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StockLevelOut"
+                  },
+                  "title": "Response Stock Levels Pos Stock Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/pos/stock/moves": {
       "get": {
         "tags": [
@@ -31505,6 +31569,18 @@
             "maxLength": 300,
             "title": "Note",
             "default": ""
+          },
+          "branch_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch Id"
           }
         },
         "type": "object",
@@ -53834,6 +53910,29 @@
           "rates"
         ],
         "title": "StatutorySchemeOut"
+      },
+      "StockLevelOut": {
+        "properties": {
+          "branch_id": {
+            "type": "string",
+            "title": "Branch Id"
+          },
+          "branch_name": {
+            "type": "string",
+            "title": "Branch Name"
+          },
+          "qty": {
+            "type": "number",
+            "title": "Qty"
+          }
+        },
+        "type": "object",
+        "required": [
+          "branch_id",
+          "branch_name",
+          "qty"
+        ],
+        "title": "StockLevelOut"
       },
       "StructureIn": {
         "properties": {

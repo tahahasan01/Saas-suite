@@ -103,6 +103,7 @@ APP_USER: dict[str, set[str]] = {
     "restaurant_tables":       {S, I, U},
     "restaurant_stations":     {S, I, U},
     "restaurant_station_categories": {S, I, D},   # the list is replaced
+    "pos_stock_levels":        {S, I, U},       # moved only by catalog.move() (0091)
     "pay_advance_repayments":  {S, I},       # append-only (0107)
     "hrms_job_changes":      {S, I, U},       # applied or cancelled, never deleted (0106)
     "hrms_letter_templates":  {S, I, U},       # (0105)

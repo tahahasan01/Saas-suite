@@ -21,6 +21,7 @@ const blank = { name: "", price: "", stock: "", barcode: "", low: "", hs_code: "
 type Category = { id: string; name: string; product_count: number; color?: string | null };
 type Move = { id: string; qty_delta: number; reason: string; note: string; user_name: string | null; created_at: string };
 type Barcode = { id: string; barcode: string; qty: number; label: string };
+type Level = { branch_id: string; branch_name: string; qty: number };
 const REASON: Record<string, string> = {
   opening: "Opening stock", sale: "Sold", return: "Returned", purchase: "Received", adjustment: "Adjusted",
   damage: "Damaged or lost", count: "Counted", void: "Sale voided",
@@ -388,18 +389,37 @@ function EditDialog({ p, busy, categories, onCancel, onSave }: {
 /** Stock on hand moves only through the ledger: an adjustment with a reason. */
 function StockDialog({ p, onClose, onChanged }: { p: Product; onClose: () => void; onChanged: () => void }) {
   const [moves, setMoves] = useState<Move[] | null>(null);
-  const [f, setF] = useState({ qty: "", direction: "-1", reason: "damage", note: "" });
+  const [levels, setLevels] = useState<Level[]>([]);
+  const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
+  const [f, setF] = useState({ qty: "", direction: "-1", reason: "damage", note: "", branch_id: "" });
   const load = useCallback(() => {
     api<Move[]>(`/pos/stock/moves?product_id=${p.id}&limit=20`).then(setMoves).catch(() => setMoves([]));
+    api<Level[]>(`/pos/stock?product_id=${p.id}`).then(setLevels).catch(() => setLevels([]));
   }, [p.id]);
   useEffect(load, [load]);
+  // Stock is held per branch or warehouse (0091): with more than one, say where.
+  useEffect(() => { api<{ id: string; name: string }[]>("/org/branches").then(setBranches).catch(() => setBranches([])); }, []);
   const adjust = useAction(
     () => api("/pos/stock/adjustments", { method: "POST", body: JSON.stringify({
-      product_id: p.id, qty_delta: Number(f.qty) * Number(f.direction), reason: f.reason, note: f.note }) }),
+      product_id: p.id, qty_delta: Number(f.qty) * Number(f.direction), reason: f.reason, note: f.note,
+      branch_id: f.branch_id || null }) }),
     { success: "Stock adjusted", failure: "Couldn't adjust stock" });
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }} title={`Stock of ${p.name}`}>
+      {branches.length > 1 && (
+        <ul aria-label="Stock by branch" className="mb-4 divide-y divide-line rounded-lg border border-line text-sm">
+          {branches.map((b) => {
+            const qty = levels.find((l) => l.branch_id === b.id)?.qty ?? 0;
+            return (
+              <li key={b.id} className="flex justify-between gap-2 px-3 py-1.5">
+                <span>{b.name}</span>
+                <span className={`tabular-nums ${qty < 0 ? "text-danger" : ""}`}>{qty} {p.unit}</span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
       <form className="space-y-3" onSubmit={async (e) => {
         e.preventDefault();
         if ((await adjust.run()) !== undefined) { setF({ ...f, qty: "", note: "" }); load(); onChanged(); }
@@ -420,6 +440,13 @@ function StockDialog({ p, onClose, onChanged }: { p: Product; onClose: () => voi
             </Select>
           </Field>
         </div>
+        {branches.length > 1 && (
+          <Field label="Where">
+            <Select value={f.branch_id} onChange={(e) => setF({ ...f, branch_id: e.target.value })}>
+              {branches.map((b, i) => <option key={b.id} value={i === 0 ? "" : b.id}>{b.name}</option>)}
+            </Select>
+          </Field>
+        )}
         <Field label="Note"><Input value={f.note} maxLength={300} onChange={(e) => setF({ ...f, note: e.target.value })} /></Field>
         <Button type="submit" disabled={adjust.busy || !Number(f.qty)}>{adjust.busy ? "Saving…" : "Save adjustment"}</Button>
       </form>

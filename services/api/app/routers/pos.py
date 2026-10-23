@@ -465,18 +465,20 @@ async def _record_sale(body: SaleCreate, auth: AuthContext, fingerprint: str,
         employee_id = await _flag(off, "cashier_signed_out", lambda: cashiers.employee_for(conn, cashier_token))
 
         sale_id = await conn.fetchval(
+            # The sale belongs to its till's branch (0091), not to whatever
+            # branch header the request carried: its stock leaves from there.
             """insert into pos_sales (tenant_id, cashier_id, subtotal_minor, discount_minor, total_minor,
                                       paid_minor, change_minor, payment_method, item_count, tax_minor,
                                       client_uuid, payload_sha256, rounding_minor, contact_id,
                                       session_id, register_id, device_id, employee_id,
-                                      created_at, offline_ref, client_total_minor)
+                                      created_at, offline_ref, client_total_minor, branch_id)
                values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,
-                       coalesce($19, now()),$20,$21) returning id""",
+                       coalesce($19, now()),$20,$21,$22) returning id""",
             auth.tenant_id, auth.user_id, priced.subtotal_minor, priced.discount_minor, total,
             plan.paid_minor, plan.change_minor, plan.payment_method, len(lines), priced.tax_minor,
             body.client_uuid, fingerprint, plan.rounding_minor, body.contact_id, session_id, reg["id"],
             body.device_id, employee_id, sold_at, off.offline_ref if off else None,
-            off.client_total_minor if off else None)
+            off.client_total_minor if off else None, reg["branch_id"])
         await pos_sessions.record_tenders(conn, auth.tenant_id, sale_id, session_id, plan, employee_id)
         # The khata part goes on the customer's account, in this transaction.
         on_credit = sum(t.amount_minor for t in plan.tenders if t.method == "khata")
@@ -504,7 +506,8 @@ async def _record_sale(body: SaleCreate, auth: AuthContext, fingerprint: str,
                 p["price_minor"], approved_by if changed else None)
             # Offline overselling is flagged, not blocked: the goods are gone (M10).
             after = await catalog.move(conn, auth.tenant_id, p["id"], -Decimal(str(qty)), "sale", ref_id=sale_id,
-                                       user_id=auth.user_id, allow_negative=True if off else None)
+                                       branch_id=reg["branch_id"], user_id=auth.user_id,
+                                       allow_negative=True if off else None)
             if off and after is not None and after < 0 and "oversold" not in off.reasons:
                 off.reasons.append("oversold")
             items.append(SaleItemOut(name=p["name"], qty=qty, price_minor=unit,
@@ -653,7 +656,7 @@ async def receive_po(po_id: str, body: PoReceive, auth: AuthContext = Depends(re
                         where id=$2""",
                     line["cost_minor"], line["product_id"])
                 await catalog.move(conn, auth.tenant_id, line["product_id"], Decimal(str(want.qty)), "purchase",
-                                   ref_id=po_id, user_id=auth.user_id)
+                                   branch_id=po["branch_id"], ref_id=po_id, user_id=auth.user_id)
 
         done = await conn.fetchval(
             "select bool_and(received_qty >= qty) from pos_po_items where po_id=$1", po_id)
@@ -997,7 +1000,7 @@ async def do_return(sale_id: str, body: ReturnCreate, auth: AuthContext, key: st
             # Damaged goods come back to the shop but not to the shelf.
             if body.restock and row["product_id"]:
                 await catalog.move(conn, auth.tenant_id, row["product_id"], Decimal(str(qty)), "return",
-                                   ref_id=return_id, user_id=auth.user_id)
+                                   branch_id=sale["branch_id"], ref_id=return_id, user_id=auth.user_id)
             items.append(ReturnItemOut(name=row["name"], qty=qty, line_refund_minor=line_refund))
 
         outbox_id = None

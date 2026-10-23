@@ -212,6 +212,7 @@ class AdjustmentIn(BaseModel):
     qty_delta: float = Field(ge=-1_000_000, le=1_000_000)
     reason: AdjustReason
     note: str = Field(default="", max_length=300)
+    branch_id: UUID | None = None      # where the stock is (0091); None: the caller's branch
 
 
 class AdjustmentOut(BaseModel):
@@ -237,10 +238,27 @@ async def adjust(body: AdjustmentIn, auth: AuthContext = Depends(perm("products.
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "An adjustment needs a quantity")
     async with db.tenant_conn(auth.tenant_id) as conn:
         after = await catalog.move(conn, auth.tenant_id, body.product_id, body.qty_delta, body.reason,
-                                   note=body.note, user_id=auth.user_id)
+                                   branch_id=body.branch_id, note=body.note, user_id=auth.user_id)
         if after is None:
             raise HTTPException(status.HTTP_409_CONFLICT, "This product doesn't track stock")
     return AdjustmentOut(product_id=str(body.product_id), stock_qty=float(after))
+
+
+class StockLevelOut(BaseModel):
+    branch_id: str
+    branch_name: str
+    qty: float
+
+
+@router.get("/stock", response_model=list[StockLevelOut])
+async def stock_levels(product_id: UUID,
+                       auth: AuthContext = Depends(perm("products.product.read"))) -> list[StockLevelOut]:
+    """A product's stock at each branch the caller can see (0091)."""
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        rows = await conn.fetch(
+            """select l.branch_id, b.name, l.qty from pos_stock_levels l join branches b on b.id = l.branch_id
+                where l.product_id = $1 order by b.is_default desc, b.name""", product_id)
+    return [StockLevelOut(branch_id=str(r["branch_id"]), branch_name=r["name"], qty=float(r["qty"])) for r in rows]
 
 
 @router.get("/stock/moves", response_model=list[MoveOut])

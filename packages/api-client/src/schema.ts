@@ -6567,6 +6567,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pos/stock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stock Levels
+         * @description A product's stock at each branch the caller can see (0091).
+         */
+        get: operations["stock_levels_pos_stock_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pos/stock/moves": {
         parameters: {
             query?: never;
@@ -7583,6 +7603,8 @@ export interface components {
              * @default
              */
             note: string;
+            /** Branch Id */
+            branch_id?: string | null;
         };
         /** AdjustmentOut */
         AdjustmentOut: {
@@ -15541,6 +15563,15 @@ export interface components {
             effective_from: string | null;
             /** Rates */
             rates: components["schemas"]["StatutoryRateOut"][];
+        };
+        /** StockLevelOut */
+        StockLevelOut: {
+            /** Branch Id */
+            branch_id: string;
+            /** Branch Name */
+            branch_name: string;
+            /** Qty */
+            qty: number;
         };
         /** StructureIn */
         StructureIn: {
@@ -31606,6 +31637,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdjustmentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stock_levels_pos_stock_get: {
+        parameters: {
+            query: {
+                product_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockLevelOut"][];
                 };
             };
             /** @description Validation Error */

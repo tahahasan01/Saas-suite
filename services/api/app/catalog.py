@@ -1,9 +1,11 @@
 """Catalog v2 and the stock ledger (3C, migration 0075).
 
-Stock only moves through `move()`: it locks the product, refuses to take a
-tracked product below zero unless the tenant allows it (M10), updates
-stock_qty and appends the matching pos_stock_moves row, all in the caller's
-transaction. A product that doesn't track stock (a service) never moves.
+Stock only moves through `move()`, always at one branch (0091): it locks the
+product and that branch's level, refuses to take the branch below zero
+unless the tenant allows it (M10), updates the level and the company total
+(stock_qty) and appends the matching pos_stock_moves row, all in the
+caller's transaction. A product that doesn't track stock (a service) never
+moves.
 
 `scan()` turns whatever the scanner read into (product, quantity): the
 product's own barcode, a packaging barcode (a carton of 12), or a weight /
@@ -50,11 +52,17 @@ async def ensure_group(conn: asyncpg.Connection, group_id: Any) -> None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Variant group not found")
 
 
+async def here(conn: asyncpg.Connection) -> Any:
+    """The caller's working branch: the one named in X-Branch-Ids, else the default."""
+    return await conn.fetchval("select app_current_branch(current_setting('app.tenant_id')::uuid)")
+
+
 async def move(conn: asyncpg.Connection, tenant_id: str, product_id: Any, delta: float | Decimal, reason: StockMoveReason,
-               *, ref_id: Any = None, note: str = "", user_id: str | None = None,
+               *, branch_id: Any = None, ref_id: Any = None, note: str = "", user_id: str | None = None,
                allow_negative: bool | None = None) -> Decimal | None:
-    """Move stock by `delta` and keep the ledger. Returns the new stock, or
-    None for a product that doesn't track stock."""
+    """Move stock by `delta` at `branch_id` (default: the caller's branch) and
+    keep the ledger. Returns that branch's new stock, or None for a product
+    that doesn't track stock."""
     d = _qty(delta)
     p = await conn.fetchrow("select name, stock_qty, track_stock from pos_products where id = $1 for update",
                             product_id)
@@ -62,29 +70,49 @@ async def move(conn: asyncpg.Connection, tenant_id: str, product_id: Any, delta:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Product not found")
     if not p["track_stock"] or d == 0:
         return None
-    after = Decimal(p["stock_qty"]) + d
+    if branch_id is not None and not await conn.fetchval(
+            "select 1 from branches where id = $1 and app_branch_visible(id)", branch_id):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Branch not found")
+    branch = branch_id or await here(conn)
+    await conn.execute(
+        """insert into pos_stock_levels (tenant_id, product_id, branch_id) values ($1, $2, $3)
+           on conflict (product_id, branch_id) do nothing""", tenant_id, product_id, branch)
+    level = await conn.fetchval(
+        "select qty from pos_stock_levels where product_id = $1 and branch_id = $2 for update", product_id, branch)
+    if level is None:      # a branch the caller can't see
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Branch not found")
+    after = Decimal(level) + d
     if after < 0:
         if allow_negative is None:
             allow_negative = bool(await conn.fetchval(
                 "select allow_negative_stock from tenants where id = current_setting('app.tenant_id')::uuid"))
         if not allow_negative:
+            where = await conn.fetchval("select name from branches where id = $1", branch)
             raise HTTPException(status.HTTP_409_CONFLICT,
-                                f"Not enough stock of {p['name']}: {Decimal(p['stock_qty']).normalize():f} on hand")
-    await conn.execute("update pos_products set stock_qty = $2, updated_at = now() where id = $1", product_id, after)
+                                f"Not enough stock of {p['name']} at {where}: {Decimal(level).normalize():f} on hand")
+    await conn.execute("update pos_stock_levels set qty = $3, updated_at = now() where product_id = $1 and branch_id = $2",
+                       product_id, branch, after)
+    await conn.execute("update pos_products set stock_qty = stock_qty + $2, updated_at = now() where id = $1",
+                       product_id, d)
     await conn.execute(
-        """insert into pos_stock_moves (tenant_id, product_id, qty_delta, reason, ref_id, note, user_id)
-           values ($1, $2, $3, $4, $5, $6, $7)""", tenant_id, product_id, d, reason, ref_id, note, user_id)
+        """insert into pos_stock_moves (tenant_id, product_id, branch_id, qty_delta, reason, ref_id, note, user_id)
+           values ($1, $2, $3, $4, $5, $6, $7, $8)""", tenant_id, product_id, branch, d, reason, ref_id, note, user_id)
     return after
 
 
 async def opening(conn: asyncpg.Connection, tenant_id: str, product_id: Any, qty: float, user_id: str | None) -> None:
-    """A new product's stock on hand opens its ledger."""
+    """A new product's stock on hand opens its ledger, at the caller's branch."""
     if qty:
-        await conn.execute(
-            """insert into pos_stock_moves (tenant_id, product_id, qty_delta, reason, note, user_id)
-               select $1, id, stock_qty, 'opening', 'Stock when the product was added', $3
+        branch = await here(conn)
+        rows = await conn.execute(
+            """insert into pos_stock_moves (tenant_id, product_id, branch_id, qty_delta, reason, note, user_id)
+               select $1, id, $4, stock_qty, 'opening', 'Stock when the product was added', $3
                  from pos_products where id = $2 and track_stock and stock_qty <> 0""",
-            tenant_id, product_id, user_id)
+            tenant_id, product_id, user_id, branch)
+        if rows != "INSERT 0 0":
+            await conn.execute(
+                """insert into pos_stock_levels (tenant_id, product_id, branch_id, qty)
+                   select $1, id, $3, stock_qty from pos_products where id = $2""", tenant_id, product_id, branch)
 
 
 def _ean13_ok(code: str) -> bool:
