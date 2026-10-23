@@ -31292,6 +31292,79 @@
         }
       }
     },
+    "/reports/provident-fund": {
+      "get": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Provident Fund",
+        "description": "What one approved run paid into each member's fund, and each fund\nnow. A fund is pay: masked and audited like the payroll report.",
+        "operationId": "provident_fund_reports_provident_fund_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string",
+              "default": "json",
+              "title": "Format"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Provident Fund Reports Provident Fund Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/restaurant/floors": {
       "get": {
         "tags": [
@@ -50265,6 +50338,16 @@
           "vested_employer_minor": {
             "type": "integer",
             "title": "Vested Employer Minor"
+          },
+          "fund_on": {
+            "type": "boolean",
+            "title": "Fund On",
+            "default": false
+          },
+          "vesting_months": {
+            "type": "integer",
+            "title": "Vesting Months",
+            "default": 0
           },
           "history": {
             "items": {

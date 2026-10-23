@@ -31,6 +31,8 @@ export default function MySpace() {
   // A manager's inbox: their reports' requests waiting for them.
   const [approvals, setApprovals] = useState<Approvals | null>(null);
   const [locating, setLocating] = useState(false);
+  // Only members (or past members with money in it) get the fund link.
+  const [inFund, setInFund] = useState(false);
 
   const load = useCallback(() => {
     setTodayError(null);
@@ -45,6 +47,8 @@ export default function MySpace() {
     api<LeaveBalanceV2[]>("/me/leave/balances").then(setBalances)
       .catch((e) => setBalancesError(errorText(e, "Couldn't load your leave balances.")));
     api<Approvals>("/me/approvals").then(setApprovals).catch(() => setApprovals(null));
+    api<{ member: boolean; employee_minor: number; employer_minor: number }>("/me/pf", { notify: false })
+      .then((f) => setInFund(f.member || f.employee_minor !== 0 || f.employer_minor !== 0)).catch(() => setInFund(false));
   }, []);
   useEffect(load, [load]);
 
@@ -133,6 +137,7 @@ export default function MySpace() {
         <Link href="/me/leave" className="inline-flex items-center text-sm text-brand hover:underline pointer-coarse:min-h-11">Request leave →</Link>
         <Link href="/me/payslips" className="inline-flex items-center text-sm text-brand hover:underline pointer-coarse:min-h-11">My payslips →</Link>
         <Link href="/me/attendance" className="inline-flex items-center text-sm text-brand hover:underline pointer-coarse:min-h-11">My attendance →</Link>
+        {inFund && <Link href="/me/pf" className="inline-flex items-center text-sm text-brand hover:underline pointer-coarse:min-h-11">My provident fund →</Link>}
       </div>
     </div>
   );

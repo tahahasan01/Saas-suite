@@ -12,6 +12,7 @@ import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from .. import audit, csv_io, db, payroll_access, sequences
+from ..provident_fund import balance as provident_fund_balance
 from ..deps import AuthContext
 from ..rbac import perm, require_key
 from .payroll_runs import _final_run
@@ -250,3 +251,43 @@ async def payroll(run_id: str, fmt: Format = Query("json", alias="format"),
     if fmt == "csv":
         return _respond([*rows, total], _PAY_COLS, fmt, f"payroll-{period}")
     return _respond(rows, _PAY_COLS, fmt, f"payroll-{period}", total=total, masked=not reveal, period=period)
+
+
+# ── Provident fund (0113) ───────────────────────────────────────────────────
+_PF_COLS: Columns = [("name", "Employee", False), ("employee_minor", "Employee share (PKR)", True),
+                     ("employer_minor", "Company share (PKR)", True), ("total_minor", "Paid in (PKR)", True),
+                     ("fund_minor", "Fund to date (PKR)", True)]
+_PF_MONEY = [k for k, _, m in _PF_COLS if m]
+
+
+@router.get("/provident-fund")
+async def provident_fund(run_id: str, fmt: Format = Query("json", alias="format"),
+                         auth: AuthContext = Depends(require_key("payroll.report.export", "hrms"))) -> Any:
+    """What one approved run paid into each member's fund, and each fund
+    now. A fund is pay: masked and audited like the payroll report."""
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        run = await _final_run(conn, run_id)
+        reveal = await payroll_access.sees_pay(conn, auth.role_id)
+        rows = [dict(r) for r in await conn.fetch(
+            """select l.employee_id, coalesce(e.name, p.snapshot->>'name', '—') as name,
+                      coalesce(sum(l.amount_minor) filter (where l.code = 'PF_EE'), 0)::bigint as employee_minor,
+                      coalesce(sum(l.amount_minor) filter (where l.code = 'PF_ER'), 0)::bigint as employer_minor
+                 from payslip_lines l join payslips p on p.id = l.payslip_id
+                 left join hrms_employees e on e.id = l.employee_id
+                where l.run_id = $1 and l.code in ('PF_EE', 'PF_ER')
+                group by l.employee_id, e.name, p.snapshot->>'name' order by name""", run["id"])]
+        for r in rows:
+            b = await provident_fund_balance(conn, r["employee_id"])
+            r.update(employee_id=str(r["employee_id"]), total_minor=r["employee_minor"] + r["employer_minor"],
+                     fund_minor=b.employee_minor + b.employer_minor)
+        await audit.event(conn, "payroll.export", "payroll_runs", str(run["id"]),
+                          data={"kind": "provident-fund-report", "masked": not reveal})
+    total = {"employee_id": None, "name": "Total",
+             **{k: (sum(r[k] for r in rows) if reveal else None) for k in _PF_MONEY}}
+    if not reveal:
+        for r in rows:
+            r.update({k: None for k in _PF_MONEY})
+    period = f"{run['period_start']:%Y-%m}"
+    if fmt == "csv":
+        return _respond([*rows, total], _PF_COLS, fmt, f"provident-fund-{period}")
+    return _respond(rows, _PF_COLS, fmt, f"provident-fund-{period}", total=total, masked=not reveal, period=period)
