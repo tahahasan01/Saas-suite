@@ -87,7 +87,7 @@ def out(r: asyncpg.Record) -> WebFormOut:
         pipeline_id=str(r["pipeline_id"]) if r["pipeline_id"] else None,
         stage_id=str(r["stage_id"]) if r["stage_id"] else None, source=r["source"],
         owner_id=str(r["owner_id"]) if r["owner_id"] else None, daily_cap=r["daily_cap"], active=r["active"],
-        leads_today=r["leads_today"], created_at=r["created_at"])
+        leads_today=r["leads_today"], created_at=r["created_at"], consent_label=r["consent_label"])
 
 
 SELECT = """select f.*, (select count(*) from crm_leads l where l.web_form_id = f.id
@@ -125,13 +125,15 @@ async def resolve(public_id: str) -> asyncpg.Record:
 
 
 async def describe(conn: asyncpg.Connection, form_id: Any) -> WebFormPublic:
-    f = await conn.fetchrow("select public_id, name, title, intro, fields from crm_web_forms where id = $1", form_id)
+    f = await conn.fetchrow(
+        "select public_id, name, title, intro, fields, consent_label from crm_web_forms where id = $1", form_id)
     business = await conn.fetchval(
         """select coalesce(nullif(c.legal_name, ''), t.name) from tenants t
              left join tenant_company c on c.tenant_id = t.id
             where t.id = current_setting('app.tenant_id')::uuid""")
     return WebFormPublic(title=f["title"] or f["name"], intro=f["intro"], fields=list(f["fields"]),
-                         business_name=business or "", ticket=ticket(f["public_id"]))
+                         business_name=business or "", ticket=ticket(f["public_id"]),
+                         consent_label=f["consent_label"] or None)
 
 
 def _clean(v: WebFormValues, asked: list[str]) -> dict[str, str]:
@@ -151,7 +153,7 @@ def _clean(v: WebFormValues, asked: list[str]) -> dict[str, str]:
     return {**got, "name": name, "phone": phone or "", "email": email or ""}
 
 
-async def submit(conn: asyncpg.Connection, tenant_id: str, form_id: Any, v: WebFormValues) -> str:
+async def submit(conn: asyncpg.Connection, tenant_id: str, form_id: Any, v: WebFormValues, ip: str = "") -> str:
     """Make (or merge) the lead; returns the thank-you text."""
     form = await conn.fetchrow("select * from crm_web_forms where id = $1 for update", form_id)
     thanks: str = form["thank_you"] or THANK_YOU
@@ -162,6 +164,8 @@ async def submit(conn: asyncpg.Connection, tenant_id: str, form_id: Any, v: WebF
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS,
                             "We've had a lot of messages today. Please call or try again tomorrow.")
     utm = {k: getattr(v, k).strip() or None for k in ("utm_source", "utm_medium", "utm_campaign")}
+    # The tick counts only when the form asked, and is kept with its wording.
+    ticked = bool(form["consent_label"]) and v.consent
 
     existing = await conn.fetchrow(
         """select * from crm_leads where status = 'open'
@@ -169,6 +173,10 @@ async def submit(conn: asyncpg.Connection, tenant_id: str, form_id: Any, v: WebF
             order by created_at desc limit 1""", values["phone"], values["email"])
     if existing is not None:
         await _repeat(conn, existing, form, values)
+        if ticked:
+            await conn.execute(
+                """update crm_leads set consent_at = now(), consent_ip = $2, consent_text = $3
+                    where id = $1 and consent_at is null""", existing["id"], ip[:64], form["consent_label"])
         return thanks
 
     pid = form["pipeline_id"] or await pipelines.ensure_default(conn, tenant_id)
@@ -180,15 +188,17 @@ async def submit(conn: asyncpg.Connection, tenant_id: str, form_id: Any, v: WebF
     row = await conn.fetchrow(
         """insert into crm_leads (tenant_id, pipeline_id, stage_id, owner_id, name, company, phone, email, source,
                                   value_minor, score, status, won_at, probability, stage_entered_at, web_form_id,
-                                  utm_source, utm_medium, utm_campaign, message)
+                                  utm_source, utm_medium, utm_campaign, message, consent_at, consent_ip, consent_text)
            values ($1,$2,$3,$4,$5,$6,$7,$8,$9,0,$10,$11, case when $11 = 'won' then now() end, $12, now(), $13,
-                   $14, $15, $16, $17)
+                   $14, $15, $16, $17, case when $18 then now() end, case when $18 then $19 end,
+                   case when $18 then $20 end)
            returning *""",
         tenant_id, pid, stage["id"], owner, values["name"], values["company"], values["phone"], values["email"],
         form["source"], scoring.score_lead(source=form["source"], company=values["company"], phone=values["phone"],
                                            email=values["email"], value_minor=0),
         "won" if stage["is_won"] else "open", 100 if stage["is_won"] else stage["default_probability"], form_id,
-        utm["utm_source"], utm["utm_medium"], utm["utm_campaign"], values["message"] or None)
+        utm["utm_source"], utm["utm_medium"], utm["utm_campaign"], values["message"] or None,
+        ticked, ip[:64], form["consent_label"])
     lead_id = str(row["id"])
     await timeline.record(conn, entity_type="lead", entity_id=lead_id, kind="system",
                           body=f"From the web form “{form['name']}”. {why}",

@@ -32,6 +32,7 @@ from fastapi import HTTPException, status
 from . import db, email
 from .config import settings
 from .crm_selling_models import SegmentFilter, SegmentPreview, PersonOut
+from .phone import normalize_email, normalize_phone
 
 PKT = ZoneInfo("Asia/Karachi")
 QUIET_FROM = time(21, 0)
@@ -230,3 +231,29 @@ async def send(conn: asyncpg.Connection, tenant_id: str, user_id: str, campaign_
         """update crm_campaigns set status = 'sent', subject = $2, body = $3, queued_count = $4, skipped_count = $5,
                                     sent_by = $6, sent_at = now(), updated_at = now()
             where id = $1""", campaign_id, tpl["subject"], tpl["body"], queued, skipped, user_id)
+
+
+
+# ── A web form's tick, when staff qualify the lead (0129) ───────────────────
+async def carry_lead_consent(conn: asyncpg.Connection, tenant_id: Any, lead: asyncpg.Record,
+                             contact_id: Any) -> None:
+    """Turn a lead's marketing tick into the contact's opt-ins: email when
+    the visitor gave an email, SMS and WhatsApp for a phone, and only where
+    that address is the contact's own (anyone can type anyone's address into
+    a form). An existing choice, above all an opt-out, is never overridden."""
+    if lead["consent_at"] is None:
+        return
+    c = await conn.fetchrow("select email_normalized, phone_e164 from contacts where id = $1", contact_id)
+    if c is None:
+        return
+    channels: list[str] = []
+    if lead["email"] and normalize_email(lead["email"]) == c["email_normalized"]:
+        channels.append("email")
+    if lead["phone"] and normalize_phone(lead["phone"]) == c["phone_e164"]:
+        channels += ["sms", "whatsapp"]
+    source = f"Web form tick on {lead['consent_at']:%d %b %Y}: {lead['consent_text'] or ''}"[:120]
+    for channel in channels:
+        await conn.execute(
+            """insert into contact_consents (tenant_id, contact_id, channel, status, source)
+               values ($1, $2, $3, 'opted_in', $4) on conflict (contact_id, channel) do nothing""",
+            tenant_id, contact_id, channel, source)

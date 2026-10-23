@@ -43611,6 +43611,29 @@
             "type": "object",
             "title": "Custom",
             "default": {}
+          },
+          "consent_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consent At"
+          },
+          "consent_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consent Text"
           }
         },
         "type": "object",
@@ -56196,6 +56219,12 @@
             "minimum": 1.0,
             "title": "Daily Cap",
             "default": 200
+          },
+          "consent_label": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Consent Label",
+            "default": ""
           }
         },
         "additionalProperties": false,
@@ -56302,6 +56331,11 @@
             "type": "string",
             "format": "date-time",
             "title": "Created At"
+          },
+          "consent_label": {
+            "type": "string",
+            "title": "Consent Label",
+            "default": ""
           }
         },
         "type": "object",
@@ -56460,6 +56494,18 @@
             ],
             "title": "Daily Cap"
           },
+          "consent_label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consent Label"
+          },
           "active": {
             "anyOf": [
               {
@@ -56507,6 +56553,17 @@
           "ticket": {
             "type": "string",
             "title": "Ticket"
+          },
+          "consent_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consent Label"
           }
         },
         "type": "object",
@@ -56598,6 +56655,11 @@
             "maxLength": 100,
             "title": "Utm Campaign",
             "default": ""
+          },
+          "consent": {
+            "type": "boolean",
+            "title": "Consent",
+            "default": false
           }
         },
         "type": "object",

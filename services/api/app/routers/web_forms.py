@@ -46,11 +46,11 @@ async def create_form(body: WebFormIn, auth: AuthContext = Depends(perm("crm.set
         await web_forms.check_routing(conn, body.pipeline_id, body.stage_id, body.owner_id)
         fid = await conn.fetchval(
             """insert into crm_web_forms (tenant_id, public_id, name, title, intro, thank_you, fields, pipeline_id,
-                                          stage_id, source, owner_id, daily_cap, created_by)
-               values ($1,$2,btrim($3),$4,$5,$6,$7,$8,$9,btrim($10),$11,$12,$13) returning id""",
+                                          stage_id, source, owner_id, daily_cap, created_by, consent_label)
+               values ($1,$2,btrim($3),$4,$5,$6,$7,$8,$9,btrim($10),$11,$12,$13,btrim($14)) returning id""",
             auth.tenant_id, web_forms.new_public_id(), body.name, body.title, body.intro, body.thank_you,
             list(dict.fromkeys(body.fields)), body.pipeline_id, body.stage_id, body.source, body.owner_id,
-            body.daily_cap, auth.user_id)
+            body.daily_cap, auth.user_id, body.consent_label)
         return web_forms.out(await conn.fetchrow(web_forms.SELECT + " where f.id = $1", fid))
 
 
@@ -139,7 +139,7 @@ async def describe(public_id: str) -> WebFormPublic:
 
 @public.post("/{public_id}", response_model=WebFormAnswer,
              dependencies=[Depends(_limit("form-submit", SUBMITS_PER_MINUTE))])
-async def submit(public_id: str, body: WebFormSubmit) -> WebFormAnswer:
+async def submit(public_id: str, body: WebFormSubmit, request: Request) -> WebFormAnswer:
     form = await web_forms.resolve(public_id)
     context.set_actor("", "public")
     async with db.tenant_conn(str(form["tenant_id"])) as conn:
@@ -151,4 +151,5 @@ async def submit(public_id: str, body: WebFormSubmit) -> WebFormAnswer:
         # A bot gets the same thank-you as a person, and nothing is saved.
         if verdict == "bot" or body.values.website.strip():
             return WebFormAnswer(message=thanks)
-        return WebFormAnswer(message=await web_forms.submit(conn, str(form["tenant_id"]), form["id"], body.values))
+        return WebFormAnswer(message=await web_forms.submit(conn, str(form["tenant_id"]), form["id"], body.values,
+                                                            ratelimit.client_ip(request)))

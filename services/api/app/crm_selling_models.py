@@ -196,6 +196,7 @@ class WebFormIn(BaseModel):
     source: str = Field(default="web form", min_length=1, max_length=60)
     owner_id: UUID | None = None
     daily_cap: int = Field(default=200, ge=1, le=10000)
+    consent_label: str = Field(default="", max_length=200)   # the marketing tick's wording; empty: not asked
 
 
 class WebFormPatch(BaseModel):
@@ -210,6 +211,7 @@ class WebFormPatch(BaseModel):
     source: str | None = Field(default=None, min_length=1, max_length=60)
     owner_id: UUID | None = None
     daily_cap: int | None = Field(default=None, ge=1, le=10000)
+    consent_label: str | None = Field(default=None, max_length=200)
     active: bool | None = None
 
 
@@ -230,6 +232,7 @@ class WebFormOut(BaseModel):
     active: bool
     leads_today: int
     created_at: datetime
+    consent_label: str = ""
 
 
 class WebFormPublic(BaseModel):
@@ -239,6 +242,7 @@ class WebFormPublic(BaseModel):
     fields: list[WebFormField]
     business_name: str
     ticket: str
+    consent_label: str | None = None    # shown beside the marketing tick, when the form asks
 
 
 class WebFormValues(BaseModel):
@@ -255,6 +259,7 @@ class WebFormValues(BaseModel):
     utm_source: str = Field(default="", max_length=100)
     utm_medium: str = Field(default="", max_length=100)
     utm_campaign: str = Field(default="", max_length=100)
+    consent: bool = False              # the marketing tick (ignored when the form doesn't ask)
 
 
 class WebFormSubmit(BaseModel):

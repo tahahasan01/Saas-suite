@@ -11770,6 +11770,10 @@ export interface components {
             custom: {
                 [key: string]: unknown;
             };
+            /** Consent At */
+            consent_at?: string | null;
+            /** Consent Text */
+            consent_text?: string | null;
         };
         /** LeadUpdate */
         LeadUpdate: {
@@ -16363,6 +16367,11 @@ export interface components {
              * @default 200
              */
             daily_cap: number;
+            /**
+             * Consent Label
+             * @default
+             */
+            consent_label: string;
         };
         /** WebFormOut */
         WebFormOut: {
@@ -16401,6 +16410,11 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /**
+             * Consent Label
+             * @default
+             */
+            consent_label: string;
         };
         /** WebFormPatch */
         WebFormPatch: {
@@ -16424,6 +16438,8 @@ export interface components {
             owner_id?: string | null;
             /** Daily Cap */
             daily_cap?: number | null;
+            /** Consent Label */
+            consent_label?: string | null;
             /** Active */
             active?: boolean | null;
         };
@@ -16442,6 +16458,8 @@ export interface components {
             business_name: string;
             /** Ticket */
             ticket: string;
+            /** Consent Label */
+            consent_label?: string | null;
         };
         /** WebFormSubmit */
         WebFormSubmit: {
@@ -16502,6 +16520,11 @@ export interface components {
              * @default
              */
             utm_campaign: string;
+            /**
+             * Consent
+             * @default false
+             */
+            consent: boolean;
         };
         /** WeekOut */
         WeekOut: {

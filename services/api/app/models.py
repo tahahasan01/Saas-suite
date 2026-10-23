@@ -361,6 +361,9 @@ class LeadOut(BaseModel):
     # Products on the deal (0120): with lines, value_minor is their pre-tax total.
     line_count: int = 0
     custom: dict[str, Any] = {}          # custom field values by key (0127)
+    # A marketing tick on a web form (0129): when, and the wording shown.
+    consent_at: datetime | None = None
+    consent_text: str | None = None
 
 
 class LeadCreate(BaseModel):
