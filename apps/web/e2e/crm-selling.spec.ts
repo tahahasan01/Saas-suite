@@ -340,3 +340,21 @@ test.describe("custom field filters", () => {
     await expect(main.getByRole("button", { name: `Open ${bahria.name}` })).toHaveCount(0);
   });
 });
+
+test.describe("forecast", () => {
+  test("a deal is moved to next month from the forecast", async ({ page, request }) => {
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Karachi" });
+    const name = `Mover ${uid()}`;
+    const lead = await (await request.post(`${API}/crm/leads`, {
+      data: { name, value_minor: 100_000_00, force: true, expected_close_date: today } })).json();
+    await page.goto("/crm/reports");
+    const forecast = page.getByRole("heading", { name: "Forecast" }).locator("..");
+    await forecast.getByRole("row").nth(1).getByRole("button").click();       // this month's deals
+    const move = forecast.getByLabel(`Move ${name} to month`);
+    const next = await move.locator("option").nth(2).getAttribute("value");   // [date, this month, next month, …]
+    await move.selectOption(next!);
+    await expect(page.getByText("Close date moved")).toBeVisible();
+    const after = await (await request.get(`${API}/crm/leads/${lead.id}`)).json();
+    expect(after.lead.expected_close_date.slice(0, 7)).toBe(next);
+  });
+});

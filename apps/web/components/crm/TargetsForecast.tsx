@@ -146,6 +146,7 @@ function ForecastCard() {
     api<Forecast>("/crm/forecast?months=4").then(setF).catch((e) => setError(errorText(e, "Couldn't load the forecast.")));
   }, []);
   useEffect(load, [load]);
+  const months = f?.months.map((b) => b.month!) ?? [];
 
   return (
     <Card>
@@ -165,9 +166,9 @@ function ForecastCard() {
             </tr>
           </thead>
           <tbody>
-            {f.months.map((b) => <Row key={b.month} label={monthLabel(b.month!)} b={b} />)}
-            <Row label="Overdue" b={f.overdue} warn />
-            <Row label="No close date" b={f.no_date} />
+            {f.months.map((b) => <Row key={b.month} label={monthLabel(b.month!)} b={b} months={months} onMoved={load} />)}
+            <Row label="Overdue" b={f.overdue} warn months={months} onMoved={load} />
+            <Row label="No close date" b={f.no_date} months={months} onMoved={load} />
           </tbody>
         </table>
       )}
@@ -175,8 +176,24 @@ function ForecastCard() {
   );
 }
 
-function Row({ label, b, warn }: { label: string; b: Bucket; warn?: boolean }) {
+/** The deal's close date moved into `month` (YYYY-MM): same day, or the
+ *  month's last day when the month is shorter. */
+function inMonth(date: string | null | undefined, month: string): string {
+  const [y, m] = month.split("-").map(Number);
+  const last = new Date(y, m, 0).getDate();
+  const day = Math.min(date ? Number(date.slice(8, 10)) : 15, last);
+  return `${month}-${String(day).padStart(2, "0")}`;
+}
+
+function Row({ label, b, warn, months, onMoved }: {
+  label: string; b: Bucket; warn?: boolean; months: string[]; onMoved: () => void;
+}) {
   const [open, setOpen] = useState(false);
+  const can = useCan();
+  const move = useAction(
+    (id: string, close: string) => api(`/crm/leads/${id}`, { method: "PATCH", body: JSON.stringify({ expected_close_date: close }) }),
+    { success: "Close date moved", failure: "Couldn't move the deal" },
+  );
   return (
     <>
       <tr className="border-t border-line tabular-nums">
@@ -195,7 +212,16 @@ function Row({ label, b, warn }: { label: string; b: Bucket; warn?: boolean }) {
       {open && (b.deals ?? []).map((d) => (
         <tr key={d.id} className="text-xs text-fg-muted">
           <td className="py-0.5 ps-4">{d.name}</td>
-          <td className="py-0.5 text-end">{d.expected_close_date ? formatDay(d.expected_close_date) : ""}</td>
+          <td className="py-0.5 text-end">
+            {can("crm.lead.update") ? (
+              <Select aria-label={`Move ${d.name} to month`} className="w-32 py-0.5 text-xs" disabled={move.busy}
+                      value={d.expected_close_date?.slice(0, 7) ?? ""}
+                      onChange={async (e) => { if (e.target.value && await move.run(d.id, inMonth(d.expected_close_date, e.target.value))) onMoved(); }}>
+                <option value="">{d.expected_close_date ? formatDay(d.expected_close_date) : "No date"}</option>
+                {months.map((m) => <option key={m} value={m}>{monthLabel(m)}</option>)}
+              </Select>
+            ) : (d.expected_close_date ? formatDay(d.expected_close_date) : "")}
+          </td>
           <td className="py-0.5 text-end">{money(d.weighted_minor)}</td>
           <td className="py-0.5 text-end">{money(d.value_minor)}</td>
         </tr>
