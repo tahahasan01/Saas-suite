@@ -30669,6 +30669,384 @@
           }
         }
       }
+    },
+    "/pos/transfers": {
+      "get": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "List Transfers",
+        "operationId": "list_transfers_pos_transfers_get",
+        "parameters": [
+          {
+            "name": "status_filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "draft",
+                    "dispatched",
+                    "received",
+                    "cancelled"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status Filter"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TransferOut"
+                  },
+                  "title": "Response List Transfers Pos Transfers Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Create Transfer",
+        "operationId": "create_transfer_pos_transfers_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pos/transfers/{transfer_id}": {
+      "get": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Get Transfer",
+        "operationId": "get_transfer_pos_transfers__transfer_id__get",
+        "parameters": [
+          {
+            "name": "transfer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Transfer Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pos/transfers/{transfer_id}/dispatch": {
+      "post": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Dispatch",
+        "operationId": "dispatch_pos_transfers__transfer_id__dispatch_post",
+        "parameters": [
+          {
+            "name": "transfer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Transfer Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pos/transfers/{transfer_id}/receive": {
+      "post": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Receive",
+        "operationId": "receive_pos_transfers__transfer_id__receive_post",
+        "parameters": [
+          {
+            "name": "transfer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Transfer Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceiveIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pos/transfers/{transfer_id}/cancel": {
+      "post": {
+        "tags": [
+          "pos"
+        ],
+        "summary": "Cancel",
+        "operationId": "cancel_pos_transfers__transfer_id__cancel_post",
+        "parameters": [
+          {
+            "name": "transfer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Transfer Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -49814,6 +50192,41 @@
         "type": "object",
         "title": "Reason"
       },
+      "ReceiveIn": {
+        "properties": {
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/ReceivedLine"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "title": "Lines"
+          }
+        },
+        "type": "object",
+        "title": "ReceiveIn"
+      },
+      "ReceivedLine": {
+        "properties": {
+          "line_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Line Id"
+          },
+          "qty_received": {
+            "type": "number",
+            "maximum": 1000000.0,
+            "minimum": 0.0,
+            "title": "Qty Received"
+          }
+        },
+        "type": "object",
+        "required": [
+          "line_id",
+          "qty_received"
+        ],
+        "title": "ReceivedLine"
+      },
       "RecipientOut": {
         "properties": {
           "contact_id": {
@@ -55296,6 +55709,214 @@
           "next_cursor"
         ],
         "title": "TimelinePage"
+      },
+      "TransferIn": {
+        "properties": {
+          "from_branch_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "From Branch Id"
+          },
+          "to_branch_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "To Branch Id"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/TransferLineIn"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Lines"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "from_branch_id",
+          "to_branch_id",
+          "lines"
+        ],
+        "title": "TransferIn"
+      },
+      "TransferLineIn": {
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Product Id"
+          },
+          "qty": {
+            "type": "number",
+            "maximum": 1000000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Qty"
+          }
+        },
+        "type": "object",
+        "required": [
+          "product_id",
+          "qty"
+        ],
+        "title": "TransferLineIn"
+      },
+      "TransferLineOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "product_id": {
+            "type": "string",
+            "title": "Product Id"
+          },
+          "product_name": {
+            "type": "string",
+            "title": "Product Name"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "qty_sent": {
+            "type": "number",
+            "title": "Qty Sent"
+          },
+          "qty_received": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qty Received"
+          },
+          "variance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variance"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "product_id",
+          "product_name",
+          "unit",
+          "qty_sent",
+          "qty_received",
+          "variance"
+        ],
+        "title": "TransferLineOut"
+      },
+      "TransferOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "number": {
+            "type": "string",
+            "title": "Number"
+          },
+          "from_branch_id": {
+            "type": "string",
+            "title": "From Branch Id"
+          },
+          "from_branch": {
+            "type": "string",
+            "title": "From Branch"
+          },
+          "to_branch_id": {
+            "type": "string",
+            "title": "To Branch Id"
+          },
+          "to_branch": {
+            "type": "string",
+            "title": "To Branch"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "dispatched",
+              "received",
+              "cancelled"
+            ],
+            "title": "Status"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "dispatched_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dispatched At"
+          },
+          "received_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Received At"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/TransferLineOut"
+            },
+            "type": "array",
+            "title": "Lines"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "number",
+          "from_branch_id",
+          "from_branch",
+          "to_branch_id",
+          "to_branch",
+          "status",
+          "note",
+          "created_at",
+          "dispatched_at",
+          "received_at",
+          "lines"
+        ],
+        "title": "TransferOut"
       },
       "TrendPoint": {
         "properties": {

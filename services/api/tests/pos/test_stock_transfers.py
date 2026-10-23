@@ -124,3 +124,39 @@ async def test_the_receiving_branch_sees_it_and_receiving_needs_its_key(client, 
     finally:
         await viewer.aclose()
         await clerk.aclose()
+
+
+async def _only_at(tenant_id: str, user_id: str, branch: str) -> None:
+    await _owner("delete from user_branches where user_id = $1", uuid.UUID(user_id))
+    await _owner("insert into user_branches (tenant_id, user_id, branch_id, is_home) values ($1, $2, $3, true)",
+                 uuid.UUID(tenant_id), uuid.UUID(user_id), uuid.UUID(branch))
+
+
+async def test_each_end_does_only_its_own_part(client, pos_tenant):
+    """Security review: the sender dispatches or cancels, the receiver
+    receives. Seeing the transfer from the other end isn't enough, even
+    for a receipt of nothing (zero quantities move no stock)."""
+    warehouse = (await client.get("/org/branches")).json()[0]["id"]
+    shop = await _branch(pos_tenant.tenant_id, "Model Town shop")
+    p = await _product(client, stock=10)
+    both = await _role(client, [{"permission_key": "products.product.read", "scope": "all"},
+                                {"permission_key": "products.transfer.manage", "scope": "all"},
+                                {"permission_key": "products.transfer.receive", "scope": "all"}])
+    at_shop, shop_uid, _ = await _user_on(client, [both])
+    at_wh, wh_uid, _ = await _user_on(client, [both])
+    try:
+        await _only_at(pos_tenant.tenant_id, shop_uid, shop)
+        await _only_at(pos_tenant.tenant_id, wh_uid, warehouse)
+        draft = (await client.post("/pos/transfers", json={"from_branch_id": warehouse, "to_branch_id": shop,
+                                                           "lines": [{"product_id": p["id"], "qty": 2}]})).json()
+        assert (await at_shop.post(f"/pos/transfers/{draft['id']}/dispatch")).status_code == 403
+        assert (await at_shop.post(f"/pos/transfers/{draft['id']}/cancel")).status_code == 403
+        assert (await at_wh.post(f"/pos/transfers/{draft['id']}/dispatch")).status_code == 200
+        line = draft["lines"][0]["id"]
+        r = await at_wh.post(f"/pos/transfers/{draft['id']}/receive",
+                             json={"lines": [{"line_id": line, "qty_received": 0}]})
+        assert r.status_code == 403
+        assert (await at_shop.post(f"/pos/transfers/{draft['id']}/receive", json={})).status_code == 200
+    finally:
+        await at_shop.aclose()
+        await at_wh.aclose()

@@ -103,6 +103,14 @@ async def _get(conn: asyncpg.Connection, transfer_id: Any, *, lock: bool = False
     return row
 
 
+async def _at(conn: asyncpg.Connection, branch_id: Any, who: str) -> None:
+    """Only staff of that end act on it: the sender sends or cancels, the
+    receiver receives (security review: seeing it from the other end, which
+    the policy allows, isn't enough)."""
+    if not await conn.fetchval("select app_branch_visible($1)", branch_id):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, f"Only staff at the {who} branch can do that")
+
+
 def _expect(row: asyncpg.Record, wanted: str) -> None:
     if row["status"] != wanted:
         raise HTTPException(status.HTTP_409_CONFLICT, f"This transfer is already {row['status']}")
@@ -154,6 +162,7 @@ async def create_transfer(body: TransferIn, auth: AuthContext = Depends(perm("pr
 async def dispatch(transfer_id: UUID, auth: AuthContext = Depends(perm("products.transfer.manage"))) -> TransferOut:
     async with db.tenant_conn(auth.tenant_id) as conn, conn.transaction():
         t = await _get(conn, transfer_id, lock=True)
+        await _at(conn, t["from_branch_id"], "sending")
         _expect(t, "draft")
         for ln in await conn.fetch("select * from stock_transfer_lines where transfer_id = $1", transfer_id):
             await catalog.move(conn, auth.tenant_id, ln["product_id"], -ln["qty_sent"], "transfer_out",
@@ -170,12 +179,13 @@ async def receive(transfer_id: UUID, body: ReceiveIn,
                   auth: AuthContext = Depends(perm("products.transfer.receive"))) -> TransferOut:
     async with db.tenant_conn(auth.tenant_id) as conn, conn.transaction():
         t = await _get(conn, transfer_id, lock=True)
-        _expect(t, "dispatched")
+        await _at(conn, t["to_branch_id"], "receiving")
         lines = {r["id"]: r for r in await conn.fetch(
             "select * from stock_transfer_lines where transfer_id = $1", transfer_id)}
         got = {ln.line_id: Decimal(str(ln.qty_received)) for ln in body.lines}
-        if set(got) - set(lines):
+        if set(got) - set(lines):      # before the status: a foreign line id is refused as such
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Transfer line not found")
+        _expect(t, "dispatched")
         for line_id, ln in lines.items():
             qty = got.get(line_id, ln["qty_sent"])
             if qty > ln["qty_sent"]:
@@ -196,6 +206,7 @@ async def receive(transfer_id: UUID, body: ReceiveIn,
 async def cancel(transfer_id: UUID, auth: AuthContext = Depends(perm("products.transfer.manage"))) -> TransferOut:
     async with db.tenant_conn(auth.tenant_id) as conn, conn.transaction():
         t = await _get(conn, transfer_id, lock=True)
+        await _at(conn, t["from_branch_id"], "sending")
         _expect(t, "draft")      # once dispatched, the goods are on the road: receive them, then adjust
         await conn.execute("update stock_transfers set status = 'cancelled' where id = $1", transfer_id)
         return await _out(conn, await _get(conn, transfer_id))

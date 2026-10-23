@@ -7285,6 +7285,92 @@ export interface paths {
         patch: operations["update_station_restaurant_stations__station_id__patch"];
         trace?: never;
     };
+    "/pos/transfers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Transfers */
+        get: operations["list_transfers_pos_transfers_get"];
+        put?: never;
+        /** Create Transfer */
+        post: operations["create_transfer_pos_transfers_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/transfers/{transfer_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Transfer */
+        get: operations["get_transfer_pos_transfers__transfer_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/transfers/{transfer_id}/dispatch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dispatch */
+        post: operations["dispatch_pos_transfers__transfer_id__dispatch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/transfers/{transfer_id}/receive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Receive */
+        post: operations["receive_pos_transfers__transfer_id__receive_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pos/transfers/{transfer_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel */
+        post: operations["cancel_pos_transfers__transfer_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -14074,6 +14160,21 @@ export interface components {
              */
             reason: string;
         };
+        /** ReceiveIn */
+        ReceiveIn: {
+            /** Lines */
+            lines?: components["schemas"]["ReceivedLine"][];
+        };
+        /** ReceivedLine */
+        ReceivedLine: {
+            /**
+             * Line Id
+             * Format: uuid
+             */
+            line_id: string;
+            /** Qty Received */
+            qty_received: number;
+        };
         /** RecipientOut */
         RecipientOut: {
             /** Contact Id */
@@ -16064,6 +16165,86 @@ export interface components {
             items: components["schemas"]["TimelineEventOut"][];
             /** Next Cursor */
             next_cursor: string | null;
+        };
+        /** TransferIn */
+        TransferIn: {
+            /**
+             * From Branch Id
+             * Format: uuid
+             */
+            from_branch_id: string;
+            /**
+             * To Branch Id
+             * Format: uuid
+             */
+            to_branch_id: string;
+            /** Lines */
+            lines: components["schemas"]["TransferLineIn"][];
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /** TransferLineIn */
+        TransferLineIn: {
+            /**
+             * Product Id
+             * Format: uuid
+             */
+            product_id: string;
+            /** Qty */
+            qty: number;
+        };
+        /** TransferLineOut */
+        TransferLineOut: {
+            /** Id */
+            id: string;
+            /** Product Id */
+            product_id: string;
+            /** Product Name */
+            product_name: string;
+            /** Unit */
+            unit: string;
+            /** Qty Sent */
+            qty_sent: number;
+            /** Qty Received */
+            qty_received: number | null;
+            /** Variance */
+            variance: number | null;
+        };
+        /** TransferOut */
+        TransferOut: {
+            /** Id */
+            id: string;
+            /** Number */
+            number: string;
+            /** From Branch Id */
+            from_branch_id: string;
+            /** From Branch */
+            from_branch: string;
+            /** To Branch Id */
+            to_branch_id: string;
+            /** To Branch */
+            to_branch: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "dispatched" | "received" | "cancelled";
+            /** Note */
+            note: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Dispatched At */
+            dispatched_at: string | null;
+            /** Received At */
+            received_at: string | null;
+            /** Lines */
+            lines: components["schemas"]["TransferLineOut"][];
         };
         /** TrendPoint */
         TrendPoint: {
@@ -33235,6 +33416,210 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_transfers_pos_transfers_get: {
+        parameters: {
+            query?: {
+                status_filter?: ("draft" | "dispatched" | "received" | "cancelled") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransferOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_transfer_pos_transfers_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransferIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransferOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_transfer_pos_transfers__transfer_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                transfer_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransferOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dispatch_pos_transfers__transfer_id__dispatch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                transfer_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransferOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    receive_pos_transfers__transfer_id__receive_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                transfer_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReceiveIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransferOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_pos_transfers__transfer_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                transfer_id: string;
+            };
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransferOut"];
                 };
             };
             /** @description Validation Error */

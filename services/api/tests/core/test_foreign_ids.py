@@ -38,6 +38,8 @@ KIND_OF = {
     "item_id": "review_item", "winner_id": "contact",
     # org data (3A, p3-orgdata)
     "branch_id": "branch", "sequence_id": "sequence", "logo_file_id": "file",
+    "from_branch_id": "branch", "to_branch_id": "branch",   # transfers (0092)
+    "transfer_id": "transfer",
     "team_id": "team", "lead_user_id": "user",
     # HR org, attendance v2, holidays, leave v2 (3F)
     "dept_id": "department", "department_id": "department", "parent_id": "department",
@@ -88,6 +90,7 @@ KIND_OF = {
 # matching path prefix wins, otherwise KIND_OF. (template_id is a boarding,
 # appraisal, letter or CRM message template depending on where it's sent.)
 ROUTE_KINDS: dict[str, tuple[tuple[str, str], ...]] = {
+    "line_id": (("/pos/transfers", "transfer_line"),),     # a settlement line elsewhere (KIND_OF)
     "template_id": (
         ("/hrms/letter-templates", "letter_template"),
         ("/hrms/employees/{employee_id}/letters", "letter_template"),
@@ -244,8 +247,21 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
     vplan = (await c.post("/invoices/plans", json={"name": "Probe fees", "tag_id": vtag["id"], "lines": [
         {"description": "Fee", "qty": 1, "unit_price_minor": 100}]})).json()
     vrun = (await c.post(f"/invoices/plans/{vplan['id']}/runs", json={"period": "2027-04"})).json()
+    # A transfer needs two branches (0092): add one for this tenant.
+    me = (await c.get("/auth/me")).json()
+    owner2 = await asyncpg.connect(settings.database_url)
+    try:
+        second = await owner2.fetchval(
+            "insert into branches (tenant_id, code, name) values ($1, $2, 'Probe warehouse') returning id",
+            uuid.UUID(me["tenant"]["id"]), "W" + uuid.uuid4().hex[:4].upper())
+    finally:
+        await owner2.close()
+    main_branch = (await c.get("/org/branches")).json()[0]["id"]
+    transfer = (await c.post("/pos/transfers", json={"from_branch_id": main_branch, "to_branch_id": str(second),
+                                                     "lines": [{"product_id": product["id"], "qty": 1}]})).json()
     return {
         "invoice_plan": vplan["id"], "invoice_run": vrun["id"],
+        "transfer": transfer["id"], "transfer_line": transfer["lines"][0]["id"],
         "segment": segment["id"], "template": template["id"], "campaign": campaign["id"],
         "target": target["id"],
         "quote": quote["id"], "web_form": web_form["id"],
