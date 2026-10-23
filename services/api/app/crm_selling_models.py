@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -385,6 +385,8 @@ class SegmentFilter(BaseModel):
     roles: list[ContactRole] = Field(default_factory=list, max_length=6)
     city: str | None = Field(default=None, max_length=80)
     has_email: bool | None = None
+    # Contact custom field values, all of which must match (checked against the definitions on save).
+    custom: dict[str, Any] = Field(default_factory=dict, max_length=10)
 
 
 class SegmentIn(BaseModel):

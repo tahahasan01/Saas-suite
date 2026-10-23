@@ -10,7 +10,7 @@ from typing import Any
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 
-from .. import campaigns, context, db, ratelimit
+from .. import campaigns, context, custom_fields, db, ratelimit
 from ..crm_selling_models import (
     CampaignIn,
     CampaignOut,
@@ -81,6 +81,8 @@ async def list_segments(auth: AuthContext = Depends(perm("crm.campaign.manage"))
 async def create_segment(body: SegmentIn, auth: AuthContext = Depends(perm("crm.campaign.manage"))) -> SegmentOut:
     async with db.tenant_conn(auth.tenant_id) as conn:
         await campaigns.check_tags(conn, body.filter)
+        # The same checks as a write: known, active contact fields; values of their kind.
+        body.filter.custom = await custom_fields.clean(conn, "contact", body.filter.custom)
         row = await conn.fetchrow(
             """insert into crm_segments (tenant_id, name, filter, created_by) values ($1, btrim($2), $3, $4)
                returning *""", auth.tenant_id, body.name, body.filter.model_dump(mode="json"), auth.user_id)

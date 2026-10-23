@@ -128,3 +128,26 @@ async def test_another_companys_fields_mean_nothing_here(client, shop):
     finally:
         me = (await client.get("/auth/me")).json()
         await _drop(me["tenant"]["id"])
+
+
+async def test_saved_lists_can_filter_on_contact_custom_values(client, shop):
+    await field(client, "contact", "Blood group", "select", options=["A+", "O+"])
+    await field(client, "contact", "Donor", "checkbox")
+    for name, custom in (("Ali", {"blood_group": "O+", "donor": True}), ("Bina", {"blood_group": "O+"}),
+                         ("Chand", {"blood_group": "A+", "donor": True})):
+        r = await client.post("/contacts", json={"name": name, "email": f"{name.lower()}@example.com", "force": True,
+                                                 "custom": custom})
+        assert r.status_code == 201, r.text
+    seg = await client.post("/crm/segments", json={"name": "O+ donors",
+                                                   "filter": {"custom": {"blood_group": "O+", "donor": True}}})
+    assert seg.status_code == 201, seg.text
+    assert seg.json()["filter"]["custom"] == {"blood_group": "O+", "donor": True}
+    p = (await client.get(f"/crm/segments/{seg.json()['id']}/preview", params={"channel": "email"})).json()
+    assert p["total"] == 1                                    # only Ali matches both
+    for bad in ({"no_such_field": "x"}, {"blood_group": "B-"}, {"donor": "yes"}):
+        r = await client.post("/crm/segments", json={"name": "Bad", "filter": {"custom": bad}})
+        assert r.status_code == 422, (bad, r.text)
+    # A lead field means nothing for contacts.
+    await field(client, "lead", "Plot size", "number")
+    r = await client.post("/crm/segments", json={"name": "Bad", "filter": {"custom": {"plot_size": 3}}})
+    assert r.status_code == 422

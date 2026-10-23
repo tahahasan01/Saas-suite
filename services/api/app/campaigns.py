@@ -104,6 +104,8 @@ def segment_sql(f: SegmentFilter) -> tuple[str, list[Any]]:
         where.append(f"lower(btrim(c.city)) = lower(btrim({arg(f.city)}))")
     if f.has_email is not None:
         where.append("c.email_normalized is not null" if f.has_email else "c.email_normalized is null")
+    if f.custom:
+        where.append(f"c.custom @> {arg(f.custom)}::jsonb")
     return " and ".join(where), args
 
 

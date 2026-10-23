@@ -15911,6 +15911,10 @@ export interface components {
             city?: string | null;
             /** Has Email */
             has_email?: boolean | null;
+            /** Custom */
+            custom?: {
+                [key: string]: unknown;
+            };
         };
         /** SegmentIn */
         SegmentIn: {

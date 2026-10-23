@@ -55549,6 +55549,12 @@
               }
             ],
             "title": "Has Email"
+          },
+          "custom": {
+            "additionalProperties": true,
+            "type": "object",
+            "maxProperties": 10,
+            "title": "Custom"
           }
         },
         "additionalProperties": false,
