@@ -167,10 +167,10 @@ async def send_payslips(run_id: str, body: PayslipSendIn,
     (0111), through the outbox. Sent once unless `again`; no email, skipped."""
     async with db.tenant_conn(auth.tenant_id) as conn, conn.transaction():
         run = await payroll_runs.get_run(conn, run_id)
+        for eid in body.employee_ids or []:          # ids are proven before anything else
+            await refs.ensure_visible(conn, "hrms_employees", eid)
         if run["status"] not in payroll_runs.FINAL:
             raise HTTPException(status.HTTP_409_CONFLICT, "Approve the run before sending payslips")
-        for eid in body.employee_ids or []:
-            await refs.ensure_visible(conn, "hrms_employees", eid)
         only = [str(i) for i in body.employee_ids] if body.employee_ids is not None else None
         slips = await conn.fetch(
             """select p.id, p.employee_id, btrim(e.email) as email,

@@ -23,7 +23,7 @@ from typing import Any
 import asyncpg
 from fastapi import HTTPException, status
 
-from . import leave, payroll_data
+from . import leave, pay_policies, payroll_data
 from .payroll_engine import encash_amount
 
 FINAL_RUNS = ("approved", "paid", "locked")
@@ -119,17 +119,25 @@ async def build_auto_lines(conn: asyncpg.Connection, tenant_id: str, settlement:
     lines: list[tuple[Any, ...]] = []
 
     rule, _ = await rule_for(conn)
+    policy = await pay_policies.load(conn)
     years, amount, explain = gratuity(base, joined, last, rule)
-    if amount > 0:
-        lines.append(("payable", "GRATUITY", f"Gratuity ({years} year{'s' if years != 1 else ''})", amount, True,
-                      None, None, explain))
+    label = f"Gratuity ({years} year{'s' if years != 1 else ''})"
+    # The company's tax rule (0112): all taxed, all tax-free, or tax-free up to a limit.
+    free, taxed = pay_policies.gratuity_split(amount, policy)
+    if free > 0:
+        lines.append(("payable", "GRATUITY", f"{label}, tax-free", free, False, None, None, explain))
+    if taxed > 0:
+        lines.append(("payable", "GRATUITY", label + (", taxed part" if free else ""), taxed, True, None, None, explain))
 
-    for b in await leave.balances(conn, tenant_id, str(eid), on=last):
-        if b.leave_type == "annual" and b.remaining > 0:
+    divisor = await pay_policies.divisor(conn, last)
+    balances = await leave.balances(conn, tenant_id, str(eid), on=last)   # seeds a new company's leave types
+    paid_out = {str(r["id"]) for r in await conn.fetch("select id from hrms_leave_types where paid_on_leaving")}
+    for b in balances:
+        if b.leave_type_id in paid_out and b.remaining > 0:
             days = Decimal(str(b.remaining))
-            per_day, value = encash_amount(base, days)
+            per_day, value = encash_amount(base, days, divisor=divisor)
             if value > 0:
-                lines.append(("payable", "LEAVE_ENCASH", f"Annual leave not taken ({b.remaining:g} days)", value, True,
+                lines.append(("payable", "LEAVE_ENCASH", f"{b.name or b.leave_type} not taken ({b.remaining:g} days)"[:120], value, True,
                               b.leave_type_id, days, {"per_day_minor": per_day}))
 
     for a in await outstanding_advances(conn, eid):

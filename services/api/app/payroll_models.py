@@ -380,3 +380,44 @@ class RegistrationIn(BaseModel):
 
 
 PayslipDetail.model_rebuild()   # it names LineOut, defined further down
+
+
+# ── Pay policies each company sets (0112) ───────────────────────────────────
+EncashBasis = Literal["days_30", "days_26", "working_days"]
+ENCASH_BASES = list(get_args(EncashBasis))
+GratuityTax = Literal["taxed", "exempt", "exempt_up_to"]
+GRATUITY_TAXES = list(get_args(GratuityTax))
+PolicyPreset = Literal["standing_orders", "provident_fund", "small_business"]
+POLICY_PRESETS = list(get_args(PolicyPreset))
+
+
+class PoliciesIn(BaseModel):
+    encash_basis: EncashBasis
+    gratuity_tax: GratuityTax
+    gratuity_exempt_minor: int | None = Field(default=None, gt=0, le=10**12)
+    paid_on_leaving_ids: list[UUID] | None = Field(default=None, max_length=100)   # leave types; unchanged if left out
+
+
+class PolicyLeaveType(BaseModel):
+    id: str
+    code: str
+    name: str
+    paid_on_leaving: bool
+
+
+class PoliciesOut(BaseModel):
+    encash_basis: EncashBasis
+    gratuity_tax: GratuityTax
+    gratuity_exempt_minor: int | None
+    preset: PolicyPreset | None
+    leave_types: list[PolicyLeaveType]
+
+
+class PresetIn(BaseModel):
+    preset: PolicyPreset
+
+
+class PresetOut(BaseModel):
+    key: PolicyPreset
+    name: str
+    summary: str

@@ -4372,6 +4372,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/payroll/policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Policies */
+        get: operations["get_policies_payroll_policies_get"];
+        /** Put Policies */
+        put: operations["put_policies_payroll_policies_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payroll/policy-presets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Presets */
+        get: operations["presets_payroll_policy_presets_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payroll/policies/apply-preset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Apply Preset */
+        post: operations["apply_preset_payroll_policies_apply_preset_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/hrms/analytics": {
         parameters: {
             query?: never;
@@ -13500,6 +13552,53 @@ export interface components {
             /** Qty */
             qty: number;
         };
+        /** PoliciesIn */
+        PoliciesIn: {
+            /**
+             * Encash Basis
+             * @enum {string}
+             */
+            encash_basis: "days_30" | "days_26" | "working_days";
+            /**
+             * Gratuity Tax
+             * @enum {string}
+             */
+            gratuity_tax: "taxed" | "exempt" | "exempt_up_to";
+            /** Gratuity Exempt Minor */
+            gratuity_exempt_minor?: number | null;
+            /** Paid On Leaving Ids */
+            paid_on_leaving_ids?: string[] | null;
+        };
+        /** PoliciesOut */
+        PoliciesOut: {
+            /**
+             * Encash Basis
+             * @enum {string}
+             */
+            encash_basis: "days_30" | "days_26" | "working_days";
+            /**
+             * Gratuity Tax
+             * @enum {string}
+             */
+            gratuity_tax: "taxed" | "exempt" | "exempt_up_to";
+            /** Gratuity Exempt Minor */
+            gratuity_exempt_minor: number | null;
+            /** Preset */
+            preset: ("standing_orders" | "provident_fund" | "small_business") | null;
+            /** Leave Types */
+            leave_types: components["schemas"]["PolicyLeaveType"][];
+        };
+        /** PolicyLeaveType */
+        PolicyLeaveType: {
+            /** Id */
+            id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Paid On Leaving */
+            paid_on_leaving: boolean;
+        };
         /** PoolMemberIn */
         PoolMemberIn: {
             /**
@@ -13543,6 +13642,26 @@ export interface components {
             sales_today_count: number;
             /** Sales Today Total Minor */
             sales_today_total_minor: number;
+        };
+        /** PresetIn */
+        PresetIn: {
+            /**
+             * Preset
+             * @enum {string}
+             */
+            preset: "standing_orders" | "provident_fund" | "small_business";
+        };
+        /** PresetOut */
+        PresetOut: {
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "standing_orders" | "provident_fund" | "small_business";
+            /** Name */
+            name: string;
+            /** Summary */
+            summary: string;
         };
         /** PreviewOut */
         PreviewOut: {
@@ -26645,6 +26764,138 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AssetOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_policies_payroll_policies_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PoliciesOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_policies_payroll_policies_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PoliciesIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PoliciesOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    presets_payroll_policy_presets_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PresetOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    apply_preset_payroll_policies_apply_preset_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PresetIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PoliciesOut"];
                 };
             };
             /** @description Validation Error */

@@ -60,14 +60,14 @@ def overtime_pay(base_minor: int, *, working_days: int, shift_minutes: int, minu
     return _round(Decimal(base_minor) * minutes * multiplier / (Decimal(working_days) * shift_minutes))
 
 
-ENCASH_DAYS_PER_MONTH = 30   # per-day divisor for leave encashment (St12 §5: founder to confirm)
-
-
-def encash_amount(base_minor: int, days: Decimal) -> tuple[int, int]:
+def encash_amount(base_minor: int, days: Decimal, *, divisor: int = 30) -> tuple[int, int]:
     """(per-day rate, amount) in paisa for encashed leave (wave C, H8): the
-    monthly salary over 30 a day, each rounded half-up once."""
-    per_day = _round(Decimal(base_minor) / ENCASH_DAYS_PER_MONTH)
-    return per_day, _round(Decimal(base_minor) * days / ENCASH_DAYS_PER_MONTH)
+    monthly salary over the company's divisor (0112: 30, 26 or the month's
+    working days), each rounded half-up once."""
+    if divisor <= 0 or base_minor <= 0:
+        return 0, 0
+    per_day = _round(Decimal(base_minor) / divisor)
+    return per_day, _round(Decimal(base_minor) * days / divisor)
 
 
 def _rs(minor: int) -> str:

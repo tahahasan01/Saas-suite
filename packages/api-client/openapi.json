@@ -18243,6 +18243,224 @@
         }
       }
     },
+    "/payroll/policies": {
+      "get": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Get Policies",
+        "operationId": "get_policies_payroll_policies_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PoliciesOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Put Policies",
+        "operationId": "put_policies_payroll_policies_put",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PoliciesIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PoliciesOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/policy-presets": {
+      "get": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Presets",
+        "operationId": "presets_payroll_policy_presets_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PresetOut"
+                  },
+                  "title": "Response Presets Payroll Policy Presets Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/policies/apply-preset": {
+      "post": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Apply Preset",
+        "operationId": "apply_preset_payroll_policies_apply_preset_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PresetIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PoliciesOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/hrms/analytics": {
       "get": {
         "tags": [
@@ -48387,6 +48605,156 @@
         ],
         "title": "PoReceiveLine"
       },
+      "PoliciesIn": {
+        "properties": {
+          "encash_basis": {
+            "type": "string",
+            "enum": [
+              "days_30",
+              "days_26",
+              "working_days"
+            ],
+            "title": "Encash Basis"
+          },
+          "gratuity_tax": {
+            "type": "string",
+            "enum": [
+              "taxed",
+              "exempt",
+              "exempt_up_to"
+            ],
+            "title": "Gratuity Tax"
+          },
+          "gratuity_exempt_minor": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gratuity Exempt Minor"
+          },
+          "paid_on_leaving_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "type": "array",
+                "maxItems": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid On Leaving Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "encash_basis",
+          "gratuity_tax"
+        ],
+        "title": "PoliciesIn"
+      },
+      "PoliciesOut": {
+        "properties": {
+          "encash_basis": {
+            "type": "string",
+            "enum": [
+              "days_30",
+              "days_26",
+              "working_days"
+            ],
+            "title": "Encash Basis"
+          },
+          "gratuity_tax": {
+            "type": "string",
+            "enum": [
+              "taxed",
+              "exempt",
+              "exempt_up_to"
+            ],
+            "title": "Gratuity Tax"
+          },
+          "gratuity_exempt_minor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gratuity Exempt Minor"
+          },
+          "preset": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "standing_orders",
+                  "provident_fund",
+                  "small_business"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preset"
+          },
+          "leave_types": {
+            "items": {
+              "$ref": "#/components/schemas/PolicyLeaveType"
+            },
+            "type": "array",
+            "title": "Leave Types"
+          }
+        },
+        "type": "object",
+        "required": [
+          "encash_basis",
+          "gratuity_tax",
+          "gratuity_exempt_minor",
+          "preset",
+          "leave_types"
+        ],
+        "title": "PoliciesOut"
+      },
+      "PolicyLeaveType": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "paid_on_leaving": {
+            "type": "boolean",
+            "title": "Paid On Leaving"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "name",
+          "paid_on_leaving"
+        ],
+        "title": "PolicyLeaveType"
+      },
       "PoolMemberIn": {
         "properties": {
           "user_id": {
@@ -48505,6 +48873,52 @@
           "sales_today_total_minor"
         ],
         "title": "PosSummary"
+      },
+      "PresetIn": {
+        "properties": {
+          "preset": {
+            "type": "string",
+            "enum": [
+              "standing_orders",
+              "provident_fund",
+              "small_business"
+            ],
+            "title": "Preset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "preset"
+        ],
+        "title": "PresetIn"
+      },
+      "PresetOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "standing_orders",
+              "provident_fund",
+              "small_business"
+            ],
+            "title": "Key"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "name",
+          "summary"
+        ],
+        "title": "PresetOut"
       },
       "PreviewOut": {
         "properties": {
