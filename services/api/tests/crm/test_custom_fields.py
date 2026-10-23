@@ -113,3 +113,18 @@ async def test_defining_fields_is_crm_settings(client, shop):
     assert (await client.get("/custom-fields", params={"entity": "lead"})).status_code == 200   # reps fill them in
     created = (await lead(client, custom={"area": "DHA"}))
     assert created.status_code == 201, created.text
+
+
+async def test_another_companys_fields_mean_nothing_here(client, shop):
+    """Fields are per company: a key defined elsewhere is unknown here, and
+    another company's field can't be changed or retired from here."""
+    theirs = await field(client, "lead", "Secret code", "text")
+    await _signup(client, ["crm"])
+    try:
+        r = await lead(client, custom={"secret_code": "x"})
+        assert r.status_code == 422, r.text
+        assert (await client.get("/custom-fields", params={"entity": "lead", "include_archived": True})).json() == []
+        assert (await client.patch(f"/custom-fields/{theirs['id']}", json={"archived": True})).status_code == 404
+    finally:
+        me = (await client.get("/auth/me")).json()
+        await _drop(me["tenant"]["id"])
