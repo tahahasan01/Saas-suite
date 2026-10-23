@@ -17082,6 +17082,65 @@
         }
       }
     },
+    "/hrms/notices/{notice_id}/remind": {
+      "post": {
+        "tags": [
+          "hrms"
+        ],
+        "summary": "Remind Now",
+        "operationId": "remind_now_hrms_notices__notice_id__remind_post",
+        "parameters": [
+          {
+            "name": "notice_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Notice Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoticeRemindOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/hrms/notices/{notice_id}/acknowledgements": {
       "get": {
         "tags": [
@@ -17242,6 +17301,112 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/NoticeOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hrms/overtime-rates": {
+      "get": {
+        "tags": [
+          "hrms"
+        ],
+        "summary": "Get Rates",
+        "operationId": "get_rates_hrms_overtime_rates_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OvertimeRatesOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "hrms"
+        ],
+        "summary": "Put Rates",
+        "operationId": "put_rates_hrms_overtime_rates_put",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OvertimeRates"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OvertimeRatesOut"
                 }
               }
             }
@@ -18061,6 +18226,469 @@
                     "$ref": "#/components/schemas/AssetOut"
                   },
                   "title": "Response My Assets Me Assets Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/pf/{employee_id}": {
+      "get": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Get Fund",
+        "operationId": "get_fund_payroll_pf__employee_id__get",
+        "parameters": [
+          {
+            "name": "employee_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Employee Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PfBalance"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Set Membership",
+        "operationId": "set_membership_payroll_pf__employee_id__put",
+        "parameters": [
+          {
+            "name": "employee_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Employee Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PfMembershipIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PfBalance"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/pf/{employee_id}/entries": {
+      "post": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Add Entry",
+        "description": "An opening balance (money brought in), a withdrawal (paid out to the\nmember while they stay) or an adjustment. A withdrawal is entered as\namounts taken out and can't take more than is there.",
+        "operationId": "add_entry_payroll_pf__employee_id__entries_post",
+        "parameters": [
+          {
+            "name": "employee_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Employee Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PfEntryIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PfBalance"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/pf": {
+      "get": {
+        "tags": [
+          "portal"
+        ],
+        "summary": "My Fund",
+        "operationId": "my_fund_me_pf_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PfBalance"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/policies": {
+      "get": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Get Policies",
+        "operationId": "get_policies_payroll_policies_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PoliciesOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Put Policies",
+        "operationId": "put_policies_payroll_policies_put",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PoliciesIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PoliciesOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/policy-presets": {
+      "get": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Presets",
+        "operationId": "presets_payroll_policy_presets_get",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PresetOut"
+                  },
+                  "title": "Response Presets Payroll Policy Presets Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/policies/apply-preset": {
+      "post": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Apply Preset",
+        "operationId": "apply_preset_payroll_policies_apply_preset_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PresetIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PoliciesOut"
                 }
               }
             }
@@ -25074,6 +25702,75 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RunOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payroll/runs/{run_id}/payslips/send": {
+      "post": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "Send Payslips",
+        "description": "Email each payslip of a final run to the employee's email on file\n(0111), through the outbox. Sent once unless `again`; no email, skipped.",
+        "operationId": "send_payslips_payroll_runs__run_id__payslips_send_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PayslipSendIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayslipSendOut"
                 }
               }
             }
@@ -47281,6 +47978,23 @@
               }
             ],
             "title": "Acknowledged At"
+          },
+          "last_reminded_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Reminded At"
+          },
+          "reminders_sent": {
+            "type": "integer",
+            "title": "Reminders Sent",
+            "default": 0
           }
         },
         "type": "object",
@@ -47301,6 +48015,19 @@
           "acknowledged"
         ],
         "title": "NoticeOut"
+      },
+      "NoticeRemindOut": {
+        "properties": {
+          "reminded": {
+            "type": "integer",
+            "title": "Reminded"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reminded"
+        ],
+        "title": "NoticeRemindOut"
       },
       "NoticeUpdate": {
         "properties": {
@@ -47940,6 +48667,16 @@
             "type": "number",
             "title": "Rate Multiplier"
           },
+          "day_type": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "rest_day",
+              "holiday"
+            ],
+            "title": "Day Type",
+            "default": "normal"
+          },
           "amount_minor": {
             "anyOf": [
               {
@@ -47989,6 +48726,69 @@
           "created_at"
         ],
         "title": "OvertimeOut"
+      },
+      "OvertimeRates": {
+        "properties": {
+          "normal": {
+            "type": "number",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Normal"
+          },
+          "rest_day": {
+            "type": "number",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Rest Day"
+          },
+          "holiday": {
+            "type": "number",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Holiday"
+          }
+        },
+        "type": "object",
+        "required": [
+          "normal",
+          "rest_day",
+          "holiday"
+        ],
+        "title": "OvertimeRates"
+      },
+      "OvertimeRatesOut": {
+        "properties": {
+          "normal": {
+            "type": "number",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Normal"
+          },
+          "rest_day": {
+            "type": "number",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Rest Day"
+          },
+          "holiday": {
+            "type": "number",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Holiday"
+          },
+          "verified": {
+            "type": "boolean",
+            "title": "Verified"
+          }
+        },
+        "type": "object",
+        "required": [
+          "normal",
+          "rest_day",
+          "holiday",
+          "verified"
+        ],
+        "title": "OvertimeRatesOut"
       },
       "PasswordChange": {
         "properties": {
@@ -48578,6 +49378,54 @@
         ],
         "title": "PayslipLink"
       },
+      "PayslipSendIn": {
+        "properties": {
+          "employee_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "type": "array",
+                "maxItems": 5000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employee Ids"
+          },
+          "again": {
+            "type": "boolean",
+            "title": "Again",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "PayslipSendIn"
+      },
+      "PayslipSendOut": {
+        "properties": {
+          "queued": {
+            "type": "integer",
+            "title": "Queued",
+            "default": 0
+          },
+          "no_email": {
+            "type": "integer",
+            "title": "No Email",
+            "default": 0
+          },
+          "already_sent": {
+            "type": "integer",
+            "title": "Already Sent",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "PayslipSendOut"
+      },
       "PayslipSummary": {
         "properties": {
           "id": {
@@ -48665,6 +49513,151 @@
           "name"
         ],
         "title": "PersonOut"
+      },
+      "PfBalance": {
+        "properties": {
+          "employee_id": {
+            "type": "string",
+            "title": "Employee Id"
+          },
+          "member": {
+            "type": "boolean",
+            "title": "Member"
+          },
+          "joined_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Joined On"
+          },
+          "employee_minor": {
+            "type": "integer",
+            "title": "Employee Minor"
+          },
+          "employer_minor": {
+            "type": "integer",
+            "title": "Employer Minor"
+          },
+          "vested_employer_minor": {
+            "type": "integer",
+            "title": "Vested Employer Minor"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/PfHistoryRow"
+            },
+            "type": "array",
+            "title": "History"
+          }
+        },
+        "type": "object",
+        "required": [
+          "employee_id",
+          "member",
+          "joined_on",
+          "employee_minor",
+          "employer_minor",
+          "vested_employer_minor"
+        ],
+        "title": "PfBalance"
+      },
+      "PfEntryIn": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "opening",
+              "withdrawal",
+              "adjustment"
+            ],
+            "title": "Kind"
+          },
+          "employee_minor": {
+            "type": "integer",
+            "maximum": 1000000000000.0,
+            "minimum": -1000000000000.0,
+            "title": "Employee Minor",
+            "default": 0
+          },
+          "employer_minor": {
+            "type": "integer",
+            "maximum": 1000000000000.0,
+            "minimum": -1000000000000.0,
+            "title": "Employer Minor",
+            "default": 0
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "title": "PfEntryIn"
+      },
+      "PfHistoryRow": {
+        "properties": {
+          "on": {
+            "type": "string",
+            "format": "date",
+            "title": "On"
+          },
+          "what": {
+            "type": "string",
+            "title": "What"
+          },
+          "employee_minor": {
+            "type": "integer",
+            "title": "Employee Minor"
+          },
+          "employer_minor": {
+            "type": "integer",
+            "title": "Employer Minor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "on",
+          "what",
+          "employee_minor",
+          "employer_minor"
+        ],
+        "title": "PfHistoryRow"
+      },
+      "PfMembershipIn": {
+        "properties": {
+          "member": {
+            "type": "boolean",
+            "title": "Member"
+          },
+          "joined_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Joined On"
+          }
+        },
+        "type": "object",
+        "required": [
+          "member"
+        ],
+        "title": "PfMembershipIn"
       },
       "PinIn": {
         "properties": {
@@ -49011,6 +50004,250 @@
         ],
         "title": "PoReceiveLine"
       },
+      "PoliciesIn": {
+        "properties": {
+          "encash_basis": {
+            "type": "string",
+            "enum": [
+              "days_30",
+              "days_26",
+              "working_days"
+            ],
+            "title": "Encash Basis"
+          },
+          "gratuity_tax": {
+            "type": "string",
+            "enum": [
+              "taxed",
+              "exempt",
+              "exempt_up_to"
+            ],
+            "title": "Gratuity Tax"
+          },
+          "gratuity_exempt_minor": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gratuity Exempt Minor"
+          },
+          "paid_on_leaving_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "type": "array",
+                "maxItems": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid On Leaving Ids"
+          },
+          "pf_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pf Enabled"
+          },
+          "pf_employee_rate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 30.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pf Employee Rate"
+          },
+          "pf_employer_rate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 30.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pf Employer Rate"
+          },
+          "pf_base": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "basic",
+                  "gross"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pf Base"
+          },
+          "pf_vesting_months": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 240.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pf Vesting Months"
+          }
+        },
+        "type": "object",
+        "required": [
+          "encash_basis",
+          "gratuity_tax"
+        ],
+        "title": "PoliciesIn"
+      },
+      "PoliciesOut": {
+        "properties": {
+          "encash_basis": {
+            "type": "string",
+            "enum": [
+              "days_30",
+              "days_26",
+              "working_days"
+            ],
+            "title": "Encash Basis"
+          },
+          "gratuity_tax": {
+            "type": "string",
+            "enum": [
+              "taxed",
+              "exempt",
+              "exempt_up_to"
+            ],
+            "title": "Gratuity Tax"
+          },
+          "gratuity_exempt_minor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gratuity Exempt Minor"
+          },
+          "preset": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "standing_orders",
+                  "provident_fund",
+                  "small_business"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preset"
+          },
+          "leave_types": {
+            "items": {
+              "$ref": "#/components/schemas/PolicyLeaveType"
+            },
+            "type": "array",
+            "title": "Leave Types"
+          },
+          "pf_enabled": {
+            "type": "boolean",
+            "title": "Pf Enabled",
+            "default": false
+          },
+          "pf_employee_rate": {
+            "type": "number",
+            "title": "Pf Employee Rate",
+            "default": 0
+          },
+          "pf_employer_rate": {
+            "type": "number",
+            "title": "Pf Employer Rate",
+            "default": 0
+          },
+          "pf_base": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "gross"
+            ],
+            "title": "Pf Base",
+            "default": "basic"
+          },
+          "pf_vesting_months": {
+            "type": "integer",
+            "title": "Pf Vesting Months",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "encash_basis",
+          "gratuity_tax",
+          "gratuity_exempt_minor",
+          "preset",
+          "leave_types"
+        ],
+        "title": "PoliciesOut"
+      },
+      "PolicyLeaveType": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "paid_on_leaving": {
+            "type": "boolean",
+            "title": "Paid On Leaving"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "name",
+          "paid_on_leaving"
+        ],
+        "title": "PolicyLeaveType"
+      },
       "PoolMemberIn": {
         "properties": {
           "user_id": {
@@ -49129,6 +50366,52 @@
           "sales_today_total_minor"
         ],
         "title": "PosSummary"
+      },
+      "PresetIn": {
+        "properties": {
+          "preset": {
+            "type": "string",
+            "enum": [
+              "standing_orders",
+              "provident_fund",
+              "small_business"
+            ],
+            "title": "Preset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "preset"
+        ],
+        "title": "PresetIn"
+      },
+      "PresetOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "standing_orders",
+              "provident_fund",
+              "small_business"
+            ],
+            "title": "Key"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "name",
+          "summary"
+        ],
+        "title": "PresetOut"
       },
       "PreviewOut": {
         "properties": {
@@ -53601,6 +54884,7 @@
               "NOTICE_PAY",
               "BONUS",
               "OTHER",
+              "PF_PAYOUT",
               "ADVANCE_SETTLE",
               "ASSET_RECOVERY",
               "NOTICE_SHORTFALL",
@@ -53663,6 +54947,7 @@
               "NOTICE_PAY",
               "BONUS",
               "OTHER",
+              "PF_PAYOUT",
               "ADVANCE_SETTLE",
               "ASSET_RECOVERY",
               "NOTICE_SHORTFALL",

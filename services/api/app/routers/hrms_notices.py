@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from .. import db, files, notifications, rbac, refs
 from ..deps import AuthContext, current_auth, current_employee
-from ..models import NoticeAck, NoticeCreate, NoticeOut, NoticeUpdate
+from ..models import NoticeAck, NoticeCreate, NoticeOut, NoticeRemindOut, NoticeUpdate
 from ..rbac import perm
 
 router = APIRouter(prefix="/hrms", tags=["hrms"])
@@ -51,7 +51,49 @@ def _out(r: asyncpg.Record, acknowledged_at: Any = None) -> NoticeOut:
         audience_label=(r["department_name"] or r["location_name"] or "Everyone"),
         file_id=str(r["file_id"]) if r["file_id"] else None, pinned=r["pinned"], published_at=r["published_at"],
         archived_at=r["archived_at"], audience_size=r["audience_size"], acknowledged=r["acknowledged"],
-        acknowledged_at=acknowledged_at)
+        acknowledged_at=acknowledged_at, last_reminded_at=r["last_reminded_at"], reminders_sent=r["reminders_sent"])
+
+
+REMIND_GAP_HOURS = 12      # a hand reminder at most this often
+AUTO_EVERY_DAYS = 7        # the daily job's pace
+AUTO_MAX = 4               # reminders in all, after which the job stops
+
+
+async def remind(conn: asyncpg.Connection, notice: asyncpg.Record, *, sender: str | None) -> int:
+    """Notifies everyone the notice is for who has a login and hasn't
+    acknowledged it. Returns how many were reminded."""
+    who = await conn.fetch(
+        f"""select a.user_id from hrms_notices n, lateral ({_AUDIENCE}) a
+             where n.id = $1 and a.user_id is not null
+               and not exists (select 1 from hrms_notice_acks k where k.notice_id = n.id and k.employee_id = a.id)""",
+        notice["id"])
+    sent = 0
+    for w in who:
+        if sender is not None and str(w["user_id"]) == sender:
+            continue
+        await notifications.create(conn, user_id=str(w["user_id"]), kind="warning",
+                                   title=f"Reminder: please read and acknowledge {notice['title']}"[:200],
+                                   body=notice["body"][:300], link="/me/notices")
+        sent += 1
+    await conn.execute(
+        "update hrms_notices set last_reminded_at = now(), reminders_sent = reminders_sent + 1 where id = $1",
+        notice["id"])
+    return sent
+
+
+async def remind_due(conn: asyncpg.Connection) -> int:
+    """The daily job: weekly reminders while anyone is left, up to AUTO_MAX."""
+    total = 0
+    for n in await conn.fetch(
+            f"""select n.* from hrms_notices n
+                 where n.requires_ack and n.archived_at is null and n.reminders_sent < $1
+                   and coalesce(n.last_reminded_at, n.created_at) <= now() - make_interval(days => $2)
+                   and exists (select 1 from ({_AUDIENCE}) a where a.user_id is not null
+                                 and not exists (select 1 from hrms_notice_acks k
+                                                  where k.notice_id = n.id and k.employee_id = a.id))
+                 for update of n skip locked""", AUTO_MAX, AUTO_EVERY_DAYS):
+        total += await remind(conn, n, sender=None)
+    return total
 
 
 async def _in_audience(conn: asyncpg.Connection, notice_id: Any, employee_id: Any) -> bool:
@@ -128,6 +170,20 @@ async def update_notice(notice_id: UUID, body: NoticeUpdate,
         if done is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Notice not found")
         return _out(await conn.fetchrow(_SELECT + " where n.id = $1", notice_id))
+
+
+@router.post("/notices/{notice_id}/remind", response_model=NoticeRemindOut)
+async def remind_now(notice_id: UUID, auth: AuthContext = Depends(perm("hrms.notice.manage"))) -> NoticeRemindOut:
+    async with db.tenant_conn(auth.tenant_id) as conn, conn.transaction():
+        n = await conn.fetchrow("select * from hrms_notices where id = $1 for update", notice_id)
+        if n is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Notice not found")
+        if not n["requires_ack"] or n["archived_at"] is not None:
+            raise HTTPException(status.HTTP_409_CONFLICT, "Only a live notice that must be acknowledged has reminders")
+        if n["last_reminded_at"] is not None and await conn.fetchval(
+                "select $1 > now() - make_interval(hours => $2)", n["last_reminded_at"], REMIND_GAP_HOURS):
+            raise HTTPException(status.HTTP_409_CONFLICT, f"Already reminded in the last {REMIND_GAP_HOURS} hours")
+        return NoticeRemindOut(reminded=await remind(conn, n, sender=auth.user_id))
 
 
 @router.get("/notices/{notice_id}/acknowledgements", response_model=list[NoticeAck])

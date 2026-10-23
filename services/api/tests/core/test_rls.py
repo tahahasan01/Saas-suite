@@ -159,6 +159,7 @@ _SHAPED = {
     "crm_targets": {"month": lambda: "2027-04-01"},
     "invoice_runs": {"period": lambda: "2027-04-01"},
     "invoice_plans": {"tag_id": lambda: str(uuid.uuid4()), "lines": lambda: "[{}]"},   # one audience, a line
+    "pay_pf_entries": {"employee_minor": lambda: "100"},   # an entry moves some money (0113)
 }
 
 

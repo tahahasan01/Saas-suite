@@ -10,6 +10,7 @@ import { errorText, useAction } from "@/lib/useAction";
 import { Tabs } from "@/components/Tabs";
 import { Combobox } from "@/components/Combobox";
 import { Dialog } from "@/components/Dialog";
+import { PayPolicies } from "@/components/hrms/PayPolicies";
 import { Badge, Button, Card, EmptyState, ErrorState, Field, Input, LoadingRows, Select } from "@/components/ui";
 
 type Component = Schema<"ComponentOut">;
@@ -20,6 +21,7 @@ type Statutory = Schema<"StatutoryOut">;
 type Employee = { id: string; name: string };
 
 const TABS = [
+  { id: "policies", label: "Pay policies" },
   { id: "components", label: "Pay components" },
   { id: "structures", label: "Structures" },
   { id: "one-offs", label: "Bonuses & fines" },
@@ -45,6 +47,7 @@ export default function PayrollSetup() {
         What pay is made of. Each person&apos;s salary and structure is set on their profile under Staff.
       </p>
       <Tabs items={TABS} value={tab} onChange={setTab} label="Payroll set-up">
+        {tab === "policies" && <PayPolicies />}
         {tab === "components" && <Components />}
         {tab === "structures" && <Structures />}
         {tab === "one-offs" && <OneOffs />}

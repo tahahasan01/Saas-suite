@@ -317,6 +317,8 @@ async def load_inputs(conn: Any, *, period_start: date, period_end: date, pay_da
         paid_months[str(r["employee_id"])][r["period_start"]] = (int(r["taxable"]), int(r["tax"]))
 
     provinces = await resolve_work_provinces(conn, [str(i) for i in emp_ids])
+    from . import provident_fund        # its module imports this one
+    fund = await provident_fund.rule(conn)
     ctx = await statutory_context(conn)
     months_before = month_starts(ty.starts, period_start)
 
@@ -341,7 +343,9 @@ async def load_inputs(conn: Any, *, period_start: date, period_end: date, pay_da
                                        assumed_months=assumed),
             one_offs=one_offs.get(eid, []), advances=advances.get(eid, []), statutory=rules,
             min_wage_minor=wage["monthly_minor"] if wage else None, province=province, province_source=source,
-            leaves_on=leaves)
+            leaves_on=leaves,
+            provident_fund=fund if fund and e["pf_member"] and (e["pf_joined_on"] is None
+                                                                 or e["pf_joined_on"] <= period_end) else None)
         snapshot = {
             "name": e["name"], "cnic": e["cnic"], "ntn": e["ntn"], "iban": e["iban"], "bank_name": e["bank_name"],
             "payment_mode": e["payment_mode"], "designation": e["designation"], "department": e["department"],

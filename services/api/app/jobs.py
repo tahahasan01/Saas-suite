@@ -319,6 +319,23 @@ async def run_job_changes() -> dict[str, int]:
     return {"tenants": len(tenants), "applied": applied, "failed": failed}
 
 
+async def run_policy_reminders() -> dict[str, int]:
+    """Daily (wave A leftover, 0110): weekly reminders for unacknowledged policies."""
+    from .routers import hrms_notices
+    reminded = failed = 0
+    run_id = context.job_run_id()
+    tenants = await _hrms_tenants()
+    for tid in tenants:
+        try:
+            async with db.job_conn(tid, "hrms.policy_reminders", run_id=run_id) as conn:
+                async with conn.transaction():
+                    reminded += await hrms_notices.remind_due(conn)
+        except Exception:  # noqa: BLE001 — one bad tenant must not stop the rest
+            failed += 1
+            log.exception("policy reminders failed for tenant %s", tid)
+    return {"tenants": len(tenants), "reminded": reminded, "failed": failed}
+
+
 # code -> handler. Every row in scheduled_jobs has one here and vice versa
 # (tests/core/test_worker.py); a new job is a seed row in a migration plus a
 # line here.
@@ -360,6 +377,7 @@ HANDLERS: dict[str, Callable[[], Awaitable[Any]]] = {
     "payroll.calculate": payroll_runs.run_due_calculations,   # 0070; batches of 100 (St03 risk 9)
     "invoicing.overdue_reminders": run_invoice_reminders,     # 0074
     "hrms.apply_job_changes": run_job_changes,                # wave C, 0106
+    "hrms.policy_reminders": run_policy_reminders,            # 0110
     "invoicing.recurring_runs": run_recurring_invoices,       # 0126 fee vouchers
 }
 

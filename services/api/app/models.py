@@ -1978,10 +1978,16 @@ class NoticeOut(BaseModel):
     audience_size: int
     acknowledged: int
     acknowledged_at: datetime | None = None   # /me only: when this employee acknowledged
+    last_reminded_at: datetime | None = None  # reminders to those who haven't (0110)
+    reminders_sent: int = 0
 
 
 # ── Celebrations and the org chart (wave A, H2/H20) ──
 CelebrationKind = Literal["birthday", "anniversary"]
+
+
+class NoticeRemindOut(BaseModel):
+    reminded: int
 
 
 class Celebration(BaseModel):
@@ -2114,6 +2120,20 @@ class OvertimeDecision(BaseModel):
     rate_multiplier: float | None = Field(default=None, ge=1, le=5)   # default: the claim's (2.0)
 
 
+OvertimeDayType = Literal["normal", "rest_day", "holiday"]
+OVERTIME_DAY_TYPES = list(get_args(OvertimeDayType))
+
+
+class OvertimeRates(BaseModel):
+    normal: float = Field(ge=1, le=5)
+    rest_day: float = Field(ge=1, le=5)
+    holiday: float = Field(ge=1, le=5)
+
+
+class OvertimeRatesOut(OvertimeRates):
+    verified: bool
+
+
 class OvertimeOut(BaseModel):
     id: str
     employee_id: str
@@ -2123,6 +2143,7 @@ class OvertimeOut(BaseModel):
     reason: str
     status: OvertimeStatus
     rate_multiplier: float
+    day_type: OvertimeDayType = "normal"   # which rate applied (0109)
     amount_minor: int | None          # pay: only for payroll.salary.read holders (and the employee)
     decided_at: datetime | None
     decision_note: str
@@ -3089,7 +3110,7 @@ SettlementStatus = Literal["draft", "approved", "paid", "cancelled"]
 SETTLEMENT_STATUSES = list(get_args(SettlementStatus))
 SettlementKind = Literal["payable", "receivable"]
 SETTLEMENT_KINDS = list(get_args(SettlementKind))
-SettlementCode = Literal["GRATUITY", "LEAVE_ENCASH", "NOTICE_PAY", "BONUS", "OTHER",
+SettlementCode = Literal["GRATUITY", "LEAVE_ENCASH", "NOTICE_PAY", "BONUS", "OTHER", "PF_PAYOUT",
                          "ADVANCE_SETTLE", "ASSET_RECOVERY", "NOTICE_SHORTFALL", "OTHER_RECOVERY"]
 SETTLEMENT_CODES = list(get_args(SettlementCode))
 # What HR may add by hand, per side (the rest are worked out).

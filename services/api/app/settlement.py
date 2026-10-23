@@ -23,7 +23,7 @@ from typing import Any
 import asyncpg
 from fastapi import HTTPException, status
 
-from . import leave, payroll_data
+from . import leave, pay_policies, payroll_data, provident_fund
 from .payroll_engine import encash_amount
 
 FINAL_RUNS = ("approved", "paid", "locked")
@@ -119,18 +119,33 @@ async def build_auto_lines(conn: asyncpg.Connection, tenant_id: str, settlement:
     lines: list[tuple[Any, ...]] = []
 
     rule, _ = await rule_for(conn)
+    policy = await pay_policies.load(conn)
     years, amount, explain = gratuity(base, joined, last, rule)
-    if amount > 0:
-        lines.append(("payable", "GRATUITY", f"Gratuity ({years} year{'s' if years != 1 else ''})", amount, True,
-                      None, None, explain))
+    label = f"Gratuity ({years} year{'s' if years != 1 else ''})"
+    # The company's tax rule (0112): all taxed, all tax-free, or tax-free up to a limit.
+    free, taxed = pay_policies.gratuity_split(amount, policy)
+    if free > 0:
+        lines.append(("payable", "GRATUITY", f"{label}, tax-free", free, False, None, None, explain))
+    if taxed > 0:
+        lines.append(("payable", "GRATUITY", label + (", taxed part" if free else ""), taxed, True, None, None, explain))
 
-    for b in await leave.balances(conn, tenant_id, str(eid), on=last):
-        if b.leave_type == "annual" and b.remaining > 0:
+    divisor = await pay_policies.divisor(conn, last)
+    balances = await leave.balances(conn, tenant_id, str(eid), on=last)   # seeds a new company's leave types
+    paid_out = {str(r["id"]) for r in await conn.fetch("select id from hrms_leave_types where paid_on_leaving")}
+    for b in balances:
+        if b.leave_type_id in paid_out and b.remaining > 0:
             days = Decimal(str(b.remaining))
-            per_day, value = encash_amount(base, days)
+            per_day, value = encash_amount(base, days, divisor=divisor)
             if value > 0:
-                lines.append(("payable", "LEAVE_ENCASH", f"Annual leave not taken ({b.remaining:g} days)", value, True,
+                lines.append(("payable", "LEAVE_ENCASH", f"{b.name or b.leave_type} not taken ({b.remaining:g} days)"[:120], value, True,
                               b.leave_type_id, days, {"per_day_minor": per_day}))
+
+    # The provident fund (0113): their own share and the vested employer share.
+    pf = await provident_fund.balance(conn, eid, on=last)
+    if pf.employee_minor + pf.vested_employer_minor > 0:
+        lines.append(("payable", "PF_PAYOUT", "Provident fund", pf.employee_minor + pf.vested_employer_minor, False,
+                      None, None, {"employee_minor": pf.employee_minor, "employer_minor": pf.employer_minor,
+                                   "vested_employer_minor": pf.vested_employer_minor}))
 
     for a in await outstanding_advances(conn, eid):
         lines.append(("receivable", "ADVANCE_SETTLE", "Advance still owed", int(a["outstanding"]), False, a["id"],
@@ -189,6 +204,21 @@ async def approve(conn: asyncpg.Connection, tenant_id: str, user_id: str, settle
                           return_note = 'Not returned: cost recovered in the final settlement'
                     where asset_id = $1 and returned_at is null""", ln["ref_id"])
             await conn.execute("update hrms_assets set status = 'lost', updated_at = now() where id = $1", ln["ref_id"])
+        elif ln["code"] == "PF_PAYOUT":
+            # Paid out with the last salary: the fund empties, the unvested employer share is forfeited.
+            pf = await provident_fund.balance(conn, eid, on=settlement["last_working_day"])
+            await conn.execute(
+                """insert into pay_pf_entries (tenant_id, employee_id, kind, employee_minor, employer_minor,
+                                               settlement_id, note, created_by)
+                   values ($1, $2, 'payout', $3, $4, $5, 'final settlement', $6)""",
+                tenant_id, eid, -pf.employee_minor, -pf.vested_employer_minor, sid, user_id)
+            if pf.employer_minor > pf.vested_employer_minor:
+                await conn.execute(
+                    """insert into pay_pf_entries (tenant_id, employee_id, kind, employee_minor, employer_minor,
+                                                   settlement_id, note, created_by)
+                       values ($1, $2, 'forfeit', 0, $3, $4, 'employer share not yet vested', $5)""",
+                    tenant_id, eid, -(pf.employer_minor - pf.vested_employer_minor), sid, user_id)
+            await conn.execute("update hrms_employees set pf_member = false where id = $1", eid)
         elif ln["code"] == "LEAVE_ENCASH" and ln["ref_id"] is not None and ln["days"]:
             lt = await conn.fetchrow("select * from hrms_leave_types where id = $1", ln["ref_id"])
             cycle, _ = leave.cycle_bounds(settlement["last_working_day"], lt["cycle_start_month"])

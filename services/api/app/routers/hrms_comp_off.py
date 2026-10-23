@@ -20,7 +20,7 @@ from uuid import UUID
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from .. import db, holidays, leave, payroll_data, rbac, refs
+from .. import db, holidays, leave, pay_policies, payroll_data, rbac, refs
 from ..payroll_engine import encash_amount
 from ..deps import AuthContext, current_auth, current_employee
 from ..models import CompOffApprove, CompOffIn, CompOffOut, CompOffReject, CompOffStatus, EncashIn, EncashOut
@@ -157,7 +157,8 @@ async def encash(conn: asyncpg.Connection, auth: AuthContext, employee_id: UUID,
     base = await conn.fetchval(
         """select base_minor from hrms_compensation where employee_id = $1 and effective_from <= current_date
             order by effective_from desc, seq desc limit 1""", employee_id)
-    per_day, amount = encash_amount(int(base or 0), days)
+    today_: date = await conn.fetchval("select current_date")
+    per_day, amount = encash_amount(int(base or 0), days, divisor=await pay_policies.divisor(conn, today_))
     one_off = None
     if amount > 0:
         one_off = await conn.fetchval(

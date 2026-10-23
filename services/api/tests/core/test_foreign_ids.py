@@ -117,6 +117,21 @@ def _kind(name: str) -> str:
 # platform reference data — EOBI, PESSI — shared by every tenant.)
 PLAIN_PARAMS = {"section": "crm", "decision": "approve", "key": "crm", "scheme_code": "EOBI"}
 
+# Routes whose path id must be a different record for the body's ids to be
+# reached: you can't change your own roles, and system roles are fixed.
+PATH_FIXTURES = {
+    ("/team/users/{user_id}/roles", "user_id"): "other_user",
+    ("/roles/{role_id}/inherits", "role_id"): "custom_role",
+}
+
+# Lists of ids in a body (field name -> kind of record): each is probed with
+# a one-item list holding another tenant's id (multi-tenant rule, 2026-10-24).
+LIST_KIND_OF = {
+    "category_ids": "category", "component_ids": "pay_component", "employee_ids": "employee",
+    "loser_ids": "contact", "paid_on_leaving_ids": "leave_type", "role_ids": "role", "stage_ids": "stage",
+    "tag_ids": "tag", "user_ids": "user",
+}
+
 # The /me/* portal never takes an id from the caller — it acts on the logged-in
 # employee only (tests/hrms/test_employee_portal.py proves the forcing).
 # /public/quotes/{token}: the link's token is the credential (wave D); test_quote_link_security.py.
@@ -229,6 +244,10 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
     settle_line = (await c.post(f"/hrms/final-settlements/{settle['id']}/lines", json={
         "kind": "payable", "code": "BONUS", "name": "Probe", "amount_minor": 100})).json()
     ltemplate = next(t for t in (await c.get("/hrms/letter-templates")).json() if t["kind"] == "noc")
+    custom_role = (await c.post("/team/roles", json={"name": f"Probe {uuid.uuid4().hex[:4]}",
+                                                     "permissions": {"crm": ["read"]}})).json()
+    other_user = (await c.post("/team/users", json={"name": "Probe user", "email": f"probe+{uuid.uuid4().hex[:8]}@example.com",
+                                                    "password": PASSWORD, "role_id": custom_role["id"]})).json()
     letter = (await c.post(f"/hrms/employees/{employee['id']}/letters", json={"template_id": ltemplate["id"]})).json()
     job_change = (await c.post(f"/hrms/employees/{employee['id']}/job-changes", json={
         "kind": "promotion", "effective_on": "2099-01-01", "job_title_id": title["id"]})).json()
@@ -291,6 +310,8 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
         "payslip": str(uuid.uuid4()),
         "role": (await c.get("/team/roles")).json()[0]["id"],
         "user": (await c.get("/auth/me")).json()["user"]["id"],
+        # PATH_FIXTURES: a custom role, and a user who isn't the caller.
+        "custom_role": custom_role["id"], "other_user": other_user["id"],
         "pipeline": pipeline["id"], "stage": pipeline["stages"][0]["id"], "lead": lead["id"],
         "workflow": workflow["id"], "invoice": invoice["id"],
         "product": product["id"], "supplier": supplier["id"],
@@ -401,12 +422,14 @@ def _id_slots(schema: dict, path: tuple = ()) -> list[tuple]:
         sub = _resolve(sub)
         if k in KIND_OF:
             slots.append(path + (k,))
+        elif k in LIST_KIND_OF and sub.get("type") == "array":
+            slots.append(path + (k,))
         elif sub.get("type") == "array" and "properties" in _resolve(sub.get("items", {})):
             slots += _id_slots(sub["items"], path + (k, 0))
     return slots
 
 
-def _set(body: dict, slot: tuple, value: str, schema: dict, own: dict) -> None:
+def _set(body: dict, slot: tuple, value: object, schema: dict, own: dict) -> None:
     """Put `value` at `slot`, creating optional parents from the schema."""
     node, sch = body, _resolve(schema)
     for key in slot[:-1]:
@@ -442,7 +465,8 @@ def _cases():
 def test_every_id_kind_has_a_fixture():
     """A new id field must be taught to this test (KIND_OF) before it ships."""
     unknown = {s[1] for *_, s in _cases() if s[0] == "path" and s[1] not in KIND_OF}
-    unknown |= {s[1][-1] for *_, s in _cases() if s[0] == "body" and s[1][-1] not in KIND_OF}
+    unknown |= {s[1][-1] for *_, s in _cases()
+                if s[0] == "body" and s[1][-1] not in KIND_OF and s[1][-1] not in LIST_KIND_OF}
     assert not unknown
 
 
@@ -451,14 +475,17 @@ async def test_no_write_endpoint_accepts_another_tenants_id(client, mine, theirs
     failures, tried = [], 0
     for method, template, op, body_schema, (where, slot) in _cases():
         _ROUTE = template
-        params = {p["name"]: (PLAIN_PARAMS.get(p["name"]) or mine[_kind(p["name"])])
+        params = {p["name"]: (PLAIN_PARAMS.get(p["name"])
+                              or mine[PATH_FIXTURES.get((template, p["name"])) or _kind(p["name"])])
                   for p in op.get("parameters", []) if p["in"] == "path"}
         body = _body(body_schema, mine) if body_schema else None
         if where == "path":
             params[slot] = theirs[_kind(slot)]
             label = f"{{{slot}}}"
         else:
-            _set(body, slot, theirs[_kind(slot[-1])], body_schema, mine)
+            name = slot[-1]
+            value = [theirs[LIST_KIND_OF[name]]] if name in LIST_KIND_OF else theirs[_kind(name)]
+            _set(body, slot, value, body_schema, mine)
             label = ".".join(str(k) for k in slot)
         url = template.format(**params)
         r = await client.request(method.upper(), url, json=body)

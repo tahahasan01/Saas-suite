@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from typing import Any, Literal, get_args
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -303,6 +304,17 @@ AdvanceRepayMethod = Literal["cash", "payroll"]
 ADVANCE_REPAY_METHODS = list(get_args(AdvanceRepayMethod))
 
 
+class PayslipSendIn(BaseModel):
+    employee_ids: list[UUID] | None = Field(default=None, max_length=5000)   # everyone when left out
+    again: bool = False                    # resend payslips already emailed
+
+
+class PayslipSendOut(BaseModel):
+    queued: int = 0
+    no_email: int = 0
+    already_sent: int = 0
+
+
 class AdvanceRepay(BaseModel):
     method: AdvanceRepayMethod = "cash"
     amount_minor: int | None = Field(default=None, gt=0, le=10**12)   # all that's left when omitted
@@ -368,3 +380,90 @@ class RegistrationIn(BaseModel):
 
 
 PayslipDetail.model_rebuild()   # it names LineOut, defined further down
+
+
+# ── Pay policies each company sets (0112) ───────────────────────────────────
+EncashBasis = Literal["days_30", "days_26", "working_days"]
+ENCASH_BASES = list(get_args(EncashBasis))
+GratuityTax = Literal["taxed", "exempt", "exempt_up_to"]
+GRATUITY_TAXES = list(get_args(GratuityTax))
+PolicyPreset = Literal["standing_orders", "provident_fund", "small_business"]
+POLICY_PRESETS = list(get_args(PolicyPreset))
+
+
+PfBase = Literal["basic", "gross"]
+PF_BASES = list(get_args(PfBase))
+PfEntryKind = Literal["opening", "withdrawal", "payout", "forfeit", "adjustment"]
+PF_ENTRY_KINDS = list(get_args(PfEntryKind))
+
+
+class PoliciesIn(BaseModel):
+    encash_basis: EncashBasis
+    gratuity_tax: GratuityTax
+    gratuity_exempt_minor: int | None = Field(default=None, gt=0, le=10**12)
+    paid_on_leaving_ids: list[UUID] | None = Field(default=None, max_length=100)   # leave types; unchanged if left out
+    # The provident fund rule (0113); each left out stays as it is.
+    pf_enabled: bool | None = None
+    pf_employee_rate: float | None = Field(default=None, ge=0, le=30)      # percent
+    pf_employer_rate: float | None = Field(default=None, ge=0, le=30)
+    pf_base: PfBase | None = None
+    pf_vesting_months: int | None = Field(default=None, ge=0, le=240)
+
+
+class PolicyLeaveType(BaseModel):
+    id: str
+    code: str
+    name: str
+    paid_on_leaving: bool
+
+
+class PoliciesOut(BaseModel):
+    encash_basis: EncashBasis
+    gratuity_tax: GratuityTax
+    gratuity_exempt_minor: int | None
+    preset: PolicyPreset | None
+    leave_types: list[PolicyLeaveType]
+    pf_enabled: bool = False
+    pf_employee_rate: float = 0
+    pf_employer_rate: float = 0
+    pf_base: PfBase = "basic"
+    pf_vesting_months: int = 0
+
+
+class PresetIn(BaseModel):
+    preset: PolicyPreset
+
+
+class PresetOut(BaseModel):
+    key: PolicyPreset
+    name: str
+    summary: str
+
+
+class PfMembershipIn(BaseModel):
+    member: bool
+    joined_on: date | None = None          # today when joining and left out
+
+
+class PfEntryIn(BaseModel):
+    kind: Literal["opening", "withdrawal", "adjustment"]
+    employee_minor: int = Field(default=0, ge=-10**12, le=10**12)
+    employer_minor: int = Field(default=0, ge=-10**12, le=10**12)
+    note: str = Field(default="", max_length=500)
+
+
+class PfHistoryRow(BaseModel):
+    on: date
+    what: str
+    employee_minor: int
+    employer_minor: int
+
+
+class PfBalance(BaseModel):
+    employee_id: str
+    member: bool
+    joined_on: date | None
+    employee_minor: int
+    employer_minor: int
+    vested_employer_minor: int
+    history: list[PfHistoryRow] = Field(default_factory=list)

@@ -9,7 +9,7 @@ import { Can } from "@/lib/can";
 import { attendanceBadge, formatDay, formatTime } from "@/lib/format";
 import { errorText, useAction } from "@/lib/useAction";
 import { DataTable, type Column } from "@/components/DataTable";
-import { Badge, Button, EmptyState, ErrorState, cx } from "@/components/ui";
+import { Badge, Button, EmptyState, ErrorState, Field, Input, cx } from "@/components/ui";
 import { useHrmsSummary } from "../summary";
 
 const time = (iso: string | null) => (iso ? formatTime(iso) : "—");
@@ -118,6 +118,7 @@ export default function AttendancePage() {
     <div className="space-y-5">
       <Corrections onDecided={load} />
       <OvertimeClaims />
+      <OvertimeRatesCard />
       <Can perm="hrms.attendance.write"><BiometricImport onImported={load} /></Can>
 
       <section className="space-y-2">
@@ -143,6 +144,32 @@ export default function AttendancePage() {
         <WeekMatrix week={week} />
       ) : null}
     </div>
+  );
+}
+
+/* Overtime rates by kind of day (0109): a claim takes the rate for the day
+   it was worked; changing them is a payroll setting. */
+function OvertimeRatesCard() {
+  const [r, setR] = useState<Schema<"OvertimeRatesOut"> | null>(null);
+  useEffect(() => { api<Schema<"OvertimeRatesOut">>("/hrms/overtime-rates", { notify: false }).then(setR).catch(() => setR(null)); }, []);
+  const save = useAction((next: Schema<"OvertimeRatesOut">) => api<Schema<"OvertimeRatesOut">>("/hrms/overtime-rates", {
+    method: "PUT", body: JSON.stringify({ normal: next.normal, rest_day: next.rest_day, holiday: next.holiday }) }),
+  { success: "Overtime rates saved", failure: "Couldn't save the rates" });
+  if (!r) return null;
+  const field = (label: string, key: "normal" | "rest_day" | "holiday") => (
+    <Field label={label}><Input type="number" min={1} max={5} step="0.25" value={r[key]} onChange={(e) => setR({ ...r, [key]: Number(e.target.value) })} /></Field>
+  );
+  return (
+    <details className="rounded-xl border border-line bg-surface px-4 py-2.5 text-sm">
+      <summary className="cursor-pointer font-semibold">Overtime rates: ×{r.normal} ordinary day, ×{r.rest_day} day off, ×{r.holiday} holiday{r.verified ? "" : " (not yet verified)"}</summary>
+      <form aria-label="Overtime rates" className="mt-3 grid gap-3 sm:grid-cols-4"
+            onSubmit={async (e) => { e.preventDefault(); const next = await save.run(r); if (next) setR(next); }}>
+        {field("Ordinary day", "normal")}
+        {field("Weekly day off", "rest_day")}
+        {field("Public holiday", "holiday")}
+        <Can perm="payroll.settings.manage"><div className="flex items-end"><Button type="submit" variant="subtle" disabled={save.busy}>Save</Button></div></Can>
+      </form>
+    </details>
   );
 }
 
@@ -173,7 +200,8 @@ function OvertimeClaims() {
             <span className="min-w-0 flex-1 basis-56">
               <span className="font-medium">{c.employee_name}</span>{" "}
               <span className="text-fg-muted">· {formatDay(c.work_date, { weekday: "short", day: "numeric", month: "short" })} ·{" "}
-                {Math.floor(c.minutes / 60)}h {String(c.minutes % 60).padStart(2, "0")}m at ×{c.rate_multiplier}</span>
+                {Math.floor(c.minutes / 60)}h {String(c.minutes % 60).padStart(2, "0")}m at ×{c.rate_multiplier}
+                {c.day_type === "rest_day" ? " (day off)" : c.day_type === "holiday" ? " (holiday)" : ""}</span>
               {c.reason && <span className="block text-xs text-fg-subtle">{c.reason}</span>}
             </span>
             <Can perm="hrms.attendance.approve">

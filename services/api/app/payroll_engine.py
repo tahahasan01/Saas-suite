@@ -60,14 +60,14 @@ def overtime_pay(base_minor: int, *, working_days: int, shift_minutes: int, minu
     return _round(Decimal(base_minor) * minutes * multiplier / (Decimal(working_days) * shift_minutes))
 
 
-ENCASH_DAYS_PER_MONTH = 30   # per-day divisor for leave encashment (St12 §5: founder to confirm)
-
-
-def encash_amount(base_minor: int, days: Decimal) -> tuple[int, int]:
+def encash_amount(base_minor: int, days: Decimal, *, divisor: int = 30) -> tuple[int, int]:
     """(per-day rate, amount) in paisa for encashed leave (wave C, H8): the
-    monthly salary over 30 a day, each rounded half-up once."""
-    per_day = _round(Decimal(base_minor) / ENCASH_DAYS_PER_MONTH)
-    return per_day, _round(Decimal(base_minor) * days / ENCASH_DAYS_PER_MONTH)
+    monthly salary over the company's divisor (0112: 30, 26 or the month's
+    working days), each rounded half-up once."""
+    if divisor <= 0 or base_minor <= 0:
+        return 0, 0
+    per_day = _round(Decimal(base_minor) / divisor)
+    return per_day, _round(Decimal(base_minor) * days / divisor)
 
 
 def _rs(minor: int) -> str:
@@ -153,6 +153,14 @@ class StatutoryRule:
 
 
 @dataclass(frozen=True)
+class ProvidentFund:
+    """The company's fund rule for a member (0113): rates as fractions."""
+    employee_rate: Decimal
+    employer_rate: Decimal
+    base: Literal["basic", "gross"] = "basic"
+
+
+@dataclass(frozen=True)
 class TaxHistory:
     """This tax year before the period: finalised payslips, and months the
     employee was employed for that have none (paid outside the system)."""
@@ -182,6 +190,7 @@ class EmployeeInput:
     # The exit date when they leave in this period (wave C, 0100): no months
     # follow, so the year's tax is settled on what it actually paid.
     leaves_on: date | None = None
+    provident_fund: ProvidentFund | None = None   # a fund member (0113)
 
 
 # ── Output ──────────────────────────────────────────────────────────────────
@@ -358,6 +367,20 @@ def _calculate(inp: EmployeeInput, res: PayslipResult, ty: payroll.TaxYear) -> N
     # 5. Statutory contributions.
     for rule in inp.statutory:
         _statutory(inp, res, rule, gross, gross_full, share, prorated)
+    # 5b. Provident fund (0113): the member's share is a deduction (no tax
+    # relief here); the employer's is a cost, like EOBI's employer share.
+    if inp.provident_fund is not None:
+        pf = inp.provident_fund
+        pf_base = built["BASIC"].amount_minor if pf.base == "basic" and "BASIC" in built else recurring_paid
+        explain_pf = {"base": pf.base, "base_minor": pf_base, "verified": False}
+        if pf.employee_rate:
+            res.lines.append(Line("PF_EE", "Provident fund (employee)", "deduction",
+                                  _round(Decimal(pf_base) * pf.employee_rate),
+                                  explain={**explain_pf, "rate": str(pf.employee_rate)}))
+        if pf.employer_rate:
+            res.lines.append(Line("PF_ER", "Provident fund (employer)", "employer_contribution",
+                                  _round(Decimal(pf_base) * pf.employer_rate),
+                                  explain={**explain_pf, "rate": str(pf.employer_rate)}))
     if inp.min_wage_minor is not None and gross_full < inp.min_wage_minor:
         res.warnings.append(f"Pay is below the minimum wage for {inp.province or 'this province'} "
                             f"(Rs {_rs(inp.min_wage_minor)} a month)")

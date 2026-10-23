@@ -14,13 +14,15 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
-from .. import audit, db, jobs, payroll, payroll_access, payroll_reports, payroll_runs, payslip_pdf
+from .. import audit, db, email, jobs, payroll, payroll_access, payroll_reports, payroll_runs, payslip_pdf, refs
 from .. import payroll_engine as eng
 from ..deps import AuthContext, current_auth, current_employee
 from ..payroll_models import (
     LineOut,
     PayslipDetail,
     PayslipLink,
+    PayslipSendIn,
+    PayslipSendOut,
     PayslipSummary,
     RecomputeCreate,
     RunAction,
@@ -156,6 +158,43 @@ async def reopen(run_id: str, body: RunAction,
                  auth: AuthContext = Depends(require_key("payroll.run.reopen", "hrms"))) -> RunOut:
     async with db.tenant_conn(auth.tenant_id) as conn:
         return run_out(await payroll_runs.reopen(conn, run_id, auth.user_id, body.note))
+
+
+@router.post("/runs/{run_id}/payslips/send", response_model=PayslipSendOut, status_code=status.HTTP_202_ACCEPTED)
+async def send_payslips(run_id: str, body: PayslipSendIn,
+                        auth: AuthContext = Depends(require_key("payroll.run.pay", "hrms"))) -> PayslipSendOut:
+    """Email each payslip of a final run to the employee's email on file
+    (0111), through the outbox. Sent once unless `again`; no email, skipped."""
+    async with db.tenant_conn(auth.tenant_id) as conn, conn.transaction():
+        run = await payroll_runs.get_run(conn, run_id)
+        for eid in body.employee_ids or []:          # ids are proven before anything else
+            await refs.ensure_visible(conn, "hrms_employees", eid)
+        if run["status"] not in payroll_runs.FINAL:
+            raise HTTPException(status.HTTP_409_CONFLICT, "Approve the run before sending payslips")
+        only = [str(i) for i in body.employee_ids] if body.employee_ids is not None else None
+        slips = await conn.fetch(
+            """select p.id, p.employee_id, btrim(e.email) as email,
+                      exists (select 1 from pay_payslip_sends s where s.payslip_id = p.id) as sent
+                 from payslips p join hrms_employees e on e.id = p.employee_id
+                where p.run_id = $1 and ($2::uuid[] is null or p.employee_id = any($2::uuid[]))
+                order by e.name""", run["id"], only)
+        out = PayslipSendOut()
+        for s in slips:
+            if not s["email"]:
+                out.no_email += 1
+            elif s["sent"] and not body.again:
+                out.already_sent += 1
+            else:
+                oid = await email.queue_payslip(conn, auth.tenant_id, s["email"], str(s["id"]))
+                await conn.execute(
+                    """insert into pay_payslip_sends (tenant_id, payslip_id, run_id, employee_id, email, outbox_id,
+                                                      sent_by)
+                       values ($1, $2, $3, $4, $5, $6, $7)""",
+                    auth.tenant_id, s["id"], run["id"], s["employee_id"], s["email"], oid, auth.user_id)
+                out.queued += 1
+        await audit.event(conn, "payroll.payslips_sent", "payroll_runs", str(run["id"]),
+                          data={"queued": out.queued, "again": body.again})
+    return out
 
 
 @router.post("/runs/{run_id}/mark-paid", response_model=RunOut)
