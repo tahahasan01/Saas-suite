@@ -9,6 +9,7 @@ import { formatDateTime, formatDay, money, relativeDate } from "@/lib/format";
 import { errorText, useAction } from "@/lib/useAction";
 import { Badge, Button, EmptyState, ErrorState, Field, Input, LoadingRows, Select } from "@/components/ui";
 import { AgingReport } from "@/components/invoices/AgingReport";
+import { BillingPlans } from "@/components/invoices/BillingPlans";
 import { DataTable, type Column } from "@/components/DataTable";
 import { Sheet } from "@/components/Dialog";
 import { useConfirm } from "@/components/Confirm";
@@ -33,6 +34,7 @@ const FILTERS = [
   { key: "draft", label: "Drafts" },
   { key: "paid", label: "Paid" },
   { key: "aging", label: "Who owes what" },
+  { key: "plans", label: "Fee vouchers" },
 ];
 const METHODS = [
   ["bank", "Bank transfer"], ["cash", "Cash"], ["cheque", "Cheque"], ["card", "Card"], ["jazzcash", "JazzCash"],
@@ -58,7 +60,7 @@ export default function InvoicesPage() {
   // A new tab starts from "loading": the last tab's rows must not show under its name.
   useEffect(() => setItems(null), [filter]);
   const load = useCallback(() => {
-    if (filter === "aging") return;     // its own report below
+    if (filter === "aging" || filter === "plans") return;     // their own views below
     setLoadError(null);
     const q = filter === "overdue" ? "?overdue=true" : filter ? `?status=${filter}` : "";
     api<Summary[]>(`/invoices${q}`)
@@ -96,7 +98,7 @@ export default function InvoicesPage() {
         ))}
       </div>
 
-      {filter === "aging" ? <AgingReport /> : loadError ? (
+      {filter === "aging" ? <AgingReport /> : filter === "plans" ? <BillingPlans /> : loadError ? (
         <ErrorState message={loadError} onRetry={load} />
       ) : (
         <DataTable

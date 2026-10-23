@@ -92,4 +92,33 @@ test.describe("invoices v2", () => {
     await expect(report.getByRole("row", { name: new RegExp(name) })).toContainText("7,000");
     await expect(report.getByRole("link", { name: "Download CSV" })).toHaveAttribute("href", /aging\?format=csv/);
   });
+
+  test("fee vouchers: a plan bills a tagged class, drafts are issued together and download as a ZIP", async ({ page, request }) => {
+    const id = uniq();
+    const tag = await (await request.post(`${API}/tags`, { data: { name: `Class 5 ${id}` } })).json();
+    for (const n of ["Ali", "Sana"]) {
+      expect((await request.post(`${API}/contacts`, { data: { name: `${n} ${id}`, force: true, tag_ids: [tag.id] } })).ok()).toBeTruthy();
+    }
+    await page.goto("/invoices");
+    await ready(page);
+    await page.getByRole("tab", { name: "Fee vouchers" }).click();
+    await page.getByRole("button", { name: "New plan" }).click();
+    await page.getByLabel("Plan name").fill(`Fees ${id}`);
+    await page.getByLabel("Bill").selectOption({ label: `Class 5 ${id}` });
+    await page.getByLabel("Item 1").fill("Tuition fee");
+    await page.getByLabel("Price (PKR)").fill("8000");
+    await page.getByRole("button", { name: "Save plan" }).click();
+    await expect(page.getByText("Plan saved")).toBeVisible();
+
+    const plan = page.getByRole("region", { name: `Fees ${id}` });
+    await plan.getByLabel("Month").fill("2027-01");
+    await plan.getByRole("button", { name: "Make drafts" }).click();
+    await expect(page.getByText("2 drafts made: check them, then issue")).toBeVisible();
+    await expect(plan.getByText(`Ali ${id}`)).toBeVisible();
+    await plan.getByRole("button", { name: "Issue all" }).click();
+    await page.getByRole("button", { name: "Issue all" }).last().click();     // the confirm
+    await expect(page.getByText("All issued, each with its own number")).toBeVisible();
+    await expect(plan.getByRole("link", { name: "Download PDFs (ZIP)" })).toBeVisible();
+    await expect(plan.getByText(/INV-/).first()).toBeVisible();
+  });
 });
