@@ -12,6 +12,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
 from .. import context, db, ratelimit, web_forms
 from ..crm_selling_models import (
+    AssignmentRuleOut,
+    AssignmentRulesPut,
     PersonOut,
     PoolMemberOut,
     PoolPut,
@@ -153,3 +155,43 @@ async def submit(public_id: str, body: WebFormSubmit, request: Request) -> WebFo
             return WebFormAnswer(message=thanks)
         return WebFormAnswer(message=await web_forms.submit(conn, str(form["tenant_id"]), form["id"], body.values,
                                                             ratelimit.client_ip(request)))
+
+
+
+# ── Rules (0130) ────────────────────────────────────────────────────────────
+def _rule(r: asyncpg.Record) -> AssignmentRuleOut:
+    return AssignmentRuleOut(id=str(r["id"]), position=r["position"], name=r["name"], source=r["source"],
+                             city=r["city"], user_ids=[str(u) for u in r["user_ids"]])
+
+
+@router.get("/assignment/rules", response_model=list[AssignmentRuleOut])
+async def get_rules(auth: AuthContext = Depends(perm("crm.settings.manage"))) -> list[AssignmentRuleOut]:
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        return [_rule(r) for r in await conn.fetch("select * from crm_assignment_rules order by position, id")]
+
+
+@router.put("/assignment/rules", response_model=list[AssignmentRuleOut])
+async def put_rules(body: AssignmentRulesPut,
+                    auth: AuthContext = Depends(perm("crm.settings.manage"))) -> list[AssignmentRuleOut]:
+    """Replace the rules, in order. Their people must be this business's
+    users and already in the lead pool (so caps, pausing and leave apply)."""
+    named = {u for rule in body.rules for u in rule.user_ids}
+    async with db.tenant_conn(auth.tenant_id) as conn:
+        known = {r["id"] for r in await conn.fetch(
+            "select id from users where id = any($1::uuid[]) and status = 'active'", list(named))}
+        if named - known:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+        pooled = {r["user_id"] for r in await conn.fetch(
+            "select user_id from crm_assignment_pool where user_id = any($1::uuid[])", list(named))}
+        if named - pooled:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+                                "Add these people to the lead pool first, then to a rule")
+        if any(rule.source is None and rule.city is None for rule in body.rules):
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "A rule needs a source, a city or both")
+        await conn.execute("delete from crm_assignment_rules")
+        await conn.executemany(
+            """insert into crm_assignment_rules (tenant_id, position, name, source, city, user_ids)
+               values ($1, $2, btrim($3), $4, $5, $6)""",
+            [(auth.tenant_id, i, rule.name, rule.source, rule.city, list(dict.fromkeys(rule.user_ids)))
+             for i, rule in enumerate(body.rules)])
+        return [_rule(r) for r in await conn.fetch("select * from crm_assignment_rules order by position, id")]

@@ -2412,6 +2412,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/crm/assignment/rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Rules */
+        get: operations["get_rules_crm_assignment_rules_get"];
+        /**
+         * Put Rules
+         * @description Replace the rules, in order. Their people must be this business's
+         *     users and already in the lead pool (so caps, pausing and leave apply).
+         */
+        put: operations["put_rules_crm_assignment_rules_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/public/forms/{public_id}": {
         parameters: {
             query?: never;
@@ -8544,6 +8566,40 @@ export interface components {
             status?: ("available" | "issued" | "retired" | "lost") | null;
             /** Note */
             note?: string | null;
+        };
+        /**
+         * AssignmentRuleIn
+         * @description Leads whose source and/or city match go, in turn, to these pool members.
+         */
+        AssignmentRuleIn: {
+            /** Name */
+            name: string;
+            /** Source */
+            source?: string | null;
+            /** City */
+            city?: string | null;
+            /** User Ids */
+            user_ids: string[];
+        };
+        /** AssignmentRuleOut */
+        AssignmentRuleOut: {
+            /** Id */
+            id: string;
+            /** Position */
+            position: number;
+            /** Name */
+            name: string;
+            /** Source */
+            source: string | null;
+            /** City */
+            city: string | null;
+            /** User Ids */
+            user_ids: string[];
+        };
+        /** AssignmentRulesPut */
+        AssignmentRulesPut: {
+            /** Rules */
+            rules: components["schemas"]["AssignmentRuleIn"][];
         };
         /** AttendanceOut */
         AttendanceOut: {
@@ -22761,6 +22817,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PersonOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_rules_crm_assignment_rules_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssignmentRuleOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_rules_crm_assignment_rules_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignmentRulesPut"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssignmentRuleOut"][];
                 };
             };
             /** @description Validation Error */

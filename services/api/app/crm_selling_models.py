@@ -8,7 +8,7 @@ from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from .models import (
     CampaignStatus,
@@ -504,3 +504,34 @@ class QuoteEmail(BaseModel):
 
 class QuoteEmailed(BaseModel):
     to: str
+
+
+# ── Assignment rules (0130) ─────────────────────────────────────────────────
+class AssignmentRuleIn(BaseModel):
+    """Leads whose source and/or city match go, in turn, to these pool members."""
+    model_config = ConfigDict(extra="forbid")
+    name: str = Field(min_length=1, max_length=80)
+    source: str | None = Field(default=None, max_length=60)
+    city: str | None = Field(default=None, max_length=80)
+    user_ids: list[UUID] = Field(min_length=1, max_length=50)
+
+    @model_validator(mode="after")
+    def _trimmed(self) -> AssignmentRuleIn:
+        # "Needs a source or a city" is checked by the endpoint, after the ids.
+        self.source = (self.source or "").strip() or None
+        self.city = (self.city or "").strip() or None
+        return self
+
+
+class AssignmentRulesPut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    rules: list[AssignmentRuleIn] = Field(max_length=50)
+
+
+class AssignmentRuleOut(BaseModel):
+    id: str
+    position: int
+    name: str
+    source: str | None
+    city: str | None
+    user_ids: list[str]
