@@ -3167,7 +3167,12 @@ export interface paths {
         /** List Branches */
         get: operations["list_branches_org_branches_get"];
         put?: never;
-        post?: never;
+        /**
+         * Create Branch
+         * @description A new branch or warehouse (a warehouse is a branch without tills).
+         *     No limit per plan yet: that is the founder's pricing call.
+         */
+        post: operations["create_branch_org_branches_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8915,6 +8920,28 @@ export interface components {
             active?: boolean | null;
             /** Tasks */
             tasks?: components["schemas"]["BoardingTemplateTaskIn"][] | null;
+        };
+        /**
+         * BranchCreate
+         * @description A new branch or warehouse (stock per branch, 0091).
+         */
+        BranchCreate: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /**
+             * Address
+             * @default
+             */
+            address: string;
+            /**
+             * Phone
+             * @default
+             */
+            phone: string;
+            /** Region Code */
+            region_code?: ("PB" | "SD" | "KP" | "BA" | "ICT" | "GB" | "AJK") | null;
         };
         /** BranchOut */
         BranchOut: {
@@ -24672,6 +24699,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BranchOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_branch_org_branches_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                bos_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BranchCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BranchOut"];
                 };
             };
             /** @description Validation Error */

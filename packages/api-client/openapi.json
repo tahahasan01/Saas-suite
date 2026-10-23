@@ -13124,6 +13124,64 @@
             }
           }
         }
+      },
+      "post": {
+        "tags": [
+          "org"
+        ],
+        "summary": "Create Branch",
+        "description": "A new branch or warehouse (a warehouse is a branch without tills).\nNo limit per plan yet: that is the founder's pricing call.",
+        "operationId": "create_branch_org_branches_post",
+        "parameters": [
+          {
+            "name": "bos_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bos Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BranchCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BranchOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/org/branches/{branch_id}": {
@@ -35729,6 +35787,60 @@
         },
         "type": "object",
         "title": "BoardingTemplateUpdate"
+      },
+      "BranchCreate": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^[A-Z0-9]{2,8}$",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "address": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Address",
+            "default": ""
+          },
+          "phone": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Phone",
+            "default": ""
+          },
+          "region_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "PB",
+                  "SD",
+                  "KP",
+                  "BA",
+                  "ICT",
+                  "GB",
+                  "AJK"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "BranchCreate",
+        "description": "A new branch or warehouse (stock per branch, 0091)."
       },
       "BranchOut": {
         "properties": {
