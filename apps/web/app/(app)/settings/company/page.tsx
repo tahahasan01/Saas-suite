@@ -10,6 +10,7 @@ import {
   MONTHS, TIMEZONES, fileUrl, uploadFile,
 } from "@/lib/org";
 import { Badge, Button, Card, ErrorState, Field, Input, LoadingRows, Select, Textarea } from "@/components/ui";
+import { BranchesCard } from "@/components/settings/BranchesCard";
 
 export default function CompanySettingsPage() {
   const can = useCan();
@@ -44,6 +45,7 @@ export default function CompanySettingsPage() {
         </p>
       </header>
       <CompanyForm company={company} regions={regions} canEdit={can("settings.company.manage")} onSaved={setCompany} />
+      {can("settings.branches.read") && <BranchesCard canEdit={can("settings.branches.manage")} />}
       <BrandingCard canEdit={can("settings.branding.manage")} />
       {can("settings.sequences.read") && <NumbersCard canEdit={can("settings.sequences.manage")} />}
       <TaxCard regions={regions} />

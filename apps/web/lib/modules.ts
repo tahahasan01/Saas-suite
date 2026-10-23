@@ -76,6 +76,8 @@ export const MODULES: Module[] = [
       { href: "/pos/sales", label: "Sales" },
       { href: "/pos/khata", label: "Khata" },
       { href: "/pos/products", label: "Products" },
+      { href: "/pos/transfers", label: "Transfers" },
+      { href: "/pos/counts", label: "Stock counts" },
       { href: "/pos/purchase-orders", label: "Purchase orders" },
       { href: "/pos/drawer", label: "Registers" },
       { href: "/pos/returns", label: "Returns" },
