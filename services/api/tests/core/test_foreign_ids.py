@@ -69,8 +69,7 @@ KIND_OF = {
     "receipt_file_id": "file",
     "cycle_id": "appraisal_cycle",
     "appraisal_id": "appraisal",
-    # template_id names four kinds (boarding, appraisal, letter and CRM message templates); one global
-    # mapping can only serve one of them (CRM below). TODO: per-route kinds for the walk.
+    # template_id names four kinds: CRM message templates here, the HR ones in ROUTE_KINDS below.
     "boarding_id": "boarding",
     "task_id": "boarding_task",
     # quotes (wave D, 0121)
@@ -84,6 +83,32 @@ KIND_OF = {
     # fee vouchers (0126)
     "plan_id": "invoice_plan", "invoice_run_id": "invoice_run",
 }
+
+# Ids whose name means different records on different routes: the first
+# matching path prefix wins, otherwise KIND_OF. (template_id is a boarding,
+# appraisal, letter or CRM message template depending on where it's sent.)
+ROUTE_KINDS: dict[str, tuple[tuple[str, str], ...]] = {
+    "template_id": (
+        ("/hrms/letter-templates", "letter_template"),
+        ("/hrms/employees/{employee_id}/letters", "letter_template"),
+        ("/hrms/appraisal-", "appraisal_template"),
+        ("/hrms/boarding-templates", "boarding_template"),
+        ("/hrms/employees/{employee_id}/onboarding", "boarding_template"),
+        ("/hrms/employees/{employee_id}/offboarding", "boarding_template"),
+    ),
+}
+
+# The route being probed, so building a body picks the right kind for a
+# name in ROUTE_KINDS (set by the walk for each case).
+_ROUTE = ""
+
+
+def _kind(name: str) -> str:
+    for prefix, kind in ROUTE_KINDS.get(name, ()):
+        if _ROUTE.startswith(prefix):
+            return kind
+    return KIND_OF[name]
+
 
 # Path parameters that are not ids: a fixed, valid value. (scheme_code names
 # platform reference data — EOBI, PESSI — shared by every tenant.)
@@ -237,6 +262,7 @@ async def _ids(c: AsyncClient) -> dict[str, str]:
         "overtime_claim": str(overtime_claim), "asset": asset["id"],
         "floor": floor["id"], "table": table["id"], "station": station["id"],
         "boarding_template": btemplate["id"], "boarding": boarding["id"],
+        "appraisal_template": atemplate["id"], "letter_template": ltemplate["id"],
         "boarding_task": boarding["tasks"][0]["id"],
         "appraisal_cycle": cycle["id"], "appraisal": appraisal["id"],
         "expense_claim": expense["id"],
@@ -310,7 +336,7 @@ def _value(name: str, schema: dict, own: dict):
     """A plausible value for a required field, using the caller's own ids."""
     schema = _resolve(schema)
     if name in KIND_OF:
-        return own[KIND_OF[name]]
+        return own[_kind(name)]
     if "const" in schema:
         return schema["const"]
     if "enum" in schema:
@@ -404,16 +430,18 @@ def test_every_id_kind_has_a_fixture():
 
 
 async def test_no_write_endpoint_accepts_another_tenants_id(client, mine, theirs):
+    global _ROUTE
     failures, tried = [], 0
     for method, template, op, body_schema, (where, slot) in _cases():
-        params = {p["name"]: (PLAIN_PARAMS.get(p["name"]) or mine[KIND_OF[p["name"]]])
+        _ROUTE = template
+        params = {p["name"]: (PLAIN_PARAMS.get(p["name"]) or mine[_kind(p["name"])])
                   for p in op.get("parameters", []) if p["in"] == "path"}
         body = _body(body_schema, mine) if body_schema else None
         if where == "path":
-            params[slot] = theirs[KIND_OF[slot]]
+            params[slot] = theirs[_kind(slot)]
             label = f"{{{slot}}}"
         else:
-            _set(body, slot, theirs[KIND_OF[slot[-1]]], body_schema, mine)
+            _set(body, slot, theirs[_kind(slot[-1])], body_schema, mine)
             label = ".".join(str(k) for k in slot)
         url = template.format(**params)
         r = await client.request(method.upper(), url, json=body)
