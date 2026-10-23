@@ -86,6 +86,7 @@ class DealProductOut(BaseModel):
 class CrmSettingsOut(BaseModel):
     max_discount_pct: float | None = None
     campaign_daily_cap: int = 500
+    quote_require_signature: bool = False
 
 
 class CrmSettingsIn(BaseModel):
@@ -93,6 +94,7 @@ class CrmSettingsIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     max_discount_pct: Decimal | None = Field(default=None, ge=0, le=100, decimal_places=2)
     campaign_daily_cap: int | None = Field(default=None, ge=0, le=100000)
+    quote_require_signature: bool | None = None
 
 
 # ── Quotes (0121) ───────────────────────────────────────────────────────────
@@ -129,6 +131,7 @@ class QuoteTotals(BaseModel):
     content_hash: str
     accepted_name: str | None = None
     accepted_at: datetime | None = None
+    signed: bool = False                 # a drawn signature came with the acceptance (0131)
 
 
 class QuoteOut(QuoteTotals):
@@ -156,12 +159,15 @@ class QuotePublic(QuoteTotals):
     nothing else (no ids, no notes, no list prices)."""
     status: QuotePublicStatus
     business: dict[str, str]
+    signature_required: bool = False
 
 
 class QuoteAccept(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: str = Field(min_length=1, max_length=120)
     content_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    # A drawn signature as the canvas exports it: "data:image/png;base64,…" (checked in app/quotes.py).
+    signature: str | None = Field(default=None, max_length=270_000)
 
     @field_validator("name")
     @classmethod

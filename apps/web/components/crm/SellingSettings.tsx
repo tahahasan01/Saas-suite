@@ -29,7 +29,10 @@ export function SellingSettings() {
         <LeadPoolEditor />
         <AssignmentRules />
       </div>
-      <DiscountCeiling />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <DiscountCeiling />
+        <QuoteSettings />
+      </div>
     </div>
   );
 }
@@ -295,6 +298,35 @@ function LeadPoolEditor() {
             </div>
           )}
         </>
+      )}
+    </Card>
+  );
+}
+
+
+// ── Quotes ─────────────────────────────────────────────────────────────────
+function QuoteSettings() {
+  const [required, setRequired] = useState<boolean | null>(null);
+  useEffect(() => {
+    api<{ quote_require_signature: boolean }>("/crm/settings")
+      .then((s) => setRequired(s.quote_require_signature)).catch(() => setRequired(false));
+  }, []);
+  const save = useAction(
+    (on: boolean) => api("/crm/settings", { method: "PUT", body: JSON.stringify({ quote_require_signature: on }) }),
+    { success: "Saved", failure: "Couldn't save that" },
+  );
+  return (
+    <Card>
+      <h2 className="mb-1 font-display text-base font-semibold">Quotes</h2>
+      <p className="mb-3 text-sm text-fg-muted">
+        Customers accept a quote by typing their name. You can also ask them to sign it with a finger or a mouse.
+      </p>
+      {required === null ? <LoadingRows rows={1} /> : (
+        <div className="flex items-center gap-2 text-sm">
+          <Switch checked={required} label="Customers must sign to accept" disabled={save.busy}
+                  onChange={async (on) => { if (await save.run(on)) setRequired(on); }} />
+          <span aria-hidden>Customers must sign to accept</span>
+        </div>
       )}
     </Card>
   );

@@ -91,8 +91,9 @@ async def put_settings(body: CrmSettingsIn,
                        auth: AuthContext = Depends(perm("crm.settings.manage"))) -> CrmSettingsOut:
     async with db.tenant_conn(auth.tenant_id) as conn:
         fields = body.model_dump(exclude_unset=True)
-        if fields.get("campaign_daily_cap", 0) is None:
-            fields.pop("campaign_daily_cap")      # not nullable: absent means unchanged
+        for col in ("campaign_daily_cap", "quote_require_signature"):
+            if col in fields and fields[col] is None:
+                fields.pop(col)                   # not nullable: null means unchanged
         await conn.execute("insert into crm_settings (tenant_id) values ($1) on conflict do nothing", auth.tenant_id)
         if fields:
             cols = ", ".join(f"{k} = ${i + 1}" for i, k in enumerate(fields))
@@ -133,9 +134,11 @@ async def get_quote(quote_id: str, auth: AuthContext = Depends(perm("crm.lead.re
 @router.get("/quotes/{quote_id}/pdf")
 async def quote_pdf(quote_id: str, auth: AuthContext = Depends(perm("crm.lead.read"))) -> Response:
     async with db.tenant_conn(auth.tenant_id) as conn:
-        q = await quotes.out(conn, await _quote_in_scope(conn, auth, "crm.lead.read", quote_id))
+        row = await _quote_in_scope(conn, auth, "crm.lead.read", quote_id)
+        q = await quotes.out(conn, row)
         seller = await invoicing.seller(conn, auth.tenant_id)
-    return Response(quotes_pdf.build_quote_pdf(q, seller), media_type="application/pdf",
+    sig = bytes(row["accepted_signature"]) if row["accepted_signature"] is not None else None
+    return Response(quotes_pdf.build_quote_pdf(q, seller, sig), media_type="application/pdf",
                     headers={"Content-Disposition": f'inline; filename="{q.number}.pdf"'})
 
 

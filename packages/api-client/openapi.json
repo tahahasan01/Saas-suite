@@ -39332,6 +39332,17 @@
               }
             ],
             "title": "Campaign Daily Cap"
+          },
+          "quote_require_signature": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quote Require Signature"
           }
         },
         "additionalProperties": false,
@@ -39356,6 +39367,11 @@
             "type": "integer",
             "title": "Campaign Daily Cap",
             "default": 500
+          },
+          "quote_require_signature": {
+            "type": "boolean",
+            "title": "Quote Require Signature",
+            "default": false
           }
         },
         "type": "object",
@@ -52608,6 +52624,18 @@
             "type": "string",
             "pattern": "^[0-9a-f]{64}$",
             "title": "Content Hash"
+          },
+          "signature": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 270000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signature"
           }
         },
         "additionalProperties": false,
@@ -52832,6 +52860,11 @@
             ],
             "title": "Accepted At"
           },
+          "signed": {
+            "type": "boolean",
+            "title": "Signed",
+            "default": false
+          },
           "id": {
             "type": "string",
             "title": "Id"
@@ -53052,6 +53085,11 @@
             ],
             "title": "Accepted At"
           },
+          "signed": {
+            "type": "boolean",
+            "title": "Signed",
+            "default": false
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -53068,6 +53106,11 @@
             },
             "type": "object",
             "title": "Business"
+          },
+          "signature_required": {
+            "type": "boolean",
+            "title": "Signature Required",
+            "default": false
           }
         },
         "type": "object",

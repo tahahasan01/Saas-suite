@@ -5,6 +5,7 @@ import type { Schema } from "@business-os/api-client";
 import { apiUrl } from "@/lib/api";
 import { formatDay, money } from "@/lib/format";
 import { Badge, Button, Card, Field, Input, Textarea } from "@/components/ui";
+import { SignaturePad } from "@/components/SignaturePad";
 
 /* The customer's quote (wave D). No login: the link's token is the only
    credential, and it reaches this one quote. Plain fetch, not lib/api: a
@@ -135,6 +136,7 @@ function QuoteDocument({ quote: q, base, onAnswered }: { quote: Quote; base: str
 function Answer({ quote: q, base, onAnswered }: { quote: Quote; base: string; onAnswered: (q: Quote) => void }) {
   const [name, setName] = useState("");
   const [agree, setAgree] = useState(false);
+  const [signature, setSignature] = useState<string | null>(null);
   const [declining, setDeclining] = useState(false);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -172,7 +174,7 @@ function Answer({ quote: q, base, onAnswered }: { quote: Quote; base: string; on
     <section className="space-y-3 rounded-md border border-line p-4 print:hidden" aria-labelledby="answer">
       <h2 id="answer" className="font-semibold">Accept this quote</h2>
       {!declining ? (
-        <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); act("accept", { name, content_hash: q.content_hash }); }}>
+        <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); act("accept", { name, content_hash: q.content_hash, ...(signature ? { signature } : {}) }); }}>
           <Field label="Your full name">
             <Input value={name} required maxLength={120} autoComplete="name" onChange={(e) => setName(e.target.value)} />
           </Field>
@@ -180,9 +182,13 @@ function Answer({ quote: q, base, onAnswered }: { quote: Quote; base: string; on
             <input type="checkbox" className="mt-1" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
             <span>I accept this quote of {money(q.total_minor)} and its terms.</span>
           </label>
+          <div>
+            <p className="mb-1 text-sm">Your signature{q.signature_required ? "" : " (optional)"}</p>
+            <SignaturePad label="Signature box" onChange={setSignature} />
+          </div>
           {error && <p className="text-sm text-danger" role="alert">{error}</p>}
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" disabled={busy || !agree || !name.trim()}>{busy ? "Sending…" : "Accept quote"}</Button>
+            <Button type="submit" disabled={busy || !agree || !name.trim() || (q.signature_required && !signature)}>{busy ? "Sending…" : "Accept quote"}</Button>
             <Button type="button" variant="ghost" onClick={() => setDeclining(true)}>Decline</Button>
           </div>
         </form>

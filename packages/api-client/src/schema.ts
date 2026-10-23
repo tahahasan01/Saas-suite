@@ -10099,6 +10099,8 @@ export interface components {
             max_discount_pct?: number | string | null;
             /** Campaign Daily Cap */
             campaign_daily_cap?: number | null;
+            /** Quote Require Signature */
+            quote_require_signature?: boolean | null;
         };
         /** CrmSettingsOut */
         CrmSettingsOut: {
@@ -10109,6 +10111,11 @@ export interface components {
              * @default 500
              */
             campaign_daily_cap: number;
+            /**
+             * Quote Require Signature
+             * @default false
+             */
+            quote_require_signature: boolean;
         };
         /** CrmSummary */
         CrmSummary: {
@@ -14831,6 +14838,8 @@ export interface components {
             name: string;
             /** Content Hash */
             content_hash: string;
+            /** Signature */
+            signature?: string | null;
         };
         /** QuoteCreate */
         QuoteCreate: {
@@ -14925,6 +14934,11 @@ export interface components {
             accepted_name?: string | null;
             /** Accepted At */
             accepted_at?: string | null;
+            /**
+             * Signed
+             * @default false
+             */
+            signed: boolean;
             /** Id */
             id: string;
             /** Lead Id */
@@ -14996,6 +15010,11 @@ export interface components {
             /** Accepted At */
             accepted_at?: string | null;
             /**
+             * Signed
+             * @default false
+             */
+            signed: boolean;
+            /**
              * Status
              * @enum {string}
              */
@@ -15004,6 +15023,11 @@ export interface components {
             business: {
                 [key: string]: string;
             };
+            /**
+             * Signature Required
+             * @default false
+             */
+            signature_required: boolean;
         };
         /** RatingIn */
         RatingIn: {

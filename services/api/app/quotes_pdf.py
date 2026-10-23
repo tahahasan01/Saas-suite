@@ -4,6 +4,7 @@ prints who accepted it, when, and the start of the content hash they saw,
 so a printout can be matched to the record."""
 from __future__ import annotations
 
+import io
 from collections.abc import Mapping
 from typing import Any
 
@@ -21,7 +22,7 @@ def acceptance_line(q: Mapping[str, Any]) -> str | None:
             f" · ref {str(q.get('content_hash') or '')[:12]}")
 
 
-def build_quote_pdf(q: QuoteTotals, seller: dict[str, Any]) -> bytes:
+def build_quote_pdf(q: QuoteTotals, seller: dict[str, Any], signature: bytes | None = None) -> bytes:
     pdf = _new_pdf()
     w = pdf.epw
 
@@ -90,6 +91,8 @@ def build_quote_pdf(q: QuoteTotals, seller: dict[str, Any]) -> bytes:
         pdf.ln(3)
         pdf.set_font("NotoSans", "B", 9)
         pdf.multi_cell(w, 5, accepted, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        if signature:
+            pdf.image(io.BytesIO(signature), w=60)
     if seller.get("footer"):
         pdf.ln(2)
         pdf.set_font("NotoSans", "", 8)
